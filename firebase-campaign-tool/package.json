@@ -13,6 +13,7 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "firebase-admin": "^12.6.0",
     "xlsx": "^0.18.5"
   }

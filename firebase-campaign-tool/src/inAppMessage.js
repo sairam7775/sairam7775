@@ -1,3 +1,5 @@
+const { parseDate } = require('./dates');
+
 function slugify(key) {
   return String(key)
     .trim()
@@ -10,15 +12,6 @@ function parseBool(value) {
   if (typeof value === 'boolean') return value;
   const normalized = String(value).trim().toLowerCase();
   return ['true', '1', 'yes', 'y'].includes(normalized);
-}
-
-function parseDate(value, columnName) {
-  if (value === undefined || value === '') return undefined;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    throw new Error(`${columnName} must be a valid date/time (e.g. 2026-09-10T09:00:00Z). Got: ${value}`);
-  }
-  return date;
 }
 
 /**
@@ -44,7 +37,7 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
   const knownConditions = new Set(template.conditions.map((c) => c.name));
 
   for (const row of rowsToPublish) {
-    const { Key, Title, Body, ImageURL, CTAText, CTAUrl, Condition, Active, CampaignId, Style, StartDate, EndDate } =
+    const { CustomId, Key, Title, Body, ImageURL, CTAText, CTAUrl, Condition, Active, Style, StartDate, EndDate } =
       row;
 
     if (Condition && !knownConditions.has(String(Condition).trim())) {
@@ -79,7 +72,7 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
       ...(ImageURL ? { imageUrl: String(ImageURL) } : {}),
       ...(CTAText ? { ctaText: String(CTAText) } : {}),
       ...(CTAUrl ? { ctaUrl: String(CTAUrl) } : {}),
-      ...(CampaignId ? { campaignId: String(CampaignId) } : {}),
+      customId: String(CustomId).trim(),
       style: Style ? String(Style).trim().toLowerCase() : 'banner',
       ...(startDate ? { startDate: startDate.toISOString() } : {}),
       ...(endDate ? { endDate: endDate.toISOString() } : {}),

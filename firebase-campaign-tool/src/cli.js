@@ -28,6 +28,10 @@ function printResults(label, results) {
       console.log(`  [${i + 1}] OK (${r.status})${r.messageId ? ' id=' + r.messageId : ''}${r.paramKey ? ' param=' + r.paramKey : ''}`);
     } else if (r.status === 'dry-run') {
       console.log(`  [${i + 1}] DRY-RUN — would ${r.message ? 'send' : 'publish'}: ${JSON.stringify(r.message || r.payload)}`);
+    } else if (r.status === 'scheduled') {
+      console.log(`  [${i + 1}] SCHEDULED — ${r.reason}`);
+    } else if (r.status === 'already-sent') {
+      console.log(`  [${i + 1}] ALREADY SENT — ${r.reason}`);
     } else if (r.status === 'skipped') {
       console.log(`  [${i + 1}] SKIPPED — ${r.reason}`);
     } else {

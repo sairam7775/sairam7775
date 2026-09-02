@@ -5,6 +5,9 @@ A CLI tool that reads an Excel workbook and:
 - Sends **push notifications** via Firebase Cloud Messaging (FCM), targeted by topic.
 - Publishes **in-app message** content to Firebase Remote Config, for your app to render.
 
+Built for sending many notifications at once, each with its own timing and its own
+tracking ID, pulled straight from the spreadsheet.
+
 ## Why in-app messages go through Remote Config
 
 Firebase's In-App Messaging product has **no public API to create campaigns** —
@@ -28,44 +31,67 @@ parameters at runtime and renders its own banner/modal UI. See
    ```
    npm run generate-template
    ```
-   This creates `templates/campaign-template.xlsx` with two sheets and one example row each.
+   This creates `templates/campaign-template.xlsx` — four sheets: **Instructions**,
+   **Lists** (dropdown source values), **PushNotifications**, **InAppMessages**, each
+   with two example rows and dropdown/length validation already wired up.
 
 ## Excel format
 
-The workbook needs one or both of these sheets (exact names):
+The workbook needs one or both of the `PushNotifications` / `InAppMessages` sheets
+(exact names). Every row is one notification — add as many rows as you need.
+
+### `Lists` sheet — dropdown source values
+
+Columns `Priority`, `Style`, `Boolean`, `Topics`, and `Conditions` back the dropdowns
+on the other two sheets. `Priority`, `Style`, and `Boolean` are fixed and don't need
+editing. **`Topics` and `Conditions` are placeholders — edit this sheet** to list your
+app's actual FCM topics and your actual Remote Config condition names (Firebase has no
+API to enumerate either of these for us, so they can't be auto-populated).
 
 ### `PushNotifications` sheet
 
-| Column     | Required | Description                                                        |
-|------------|----------|----------------------------------------------------------------------|
-| Topic      | yes      | FCM topic name devices are subscribed to (no `/topics/` prefix).   |
-| Title      | yes      | Notification title.                                                |
-| Body       | yes      | Notification body text.                                            |
-| ImageURL   | no       | Image shown with the notification.                                 |
-| Data       | no       | JSON object string for custom data payload, e.g. `{"deepLink":"..."}` |
-| Priority   | no       | `high` or `normal` (Android). Defaults to normal.                  |
+| Column     | Required | Dropdown? | Description                                                        |
+|------------|----------|-----------|----------------------------------------------------------------------|
+| EventId    | **yes**  |           | Unique ID per notification. Used to avoid double-sending on a re-run, and stamped into the push payload's `data.event_id`. |
+| Topic      | yes      | ✓ (Lists!Topics) | FCM topic name devices are subscribed to (no `/topics/` prefix).   |
+| Title      | yes      |           | Notification title. Warns past 65 characters.                     |
+| Body       | yes      |           | Notification body text. Warns past 240 characters.                |
+| ImageURL   | no       |           | Image shown with the notification.                                 |
+| Data       | no       |           | JSON object string for custom data payload, e.g. `{"deepLink":"..."}` |
+| Priority   | no       | ✓ (high/normal) | Android delivery priority. Defaults to normal.                |
+| SendAt     | no       |           | ISO 8601 UTC datetime, e.g. `2026-09-15T09:00:00Z`. Leave blank to send as soon as you run the command. See [Scheduling](#scheduling-multiple-times-and-dates) below. |
 
 ### `InAppMessages` sheet
 
-| Column     | Required | Description                                                                 |
-|------------|----------|-------------------------------------------------------------------------------|
-| Key        | yes      | Unique campaign key, becomes Remote Config parameter `iam_<key>`.           |
-| Title      | yes      | Message title.                                                              |
-| Body       | yes      | Message body text.                                                          |
-| ImageURL   | no       | Image URL.                                                                  |
-| CTAText    | no       | Call-to-action button text.                                                 |
-| CTAUrl     | no       | Call-to-action deep link / URL.                                             |
-| Condition  | no       | Name of an **existing** Remote Config condition to target (e.g. a Country/Region condition for location, or an app-version/audience condition). Leave blank to publish as the default value for all users. |
-| CampaignId | no       | Free-text ID stamped into the payload, for your app to tag impression/click analytics events with. |
-| Style      | no       | Rendering hint for your client code, e.g. `banner`, `modal`, `fullscreen`. Defaults to `banner`. |
-| StartDate  | no       | ISO date/time (e.g. `2026-09-10T09:00:00Z`) the message should start showing. |
-| EndDate    | no       | ISO date/time the message should stop showing.                             |
-| Active     | no       | `TRUE`/`FALSE`. Defaults to `TRUE`. Combined with StartDate/EndDate — see below. |
+| Column     | Required | Dropdown? | Description                                                                 |
+|------------|----------|-----------|-------------------------------------------------------------------------------|
+| CustomId   | **yes**  |           | Unique ID per message, stamped into the payload as `customId` for your own analytics/tracking. |
+| Key        | yes      |           | Becomes the Remote Config parameter name `iam_<key>`.                       |
+| Title      | yes      |           | Message title. Warns past 65 characters.                                    |
+| Body       | yes      |           | Message body text. Warns past 300 characters.                               |
+| ImageURL   | no       |           | Image URL.                                                                  |
+| CTAText    | no       |           | Call-to-action button text. Warns past 20 characters.                       |
+| CTAUrl     | no       |           | Call-to-action deep link / URL — this is the "button opens this URL" field. |
+| Condition  | no       | ✓ (Lists!Conditions) | Name of an **existing** Remote Config condition to target — e.g. a Country/Region condition for location. Leave blank to publish as the default value for everyone. |
+| Style      | no       | ✓ (banner/modal/fullscreen) | Rendering hint for your client code. Defaults to `banner`.  |
+| StartDate  | no       |           | ISO 8601 UTC datetime the message should start showing.                    |
+| EndDate    | no       |           | ISO 8601 UTC datetime the message should stop showing.                     |
+| Active     | no       | ✓ (TRUE/FALSE) | Defaults to TRUE. Combined with StartDate/EndDate — see below.        |
 
 `Condition` must already exist in Firebase Console → Remote Config → Conditions —
-this tool does not create conditions, only reads them for targeting.
+this tool does not create conditions, only reads them for targeting (see the
+location-targeting walkthrough further down).
 
-**How `active` is computed:** the published payload's `active` field is
+**Uniqueness:** the tool rejects the whole row (with a clear error naming the
+duplicate and its first occurrence) if `EventId` or `CustomId` repeats within its
+sheet — don't reuse them across unrelated notifications.
+
+**Dates as text, not Excel dates:** `SendAt`/`StartDate`/`EndDate` columns are
+formatted as Text in the template. Type ISO 8601 UTC strings directly
+(`2026-09-15T09:00:00Z`) — don't let Excel reformat the cell as a Date, since Excel
+dates carry no timezone and would silently shift the meaning to your local time.
+
+**How in-app `active` is computed:** the published payload's `active` field is
 `Active AND (now is within [StartDate, EndDate])`, evaluated **at the moment you run
 the command**. This is not a live timer — Remote Config doesn't auto-flip values on a
 schedule — so for a message that should turn on/off at specific times you must either
@@ -91,6 +117,36 @@ Example:
 node src/cli.js send my-campaign.xlsx --dry-run
 ```
 
+Each row prints one of: `OK` (sent/published), `DRY-RUN`, `SCHEDULED` (SendAt is in
+the future), `ALREADY SENT` (EventId was sent on a previous run), `SKIPPED` (missing/
+duplicate required field), or `ERROR`.
+
+## Scheduling multiple times and dates
+
+Push notifications fire once, immediately, when `messaging().send()` is called — FCM
+has no "send later" API. To hit specific times per row, this tool instead makes
+re-running safe and cheap:
+
+- Rows whose `SendAt` is in the future are reported as `SCHEDULED` and skipped — nothing is sent.
+- Rows whose `SendAt` is blank, or has passed, are sent normally.
+- Every successful send is recorded (by `EventId`) in a local state file
+  (`.state/sent-push-events.json`, gitignored — override the path with the
+  `PUSH_STATE_FILE_PATH` env var). Re-running the same file **never re-sends** a
+  row whose `EventId` is already recorded, even if you run it a hundred times.
+
+So one Excel file with many rows at many different `SendAt` times becomes a schedule
+by running the command on a recurring cron job that's more frequent than your tightest
+timing needs, e.g. every 5 minutes:
+
+```cron
+*/5 * * * * cd /path/to/firebase-campaign-tool && node src/cli.js send my-campaign.xlsx >> send.log 2>&1
+```
+
+Each tick only sends the rows that just became due; everything else is a no-op.
+In-app messages don't need this — see the `active`-computation note above; re-running
+the command for those simply refreshes Remote Config to the current window state,
+which is safe to do repeatedly.
+
 ## Client-side integration
 
 Since real in-app messages are just Remote Config values, your app needs a small
@@ -109,8 +165,8 @@ for (const key of remoteConfig.getKeysByPrefix('iam_')) {
 
   if (message.active && started && notEnded) {
     // style: 'banner' | 'modal' | 'fullscreen' — pick your renderer
-    showInAppMessage(message); // title, body, imageUrl, ctaText, ctaUrl, campaignId, style
-    logAnalyticsEvent('iam_impression', { campaignId: message.campaignId, key });
+    showInAppMessage(message); // title, body, imageUrl, ctaText, ctaUrl, customId, style
+    logAnalyticsEvent('iam_impression', { customId: message.customId, key });
   }
 }
 ```
@@ -118,11 +174,11 @@ for (const key of remoteConfig.getKeysByPrefix('iam_')) {
 Firebase Remote Config SDKs exist for Android (Kotlin/Java), iOS (Swift), Web,
 Flutter, and Unity — the fetch/read pattern above is the same shape on each.
 
-## Example: location-targeted modal with timing and a campaign ID
+## Example: location-targeted modal with timing and a custom ID
 
 Say you want to show a **modal** in-app message only to users in **India**, from
-Sep 10 to Sep 17, with a custom title/image, a `mumbai-launch-2026` campaign ID for
-analytics, and a button that opens a URL.
+Sep 10 to Sep 17, with a custom title/image, a `custom-mumbai-001` tracking ID, and a
+button that opens a URL.
 
 1. **Create the location condition once, in Firebase Console** (not this tool —
    Remote Config conditions aren't creatable via API): Remote Config → Conditions →
@@ -130,29 +186,33 @@ analytics, and a button that opens a URL.
    (For finer-than-country targeting — a specific city or store — Remote Config has no
    built-in rule; you'd need your app to set a custom user property, e.g. `store_city`,
    and build the condition on that instead.)
-2. **Add a row to the `InAppMessages` sheet:**
+2. **Add the condition name to the `Lists` sheet** (Conditions column) so it shows up
+   in the `Condition` dropdown on `InAppMessages`.
+3. **Add a row to the `InAppMessages` sheet** — this exact row is already in
+   `templates/campaign-template.xlsx` (`npm run generate-template`), copy/edit it
+   rather than retyping:
 
-   | Key                | Title                        | Body                                              | ImageURL                                  | CTAText        | CTAUrl                                 | Condition    | CampaignId          | Style | StartDate              | EndDate                 | Active |
-   |--------------------|-------------------------------|----------------------------------------------------|--------------------------------------------|----------------|------------------------------------------|--------------|----------------------|-------|--------------------------|---------------------------|--------|
-   | mumbai-store-launch | We just opened in Mumbai!    | Visit our new store and get 15% off your first purchase. | https://example.com/images/mumbai-launch.png | Get Directions | https://example.com/stores/mumbai | India Users  | mumbai-launch-2026   | modal | 2026-09-10T09:00:00Z    | 2026-09-17T23:59:59Z     | TRUE   |
+   | CustomId | Key | Title | Body | Condition | Style | StartDate | EndDate | Active |
+   |---|---|---|---|---|---|---|---|---|
+   | custom-mumbai-001 | mumbai-store-launch | We just opened in Mumbai! | Visit our new store and get 15% off your first purchase. | India Users | modal | 2026-09-10T09:00:00Z | 2026-09-17T23:59:59Z | TRUE |
 
-   (This exact row is already in `templates/campaign-template.xlsx` after
-   `npm run generate-template` — copy/edit it rather than retyping.)
-3. **Run it:**
+4. **Run it:**
    ```
    node src/cli.js send my-campaign.xlsx --iam-only --dry-run   # preview first
    node src/cli.js send my-campaign.xlsx --iam-only             # publish for real
    ```
-4. Result: Remote Config parameter `iam_mumbai_store_launch` gets a conditional value
-   scoped to `India Users`, containing the title/body/image/campaignId/style/dates/CTA
-   as JSON. Only devices matching that condition receive this value when they call
+5. Result: Remote Config parameter `iam_mumbai_store_launch` gets a conditional value
+   scoped to `India Users`, containing the title/body/image/customId/style/dates/CTA as
+   JSON. Only devices matching that condition receive this value when they call
    `fetchAndActivate()`; everyone else falls back to the default (`{"active":false}`).
    Your client renders it as a modal (per `style`) only while `now` is inside the
-   Start/EndDate window, and tags any impression/click analytics with `campaignId`.
+   Start/EndDate window, and tags any impression/click analytics with `customId`.
 
 ## Notes
 
-- Push notifications are sent immediately when the command runs; there is no
-  built-in scheduling. Use cron / a task scheduler to run the CLI at a chosen time.
 - FCM topic messaging requires devices to already be subscribed to the topic
   client-side (`messaging.subscribeToTopic(...)`).
+- Title/Body/CTAText length validations in the template are **warnings**, not hard
+  blocks — actual truncation behavior varies by OS/device and is governed by FCM's
+  overall payload size limit, not a fixed per-field limit, so unusually long copy can
+  still be entered deliberately.

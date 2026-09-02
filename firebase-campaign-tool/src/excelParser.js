@@ -5,8 +5,8 @@ const XLSX = require('xlsx');
 const PUSH_SHEET = 'PushNotifications';
 const IAM_SHEET = 'InAppMessages';
 
-const PUSH_REQUIRED = ['Topic', 'Title', 'Body'];
-const IAM_REQUIRED = ['Key', 'Title', 'Body'];
+const PUSH_REQUIRED = ['EventId', 'Topic', 'Title', 'Body'];
+const IAM_REQUIRED = ['CustomId', 'Key', 'Title', 'Body'];
 
 function readWorkbook(filePath) {
   const resolvedPath = path.resolve(process.cwd(), filePath);
@@ -31,6 +31,8 @@ function readWorkbook(filePath) {
 
   validateRows(pushRows, PUSH_REQUIRED, PUSH_SHEET);
   validateRows(iamRows, IAM_REQUIRED, IAM_SHEET);
+  validateUnique(pushRows, 'EventId', PUSH_SHEET);
+  validateUnique(iamRows, 'CustomId', IAM_SHEET);
 
   return { pushRows, iamRows };
 }
@@ -40,6 +42,25 @@ function validateRows(rows, requiredColumns, sheetName) {
     const missing = requiredColumns.filter((col) => row[col] === undefined || row[col] === '');
     if (missing.length) {
       row.__validationError = `Row ${index + 2} in "${sheetName}" is missing required column(s): ${missing.join(', ')}`;
+    }
+  });
+}
+
+// EventId (push) / CustomId (iam) must be unique per sheet — they're used both as
+// idempotency keys (push) and as the app-facing tracking ID, so a duplicate would
+// silently conflate two different notifications.
+function validateUnique(rows, column, sheetName) {
+  const firstSeenAtRow = new Map();
+  rows.forEach((row, index) => {
+    if (row.__validationError) return;
+    const value = String(row[column]).trim();
+    if (!value) return;
+    if (firstSeenAtRow.has(value)) {
+      row.__validationError = `Row ${index + 2} in "${sheetName}" has duplicate ${column} "${value}" (first used in row ${
+        firstSeenAtRow.get(value) + 2
+      }). Each ${column} must be unique.`;
+    } else {
+      firstSeenAtRow.set(value, index);
     }
   });
 }
