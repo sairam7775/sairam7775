@@ -6,7 +6,9 @@ const PUSH_SHEET = 'PushNotifications';
 const IAM_SHEET = 'InAppMessages';
 
 const PUSH_REQUIRED = ['EventId', 'Topic', 'Title', 'Body'];
-const IAM_REQUIRED = ['CustomId', 'Key', 'Title', 'Body'];
+// Body is optional for the Modal in-app message type — Firebase's own Modal
+// composer only requires a title.
+const IAM_REQUIRED = ['CustomId', 'Key', 'Title'];
 
 function readWorkbook(filePath) {
   const resolvedPath = path.resolve(process.cwd(), filePath);

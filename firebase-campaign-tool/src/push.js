@@ -1,4 +1,5 @@
 const { parseDate } = require('./dates');
+const { parseBool, parseIntOrUndefined } = require('./validators');
 const { loadState, saveState } = require('./state');
 
 function parseDataField(raw) {
@@ -16,6 +17,72 @@ function parseDataField(raw) {
   return stringified;
 }
 
+function buildMessage(row, eventId) {
+  const {
+    Topic,
+    Title,
+    Body,
+    ImageURL,
+    Data,
+    Priority,
+    ChannelId,
+    Sound,
+    ClickAction,
+    CollapseKey,
+    Tag,
+    Badge,
+    MutableContent,
+    TTL,
+    AnalyticsLabel,
+  } = row;
+
+  const badge = parseIntOrUndefined(Badge, 'Badge');
+  const ttlSeconds = parseIntOrUndefined(TTL, 'TTL');
+  const mutableContent = parseBool(MutableContent);
+  const priority = Priority ? (String(Priority).toLowerCase() === 'high' ? 'high' : 'normal') : undefined;
+
+  const androidNotification = {
+    ...(ChannelId ? { channelId: String(ChannelId) } : {}),
+    ...(Sound ? { sound: String(Sound) } : {}),
+    ...(ClickAction ? { clickAction: String(ClickAction) } : {}),
+    ...(Tag ? { tag: String(Tag) } : {}),
+  };
+  const android =
+    priority || CollapseKey || ttlSeconds !== undefined || Object.keys(androidNotification).length
+      ? {
+          ...(priority ? { priority } : {}),
+          ...(CollapseKey ? { collapseKey: String(CollapseKey) } : {}),
+          ...(ttlSeconds !== undefined ? { ttl: ttlSeconds * 1000 } : {}),
+          ...(Object.keys(androidNotification).length ? { notification: androidNotification } : {}),
+        }
+      : undefined;
+
+  const aps = {
+    ...(badge !== undefined ? { badge } : {}),
+    ...(Sound ? { sound: String(Sound) } : {}),
+    ...(mutableContent !== undefined ? { mutableContent } : {}),
+  };
+  const apns = Object.keys(aps).length ? { payload: { aps } } : undefined;
+
+  const webpush = ClickAction ? { fcmOptions: { link: String(ClickAction) } } : undefined;
+
+  const fcmOptions = AnalyticsLabel ? { analyticsLabel: String(AnalyticsLabel) } : undefined;
+
+  return {
+    topic: String(Topic).trim(),
+    notification: {
+      title: String(Title),
+      body: String(Body),
+      ...(ImageURL ? { imageUrl: String(ImageURL) } : {}),
+    },
+    data: { event_id: eventId, ...(Data ? parseDataField(Data) : {}) },
+    ...(android ? { android } : {}),
+    ...(apns ? { apns } : {}),
+    ...(webpush ? { webpush } : {}),
+    ...(fcmOptions ? { fcmOptions } : {}),
+  };
+}
+
 async function sendPushNotifications(admin, rows, { dryRun = false, statePath } = {}) {
   const results = [];
   const state = loadState(statePath);
@@ -27,12 +94,13 @@ async function sendPushNotifications(admin, rows, { dryRun = false, statePath } 
       continue;
     }
 
-    const { EventId, Topic, Title, Body, ImageURL, Data, Priority, SendAt } = row;
-    const eventId = String(EventId).trim();
+    const eventId = String(row.EventId).trim();
 
     let sendAt;
+    let message;
     try {
-      sendAt = parseDate(SendAt, 'SendAt');
+      sendAt = parseDate(row.SendAt, 'SendAt');
+      message = buildMessage(row, eventId);
     } catch (err) {
       results.push({ status: 'error', reason: err.message, row });
       continue;
@@ -53,25 +121,6 @@ async function sendPushNotifications(admin, rows, { dryRun = false, statePath } 
         reason: `Scheduled for ${sendAt.toISOString()}, not due yet. Re-run this command after that time (e.g. via cron).`,
         row,
       });
-      continue;
-    }
-
-    let message;
-    try {
-      message = {
-        topic: String(Topic).trim(),
-        notification: {
-          title: String(Title),
-          body: String(Body),
-          ...(ImageURL ? { imageUrl: String(ImageURL) } : {}),
-        },
-        data: { event_id: eventId, ...(Data ? parseDataField(Data) : {}) },
-        ...(Priority
-          ? { android: { priority: String(Priority).toLowerCase() === 'high' ? 'high' : 'normal' } }
-          : {}),
-      };
-    } catch (err) {
-      results.push({ status: 'error', reason: err.message, row });
       continue;
     }
 

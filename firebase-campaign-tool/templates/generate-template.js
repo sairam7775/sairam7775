@@ -9,10 +9,12 @@ const LIMITS = {
   pushBody: 240,
   iamTitle: 65,
   iamBody: 300,
-  ctaText: 20,
+  buttonText: 20,
+  hexColor: 7, // "#RRGGBB"
 };
 
 const DATA_ROWS = 500; // how many blank rows below the header get dropdowns/validation
+const FCM_MAX_TTL_SECONDS = 2419200; // FCM's own hard cap: 4 weeks
 
 function addListValidation(sheet, column, lastRow, { formulae, allowBlank = true, title, message }) {
   for (let row = 2; row <= lastRow; row++) {
@@ -46,6 +48,21 @@ function addTextLengthWarning(sheet, column, lastRow, maxLen, { title, message }
   }
 }
 
+function addWholeNumberValidation(sheet, column, lastRow, { min, max, title, message }) {
+  for (let row = 2; row <= lastRow; row++) {
+    sheet.getCell(`${column}${row}`).dataValidation = {
+      type: 'whole',
+      operator: 'between',
+      allowBlank: true,
+      formulae: [min, max],
+      showErrorMessage: true,
+      errorStyle: 'error',
+      errorTitle: title,
+      error: message,
+    };
+  }
+}
+
 function textColumn(sheet, column, lastRow) {
   // Format as Text so Excel never silently reinterprets typed ISO datetimes as a
   // locale date serial (which would lose the intended UTC meaning).
@@ -64,8 +81,11 @@ async function build() {
     'Firebase Campaign Tool — Excel workbook',
     '',
     'Sheets:',
-    '  - PushNotifications: one row per FCM push notification.',
-    '  - InAppMessages: one row per in-app message (published to Remote Config — see README).',
+    '  - PushNotifications: one row per FCM push notification. Columns cover every field',
+    '    Firebase Cloud Messaging supports (core notification, Android, iOS/APNs, Web push,',
+    '    and Analytics label) — fill in only the ones you need, leave the rest blank.',
+    '  - InAppMessages: one row per in-app message, restricted to the Modal message type',
+    "    only (Firebase's Banner / Image only / Card types are not supported here).",
     '  - Lists: dropdown source values used by the two sheets above. Edit this sheet to add your',
     '    own FCM topics and Remote Config condition names (both are project-specific, so the',
     '    starter values here are placeholders only).',
@@ -77,8 +97,8 @@ async function build() {
     'These columns are formatted as Text on purpose — do not reformat them as a Date, or Excel',
     'may silently convert the value using your local timezone.',
     '',
-    'Title/Body/CTAText have soft length limits (shown as an orange warning, not a hard block) —',
-    'push notification title/body get truncated differently across devices, so keep them concise.',
+    'Title/Body/ButtonText have soft length limits (shown as an orange warning, not a hard block).',
+    'Badge/TTL/MaxImpressionsPerUser are hard-validated as whole numbers in range.',
     '',
     'Run: node src/cli.js send <this-file.xlsx> [--dry-run] [--push-only|--iam-only]',
   ];
@@ -91,7 +111,6 @@ async function build() {
   const lists = workbook.addWorksheet('Lists');
   lists.columns = [
     { header: 'Priority', key: 'priority', width: 22 },
-    { header: 'Style', key: 'style', width: 22 },
     { header: 'Boolean', key: 'bool', width: 22 },
     { header: 'Topics (edit to match your app)', key: 'topics', width: 32 },
     { header: 'Conditions (must already exist in Firebase Console > Remote Config)', key: 'conditions', width: 45 },
@@ -99,30 +118,40 @@ async function build() {
   lists.getRow(1).font = { bold: true };
 
   const priorities = ['high', 'normal'];
-  const styles = ['banner', 'modal', 'fullscreen'];
   const bools = ['TRUE', 'FALSE'];
   const topics = ['promo_users', 'news_users', 'all_users', 'ios_users', 'android_users'];
   const conditions = ['India Users', 'US Users', 'iOS Users', 'Android Users'];
 
-  const maxListLen = Math.max(priorities.length, styles.length, bools.length, topics.length, conditions.length);
+  const maxListLen = Math.max(priorities.length, bools.length, topics.length, conditions.length);
   for (let i = 0; i < maxListLen; i++) {
-    lists.getRow(i + 2).values = [priorities[i], styles[i], bools[i], topics[i], conditions[i]];
+    lists.getRow(i + 2).values = [priorities[i], bools[i], topics[i], conditions[i]];
   }
 
   // ---- PushNotifications ----
+  // Column order: core notification fields first, then scheduling/data, then the
+  // advanced/platform-specific fields (Android, iOS/APNs, Web, Analytics) at the end.
   const push = workbook.addWorksheet('PushNotifications');
   push.columns = [
-    { header: 'EventId', key: 'EventId', width: 24 },
-    { header: 'Topic', key: 'Topic', width: 18 },
-    { header: 'Title', key: 'Title', width: 30 },
-    { header: 'Body', key: 'Body', width: 45 },
-    { header: 'ImageURL', key: 'ImageURL', width: 30 },
-    { header: 'Data', key: 'Data', width: 30 },
-    { header: 'Priority', key: 'Priority', width: 12 },
-    { header: 'SendAt', key: 'SendAt', width: 24 },
+    { header: 'EventId', key: 'EventId', width: 22 }, // A
+    { header: 'Topic', key: 'Topic', width: 16 }, // B
+    { header: 'Title', key: 'Title', width: 28 }, // C
+    { header: 'Body', key: 'Body', width: 40 }, // D
+    { header: 'ImageURL', key: 'ImageURL', width: 28 }, // E
+    { header: 'Data', key: 'Data', width: 26 }, // F
+    { header: 'SendAt', key: 'SendAt', width: 22 }, // G
+    { header: 'Priority', key: 'Priority', width: 10 }, // H  (Android)
+    { header: 'ChannelId', key: 'ChannelId', width: 16 }, // I  (Android)
+    { header: 'Sound', key: 'Sound', width: 14 }, // J  (Android + iOS)
+    { header: 'ClickAction', key: 'ClickAction', width: 24 }, // K  (Android + Web)
+    { header: 'CollapseKey', key: 'CollapseKey', width: 16 }, // L  (Android)
+    { header: 'Tag', key: 'Tag', width: 14 }, // M  (Android)
+    { header: 'Badge', key: 'Badge', width: 10 }, // N  (iOS)
+    { header: 'MutableContent', key: 'MutableContent', width: 16 }, // O  (iOS)
+    { header: 'TTL', key: 'TTL', width: 12 }, // P  (Android, seconds)
+    { header: 'AnalyticsLabel', key: 'AnalyticsLabel', width: 18 }, // Q
   ];
   push.getRow(1).font = { bold: true };
-  push.views = [{ state: 'frozen', ySplit: 1 }];
+  push.views = [{ state: 'frozen', xSplit: 2, ySplit: 1 }];
 
   push.addRow({
     EventId: 'evt-flash-sale-001',
@@ -131,8 +160,17 @@ async function build() {
     Body: '20% off today only.',
     ImageURL: '',
     Data: '{"deepLink":"app://promo/flash"}',
-    Priority: 'high',
     SendAt: '',
+    Priority: 'high',
+    ChannelId: 'promotions',
+    Sound: 'default',
+    ClickAction: 'app://promo/flash',
+    CollapseKey: '',
+    Tag: '',
+    Badge: '',
+    MutableContent: '',
+    TTL: '',
+    AnalyticsLabel: 'flash_sale_sep',
   });
   push.addRow({
     EventId: 'evt-newsletter-002',
@@ -141,20 +179,34 @@ async function build() {
     Body: "Catch up on this week's top stories, community highlights, and upcoming events you won't want to miss.",
     ImageURL: 'https://example.com/images/digest.png',
     Data: '',
-    Priority: 'normal',
     SendAt: '2026-09-15T09:00:00Z',
+    Priority: 'normal',
+    ChannelId: '',
+    Sound: '',
+    ClickAction: '',
+    CollapseKey: 'weekly_digest',
+    Tag: 'weekly_digest',
+    Badge: 1,
+    MutableContent: 'TRUE',
+    TTL: 86400,
+    AnalyticsLabel: '',
   });
 
-  addListValidation(push, 'G', DATA_ROWS, {
-    formulae: [`Lists!$A$2:$A$${1 + priorities.length}`],
-    title: 'Priority',
-    message: 'Choose High or Normal.',
-  });
   addListValidation(push, 'B', DATA_ROWS, {
-    formulae: [`Lists!$D$2:$D$${1 + topics.length}`],
+    formulae: [`Lists!$C$2:$C$${1 + topics.length}`],
     allowBlank: false,
     title: 'Topic',
     message: 'Pick a topic from the Lists sheet (edit that sheet to add your own topics).',
+  });
+  addListValidation(push, 'H', DATA_ROWS, {
+    formulae: [`Lists!$A$2:$A$${1 + priorities.length}`],
+    title: 'Priority',
+    message: 'Choose High or Normal (Android delivery priority).',
+  });
+  addListValidation(push, 'O', DATA_ROWS, {
+    formulae: [`Lists!$B$2:$B$${1 + bools.length}`],
+    title: 'MutableContent',
+    message: 'TRUE or FALSE — required on iOS if you want the image to render via a Notification Service Extension.',
   });
   addTextLengthWarning(push, 'C', DATA_ROWS, LIMITS.pushTitle, {
     title: 'Long title',
@@ -164,26 +216,44 @@ async function build() {
     title: 'Long body',
     message: `Bodies over ${LIMITS.pushBody} characters may be truncated on some devices.`,
   });
-  textColumn(push, 'H', DATA_ROWS);
+  addWholeNumberValidation(push, 'N', DATA_ROWS, {
+    min: 0,
+    max: 9999,
+    title: 'Badge',
+    message: 'iOS badge count must be a whole number (0 or more).',
+  });
+  addWholeNumberValidation(push, 'P', DATA_ROWS, {
+    min: 0,
+    max: FCM_MAX_TTL_SECONDS,
+    title: 'TTL',
+    message: `Time-to-live in seconds, 0 to ${FCM_MAX_TTL_SECONDS} (FCM's 4-week maximum).`,
+  });
+  textColumn(push, 'G', DATA_ROWS);
 
-  // ---- InAppMessages ----
+  // ---- InAppMessages (Modal type only) ----
   const iam = workbook.addWorksheet('InAppMessages');
   iam.columns = [
-    { header: 'CustomId', key: 'CustomId', width: 24 },
-    { header: 'Key', key: 'Key', width: 24 },
-    { header: 'Title', key: 'Title', width: 30 },
-    { header: 'Body', key: 'Body', width: 45 },
-    { header: 'ImageURL', key: 'ImageURL', width: 30 },
-    { header: 'CTAText', key: 'CTAText', width: 16 },
-    { header: 'CTAUrl', key: 'CTAUrl', width: 30 },
-    { header: 'Condition', key: 'Condition', width: 18 },
-    { header: 'Style', key: 'Style', width: 14 },
-    { header: 'StartDate', key: 'StartDate', width: 24 },
-    { header: 'EndDate', key: 'EndDate', width: 24 },
-    { header: 'Active', key: 'Active', width: 10 },
+    { header: 'CustomId', key: 'CustomId', width: 22 }, // A
+    { header: 'Key', key: 'Key', width: 22 }, // B
+    { header: 'Title', key: 'Title', width: 28 }, // C
+    { header: 'Body', key: 'Body', width: 40 }, // D
+    { header: 'ImageURL', key: 'ImageURL', width: 28 }, // E
+    { header: 'BackgroundColor', key: 'BackgroundColor', width: 16 }, // F
+    { header: 'TextColor', key: 'TextColor', width: 14 }, // G
+    { header: 'ButtonText', key: 'ButtonText', width: 16 }, // H
+    { header: 'ButtonTextColor', key: 'ButtonTextColor', width: 16 }, // I
+    { header: 'ButtonBackgroundColor', key: 'ButtonBackgroundColor', width: 20 }, // J
+    { header: 'ActionUrl', key: 'ActionUrl', width: 28 }, // K
+    { header: 'Condition', key: 'Condition', width: 16 }, // L
+    { header: 'TriggerEvent', key: 'TriggerEvent', width: 18 }, // M
+    { header: 'ConversionEvent', key: 'ConversionEvent', width: 18 }, // N
+    { header: 'MaxImpressionsPerUser', key: 'MaxImpressionsPerUser', width: 20 }, // O
+    { header: 'StartDate', key: 'StartDate', width: 22 }, // P
+    { header: 'EndDate', key: 'EndDate', width: 22 }, // Q
+    { header: 'Active', key: 'Active', width: 10 }, // R
   ];
   iam.getRow(1).font = { bold: true };
-  iam.views = [{ state: 'frozen', ySplit: 1 }];
+  iam.views = [{ state: 'frozen', xSplit: 2, ySplit: 1 }];
 
   iam.addRow({
     CustomId: 'custom-mumbai-001',
@@ -191,10 +261,16 @@ async function build() {
     Title: 'We just opened in Mumbai!',
     Body: 'Visit our new store and get 15% off your first purchase.',
     ImageURL: 'https://example.com/images/mumbai-launch.png',
-    CTAText: 'Get Directions',
-    CTAUrl: 'https://example.com/stores/mumbai',
+    BackgroundColor: '#FFFFFF',
+    TextColor: '#111111',
+    ButtonText: 'Get Directions',
+    ButtonTextColor: '#FFFFFF',
+    ButtonBackgroundColor: '#1A73E8',
+    ActionUrl: 'https://example.com/stores/mumbai',
     Condition: 'India Users',
-    Style: 'modal',
+    TriggerEvent: '',
+    ConversionEvent: 'store_direction_tap',
+    MaxImpressionsPerUser: 3,
     StartDate: '2026-09-10T09:00:00Z',
     EndDate: '2026-09-17T23:59:59Z',
     Active: 'TRUE',
@@ -205,46 +281,58 @@ async function build() {
     Title: 'Update Available',
     Body: 'A new version is ready with performance improvements.',
     ImageURL: '',
-    CTAText: 'Update',
-    CTAUrl: 'https://example.com/update',
+    BackgroundColor: '#FFFFFF',
+    TextColor: '#111111',
+    ButtonText: 'Update',
+    ButtonTextColor: '#FFFFFF',
+    ButtonBackgroundColor: '#000000',
+    ActionUrl: 'https://example.com/update',
     Condition: '',
-    Style: 'banner',
+    TriggerEvent: 'app_foreground',
+    ConversionEvent: '',
+    MaxImpressionsPerUser: '',
     StartDate: '',
     EndDate: '',
     Active: 'TRUE',
   });
 
-  addListValidation(iam, 'H', DATA_ROWS, {
-    formulae: [`Lists!$E$2:$E$${1 + conditions.length}`],
+  addListValidation(iam, 'L', DATA_ROWS, {
+    formulae: [`Lists!$D$2:$D$${1 + conditions.length}`],
     title: 'Condition',
     message: 'Pick a Remote Config condition that already exists in Firebase Console, or leave blank to target everyone.',
   });
-  addListValidation(iam, 'I', DATA_ROWS, {
-    formulae: [`Lists!$B$2:$B$${1 + styles.length}`],
-    allowBlank: false,
-    title: 'Style',
-    message: 'Choose how your app should render this message.',
-  });
-  addListValidation(iam, 'L', DATA_ROWS, {
-    formulae: [`Lists!$C$2:$C$${1 + bools.length}`],
+  addListValidation(iam, 'R', DATA_ROWS, {
+    formulae: [`Lists!$B$2:$B$${1 + bools.length}`],
     allowBlank: false,
     title: 'Active',
     message: 'TRUE or FALSE.',
   });
   addTextLengthWarning(iam, 'C', DATA_ROWS, LIMITS.iamTitle, {
     title: 'Long title',
-    message: `Titles over ${LIMITS.iamTitle} characters may not fit your in-app UI.`,
+    message: `Titles over ${LIMITS.iamTitle} characters may not fit the modal.`,
   });
   addTextLengthWarning(iam, 'D', DATA_ROWS, LIMITS.iamBody, {
     title: 'Long body',
-    message: `Bodies over ${LIMITS.iamBody} characters may not fit your in-app UI.`,
+    message: `Bodies over ${LIMITS.iamBody} characters may not fit the modal.`,
   });
-  addTextLengthWarning(iam, 'F', DATA_ROWS, LIMITS.ctaText, {
+  addTextLengthWarning(iam, 'H', DATA_ROWS, LIMITS.buttonText, {
     title: 'Long button text',
-    message: `Button labels over ${LIMITS.ctaText} characters may not fit on a button.`,
+    message: `Button labels over ${LIMITS.buttonText} characters may not fit on the button.`,
   });
-  textColumn(iam, 'J', DATA_ROWS);
-  textColumn(iam, 'K', DATA_ROWS);
+  ['F', 'G', 'I', 'J'].forEach((column) =>
+    addTextLengthWarning(iam, column, DATA_ROWS, LIMITS.hexColor, {
+      title: 'Color format',
+      message: 'Expected a hex color like #RRGGBB.',
+    })
+  );
+  addWholeNumberValidation(iam, 'O', DATA_ROWS, {
+    min: 1,
+    max: 999,
+    title: 'MaxImpressionsPerUser',
+    message: 'Whole number, 1 or more. Leave blank for unlimited. Your app must enforce this locally — Remote Config has no built-in impression counter.',
+  });
+  textColumn(iam, 'P', DATA_ROWS);
+  textColumn(iam, 'Q', DATA_ROWS);
 
   const outPath = path.join(__dirname, 'campaign-template.xlsx');
   await workbook.xlsx.writeFile(outPath);

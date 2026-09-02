@@ -1,4 +1,5 @@
 const { parseDate } = require('./dates');
+const { parseBool, parseIntOrUndefined } = require('./validators');
 
 function slugify(key) {
   return String(key)
@@ -8,17 +9,13 @@ function slugify(key) {
     .replace(/^_+|_+$/g, '');
 }
 
-function parseBool(value) {
-  if (typeof value === 'boolean') return value;
-  const normalized = String(value).trim().toLowerCase();
-  return ['true', '1', 'yes', 'y'].includes(normalized);
-}
-
 /**
- * Publishes in-app message content to Firebase Remote Config parameters named
- * iam_<key>. There is no public API to create real Firebase In-App Messaging
- * campaigns, so this is a documented workaround: your app must read these
- * Remote Config parameters at runtime and render its own in-app UI (see README).
+ * Publishes Modal-type in-app message content to Firebase Remote Config
+ * parameters named iam_<key>. There is no public API to create real Firebase
+ * In-App Messaging campaigns, so this is a documented workaround: your app
+ * must read these Remote Config parameters at runtime and render its own
+ * modal UI (see README). Only the Modal message type's fields are modeled —
+ * Banner / Image only / Card are intentionally not supported.
  */
 async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
   const results = [];
@@ -37,8 +34,26 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
   const knownConditions = new Set(template.conditions.map((c) => c.name));
 
   for (const row of rowsToPublish) {
-    const { CustomId, Key, Title, Body, ImageURL, CTAText, CTAUrl, Condition, Active, Style, StartDate, EndDate } =
-      row;
+    const {
+      CustomId,
+      Key,
+      Title,
+      Body,
+      ImageURL,
+      BackgroundColor,
+      TextColor,
+      ButtonText,
+      ButtonTextColor,
+      ButtonBackgroundColor,
+      ActionUrl,
+      Condition,
+      TriggerEvent,
+      ConversionEvent,
+      MaxImpressionsPerUser,
+      StartDate,
+      EndDate,
+      Active,
+    } = row;
 
     if (Condition && !knownConditions.has(String(Condition).trim())) {
       results.push({
@@ -53,9 +68,11 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
 
     let startDate;
     let endDate;
+    let maxImpressions;
     try {
       startDate = parseDate(StartDate, 'StartDate');
       endDate = parseDate(EndDate, 'EndDate');
+      maxImpressions = parseIntOrUndefined(MaxImpressionsPerUser, 'MaxImpressionsPerUser');
     } catch (err) {
       results.push({ status: 'error', reason: err.message, row });
       continue;
@@ -67,13 +84,20 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
 
     const paramKey = `iam_${slugify(Key)}`;
     const payload = JSON.stringify({
+      type: 'modal',
       title: String(Title),
-      body: String(Body),
+      ...(Body ? { body: String(Body) } : {}),
       ...(ImageURL ? { imageUrl: String(ImageURL) } : {}),
-      ...(CTAText ? { ctaText: String(CTAText) } : {}),
-      ...(CTAUrl ? { ctaUrl: String(CTAUrl) } : {}),
+      ...(BackgroundColor ? { backgroundColor: String(BackgroundColor) } : {}),
+      ...(TextColor ? { textColor: String(TextColor) } : {}),
+      ...(ButtonText ? { buttonText: String(ButtonText) } : {}),
+      ...(ButtonTextColor ? { buttonTextColor: String(ButtonTextColor) } : {}),
+      ...(ButtonBackgroundColor ? { buttonBackgroundColor: String(ButtonBackgroundColor) } : {}),
+      ...(ActionUrl ? { actionUrl: String(ActionUrl) } : {}),
       customId: String(CustomId).trim(),
-      style: Style ? String(Style).trim().toLowerCase() : 'banner',
+      triggerEvent: TriggerEvent ? String(TriggerEvent) : 'app_foreground',
+      ...(ConversionEvent ? { conversionEvent: String(ConversionEvent) } : {}),
+      ...(maxImpressions !== undefined ? { maxImpressionsPerUser: maxImpressions } : {}),
       ...(startDate ? { startDate: startDate.toISOString() } : {}),
       ...(endDate ? { endDate: endDate.toISOString() } : {}),
       active: requestedActive && withinWindow,

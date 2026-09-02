@@ -2,8 +2,9 @@
 
 A CLI tool that reads an Excel workbook and:
 
-- Sends **push notifications** via Firebase Cloud Messaging (FCM), targeted by topic.
-- Publishes **in-app message** content to Firebase Remote Config, for your app to render.
+- Sends **push notifications** via Firebase Cloud Messaging (FCM), targeted by topic —
+  every field FCM's Admin SDK supports (core notification, Android, iOS/APNs, Web push, Analytics label).
+- Publishes **Modal-type in-app messages** to Firebase Remote Config, for your app to render.
 
 Built for sending many notifications at once, each with its own timing and its own
 tracking ID, pulled straight from the spreadsheet.
@@ -14,8 +15,12 @@ Firebase's In-App Messaging product has **no public API to create campaigns** �
 Google only supports authoring them by hand in the Firebase Console. To make in-app
 messaging scriptable from Excel like push notifications, this tool writes message
 content as JSON into Remote Config parameters (`iam_<key>`). Your app then reads those
-parameters at runtime and renders its own banner/modal UI. See
+parameters at runtime and renders its own modal UI. See
 [Client-side integration](#client-side-integration) below.
+
+Only the **Modal** message type is supported (matching what you actually use) — the
+Excel sheet only has Modal's fields; Firebase's other in-app types (Banner, Image only,
+Card) aren't modeled.
 
 ## Setup
 
@@ -42,13 +47,15 @@ The workbook needs one or both of the `PushNotifications` / `InAppMessages` shee
 
 ### `Lists` sheet — dropdown source values
 
-Columns `Priority`, `Style`, `Boolean`, `Topics`, and `Conditions` back the dropdowns
-on the other two sheets. `Priority`, `Style`, and `Boolean` are fixed and don't need
-editing. **`Topics` and `Conditions` are placeholders — edit this sheet** to list your
-app's actual FCM topics and your actual Remote Config condition names (Firebase has no
-API to enumerate either of these for us, so they can't be auto-populated).
+Columns `Priority`, `Boolean`, `Topics`, and `Conditions` back the dropdowns on the
+other two sheets. `Priority` and `Boolean` are fixed and don't need editing.
+**`Topics` and `Conditions` are placeholders — edit this sheet** to list your app's
+actual FCM topics and your actual Remote Config condition names (Firebase has no API
+to enumerate either of these for us, so they can't be auto-populated).
 
 ### `PushNotifications` sheet
+
+Core fields:
 
 | Column     | Required | Dropdown? | Description                                                        |
 |------------|----------|-----------|----------------------------------------------------------------------|
@@ -58,29 +65,54 @@ API to enumerate either of these for us, so they can't be auto-populated).
 | Body       | yes      |           | Notification body text. Warns past 240 characters.                |
 | ImageURL   | no       |           | Image shown with the notification.                                 |
 | Data       | no       |           | JSON object string for custom data payload, e.g. `{"deepLink":"..."}` |
-| Priority   | no       | ✓ (high/normal) | Android delivery priority. Defaults to normal.                |
 | SendAt     | no       |           | ISO 8601 UTC datetime, e.g. `2026-09-15T09:00:00Z`. Leave blank to send as soon as you run the command. See [Scheduling](#scheduling-multiple-times-and-dates) below. |
 
-### `InAppMessages` sheet
+Advanced / platform-specific fields (all optional — leave blank to use FCM's default):
 
-| Column     | Required | Dropdown? | Description                                                                 |
-|------------|----------|-----------|-------------------------------------------------------------------------------|
-| CustomId   | **yes**  |           | Unique ID per message, stamped into the payload as `customId` for your own analytics/tracking. |
-| Key        | yes      |           | Becomes the Remote Config parameter name `iam_<key>`.                       |
-| Title      | yes      |           | Message title. Warns past 65 characters.                                    |
-| Body       | yes      |           | Message body text. Warns past 300 characters.                               |
-| ImageURL   | no       |           | Image URL.                                                                  |
-| CTAText    | no       |           | Call-to-action button text. Warns past 20 characters.                       |
-| CTAUrl     | no       |           | Call-to-action deep link / URL — this is the "button opens this URL" field. |
-| Condition  | no       | ✓ (Lists!Conditions) | Name of an **existing** Remote Config condition to target — e.g. a Country/Region condition for location. Leave blank to publish as the default value for everyone. |
-| Style      | no       | ✓ (banner/modal/fullscreen) | Rendering hint for your client code. Defaults to `banner`.  |
-| StartDate  | no       |           | ISO 8601 UTC datetime the message should start showing.                    |
-| EndDate    | no       |           | ISO 8601 UTC datetime the message should stop showing.                     |
-| Active     | no       | ✓ (TRUE/FALSE) | Defaults to TRUE. Combined with StartDate/EndDate — see below.        |
+| Column         | Platform      | Maps to (FCM Admin SDK)              | Description |
+|----------------|---------------|----------------------------------------|--------------|
+| Priority       | Android       | `android.priority`                     | `high` or `normal` delivery priority. Dropdown.        |
+| ChannelId      | Android       | `android.notification.channelId`       | Notification channel ID configured in your app.        |
+| Sound          | Android + iOS | `android.notification.sound` / `apns.payload.aps.sound` | Sound file name, or `default`. |
+| ClickAction    | Android + Web | `android.notification.clickAction` / `webpush.fcmOptions.link` | What opens when the notification is tapped — an Android intent-filter action string, or a URL for Web push. |
+| CollapseKey    | Android       | `android.collapseKey`                  | Groups messages so only the latest is delivered when a device reconnects. |
+| Tag            | Android       | `android.notification.tag`             | Replaces a previously-shown notification with the same tag. |
+| Badge          | iOS           | `apns.payload.aps.badge`               | App icon badge count. Whole number, 0–9999.             |
+| MutableContent | iOS           | `apns.payload.aps.mutableContent`      | TRUE/FALSE — needed for the image to render via a Notification Service Extension. Dropdown. |
+| TTL            | Android       | `android.ttl` (converted to ms)        | Time-to-live in seconds. Whole number, 0 to 2,419,200 (FCM's 4-week max). |
+| AnalyticsLabel | All           | `fcmOptions.analyticsLabel`            | Label attached to this message in Firebase Analytics reporting ("Notification name" in the console). |
+
+Fields intentionally left out as too rare/advanced to justify a column (ask if you
+need one added): title/body localization keys, Android vibration/light settings,
+Web push action buttons, APNs category/thread-id/silent-push, `restrictedPackageName`.
+
+### `InAppMessages` sheet (Modal type only)
+
+| Column                | Required | Dropdown? | Description                                                                 |
+|------------------------|----------|-----------|-------------------------------------------------------------------------------|
+| CustomId               | **yes**  |           | Unique ID per message, stamped into the payload as `customId` for your own analytics/tracking. |
+| Key                    | yes      |           | Becomes the Remote Config parameter name `iam_<key>`.                       |
+| Title                  | yes      |           | Message title. Warns past 65 characters.                                    |
+| Body                   | no       |           | Message body text. Warns past 300 characters (optional, matching Firebase's own Modal type). |
+| ImageURL               | no       |           | Image shown in the modal.                                                   |
+| BackgroundColor        | no       |           | Hex color, e.g. `#FFFFFF`.                                                   |
+| TextColor              | no       |           | Hex color for title/body text, e.g. `#111111`.                              |
+| ButtonText             | no       |           | Action button label. Leave blank for a plain dismissible modal with no button. Warns past 20 characters. |
+| ButtonTextColor        | no       |           | Hex color.                                                                   |
+| ButtonBackgroundColor  | no       |           | Hex color.                                                                   |
+| ActionUrl              | no       |           | URL opened when the button (or modal) is tapped — Firebase console's "Go to URL" action. |
+| Condition              | no       | ✓ (Lists!Conditions) | Name of an **existing** Remote Config condition to target — e.g. a Country/Region condition for location. Leave blank to publish as the default value for everyone. |
+| TriggerEvent           | no       |           | Analytics event name that should trigger showing this message. Blank defaults to `app_foreground` (Firebase's own default trigger). |
+| ConversionEvent        | no       |           | Analytics event name to attribute as a conversion for this campaign (reporting only — passed through, not enforced). |
+| MaxImpressionsPerUser  | no       |           | Whole number, how many times a single user should see this. Leave blank for unlimited. **Your app must enforce this** — Remote Config has no built-in impression counter, this is only passed through in the payload. |
+| StartDate              | no       |           | ISO 8601 UTC datetime the message should start showing.                    |
+| EndDate                | no       |           | ISO 8601 UTC datetime the message should stop showing.                     |
+| Active                 | no       | ✓ (TRUE/FALSE) | Defaults to TRUE. Combined with StartDate/EndDate — see below.        |
 
 `Condition` must already exist in Firebase Console → Remote Config → Conditions —
 this tool does not create conditions, only reads them for targeting (see the
-location-targeting walkthrough further down).
+location-targeting walkthrough further down). It approximates real IAM's Analytics
+audience targeting, which this workaround can't replicate exactly.
 
 **Uniqueness:** the tool rejects the whole row (with a clear error naming the
 duplicate and its first occurrence) if `EventId` or `CustomId` repeats within its
@@ -162,11 +194,21 @@ for (const key of remoteConfig.getKeysByPrefix('iam_')) {
 
   const started = !message.startDate || new Date(message.startDate) <= now;
   const notEnded = !message.endDate || new Date(message.endDate) >= now;
+  const underImpressionCap =
+    !message.maxImpressionsPerUser || getLocalImpressionCount(message.customId) < message.maxImpressionsPerUser;
 
-  if (message.active && started && notEnded) {
-    // style: 'banner' | 'modal' | 'fullscreen' — pick your renderer
-    showInAppMessage(message); // title, body, imageUrl, ctaText, ctaUrl, customId, style
+  const shouldShowNow = message.triggerEvent === 'app_foreground'
+    ? true // check this on foreground
+    : lastAnalyticsEventName === message.triggerEvent; // or hook into your event bus
+
+  if (message.active && started && notEnded && underImpressionCap && shouldShowNow) {
+    showModal(message); // title, body, imageUrl, backgroundColor, textColor,
+                         // buttonText, buttonTextColor, buttonBackgroundColor, actionUrl
+    incrementLocalImpressionCount(message.customId);
     logAnalyticsEvent('iam_impression', { customId: message.customId, key });
+    if (message.conversionEvent) {
+      // fire message.conversionEvent when the user completes the intended action
+    }
   }
 }
 ```
@@ -192,9 +234,9 @@ button that opens a URL.
    `templates/campaign-template.xlsx` (`npm run generate-template`), copy/edit it
    rather than retyping:
 
-   | CustomId | Key | Title | Body | Condition | Style | StartDate | EndDate | Active |
+   | CustomId | Key | Title | ButtonText | ActionUrl | Condition | StartDate | EndDate | Active |
    |---|---|---|---|---|---|---|---|---|
-   | custom-mumbai-001 | mumbai-store-launch | We just opened in Mumbai! | Visit our new store and get 15% off your first purchase. | India Users | modal | 2026-09-10T09:00:00Z | 2026-09-17T23:59:59Z | TRUE |
+   | custom-mumbai-001 | mumbai-store-launch | We just opened in Mumbai! | Get Directions | https://example.com/stores/mumbai | India Users | 2026-09-10T09:00:00Z | 2026-09-17T23:59:59Z | TRUE |
 
 4. **Run it:**
    ```
@@ -202,17 +244,18 @@ button that opens a URL.
    node src/cli.js send my-campaign.xlsx --iam-only             # publish for real
    ```
 5. Result: Remote Config parameter `iam_mumbai_store_launch` gets a conditional value
-   scoped to `India Users`, containing the title/body/image/customId/style/dates/CTA as
+   scoped to `India Users`, containing the title/body/image/colors/button/dates as
    JSON. Only devices matching that condition receive this value when they call
    `fetchAndActivate()`; everyone else falls back to the default (`{"active":false}`).
-   Your client renders it as a modal (per `style`) only while `now` is inside the
-   Start/EndDate window, and tags any impression/click analytics with `customId`.
+   Your client renders it as a modal only while `now` is inside the Start/EndDate
+   window, and tags any impression/click analytics with `customId`.
 
 ## Notes
 
 - FCM topic messaging requires devices to already be subscribed to the topic
   client-side (`messaging.subscribeToTopic(...)`).
-- Title/Body/CTAText length validations in the template are **warnings**, not hard
+- Title/Body/ButtonText length validations in the template are **warnings**, not hard
   blocks — actual truncation behavior varies by OS/device and is governed by FCM's
   overall payload size limit, not a fixed per-field limit, so unusually long copy can
-  still be entered deliberately.
+  still be entered deliberately. Badge/TTL/MaxImpressionsPerUser are hard-validated as
+  whole numbers in range, since those genuinely must be integers.
