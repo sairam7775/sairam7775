@@ -1,0 +1,19 @@
+{
+  "name": "firebase-campaign-tool",
+  "version": "1.0.0",
+  "description": "CLI tool to send Firebase Cloud Messaging push notifications and publish in-app message content from an Excel workbook.",
+  "main": "src/cli.js",
+  "bin": {
+    "firebase-campaign": "src/cli.js"
+  },
+  "scripts": {
+    "send": "node src/cli.js send",
+    "generate-template": "node templates/generate-template.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "firebase-admin": "^12.6.0",
+    "xlsx": "^0.18.5"
+  }
+}
