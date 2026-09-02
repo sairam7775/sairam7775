@@ -55,11 +55,23 @@ The workbook needs one or both of these sheets (exact names):
 | ImageURL   | no       | Image URL.                                                                  |
 | CTAText    | no       | Call-to-action button text.                                                 |
 | CTAUrl     | no       | Call-to-action deep link / URL.                                             |
-| Condition  | no       | Name of an **existing** Remote Config condition (audience/version/etc.) to target. Leave blank to publish as the default value for all users. |
-| Active     | no       | `TRUE`/`FALSE`. Defaults to `TRUE`.                                         |
+| Condition  | no       | Name of an **existing** Remote Config condition to target (e.g. a Country/Region condition for location, or an app-version/audience condition). Leave blank to publish as the default value for all users. |
+| CampaignId | no       | Free-text ID stamped into the payload, for your app to tag impression/click analytics events with. |
+| Style      | no       | Rendering hint for your client code, e.g. `banner`, `modal`, `fullscreen`. Defaults to `banner`. |
+| StartDate  | no       | ISO date/time (e.g. `2026-09-10T09:00:00Z`) the message should start showing. |
+| EndDate    | no       | ISO date/time the message should stop showing.                             |
+| Active     | no       | `TRUE`/`FALSE`. Defaults to `TRUE`. Combined with StartDate/EndDate — see below. |
 
 `Condition` must already exist in Firebase Console → Remote Config → Conditions —
 this tool does not create conditions, only reads them for targeting.
+
+**How `active` is computed:** the published payload's `active` field is
+`Active AND (now is within [StartDate, EndDate])`, evaluated **at the moment you run
+the command**. This is not a live timer — Remote Config doesn't auto-flip values on a
+schedule — so for a message that should turn on/off at specific times you must either
+(a) re-run the command (e.g. via cron) at the start/end times, or (b) have your client
+also compare the current time against the `startDate`/`endDate` fields in the payload
+(shown in the snippet below), so it self-corrects between publishes.
 
 ## Running
 
@@ -87,17 +99,56 @@ piece of code to fetch and render them. Conceptually, on app start / foreground:
 ```js
 // Pseudocode — adapt to your platform's Remote Config SDK
 await remoteConfig.fetchAndActivate();
+const now = new Date();
 
 for (const key of remoteConfig.getKeysByPrefix('iam_')) {
   const message = JSON.parse(remoteConfig.getValue(key).asString());
-  if (message.active) {
-    showInAppBanner(message); // title, body, imageUrl, ctaText, ctaUrl
+
+  const started = !message.startDate || new Date(message.startDate) <= now;
+  const notEnded = !message.endDate || new Date(message.endDate) >= now;
+
+  if (message.active && started && notEnded) {
+    // style: 'banner' | 'modal' | 'fullscreen' — pick your renderer
+    showInAppMessage(message); // title, body, imageUrl, ctaText, ctaUrl, campaignId, style
+    logAnalyticsEvent('iam_impression', { campaignId: message.campaignId, key });
   }
 }
 ```
 
 Firebase Remote Config SDKs exist for Android (Kotlin/Java), iOS (Swift), Web,
 Flutter, and Unity — the fetch/read pattern above is the same shape on each.
+
+## Example: location-targeted modal with timing and a campaign ID
+
+Say you want to show a **modal** in-app message only to users in **India**, from
+Sep 10 to Sep 17, with a custom title/image, a `mumbai-launch-2026` campaign ID for
+analytics, and a button that opens a URL.
+
+1. **Create the location condition once, in Firebase Console** (not this tool —
+   Remote Config conditions aren't creatable via API): Remote Config → Conditions →
+   Add condition → name it `India Users` → rule type **Country/Region** → select India → Save.
+   (For finer-than-country targeting — a specific city or store — Remote Config has no
+   built-in rule; you'd need your app to set a custom user property, e.g. `store_city`,
+   and build the condition on that instead.)
+2. **Add a row to the `InAppMessages` sheet:**
+
+   | Key                | Title                        | Body                                              | ImageURL                                  | CTAText        | CTAUrl                                 | Condition    | CampaignId          | Style | StartDate              | EndDate                 | Active |
+   |--------------------|-------------------------------|----------------------------------------------------|--------------------------------------------|----------------|------------------------------------------|--------------|----------------------|-------|--------------------------|---------------------------|--------|
+   | mumbai-store-launch | We just opened in Mumbai!    | Visit our new store and get 15% off your first purchase. | https://example.com/images/mumbai-launch.png | Get Directions | https://example.com/stores/mumbai | India Users  | mumbai-launch-2026   | modal | 2026-09-10T09:00:00Z    | 2026-09-17T23:59:59Z     | TRUE   |
+
+   (This exact row is already in `templates/campaign-template.xlsx` after
+   `npm run generate-template` — copy/edit it rather than retyping.)
+3. **Run it:**
+   ```
+   node src/cli.js send my-campaign.xlsx --iam-only --dry-run   # preview first
+   node src/cli.js send my-campaign.xlsx --iam-only             # publish for real
+   ```
+4. Result: Remote Config parameter `iam_mumbai_store_launch` gets a conditional value
+   scoped to `India Users`, containing the title/body/image/campaignId/style/dates/CTA
+   as JSON. Only devices matching that condition receive this value when they call
+   `fetchAndActivate()`; everyone else falls back to the default (`{"active":false}`).
+   Your client renders it as a modal (per `style`) only while `now` is inside the
+   Start/EndDate window, and tags any impression/click analytics with `campaignId`.
 
 ## Notes
 

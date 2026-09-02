@@ -12,6 +12,15 @@ function parseBool(value) {
   return ['true', '1', 'yes', 'y'].includes(normalized);
 }
 
+function parseDate(value, columnName) {
+  if (value === undefined || value === '') return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${columnName} must be a valid date/time (e.g. 2026-09-10T09:00:00Z). Got: ${value}`);
+  }
+  return date;
+}
+
 /**
  * Publishes in-app message content to Firebase Remote Config parameters named
  * iam_<key>. There is no public API to create real Firebase In-App Messaging
@@ -35,18 +44,33 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
   const knownConditions = new Set(template.conditions.map((c) => c.name));
 
   for (const row of rowsToPublish) {
-    const { Key, Title, Body, ImageURL, CTAText, CTAUrl, Condition, Active } = row;
+    const { Key, Title, Body, ImageURL, CTAText, CTAUrl, Condition, Active, CampaignId, Style, StartDate, EndDate } =
+      row;
 
     if (Condition && !knownConditions.has(String(Condition).trim())) {
       results.push({
         status: 'error',
-        reason: `Unknown Remote Config condition "${Condition}". Create it first in Firebase Console > Remote Config > Conditions. Known conditions: ${
+        reason: `Unknown Remote Config condition "${Condition}". Create it first in Firebase Console > Remote Config > Conditions (e.g. a Country/Region condition for location targeting). Known conditions: ${
           [...knownConditions].join(', ') || '(none defined)'
         }`,
         row,
       });
       continue;
     }
+
+    let startDate;
+    let endDate;
+    try {
+      startDate = parseDate(StartDate, 'StartDate');
+      endDate = parseDate(EndDate, 'EndDate');
+    } catch (err) {
+      results.push({ status: 'error', reason: err.message, row });
+      continue;
+    }
+
+    const now = new Date();
+    const withinWindow = (!startDate || startDate <= now) && (!endDate || endDate >= now);
+    const requestedActive = Active === undefined || Active === '' ? true : parseBool(Active);
 
     const paramKey = `iam_${slugify(Key)}`;
     const payload = JSON.stringify({
@@ -55,7 +79,11 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
       ...(ImageURL ? { imageUrl: String(ImageURL) } : {}),
       ...(CTAText ? { ctaText: String(CTAText) } : {}),
       ...(CTAUrl ? { ctaUrl: String(CTAUrl) } : {}),
-      active: Active === undefined || Active === '' ? true : parseBool(Active),
+      ...(CampaignId ? { campaignId: String(CampaignId) } : {}),
+      style: Style ? String(Style).trim().toLowerCase() : 'banner',
+      ...(startDate ? { startDate: startDate.toISOString() } : {}),
+      ...(endDate ? { endDate: endDate.toISOString() } : {}),
+      active: requestedActive && withinWindow,
       updatedAt: new Date().toISOString(),
     });
 
