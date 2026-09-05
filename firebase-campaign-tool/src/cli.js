@@ -27,7 +27,10 @@ function printResults(label, results) {
     if (r.status === 'sent' || r.status === 'published') {
       console.log(`  [${i + 1}] OK (${r.status})${r.messageId ? ' id=' + r.messageId : ''}${r.paramKey ? ' param=' + r.paramKey : ''}`);
     } else if (r.status === 'dry-run') {
-      console.log(`  [${i + 1}] DRY-RUN — would ${r.message ? 'send' : 'publish'}: ${JSON.stringify(r.message || r.payload)}`);
+      // r.message is an object (push) that needs stringifying; r.payload (in-app) is
+      // already a JSON string from inAppMessage.js — don't stringify it a second time.
+      const preview = r.message ? JSON.stringify(r.message) : r.payload;
+      console.log(`  [${i + 1}] DRY-RUN — would ${r.message ? 'send' : 'publish'}: ${preview}`);
     } else if (r.status === 'scheduled') {
       console.log(`  [${i + 1}] SCHEDULED — ${r.reason}`);
     } else if (r.status === 'already-sent') {
@@ -48,7 +51,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { pushRows, iamRows } = readWorkbook(filePath);
+  const { pushRows, iamRows } = await readWorkbook(filePath);
   const admin = initFirebase();
 
   let pushResults = [];

@@ -75,7 +75,8 @@ function buildMessage(row, eventId) {
       body: String(Body),
       ...(ImageURL ? { imageUrl: String(ImageURL) } : {}),
     },
-    data: { event_id: eventId, ...(Data ? parseDataField(Data) : {}) },
+    // event_id last so a Data column can never override the tool's own tracking id.
+    data: { ...(Data ? parseDataField(Data) : {}), event_id: eventId },
     ...(android ? { android } : {}),
     ...(apns ? { apns } : {}),
     ...(webpush ? { webpush } : {}),
