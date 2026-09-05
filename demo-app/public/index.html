@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Campaign Tool Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="page">
+    <header class="masthead">
+      <span class="eyebrow">firebase-campaign-tool — demo app</span>
+      <h1>This is "your app's own code"</h1>
+      <p class="lede">
+        Push notifications arrive here automatically once the campaign tool sends them.
+        The pop-up below only appears because this page fetches Remote Config and draws it —
+        exactly the two paths from the flow diagram, live.
+      </p>
+    </header>
+
+    <section class="card">
+      <h2>1. Notifications</h2>
+      <div class="status-row">
+        <span class="status-label">Permission:</span>
+        <span id="permission-status" class="pill pill-pending">not requested</span>
+      </div>
+      <button id="enable-btn" class="btn btn-primary">Enable notifications</button>
+
+      <div id="token-row" class="status-row" hidden>
+        <span class="status-label">FCM token:</span>
+        <code id="token-value" class="token"></code>
+      </div>
+
+      <form id="subscribe-form" class="subscribe-form" hidden>
+        <label for="topic-input">Subscribe this browser to a topic</label>
+        <div class="subscribe-row">
+          <input id="topic-input" type="text" placeholder="e.g. demo_users" value="demo_users" required>
+          <button type="submit" class="btn btn-secondary">Subscribe</button>
+        </div>
+        <p id="subscribe-status" class="hint"></p>
+      </form>
+
+      <div class="log-header">
+        <h3>Received pushes</h3>
+        <span class="hint">Shows up here while this tab is open and focused</span>
+      </div>
+      <ul id="push-log" class="push-log">
+        <li class="push-log-empty">Nothing yet — send a PushNotifications row with this topic.</li>
+      </ul>
+    </section>
+
+    <section class="card">
+      <h2>2. In-app message (Modal)</h2>
+      <p class="hint">Checked automatically when this tab loads or comes back into focus.</p>
+      <button id="refresh-iam-btn" class="btn btn-secondary">Check now</button>
+      <p id="iam-status" class="hint"></p>
+    </section>
+  </main>
+
+  <div id="modal-backdrop" class="modal-backdrop" hidden>
+    <div id="modal-card" class="modal-card">
+      <img id="modal-image" class="modal-image" hidden>
+      <h3 id="modal-title" class="modal-title"></h3>
+      <p id="modal-body" class="modal-body"></p>
+      <div class="modal-actions">
+        <button id="modal-dismiss" class="modal-dismiss">Dismiss</button>
+        <a id="modal-button" class="modal-button" hidden target="_blank" rel="noopener"></a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
