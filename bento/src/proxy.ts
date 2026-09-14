@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/trips", "/settings"];
+const PROTECTED = ["/trips", "/settings", "/admin"];
 
 /** Refreshes the auth session on every request and keeps unauthenticated
  *  visitors out of the signed-in areas. */

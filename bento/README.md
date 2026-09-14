@@ -10,8 +10,13 @@ The design document lives at [`../docs/spec.html`](../docs/spec.html).
 **P1 — foundation.** Auth, the full schema with row-level security, coverage
 tiers, and spend controls. You can sign in and a trip persists.
 
-Phases P2–P8 (data spine, transit graph, the planning engine, deep curation,
-Bento Man, the itinerary UI, and the booking vault) are in §13 of the spec.
+**P2 — data spine.** All of Japan seeded at stub tier: 9 regions, 47
+prefectures, 99 destinations. Plus the curation UI at `/admin` — coverage
+tiers, the place editor, and the verification workflow that decides what a
+traveller is allowed to see.
+
+Phases P3–P8 (transit graph, the planning engine, deep curation, Bento Man,
+the itinerary UI, and the booking vault) are in §13 of the spec.
 
 ## Setup
 
@@ -47,6 +52,29 @@ Bento Man, the itinerary UI, and the booking vault) are in §13 of the spec.
    ```bash
    npm run dev
    ```
+
+6. **Grant yourself curation access.** Sign up first, then:
+
+   ```bash
+   npx tsx scripts/grant-admin.ts you@example.com
+   ```
+
+   `/admin` 404s for everyone else — including signed-in users — so a
+   stranger learns nothing about whether the route exists. Membership is not
+   writable over the API by design: no RLS policy permits an insert, so
+   there is no "make me an admin" request to find.
+
+7. **Enrich the geography** (optional, needs network):
+
+   ```bash
+   npx tsx scripts/import-geography.ts          # dry run
+   npx tsx scripts/import-geography.ts --apply
+   ```
+
+   Pulls Wikidata ids and coordinates for the seeded cities. Dry run is the
+   default because label matching is fuzzy, and a wrong match silently moves
+   a city hundreds of kilometres — corrupting every travel-time estimate
+   built on top of it.
 
 ## Commands
 
@@ -86,7 +114,32 @@ src/
     guards/           spend cap and rate limiting
     types.ts          domain types shared with the engine
   proxy.ts            session refresh and route protection
+  app/
+    admin/            curation: tiers, place editor, verification
+  lib/
+    admin.ts          the curation gate
+scripts/
+  grant-admin.ts      grant or revoke curation access
+  import-geography.ts Wikidata enrichment for seeded cities
 supabase/
-  migrations/         schema, RLS, storage
-  seed.sql            regions, prefectures, the first cities
+  migrations/         schema, RLS, storage, curation
+  seed.sql            regions and all 47 prefectures
+  seed_destinations.sql  99 destinations at stub tier
 ```
+
+## Coverage tiers
+
+Every city in Japan exists in the database from day one. What differs is how
+much we can honestly claim to know:
+
+| Tier | Means | Planner behaviour |
+|---|---|---|
+| `deep` | 25+ verified places | Builds whole day itineraries |
+| `outline` | 8+ verified places | Suggests places, won't claim a day is complete |
+| `stub` | Name and location only | Says plainly it doesn't know this place well enough |
+
+The tier is enforced, not advisory: `/admin` refuses to promote a city that
+does not have the verified places to back it up. The alternative is silent
+thinness — a Takayama itinerary that looks exactly like the Kyoto one but is
+built from four records and a guess, which is invisible until someone is
+standing in Takayama with a bad plan.
