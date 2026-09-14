@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="Loading">
+  <style>
+    @keyframes hop {
+      0%, 18%   { transform: translate(18px, 18px); }
+      25%, 43%  { transform: translate(46px, 18px); }
+      50%, 68%  { transform: translate(46px, 46px); }
+      75%, 93%  { transform: translate(18px, 46px); }
+      100%      { transform: translate(18px, 18px); }
+    }
+    @keyframes squish {
+      0%, 18%, 25%, 43%, 50%, 68%, 75%, 93%, 100% { transform: scale(1); }
+      21.5%, 46.5%, 71.5%, 96.5% { transform: scale(1.22, 0.84); }
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+    .hop { animation: hop 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+    .squish { transform-box: fill-box; transform-origin: center; animation: squish 1.8s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) {
+      .hop { animation: none; transform: translate(18px, 18px); }
+      .squish { animation: pulse 1.6s ease-in-out infinite; }
+    }
+  </style>
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#FBF8F3" stroke-width="5"/>
+  <path d="M32 4v56M4 32h56" stroke="#FBF8F3" stroke-width="5"/>
+  <g class="hop"><circle class="squish" cx="0" cy="0" r="7" fill="#FF7757"/></g>
+</svg>

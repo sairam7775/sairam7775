@@ -67,3 +67,33 @@ h1, h2, h3, h4 {
   outline-offset: 3px;
   border-radius: 2px;
 }
+
+/* ---- Loader: the umeboshi hops compartment to compartment, clockwise.
+   Holds in each box, then a quick hop with a little squash on landing. ---- */
+@keyframes bento-hop {
+  0%, 18%   { transform: translate(18px, 18px); }
+  25%, 43%  { transform: translate(46px, 18px); }
+  50%, 68%  { transform: translate(46px, 46px); }
+  75%, 93%  { transform: translate(18px, 46px); }
+  100%      { transform: translate(18px, 18px); }
+}
+@keyframes bento-squish {
+  0%, 18%, 25%, 43%, 50%, 68%, 75%, 93%, 100% { transform: scale(1); }
+  21.5%, 46.5%, 71.5%, 96.5% { transform: scale(1.22, 0.84); }
+}
+@keyframes bento-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.bento-hop {
+  animation: bento-hop 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.bento-squish {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bento-squish 1.8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bento-hop { animation: none; transform: translate(18px, 18px); }
+  .bento-squish { animation: bento-pulse 1.6s ease-in-out infinite; }
+}

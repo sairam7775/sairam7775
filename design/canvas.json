@@ -1,11 +1,54 @@
 {
   "artboards": [
-    { "file": "Onboarding.dc.html", "x": 0,    "y": 0,    "w": 900,  "h": 1140 },
-    { "file": "Route.dc.html",      "x": 1000, "y": 0,    "w": 960,  "h": 1180 },
-    { "file": "Main.dc.html",       "x": 2060, "y": 0,    "w": 1000, "h": 1220 },
-    { "file": "Gaps.dc.html",       "x": 0,    "y": 1360, "w": 900,  "h": 1060 },
-    { "file": "Vault.dc.html",      "x": 1000, "y": 1360, "w": 960,  "h": 1160 },
-    { "file": "DayPhone.dc.html",   "x": 2060, "y": 1360, "w": 390,  "h": 844 }
+    {
+      "file": "Onboarding.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 900,
+      "h": 1140
+    },
+    {
+      "file": "Route.dc.html",
+      "x": 1000,
+      "y": 0,
+      "w": 960,
+      "h": 1180
+    },
+    {
+      "file": "Main.dc.html",
+      "x": 2060,
+      "y": 0,
+      "w": 1000,
+      "h": 1220
+    },
+    {
+      "file": "Gaps.dc.html",
+      "x": 0,
+      "y": 1360,
+      "w": 900,
+      "h": 1060
+    },
+    {
+      "file": "Vault.dc.html",
+      "x": 1000,
+      "y": 1360,
+      "w": 960,
+      "h": 1160
+    },
+    {
+      "file": "DayPhone.dc.html",
+      "x": 2060,
+      "y": 1360,
+      "w": 390,
+      "h": 844
+    },
+    {
+      "file": "Loader.dc.html",
+      "x": 2540,
+      "y": 1360,
+      "w": 640,
+      "h": 560
+    }
   ],
   "annotations": [
     {
@@ -13,22 +56,24 @@
       "x": 0,
       "y": -200,
       "w": 560,
-      "text": "Bento — traveller-facing screens, direction 2.\n\nThe app is a bento box: lacquer-dark frames, compartment tiles in food colours (salmon, tamago, edamame, umeboshi) on warm rice white. Tiles settle into place on load; bars and rings fill; badges pop.\n\nBricolage Grotesque headlines · DM Sans body · DM Mono data · Zen Maru Gothic for Japanese.\n\nStatic mockups. Same real Kansai–Sanyo trip and owner profile as before."
+      "text": "Bento \u2014 traveller-facing screens, direction 2.\n\nThe app is a bento box: lacquer-dark frames, compartment tiles in food colours (salmon, tamago, edamame, umeboshi) on warm rice white. Tiles settle into place on load; bars and rings fill; badges pop.\n\nBricolage Grotesque headlines \u00b7 DM Sans body \u00b7 DM Mono data \u00b7 Zen Maru Gothic for Japanese.\n\nStatic mockups. Same real Kansai\u2013Sanyo trip and owner profile as before."
     },
     {
       "id": "bento-note",
       "x": 2060,
       "y": -200,
       "w": 440,
-      "text": "Day view: the lacquer box holds one main compartment (the timeline, tile height ∝ minutes) and three side compartments — budget ring, Bento Man's note, and what was considered and left out. Tile colour = category: salmon shrine, green temple garden, blue indoors, yellow food."
+      "text": "Day view: the lacquer box holds one main compartment (the timeline, tile height \u221d minutes) and three side compartments \u2014 budget ring, Bento Man's note, and what was considered and left out. Tile colour = category: salmon shrine, green temple garden, blue indoors, yellow food."
     },
     {
       "id": "route-note",
       "x": 1000,
       "y": 1250,
       "w": 440,
-      "text": "Route: tile area follows nights — Kyoto is the biggest compartment because it gets four. Nara is a sliver (day trip), Himeji is white (en route, not a stay)."
+      "text": "Route: tile area follows nights \u2014 Kyoto is the biggest compartment because it gets four. Nara is a sliver (day trip), Himeji is white (en route, not a stay)."
     }
   ],
-  "launch": { "view": "canvas" }
+  "launch": {
+    "view": "canvas"
+  }
 }

@@ -98,7 +98,9 @@ masters are SVG; everything raster is rendered from them.
 | `public/logo/bento-app-icon.svg` | Filled lacquer tile — tabs, home screens, anywhere small |
 | `public/logo/bento-wordmark.svg` | "Bento" in Bricolage Grotesque 800, outlined to paths |
 | `public/logo/bento-lockup.svg` / `-light.svg` | Mark + wordmark, dark and light |
+| `public/logo/bento-loader.svg` / `-light.svg` | The loader — the umeboshi hops between compartments; self-contained CSS |
 | `src/components/logo.tsx` | `<BentoMark>` and `<BentoLogo>` for the app itself |
+| `src/components/loading.tsx` | `<BentoLoader>` and `<PageLoader>`; wired into `src/app/loading.tsx` for route transitions |
 
 Platform files are generated, not hand-made: `src/app/icon.svg`,
 `favicon.ico`, `apple-icon.png` and `opengraph-image.png` follow Next.js
