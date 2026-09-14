@@ -1,8 +1,4 @@
-<title>Meguri Build Spec</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
-<title>Meguri Build Spec</title>
+<title>Bento Build Spec</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
@@ -247,7 +243,7 @@ footer{
 
 <header class="mast">
   <div class="eyebrow"><span class="bar"></span> Product specification · Draft 3 · All decisions closed</div>
-  <h1><span class="jp">巡り</span>Meguri</h1>
+  <h1><span class="jp">弁当</span>Bento</h1>
   <p class="lede">A trip planner for people who have never been to Japan — one that gives the honest version of every place, every train and every gap in the plan, the way a local friend would.</p>
   <div class="meta">
     <div><b>Owner</b> sai.ram7775@gmail.com</div>
@@ -262,6 +258,7 @@ footer{
     <p><b>Budget moved from the trip to the city.</b> "Varies by city" means a ryokan night in Hakone must not make the Tokyo days score as overspending, so <span class="tab">budget_band</span> lives on <span class="tab">trip_cities</span>.</p>
     <p><b>Negative preferences had nowhere to live.</b> Places say who should skip them; nothing said what a traveller refuses outright. New <span class="tab">user_preferences.excludes[]</span>, applied as a hard filter in scheduler step 2 — "no beaches" means never, not rarely.</p>
     <p><b>The first deep cities changed</b> from Tokyo + Kyoto to the Kansai–Sanyo corridor (§16), on the owner's actual interests rather than an assumption about first-timers.</p>
+    <p><b>Renamed from Meguri to Bento.</b> The audience is people who have never been to Japan, and a name they cannot pronounce or spell is a name they cannot recommend. Bento is a Japanese word English already borrowed — and the metaphor is exact: carefully chosen things, arranged in compartments, that fit together in one box.</p>
   </div>
   <div class="note-strip">
     Every yen figure, duration and booking window here is a <b>seed value</b> written to show the shape of the data. Each becomes a row carrying <span class="tab">last_verified</span> and <span class="tab">verified_by</span>, and nothing reaches a user until a human has signed it off (§10).
@@ -333,49 +330,49 @@ footer{
   </div>
   <div class="rail">
     <div class="stop">
-      <span class="code">MG-01</span><h4>Account</h4>
+      <span class="code">BN-01</span><h4>Account</h4>
       <div class="says">
         <div><span class="who">Traveller</span>Signs up with email or Google. Nothing else asked yet.</div>
         <div><span class="who">System</span>Creates a user and an empty trip. Sign-up exists to hold confirmation numbers later, so it is real auth with row-level isolation from the first migration.</div>
       </div>
     </div>
     <div class="stop">
-      <span class="code">MG-02</span><h4>Shape of the trip</h4>
+      <span class="code">BN-02</span><h4>Shape of the trip</h4>
       <div class="says">
         <div><span class="who">Traveller</span>Dates, nights available, budget band, pace, interests, group, mobility.</div>
         <div><span class="who">System</span>Seven questions maximum, conversational, skippable. These become the weights the recommender scores against.</div>
       </div>
     </div>
     <div class="stop">
-      <span class="code">MG-03</span><h4>Route — cities and nights</h4>
+      <span class="code">BN-03</span><h4>Route — cities and nights</h4>
       <div class="says">
         <div><span class="who">Traveller</span>"Is five cities in nine days mad?" It is. They need telling.</div>
         <div><span class="who">System</span>Proposes cities with nights allocated and a reason each, and refuses over-packed routes out loud with the arithmetic shown. Coverage tier stated per city.</div>
       </div>
     </div>
     <div class="stop">
-      <span class="code">MG-04</span><h4>Days — the itinerary</h4>
+      <span class="code">BN-04</span><h4>Days — the itinerary</h4>
       <div class="says">
         <div><span class="who">Traveller</span>Drags, deletes, pins. Says "too many temples."</div>
         <div><span class="who">System</span>The scheduler builds ordered days; redundancy scoring means the fourth temple loses to something else without being told. Re-plans around pins (§08).</div>
       </div>
     </div>
     <div class="stop">
-      <span class="code">MG-05</span><h4>Logistics verdicts</h4>
+      <span class="code">BN-05</span><h4>Logistics verdicts</h4>
       <div class="says">
         <div><span class="who">Traveller</span>"Do I buy a JR Pass? How much cash?"</div>
         <div><span class="who">System</span>Answers against their own legs, with the arithmetic. Usually the answer on the pass is no (§07).</div>
       </div>
     </div>
     <div class="stop">
-      <span class="code">MG-06</span><h4>Bookings and gaps</h4>
+      <span class="code">BN-06</span><h4>Bookings and gaps</h4>
       <div class="says">
         <div><span class="who">Traveller</span>Uploads confirmations as they book. Nothing is fetched from airline or hotel sites.</div>
         <div><span class="who">System</span>Matches each booking to a night or a leg and names what is missing, as a coverage ribbon plus plain sentences (§11).</div>
       </div>
     </div>
     <div class="stop">
-      <span class="code">MG-07</span><h4>On the ground</h4>
+      <span class="code">BN-07</span><h4>On the ground</h4>
       <div class="says">
         <div><span class="who">Traveller</span>At a ticket gate, one bar of signal, needs today's plan and a booking reference.</div>
         <div><span class="who">System</span>Today view, offline-capable, printable. All planning data is local, so this works by construction rather than by effort.</div>
@@ -745,7 +742,7 @@ score(place | user, trip, day) =
     </div>
     <div class="phase">
       <div class="p">P7</div>
-      <div><h4>Itinerary UI</h4><p>Day view, drag to reorder, pin and reject, accept-a-diff, reasons visible on every item.</p></div>
+      <div><h4>Itinerary UI</h4><p>Day view, drag to reorder, pin and reject, accept-a-diff, reasons visible on every item. The name carries the layout: a day is a bento box — compartments sized to the time each stop actually takes, so an over-packed day looks over-packed before you read a word.</p></div>
       <div class="out">→ Feedback loop closes</div>
     </div>
     <div class="phase">
@@ -882,7 +879,7 @@ score(place | user, trip, day) =
 </section>
 
 <footer>
-  <span>Meguri · 巡り · product specification, draft 3 · all decisions closed</span>
+  <span>Bento · 弁当 · product specification, draft 3 · all decisions closed</span>
   <span>sairam7775/sairam7775 · claude/japan-travel-guide-bot-s5crhl</span>
 </footer>
 
