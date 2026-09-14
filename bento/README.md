@@ -86,6 +86,33 @@ the itinerary UI, and the booking vault) are in §13 of the spec.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
 
+## Logo
+
+A bento box, four compartments, one umeboshi — a Hinomaru bento. The
+masters are SVG; everything raster is rendered from them.
+
+| File | Use |
+|---|---|
+| `public/logo/bento-mark.svg` | The mark, dark lines, transparent — on light backgrounds |
+| `public/logo/bento-mark-light.svg` | Rice-white lines — on dark backgrounds |
+| `public/logo/bento-app-icon.svg` | Filled lacquer tile — tabs, home screens, anywhere small |
+| `public/logo/bento-wordmark.svg` | "Bento" in Bricolage Grotesque 800, outlined to paths |
+| `public/logo/bento-lockup.svg` / `-light.svg` | Mark + wordmark, dark and light |
+| `src/components/logo.tsx` | `<BentoMark>` and `<BentoLogo>` for the app itself |
+
+Platform files are generated, not hand-made: `src/app/icon.svg`,
+`favicon.ico`, `apple-icon.png` and `opengraph-image.png` follow Next.js
+file conventions and are picked up automatically; `public/icons/` holds the
+PWA set that `src/app/manifest.ts` points at, including maskable variants
+with the mark inside the central 80% safe zone.
+
+```bash
+node scripts/build-wordmark.mjs   # re-outline the wordmark from the font
+node scripts/render-icons.mjs     # re-render every PNG from the masters
+```
+
+Colours: lacquer `#221C1E`, rice `#FBF8F3`, salmon `#FF7757`.
+
 ## Two rules the code holds to
 
 **Nothing unverified reaches a traveller.** Places carry a

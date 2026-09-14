@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { BentoLogo } from "@/components/logo";
 import { signOut } from "../(auth)/actions";
 import { createTrip, deleteTrip } from "./actions";
 import { ErrorNote } from "../(auth)/ui";
@@ -39,8 +40,8 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-14">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <Link href="/" className="mono text-[0.7rem] uppercase tracking-[0.14em] text-ink-3">
-          弁当 Bento
+        <Link href="/" className="inline-flex" aria-label="Bento home">
+          <BentoLogo />
         </Link>
         <form action={signOut}>
           <button className="mono text-[0.7rem] uppercase tracking-[0.1em] text-ink-3 underline underline-offset-2">

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="Bento">
+  <rect x="4" y="4" width="56" height="56" rx="16" stroke="#FBF8F3" stroke-width="5"/>
+  <path d="M32 4v56M4 32h56" stroke="#FBF8F3" stroke-width="5"/>
+  <circle cx="18" cy="18" r="7" fill="#FF7757"/>
+</svg>

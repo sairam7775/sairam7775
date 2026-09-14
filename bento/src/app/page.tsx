@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { BentoLogo } from "@/components/logo";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -9,7 +10,8 @@ export default async function Home() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-20">
-      <p className="mono text-[0.7rem] uppercase tracking-[0.16em] text-ink-3">
+      <BentoLogo size={30} />
+      <p className="mono mt-8 text-[0.7rem] uppercase tracking-[0.16em] text-ink-3">
         <span className="mr-3 inline-block h-[2px] w-6 align-middle bg-vermilion" />
         Japan, planned properly
       </p>

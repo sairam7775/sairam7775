@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BentoLogo } from "@/components/logo";
 
 export function AuthShell({
   title,
@@ -12,8 +13,8 @@ export function AuthShell({
 }) {
   return (
     <main className="mx-auto w-full max-w-md px-5 py-16">
-      <Link href="/" className="mono text-[0.7rem] uppercase tracking-[0.14em] text-ink-3">
-        弁当 Bento
+      <Link href="/" className="inline-flex" aria-label="Bento home">
+        <BentoLogo />
       </Link>
       <h1 className="mt-8 text-3xl font-bold tracking-tight">{title}</h1>
       <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">{subtitle}</p>
