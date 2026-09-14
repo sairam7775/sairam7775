@@ -1,33 +1,33 @@
 {
   "artboards": [
-    { "file": "Onboarding.dc.html", "x": 0,    "y": 0,    "w": 900, "h": 1080 },
-    { "file": "Route.dc.html",      "x": 1000, "y": 0,    "w": 900, "h": 1180 },
-    { "file": "Main.dc.html",       "x": 2000, "y": 0,    "w": 900, "h": 1180 },
-    { "file": "Gaps.dc.html",       "x": 0,    "y": 1320, "w": 900, "h": 1120 },
-    { "file": "Vault.dc.html",      "x": 1000, "y": 1320, "w": 900, "h": 1180 },
-    { "file": "DayPhone.dc.html",   "x": 2000, "y": 1320, "w": 390, "h": 844 }
+    { "file": "Onboarding.dc.html", "x": 0,    "y": 0,    "w": 900,  "h": 1140 },
+    { "file": "Route.dc.html",      "x": 1000, "y": 0,    "w": 960,  "h": 1180 },
+    { "file": "Main.dc.html",       "x": 2060, "y": 0,    "w": 1000, "h": 1220 },
+    { "file": "Gaps.dc.html",       "x": 0,    "y": 1360, "w": 900,  "h": 1060 },
+    { "file": "Vault.dc.html",      "x": 1000, "y": 1360, "w": 960,  "h": 1160 },
+    { "file": "DayPhone.dc.html",   "x": 2060, "y": 1360, "w": 390,  "h": 844 }
   ],
   "annotations": [
     {
       "id": "brief",
       "x": 0,
-      "y": -190,
-      "w": 520,
-      "text": "Bento — traveller-facing screens.\n\nStatic mockups, matched to the app's real design system (globals.css): kon-iro indigo, square corners, hairline rules, Zen Kaku / Newsreader / JetBrains Mono.\n\nContent is a real nine-night Kansai–Sanyo trip scored against the owner profile: standard pace, avoids crowds, shrines + history + scenery, excludes beaches and hiking."
+      "y": -200,
+      "w": 560,
+      "text": "Bento — traveller-facing screens, direction 2.\n\nThe app is a bento box: lacquer-dark frames, compartment tiles in food colours (salmon, tamago, edamame, umeboshi) on warm rice white. Tiles settle into place on load; bars and rings fill; badges pop.\n\nBricolage Grotesque headlines · DM Sans body · DM Mono data · Zen Maru Gothic for Japanese.\n\nStatic mockups. Same real Kansai–Sanyo trip and owner profile as before."
     },
     {
       "id": "bento-note",
-      "x": 2000,
-      "y": -190,
-      "w": 420,
-      "text": "The day view is where the name earns itself — compartment height is proportional to the time each stop actually takes, so an over-packed day looks over-packed before you read a word."
+      "x": 2060,
+      "y": -200,
+      "w": 440,
+      "text": "Day view: the lacquer box holds one main compartment (the timeline, tile height ∝ minutes) and three side compartments — budget ring, Bento Man's note, and what was considered and left out. Tile colour = category: salmon shrine, green temple garden, blue indoors, yellow food."
     },
     {
-      "id": "engine-note",
+      "id": "route-note",
       "x": 1000,
-      "y": 1230,
-      "w": 420,
-      "text": "Three engine requirements this drawing surfaced — see the handover: a 'considered and left out' list, a per-stop swap affordance, and cost totals per city rather than per trip."
+      "y": 1250,
+      "w": 440,
+      "text": "Route: tile area follows nights — Kyoto is the biggest compartment because it gets four. Nara is a sliver (day trip), Himeji is white (en route, not a stay)."
     }
   ],
   "launch": { "view": "canvas" }

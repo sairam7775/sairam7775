@@ -1,7 +1,18 @@
 # Bento — screen designs
 
-Six traveller-facing screens, drawn against the app's real design system
-(`../bento/src/app/globals.css`) rather than an invented one.
+Six traveller-facing screens. Direction 2: **the app is a bento box** —
+lacquer-dark frames holding compartment tiles in food colours (salmon,
+tamago yellow, edamame green, umeboshi red) on warm rice white. Tiles settle
+into place on load; bars and rings fill; badges pop. Bricolage Grotesque for
+headlines, DM Sans body, DM Mono data, Zen Maru Gothic for Japanese.
+
+This replaces direction 1, which carried the spec's editorial look into the
+product and read as old-fashioned. The app's own tokens in
+`../bento/src/app/globals.css` still describe direction 1 and will move to
+this palette when the traveller UI is built (P7).
+
+`_shared_head.txt` is the shared font link and style block every artboard
+starts with — edit it once, re-seed, and all six pick it up.
 
 | Artboard | Screen |
 |---|---|

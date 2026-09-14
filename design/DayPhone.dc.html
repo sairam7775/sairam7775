@@ -7,83 +7,96 @@
 <body>
 <x-dc>
 <helmet>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&family=Zen+Maru+Gothic:wght@500;700&display=swap">
   <style>
-    body { margin: 0; font-family: "Newsreader", Georgia, serif; }
-    a { color: #1e3c78; } a:hover { color: #142a55; }
-    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    body { margin: 0; font-family: "DM Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #FF7757; } a:hover { color: #E85F3F; }
+    .disp { font-family: "Bricolage Grotesque", "DM Sans", sans-serif; }
+    .mono { font-family: "DM Mono", ui-monospace, monospace; }
+    .jp { font-family: "Zen Maru Gothic", sans-serif; }
+    .tile { background: #FFFFFF; border-radius: 20px; box-shadow: 0 1px 2px rgba(34,28,30,.04), 0 16px 36px -20px rgba(34,28,30,.25); }
+    @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+    .up { animation: rise .62s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .grow { transform-origin: left center; animation: grow .9s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+    .pop { animation: pop .5s cubic-bezier(.2,.8,.2,1) both; }
+    @media (prefers-reduced-motion: reduce) { .up, .grow, .pop { animation: none; } }
   </style>
 </helmet>
 
-<div style="width: 390px; height: 844px; background: #f0f1f4; color: #161a24; box-sizing: border-box; display: flex; flex-direction: column;">
+<div style="width: 390px; height: 844px; background: #221C1E; color: #221C1E; box-sizing: border-box; padding: 14px 12px 12px; display: flex; flex-direction: column; gap: 10px;">
 
-  <!-- header -->
-  <div style="padding: 22px 20px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; border-bottom: 1px solid #d2d7e1;">
-    <span class="mono" style="font-size: 11.2px; letter-spacing: 0.12em; text-transform: uppercase; color: #767e92;">弁当 Kyoto · day 2</span>
-    <span class="mono" style="font-size: 10.2px; letter-spacing: 0.06em; color: #3f6a4a; display: inline-flex; align-items: center; gap: 6px;">
-      <span style="width: 7px; height: 7px; background: #3f6a4a; border-radius: 50%; display: inline-block;"></span>
+  <!-- header strip -->
+  <div class="up" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 6px 2px;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <svg width="22" height="22" viewBox="0 0 28 28" fill="none"><rect x="2" y="2" width="24" height="24" rx="7" stroke="#FBF8F3" stroke-width="2.2"/><path d="M14 2v24M2 14h24" stroke="#FBF8F3" stroke-width="2.2"/><circle cx="8" cy="8" r="3" fill="#FF7757"/></svg>
+      <span class="mono" style="font-size: 12px; color: #FBF8F3;">Kyoto · day 2</span>
+    </div>
+    <span class="mono" style="font-size: 10.5px; color: #4CAF72; display: inline-flex; align-items: center; gap: 6px;">
+      <span style="width: 7px; height: 7px; background: #4CAF72; border-radius: 50%; display: inline-block;"></span>
       Saved offline
     </span>
   </div>
 
   <!-- now -->
-  <div style="background: #1e3c78; color: #fdfdfe; padding: 22px 20px 24px;">
-    <span class="mono" style="font-size: 10.2px; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.72;">Next · 08:45</span>
-    <h1 style="font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 26px; font-weight: 700; margin: 8px 0 0; line-height: 1.15;">Tofuku-ji</h1>
-    <p style="margin: 10px 0 0; font-size: 15px; line-height: 1.5; opacity: 0.88;">
-      You have 14 minutes. The Tsutenkyo bridge is the maple view — go there first,
-      it fills by ten.
-    </p>
+  <div class="tile up" style="background: #FF7757; color: #FFFFFF; padding: 22px 20px 24px; border-radius: 22px; animation-delay: .1s;">
+    <span class="mono" style="font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; opacity: .8;">Next · 08:45</span>
+    <span class="disp" style="display: block; font-size: 32px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; margin-top: 8px;">Tofuku-ji</span>
+    <p style="margin: 10px 0 0; font-size: 15px; line-height: 1.5; opacity: .92;">You have 14 minutes. Head for the Tsutenkyo bridge first — it fills by ten.</p>
   </div>
 
-  <!-- the leg, large because this is the thing you read at a gate -->
-  <div style="background: #fdfdfe; border-bottom: 1px solid #d2d7e1; padding: 18px 20px 20px;">
-    <span class="mono" style="font-size: 10.2px; letter-spacing: 0.12em; text-transform: uppercase; color: #767e92;">Getting there</span>
-    <div style="display: flex; align-items: baseline; gap: 10px; margin-top: 10px;">
-      <span style="font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 19px; font-weight: 700;">Inari</span>
-      <svg width="18" height="12" viewBox="0 0 20 12" fill="none" stroke="#767e92" stroke-width="1.6" stroke-linecap="round"><path d="M1 6h17M14 2l4 4-4 4"/></svg>
-      <span style="font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 19px; font-weight: 700;">Tofukuji</span>
+  <!-- the leg, big, because this is what you read at a gate -->
+  <div class="tile up" style="padding: 18px 20px 20px; border-radius: 22px; animation-delay: .2s;">
+    <span class="mono" style="font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #8C8388;">Getting there</span>
+    <div style="display: flex; align-items: center; gap: 10px; margin-top: 10px;">
+      <span class="disp" style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Inari</span>
+      <svg width="20" height="12" viewBox="0 0 20 12" fill="none" stroke="#FF7757" stroke-width="2" stroke-linecap="round"><path d="M1 6h17M14 2l4 4-4 4"/></svg>
+      <span class="disp" style="font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Tofukuji</span>
     </div>
-    <p style="margin: 9px 0 0; font-size: 14.4px; line-height: 1.55; color: #4b5263;">
-      JR Nara Line, 1 stop, 3 minutes, ¥150. Tap in with your IC card.
-    </p>
-    <p style="margin: 8px 0 0; font-size: 14.4px; line-height: 1.55; color: #bc4029;">
-      Take the Local. The Rapid does not stop at Tofukuji.
-    </p>
+    <p style="margin: 9px 0 0; font-size: 14.5px; line-height: 1.5; color: #4A4145;">JR Nara Line, 1 stop, 3 minutes, ¥150. Tap in with your IC card.</p>
+    <div style="margin-top: 10px; background: #FBE2E3; border-radius: 12px; padding: 10px 12px; display: flex; gap: 10px; align-items: flex-start;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink: 0; margin-top: 1px;"><circle cx="8" cy="8" r="7" fill="#E5484D"/><path d="M8 4.5v4M8 11v.5" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span style="font-size: 13.5px; line-height: 1.45; color: #221C1E; font-weight: 500;">Take the Local. The Rapid doesn&rsquo;t stop at Tofukuji.</span>
+    </div>
   </div>
 
-  <!-- rest of the day -->
-  <div style="flex-grow: 1; background: #f0f1f4; padding: 4px 20px 0;">
-    <div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-bottom: 1px solid #d2d7e1;">
-      <span class="mono" style="font-size: 12.5px; color: #767e92; width: 44px; flex-shrink: 0;">07:00</span>
-      <span style="font-size: 15px; color: #767e92; text-decoration: line-through;">Fushimi Inari Taisha</span>
+  <!-- rest of day -->
+  <div class="tile up" style="padding: 8px 6px; border-radius: 22px; flex-grow: 1; animation-delay: .3s;">
+    <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 14px;">
+      <span class="mono" style="font-size: 12.5px; color: #8C8388; width: 44px; flex-shrink: 0;">07:00</span>
+      <span style="font-size: 15px; color: #8C8388; text-decoration: line-through; flex-grow: 1;">Fushimi Inari Taisha</span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#4CAF72" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 6.2 12 13 4.5"/></svg>
     </div>
-    <div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-bottom: 1px solid #d2d7e1;">
+    <div style="height: 1px; background: #EAE3DC; margin: 0 14px;"></div>
+    <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 14px;">
       <span class="mono" style="font-size: 12.5px; width: 44px; flex-shrink: 0;">10:05</span>
-      <span style="font-size: 15px;">Sanjusangen-do</span>
+      <span style="font-size: 15px; font-weight: 500;">Sanjusangen-do</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-bottom: 1px solid #d2d7e1;">
+    <div style="height: 1px; background: #EAE3DC; margin: 0 14px;"></div>
+    <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 14px;">
       <span class="mono" style="font-size: 12.5px; width: 44px; flex-shrink: 0;">12:00</span>
-      <span style="font-size: 15px;">Kiyomizu-dera</span>
+      <span style="font-size: 15px; font-weight: 500;">Kiyomizu-dera</span>
     </div>
-    <div style="display: flex; align-items: center; gap: 14px; min-height: 52px; border-bottom: 1px solid #d2d7e1;">
+    <div style="height: 1px; background: #EAE3DC; margin: 0 14px;"></div>
+    <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 14px;">
       <span class="mono" style="font-size: 12.5px; width: 44px; flex-shrink: 0;">13:45</span>
-      <span style="font-size: 15px;">Ninenzaka &amp; Sannenzaka</span>
+      <span style="font-size: 15px; font-weight: 500;">Ninenzaka &amp; Sannenzaka</span>
     </div>
   </div>
 
   <!-- tonight -->
-  <div style="background: #fdfdfe; border-top: 1px solid #d2d7e1; padding: 16px 20px 22px;">
+  <div class="tile up" style="background: #FFF3D1; padding: 16px 20px 18px; border-radius: 22px; animation-delay: .4s;">
     <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 10px;">
-      <span class="mono" style="font-size: 10.2px; letter-spacing: 0.12em; text-transform: uppercase; color: #767e92;">Tonight</span>
-      <span class="mono" style="font-size: 10.2px; color: #1e3c78;">Show booking</span>
+      <span class="mono" style="font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: #8C8388;">Tonight</span>
+      <span class="mono" style="font-size: 11px; color: #FF7757; font-weight: 500;">Show booking</span>
     </div>
-    <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 9px; min-height: 44px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; min-height: 44px;">
       <div>
-        <span style="font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 16px; font-weight: 700; display: block;">Hotel Kanra Kyoto</span>
-        <span class="mono" style="font-size: 11.2px; color: #767e92;">7 min walk from Kyoto Station</span>
+        <span class="disp" style="font-size: 17px; font-weight: 700; display: block;">Hotel Kanra Kyoto</span>
+        <span class="mono" style="font-size: 11px; color: #8C8388;">7 min walk from Kyoto Station</span>
       </div>
-      <span class="mono" style="font-size: 13px; background: #e5e8ef; padding: 6px 10px; letter-spacing: 0.04em;">HK-4471902</span>
+      <span class="mono" style="font-size: 13px; background: #221C1E; color: #FBF8F3; padding: 8px 12px; border-radius: 999px; letter-spacing: .04em;">HK-4471902</span>
     </div>
   </div>
 
