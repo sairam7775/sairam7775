@@ -1,0 +1,889 @@
+<title>Meguri Build Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<title>Meguri Build Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  --paper:#F0F1F4; --surface:#FDFDFE; --sunk:#E5E8EF;
+  --ink:#161A24; --ink-2:#4B5263; --ink-3:#767E92;
+  --rule:#D2D7E1; --rule-soft:#E2E6ED;
+  --indigo:#1E3C78; --indigo-ink:#1E3C78; --indigo-soft:#DEE5F3;
+  --vermilion:#BC4029; --vermilion-ink:#9E3420; --vermilion-soft:#F7E1DB;
+  --moss:#3F6A4A; --moss-soft:#DCEADF;
+  --amber:#8D6210; --amber-soft:#F4E9CF;
+  --shadow:0 1px 2px rgba(22,26,36,.05), 0 8px 24px -16px rgba(22,26,36,.28);
+  --display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Segoe UI",sans-serif;
+  --body:"Newsreader",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0F131B; --surface:#171B26; --sunk:#1D2230;
+    --ink:#E6E9F0; --ink-2:#A7AEBF; --ink-3:#7B8497;
+    --rule:#2B3142; --rule-soft:#232938;
+    --indigo:#8CABE2; --indigo-ink:#A9C2EE; --indigo-soft:#1B2840;
+    --vermilion:#E58A73; --vermilion-ink:#F0A08B; --vermilion-soft:#38211C;
+    --moss:#8ABE97; --moss-soft:#1B2B21;
+    --amber:#D9AE5E; --amber-soft:#33280F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0F131B; --surface:#171B26; --sunk:#1D2230;
+  --ink:#E6E9F0; --ink-2:#A7AEBF; --ink-3:#7B8497;
+  --rule:#2B3142; --rule-soft:#232938;
+  --indigo:#8CABE2; --indigo-ink:#A9C2EE; --indigo-soft:#1B2840;
+  --vermilion:#E58A73; --vermilion-ink:#F0A08B; --vermilion-soft:#38211C;
+  --moss:#8ABE97; --moss-soft:#1B2B21;
+  --amber:#D9AE5E; --amber-soft:#33280F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:17px; line-height:1.65;
+  padding-inline:20px; padding-block:0;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px; margin-inline:auto; padding-block:0 88px}
+.col{max-width:68ch}
+p{margin:0 0 1em}
+a{color:var(--indigo-ink)}
+strong{font-weight:600}
+h1,h2,h3,h4{font-family:var(--display); text-wrap:balance; margin:0}
+::selection{background:var(--indigo-soft); color:var(--ink)}
+:focus-visible{outline:2px solid var(--indigo); outline-offset:3px; border-radius:2px}
+
+/* ---------- masthead ---------- */
+.mast{padding-block:64px 40px; border-bottom:2px solid var(--ink); margin-bottom:8px}
+.eyebrow{
+  font-family:var(--mono); font-size:.7rem; font-weight:500;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3);
+  display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:22px;
+}
+.eyebrow .bar{width:26px; height:2px; background:var(--vermilion); display:inline-block}
+h1{font-size:clamp(2.6rem,7vw,4.1rem); font-weight:900; line-height:1.02; letter-spacing:-.02em}
+h1 .jp{font-weight:500; color:var(--indigo); font-size:.44em; letter-spacing:.06em; display:block; margin-bottom:.5em}
+.mast .lede{font-size:clamp(1.08rem,2.2vw,1.3rem); color:var(--ink-2); max-width:56ch; margin:22px 0 0; line-height:1.5}
+.meta{
+  display:flex; flex-wrap:wrap; gap:0 34px; margin-top:34px;
+  font-family:var(--mono); font-size:.76rem; color:var(--ink-3);
+}
+.meta div{padding-block:4px}
+.meta b{display:block; color:var(--ink); font-weight:500; text-transform:none}
+.note-strip{
+  margin-top:26px; padding:12px 16px; border-left:3px solid var(--amber);
+  background:var(--amber-soft); color:var(--ink-2);
+  font-size:.9rem; line-height:1.5; max-width:66ch;
+}
+
+/* ---------- sections ---------- */
+section{padding-block:54px 0}
+.sec-head{display:flex; align-items:baseline; gap:14px; margin-bottom:20px; flex-wrap:wrap}
+.sec-num{
+  font-family:var(--mono); font-size:.74rem; font-weight:700; letter-spacing:.1em;
+  color:var(--surface); background:var(--indigo);
+  padding:3px 8px; border-radius:3px; flex:none;
+}
+h2{font-size:clamp(1.45rem,3.2vw,1.95rem); font-weight:700; letter-spacing:-.01em}
+h3{font-size:1.08rem; font-weight:700; margin:30px 0 10px; letter-spacing:.005em}
+.kicker{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3); margin:34px 0 12px;
+}
+
+/* ---------- layers ---------- */
+.layers{display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule); margin-top:24px}
+@media(min-width:760px){.layers{grid-template-columns:repeat(3,1fr)}}
+.layer{background:var(--surface); padding:22px 20px 24px; display:flex; flex-direction:column; gap:10px}
+.layer .n{font-family:var(--mono); font-size:.72rem; color:var(--ink-3); letter-spacing:.1em}
+.layer h4{font-size:1.02rem; font-weight:700}
+.layer p{font-size:.94rem; color:var(--ink-2); margin:0}
+.diff{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.06em; text-transform:uppercase;
+  margin-top:auto; padding-top:12px; font-weight:500;
+}
+.diff.easy{color:var(--moss)} .diff.hard{color:var(--vermilion-ink)} .diff.mid{color:var(--amber)}
+
+/* ---------- rail line ---------- */
+.rail{margin-top:28px; position:relative; padding-left:34px}
+.rail::before{
+  content:""; position:absolute; left:7px; top:12px; bottom:18px;
+  width:3px; background:var(--indigo); border-radius:2px;
+}
+.stop{position:relative; padding-bottom:26px}
+.stop::before{
+  content:""; position:absolute; left:-34px; top:6px; width:17px; height:17px;
+  border-radius:50%; background:var(--surface); border:3px solid var(--indigo);
+}
+.stop:last-child::before{background:var(--vermilion); border-color:var(--vermilion)}
+.stop .code{font-family:var(--mono); font-size:.7rem; letter-spacing:.12em; color:var(--ink-3)}
+.stop h4{font-size:1.02rem; font-weight:700; margin:2px 0 6px}
+.stop .says{display:grid; gap:6px; margin-top:8px}
+@media(min-width:700px){.stop .says{grid-template-columns:1fr 1fr; gap:10px 20px}}
+.says div{font-size:.9rem; color:var(--ink-2); line-height:1.5}
+.says .who{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); display:block; margin-bottom:2px;
+}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto; margin:22px 0 0; border:1px solid var(--rule); background:var(--surface)}
+table{border-collapse:collapse; width:100%; min-width:600px; font-size:.92rem}
+th,td{text-align:left; padding:11px 14px; border-bottom:1px solid var(--rule-soft); vertical-align:top}
+thead th{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:500; background:var(--sunk); border-bottom:1px solid var(--rule);
+  position:sticky; top:0;
+}
+tbody tr:last-child td{border-bottom:0}
+td.num,.tab{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:.86rem; white-space:nowrap}
+td strong{font-family:var(--display); font-weight:700; font-size:.95rem}
+.risk{color:var(--vermilion-ink); font-weight:600}
+
+/* ---------- scope ---------- */
+.scope{display:grid; gap:18px; margin-top:24px}
+@media(min-width:820px){.scope{grid-template-columns:repeat(3,1fr)}}
+.tier{border:1px solid var(--rule); background:var(--surface); padding:20px; display:flex; flex-direction:column}
+.tier.now{border-color:var(--moss); border-top:4px solid var(--moss)}
+.tier.next{border-top:4px solid var(--rule)}
+.tier.later{border-top:4px solid var(--rule)}
+.tier h4{font-size:1rem; font-weight:700; margin-bottom:2px}
+.tier .when{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); margin-bottom:14px}
+.tier ul{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:9px}
+.tier li{font-size:.91rem; line-height:1.45; color:var(--ink-2); padding-left:18px; position:relative}
+.tier li::before{content:"▸"; position:absolute; left:0; color:var(--indigo); font-size:.8em; top:.15em}
+.tier.now li::before{color:var(--moss)}
+.tier li b{color:var(--ink); font-weight:600}
+
+/* ---------- code ---------- */
+.code{
+  margin:18px 0 0; background:var(--sunk); border:1px solid var(--rule);
+  overflow-x:auto; padding:16px 18px;
+  font-family:var(--mono); font-size:.79rem; line-height:1.7; color:var(--ink-2);
+  white-space:pre; tab-size:2;
+}
+.code .k{color:var(--indigo-ink)}
+.code .s{color:var(--moss)}
+.code .c{color:var(--ink-3); font-style:italic}
+.cap{font-family:var(--mono); font-size:.72rem; letter-spacing:.04em; color:var(--ink-3); margin-top:10px; line-height:1.55}
+.cap b{color:var(--ink-2); font-weight:500}
+
+/* ---------- callout ---------- */
+.call{
+  border-left:3px solid var(--vermilion); background:var(--vermilion-soft);
+  padding:16px 18px; margin:24px 0 0; max-width:70ch;
+}
+.call h4{font-size:.95rem; font-weight:700; color:var(--vermilion-ink); margin-bottom:6px}
+.call p{font-size:.93rem; color:var(--ink-2); margin:0}
+.call.key{border-left-color:var(--indigo); background:var(--indigo-soft)}
+.call.key h4{color:var(--indigo-ink)}
+
+/* ---------- phases ---------- */
+.phases{margin-top:24px; border-top:1px solid var(--rule)}
+.phase{
+  display:grid; gap:4px 20px; padding:18px 0; border-bottom:1px solid var(--rule-soft);
+}
+@media(min-width:780px){.phase{grid-template-columns:88px 1fr 190px; align-items:baseline}}
+.phase .p{font-family:var(--mono); font-size:.74rem; font-weight:700; letter-spacing:.08em; color:var(--indigo-ink)}
+.phase h4{font-size:1rem; font-weight:700}
+.phase p{font-size:.91rem; color:var(--ink-2); margin:5px 0 0}
+.phase .out{font-family:var(--mono); font-size:.76rem; color:var(--ink-3); line-height:1.5}
+
+/* ---------- decisions ---------- */
+.dec{display:flex; flex-direction:column; gap:1px; background:var(--rule); border:1px solid var(--rule); margin-top:24px}
+.decision{background:var(--surface); padding:20px}
+.decision .q{display:flex; gap:12px; align-items:baseline}
+.decision .id{font-family:var(--mono); font-size:.72rem; font-weight:700; color:var(--vermilion-ink); flex:none}
+.decision h4{font-size:1rem; font-weight:700}
+.decision p{font-size:.92rem; color:var(--ink-2); margin:8px 0 0; padding-left:0}
+@media(min-width:640px){.decision p{padding-left:36px}}
+.rec{
+  display:inline-block; font-family:var(--mono); font-size:.68rem; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--moss); border:1px solid var(--moss);
+  padding:1px 6px; border-radius:2px; margin-right:6px;
+}
+footer{
+  margin-top:64px; padding-top:22px; border-top:2px solid var(--ink);
+  font-family:var(--mono); font-size:.74rem; color:var(--ink-3);
+  display:flex; flex-wrap:wrap; gap:8px 28px; justify-content:space-between;
+}
+
+/* ---------- draft 2 additions ---------- */
+.badge{font-family:var(--mono); font-size:.63rem; letter-spacing:.08em; text-transform:uppercase;
+  padding:2px 7px; border-radius:3px; white-space:nowrap; font-weight:500; display:inline-block}
+.badge.deep{background:var(--moss-soft); color:var(--moss)}
+.badge.outline{background:var(--amber-soft); color:var(--amber)}
+.badge.stub{background:var(--sunk); color:var(--ink-3)}
+.badge.def{background:var(--indigo-soft); color:var(--indigo-ink)}
+.badge.hi{background:var(--vermilion-soft); color:var(--vermilion-ink)}
+.grp{display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+  margin:38px 0 0; padding-bottom:7px; border-bottom:2px solid var(--ink);
+  font-family:var(--display); font-weight:700; font-size:1.02rem}
+.grp em{font-family:var(--mono); font-size:.67rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); font-style:normal; font-weight:400; text-align:right}
+.changed{border-left:3px solid var(--moss); background:var(--moss-soft);
+  padding:16px 18px; margin:24px 0 0; max-width:70ch}
+.changed h4{font-size:.95rem; font-weight:700; color:var(--moss); margin-bottom:6px}
+.changed p{font-size:.93rem; color:var(--ink-2); margin:0 0 .6em}
+.changed p:last-child{margin-bottom:0}
+.split{display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule); margin-top:22px}
+@media(min-width:700px){.split{grid-template-columns:1fr 1fr}}
+.half{background:var(--surface); padding:20px}
+.half h4{font-size:.98rem; font-weight:700; margin-bottom:4px}
+.half .sub{font-family:var(--mono); font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:12px}
+.half ul{margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:8px}
+.half li{font-size:.9rem; line-height:1.45; color:var(--ink-2); padding-left:16px; position:relative}
+.half li::before{content:"—"; position:absolute; left:0; color:var(--ink-3)}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="eyebrow"><span class="bar"></span> Product specification · Draft 3 · All decisions closed</div>
+  <h1><span class="jp">巡り</span>Meguri</h1>
+  <p class="lede">A trip planner for people who have never been to Japan — one that gives the honest version of every place, every train and every gap in the plan, the way a local friend would.</p>
+  <div class="meta">
+    <div><b>Owner</b> sai.ram7775@gmail.com</div>
+    <div><b>Repo</b> sairam7775/sairam7775</div>
+    <div><b>Branch</b> claude/japan-travel-guide-bot-s5crhl</div>
+    <div><b>Date</b> 2026-09-14</div>
+    <div><b>Status</b> Ready to build · P1</div>
+  </div>
+  <div class="changed">
+    <h4>What changed from draft 2</h4>
+    <p>Eight further decisions closed — D9–D16 in §02 — covering the schema questions that had to be settled before a migration could be written. Two of them changed the design rather than filling in a blank:</p>
+    <p><b>Budget moved from the trip to the city.</b> "Varies by city" means a ryokan night in Hakone must not make the Tokyo days score as overspending, so <span class="tab">budget_band</span> lives on <span class="tab">trip_cities</span>.</p>
+    <p><b>Negative preferences had nowhere to live.</b> Places say who should skip them; nothing said what a traveller refuses outright. New <span class="tab">user_preferences.excludes[]</span>, applied as a hard filter in scheduler step 2 — "no beaches" means never, not rarely.</p>
+    <p><b>The first deep cities changed</b> from Tokyo + Kyoto to the Kansai–Sanyo corridor (§16), on the owner's actual interests rather than an assumption about first-timers.</p>
+  </div>
+  <div class="note-strip">
+    Every yen figure, duration and booking window here is a <b>seed value</b> written to show the shape of the data. Each becomes a row carrying <span class="tab">last_verified</span> and <span class="tab">verified_by</span>, and nothing reaches a user until a human has signed it off (§10).
+  </div>
+</header>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§01</span><h2>What this actually is</h2></div>
+  <div class="col">
+    <p>It reads as one chat box, but it is three products stacked, and they are not equally hard. Draft 1 called the middle layer a constraint engine and treated it as plumbing. It is not plumbing — it is the product, and it is ours to write.</p>
+  </div>
+  <div class="layers">
+    <div class="layer">
+      <span class="n">LAYER 1</span>
+      <h4>The conversation</h4>
+      <p>Understands what kind of trip this is, asks good follow-up questions, and explains the plan in language a first-timer can act on.</p>
+      <span class="diff easy">Rented — a language model</span>
+    </div>
+    <div class="layer">
+      <span class="n">LAYER 2</span>
+      <h4>The recommender &amp; scheduler</h4>
+      <p>Scores every place against this traveller, then builds days that respect opening hours, closures, travel time and pace. Deterministic, testable, explainable.</p>
+      <span class="diff hard">Ours — §05, the moat</span>
+    </div>
+    <div class="layer">
+      <span class="n">LAYER 3</span>
+      <h4>The trip vault</h4>
+      <p>Bookings the traveller uploads, matched to nights and legs, with a detector that names what is still missing in plain English.</p>
+      <span class="diff mid">Ours — plain code, drives retention</span>
+    </div>
+  </div>
+  <div class="call key">
+    <h4>The single product bet</h4>
+    <p>Anyone can generate a Japan itinerary. Almost nobody generates one where the travel times are real, the constraints hold, and the plan admits what it does not know. We compete on being <b>correct and candid</b> — and correctness lives in code we own, not in model weights we rent.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§02</span><h2>Decisions taken</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>#</th><th>Question</th><th>Decision</th><th>Consequence</th></tr></thead>
+      <tbody>
+        <tr><td class="tab">D1</td><td>Stack</td><td><strong>Next.js + Supabase</strong></td><td>Postgres, RLS, PostGIS. Relational fit for trips → days → items; SQL for the gap detector.</td></tr>
+        <tr><td class="tab">D2</td><td>Data scope</td><td><strong>Whole Japan, deep</strong></td><td>~2,000 records at target. Forces tiered coverage (§06) and a routing engine (§09).</td></tr>
+        <tr><td class="tab">D3</td><td>Build order</td><td><strong>Engine before chat</strong></td><td>Nothing demo-able for weeks; schema proven before the model depends on it.</td></tr>
+        <tr><td class="tab">D4</td><td>Audience</td><td><strong>Private first, open later</strong></td><td>RLS, spend caps and encryption in from day one. Marketing, verification flows and a privacy policy deferred.</td></tr>
+        <tr><td class="tab">D5</td><td>Driving trip</td><td><strong>Likely, nothing fixed</strong></td><td>Owner is user zero. Onboarding designed against real preferences, not invented personas.</td></tr>
+        <tr><td class="tab">D6</td><td>Data pipeline</td><td><strong>Open data + AI draft + human verify</strong></td><td>Makes 2,000 records tractable. Requires the verification gate in §10.</td></tr>
+        <tr><td class="tab">D7</td><td>Risk framing</td><td><strong>Grouped, commercial deferred</strong></td><td>§13 restructured. R1/R8 kept but marked not-yet-applicable.</td></tr>
+        <tr><td class="tab">D8</td><td>AI strategy</td><td><strong>Own the reasoning, rent the language</strong></td><td>§05 becomes our code. Model does intent and prose only — so a cheaper model becomes viable after the eval.</td></tr>
+        <tr><td class="tab">D9</td><td>Party model</td><td><strong>One profile per trip</strong></td><td><span class="tab">trips.party_size</span> plus a shared preference profile. Trips own the profile, so per-traveller is a clean migration later.</td></tr>
+        <tr><td class="tab">D10</td><td>Taxonomy</td><td><strong>~10 tags + 3 style axes</strong></td><td>Tags drive <span class="tab">interest_match</span>; axes drive the penalty terms. Lets "nature but not hiking" be expressed — a flat tag list could not.</td></tr>
+        <tr><td class="tab">D11</td><td>Auth</td><td><strong>Google + email &amp; password</strong></td><td>Adds password reset and login rate-limiting to P1. Email verification deferred while private.</td></tr>
+        <tr><td class="tab">D12</td><td>Currency</td><td><strong>Multi-currency picker</strong></td><td>Costs stored in JPY always; converted at display. <span class="tab">fx_rates</span> refreshed daily, rate and date shown so staleness is never silent.</td></tr>
+        <tr><td class="tab">D13</td><td>Booking types</td><td><strong>Core five + "other"</strong></td><td>Flights, accommodation, intercity transport, tickets, restaurants drive gap detection. "Other" holds anything unmodelled.</td></tr>
+        <tr><td class="tab">D14</td><td>Owner profile</td><td><strong>Captured</strong></td><td>See §16. Drives onboarding design, curation priority and the eval fixtures.</td></tr>
+        <tr><td class="tab">D15</td><td>First deep cities</td><td><strong>Kansai–Sanyo corridor</strong></td><td>Osaka, Kyoto, Nara, Hiroshima. ~160 records — P5 doubles, but one contiguous transit graph covers all four.</td></tr>
+        <tr><td class="tab">D16</td><td>Spec location</td><td><strong>docs/spec.html in the repo</strong></td><td>Versioned with the code; artifact stays published as the shareable copy.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§03</span><h2>The traveller's line</h2></div>
+  <div class="col">
+    <p>A first-timer arrives with these questions in this order. Each stop is a screen, a piece of stored state, and a point where the plan can be corrected.</p>
+  </div>
+  <div class="rail">
+    <div class="stop">
+      <span class="code">MG-01</span><h4>Account</h4>
+      <div class="says">
+        <div><span class="who">Traveller</span>Signs up with email or Google. Nothing else asked yet.</div>
+        <div><span class="who">System</span>Creates a user and an empty trip. Sign-up exists to hold confirmation numbers later, so it is real auth with row-level isolation from the first migration.</div>
+      </div>
+    </div>
+    <div class="stop">
+      <span class="code">MG-02</span><h4>Shape of the trip</h4>
+      <div class="says">
+        <div><span class="who">Traveller</span>Dates, nights available, budget band, pace, interests, group, mobility.</div>
+        <div><span class="who">System</span>Seven questions maximum, conversational, skippable. These become the weights the recommender scores against.</div>
+      </div>
+    </div>
+    <div class="stop">
+      <span class="code">MG-03</span><h4>Route — cities and nights</h4>
+      <div class="says">
+        <div><span class="who">Traveller</span>"Is five cities in nine days mad?" It is. They need telling.</div>
+        <div><span class="who">System</span>Proposes cities with nights allocated and a reason each, and refuses over-packed routes out loud with the arithmetic shown. Coverage tier stated per city.</div>
+      </div>
+    </div>
+    <div class="stop">
+      <span class="code">MG-04</span><h4>Days — the itinerary</h4>
+      <div class="says">
+        <div><span class="who">Traveller</span>Drags, deletes, pins. Says "too many temples."</div>
+        <div><span class="who">System</span>The scheduler builds ordered days; redundancy scoring means the fourth temple loses to something else without being told. Re-plans around pins (§08).</div>
+      </div>
+    </div>
+    <div class="stop">
+      <span class="code">MG-05</span><h4>Logistics verdicts</h4>
+      <div class="says">
+        <div><span class="who">Traveller</span>"Do I buy a JR Pass? How much cash?"</div>
+        <div><span class="who">System</span>Answers against their own legs, with the arithmetic. Usually the answer on the pass is no (§07).</div>
+      </div>
+    </div>
+    <div class="stop">
+      <span class="code">MG-06</span><h4>Bookings and gaps</h4>
+      <div class="says">
+        <div><span class="who">Traveller</span>Uploads confirmations as they book. Nothing is fetched from airline or hotel sites.</div>
+        <div><span class="who">System</span>Matches each booking to a night or a leg and names what is missing, as a coverage ribbon plus plain sentences (§11).</div>
+      </div>
+    </div>
+    <div class="stop">
+      <span class="code">MG-07</span><h4>On the ground</h4>
+      <div class="says">
+        <div><span class="who">Traveller</span>At a ticket gate, one bar of signal, needs today's plan and a booking reference.</div>
+        <div><span class="who">System</span>Today view, offline-capable, printable. All planning data is local, so this works by construction rather than by effort.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§04</span><h2>Division of labour</h2></div>
+  <div class="col">
+    <p>D8 settled the question that shapes everything else: <strong>we own the reasoning and rent the language.</strong> The practical test for where something belongs is whether being wrong is visible. A badly phrased sentence is obvious and harmless. A silently dropped constraint looks like a working plan and strands someone. Everything in the second category belongs in code.</p>
+  </div>
+  <div class="split">
+    <div class="half">
+      <h4>The engine decides</h4>
+      <div class="sub">Deterministic · unit-tested · free to run</div>
+      <ul>
+        <li>Which places are candidates for this traveller</li>
+        <li>What order they go in and at what times</li>
+        <li>Whether two places conflict in a day</li>
+        <li>Travel time, mode, fare and platform</li>
+        <li>Whether a day is over-packed</li>
+        <li>What is missing from the bookings</li>
+        <li>Every number shown anywhere in the product</li>
+      </ul>
+    </div>
+    <div class="half">
+      <h4>The model decides</h4>
+      <div class="sub">Probabilistic · evaluated · rented</div>
+      <ul>
+        <li>What "somewhere quiet, not too touristy" means as tags</li>
+        <li>Which follow-up question is worth asking next</li>
+        <li>How to phrase a reason the engine already computed</li>
+        <li>How to read an uploaded booking confirmation</li>
+        <li>When to say it does not know</li>
+      </ul>
+    </div>
+  </div>
+  <div class="call">
+    <h4>The rule that keeps this honest</h4>
+    <p>The model may never state a fact it was not handed. Times, fares, hours and durations come from the engine and are passed into the prompt as data. If the engine did not compute it, the product does not claim it.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§05</span><h2>The engine</h2></div>
+  <div class="col">
+    <p>This is the part that would be a fine-tuned model in a worse version of this product, and it should not be. It is a scoring function and a scheduler — classical, explainable, and testable against fixtures. It also means the <span class="tab">reason</span> shown on every itinerary item is <em>true by construction</em>: it is assembled from the terms that actually moved the score, not written by a model after the fact.</p>
+  </div>
+
+  <div class="kicker">The recommender — scoring a place for this traveller</div>
+  <div class="code"><span class="c">// every term contributes one clause to the shown reason</span>
+score(place | user, trip, day) =
+
+  <span class="s">+ 2.5</span> × interest_match      <span class="c">tag overlap with user.interests           0–1</span>
+  <span class="s">+ 1.5</span> × signature           <span class="c">significance for a first-timer, hand-set  0–1</span>
+  <span class="s">+ 1.0</span> × confidence          <span class="c">verified 1.0 · draft 0.4 · stub excluded</span>
+  <span class="s">+ 0.8</span> × season_fit          <span class="c">koyo in Nov, sakura in Apr, festivals     0–1</span>
+
+  <span class="k">− 2.0</span> × redundancy          <span class="c">nth place of same category, decays 1/n</span>
+  <span class="k">− 1.5</span> × mobility_conflict   <span class="c">place.skip_if ∩ user.constraints</span>
+  <span class="k">− 1.0</span> × budget_strain       <span class="c">cost against user.budget_band</span>
+  <span class="k">− 0.7</span> × pace_strain         <span class="c">duration against remaining day budget</span></div>
+  <p class="cap"><b>Fig. 1</b> — weights are configuration, not constants. They are the first thing to tune against the eval set.</p>
+
+  <div class="kicker">The scheduler — building one day</div>
+  <div class="code"><span class="k">1  BUDGET</span>    pace → active minutes
+              <span class="c">relaxed 360 · standard 480 · packed 600</span>
+
+<span class="k">2  FILTER</span>    drop on hard constraints — no scoring, no exceptions
+              <span class="c">closed on this weekday · closed on this date · booking</span>
+              <span class="c">required and not booked · coverage_tier = stub ·</span>
+              <span class="c">category ∈ user.excludes  ("no beaches" means never)</span>
+
+<span class="k">3  ANCHOR</span>    seed with the highest-scoring place that has a
+              best_window <span class="c">(Fushimi Inari at 07:00 anchors the morning)</span>
+
+<span class="k">4  GROW</span>      insert the candidate maximising  Δscore − λ·Δtravel
+              until the budget is spent or no marginal gain is positive
+
+<span class="k">5  ORDER</span>     2-opt the sequence to cut total transit time
+
+<span class="k">6  TIME</span>      assign clock times from opening hours, transit legs
+              and meal slots; carry slack forward explicitly
+
+<span class="k">7  VALIDATE</span>  re-check every hard constraint on the finished day;
+              on failure drop the offender and refill from step 4</div>
+  <p class="cap"><b>Fig. 2</b> — greedy insertion with local search. Not optimal, and it does not need to be — it needs to be <em>right</em>, fast, and explainable.</p>
+
+  <div class="call key">
+    <h4>Why this earns its place over asking a model</h4>
+    <p>It runs in milliseconds and costs nothing. It is unit-testable, so "Arashiyama and Fushimi Inari in one afternoon" becomes a failing test rather than a customer complaint. It produces the same plan twice for the same input. And because every clause of the reason traces to a term in Fig. 1, the traveller can disagree with the <em>reasoning</em>, not just the result.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§06</span><h2>Coverage — all of Japan, honestly</h2></div>
+  <div class="col">
+    <p>D2 set the target at every destination in Japan at full depth — roughly 2,000 records. That is months of curation, and waiting for it would mean no usable product until it was finished. So coverage is tiered and the tier is <strong>shown to the user and passed to the planner</strong>. The app covers all of Japan from day one; it simply tells the truth about how well.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Tier</th><th>Contains</th><th>Planner behaviour</th><th>At launch</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge deep">deep</span></td>
+          <td>40+ places, every judgement field verified, transit graph built, booking lead times recorded</td>
+          <td>Builds full day itineraries</td>
+          <td class="num">4 cities</td>
+        </tr>
+        <tr>
+          <td><span class="badge outline">outline</span></td>
+          <td>10–20 places, factual fields verified, judgement fields partial</td>
+          <td>Suggests places, will not claim a day plan is complete</td>
+          <td class="num">~15 cities</td>
+        </tr>
+        <tr>
+          <td><span class="badge stub">stub</span></td>
+          <td>Name, region, rail connection, coordinates. Nothing claimed.</td>
+          <td>Says plainly it does not know this place well enough yet</td>
+          <td class="num">everything else</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="call">
+    <h4>The failure this prevents</h4>
+    <p>The alternative is silent thinness — a Takayama itinerary that looks exactly like the Kyoto one but is built from four records and a guess. That is the single most damaging thing this product could do, because it is invisible until someone is standing in Takayama with a bad plan. A stated tier makes thin coverage a feature of the interface rather than a lie in the output.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§07</span><h2>What "local guide" means in the data</h2></div>
+  <div class="col">
+    <p>A guidebook says <em>Fushimi Inari: famous for its torii gates.</em> A local says <em>go before eight or the first gates are a queue; the full summit loop is three hours and most people turn back at Yotsutsuji, which is fine.</em> The second only exists if the schema has fields for it — and if a human has signed those fields off.</p>
+  </div>
+  <div class="code"><span class="c">// places — one verified record, abridged</span>
+{
+  <span class="k">id</span>: <span class="s">"kyt-fushimi-inari"</span>,
+  <span class="k">name</span>: <span class="s">"Fushimi Inari Taisha"</span>,       <span class="k">name_ja</span>: <span class="s">"伏見稲荷大社"</span>,
+  <span class="k">city</span>: <span class="s">"kyoto"</span>,                     <span class="k">coords</span>: [34.9671, 135.7727],
+  <span class="k">nearest_station</span>: <span class="s">"JR Inari (Nara Line) · 2 min walk"</span>,
+
+  <span class="c">// ── judgement fields · hidden until verified ────────</span>
+  <span class="k">duration</span>: {
+    <span class="k">taste</span>:   <span class="s">"45m"</span>,   <span class="c">// to the dense gate section and back</span>
+    <span class="k">typical</span>: <span class="s">"1h30m"</span>, <span class="c">// up to Yotsutsuji viewpoint</span>
+    <span class="k">full</span>:    <span class="s">"3h"</span>     <span class="c">// summit loop, 233m climb, ~4km</span>
+  },
+  <span class="k">best_window</span>:  [<span class="s">"before 08:00"</span>, <span class="s">"after 17:30"</span>],
+  <span class="k">crowd_note</span>:   <span class="s">"10:00–16:00 the first 300 gates are a shuffling queue.</span>
+<span class="s">                 Past Yotsutsuji it empties out almost entirely."</span>,
+  <span class="k">worth_it_if</span>:  [<span class="s">"shrines"</span>, <span class="s">"photography"</span>, <span class="s">"hiking"</span>, <span class="s">"early_riser"</span>],
+  <span class="k">skip_if</span>:      [<span class="s">"limited_mobility"</span>, <span class="s">"packed_schedule"</span>, <span class="s">"heat_sensitive"</span>],
+  <span class="k">signature</span>:    0.9,  <span class="c">// first-timer significance → Fig. 1</span>
+  <span class="k">category</span>:     <span class="s">"shrine"</span>,  <span class="c">// drives redundancy scoring</span>
+
+  <span class="k">cost_jpy</span>: 0,  <span class="k">booking</span>: <span class="s">"none"</span>,  <span class="k">closed_days</span>: [],
+  <span class="k">conflicts_with</span>: [<span class="s">"kyt-arashiyama"</span>],  <span class="c">// opposite ends of the city</span>
+
+  <span class="c">// ── provenance · the honesty gate ──────────────────</span>
+  <span class="k">verification_status</span>: <span class="s">"verified"</span>,   <span class="c">// draft → hidden judgement fields</span>
+  <span class="k">verified_by</span>:         <span class="s">"sai"</span>,
+  <span class="k">last_verified</span>:       <span class="s">"2026-09-14"</span>,
+  <span class="k">sources</span>:             [<span class="s">"wikidata:Q311227"</span>, <span class="s">"official-site"</span>]
+}</div>
+  <p class="cap"><b>Fig. 3</b> — <span class="tab">conflicts_with</span> stops the scheduler pairing Arashiyama and Fushimi Inari; <span class="tab">verification_status</span> stops a drafted guess reaching a traveller.</p>
+
+  <h3>Transit legs are described, not timed</h3>
+  <div class="col">
+    <p>"20 minutes" is useless to someone who has never used a Japanese station. The leg a traveller can follow reads: <strong>JR Nara Line from Kyoto Station, platform 8–10, 2 stops to Inari, 5 min, ¥150, IC card, no reservation — but skip the Rapid, it does not stop at Inari.</strong> That last clause is the difference between a plan and a guide.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§08</span><h2>Feedback — diffs, not regeneration</h2></div>
+  <div class="col">
+    <p>The failure mode of every chat-based planner: the traveller spends an hour refining a plan, asks for one change, and everything regenerates. Their edits vanish. They leave.</p>
+    <p>So the itinerary is <strong>structured state in the database, never chat text</strong>. The model does not rewrite it — it calls the engine, and the engine returns a <strong>diff</strong> the traveller accepts or rejects one piece at a time.</p>
+  </div>
+  <div class="code"><span class="c">// itinerary_items — two fields carry the whole design</span>
+{
+  <span class="k">id</span>: <span class="s">"itm_8f21"</span>,  <span class="k">day_id</span>: <span class="s">"day_kyoto_2"</span>,  <span class="k">order</span>: 2,
+  <span class="k">place_id</span>: <span class="s">"kyt-fushimi-inari"</span>,
+  <span class="k">start</span>: <span class="s">"07:00"</span>,  <span class="k">duration_min</span>: 90,
+
+  <span class="k">locked</span>: <span class="k">true</span>,     <span class="c">// ← pinned. The scheduler treats it as fixed.</span>
+  <span class="k">reason</span>: <span class="s">"Early start beats the 10am crush, and it puts you back</span>
+<span class="s">           at Kyoto Station by 09:30 for the Nara train."</span>,
+  <span class="k">reason_terms</span>: [<span class="s">"best_window"</span>, <span class="s">"interest:shrines"</span>, <span class="s">"transit_fit"</span>],
+                    <span class="c">// ← which Fig. 1 terms produced that sentence</span>
+
+  <span class="k">arrive_by</span>: {
+    <span class="k">from</span>: <span class="s">"itm_8f20"</span>,  <span class="k">mode</span>: <span class="s">"rail"</span>,  <span class="k">minutes</span>: 12,
+    <span class="k">detail</span>: <span class="s">"JR Nara Line, Kyoto → Inari, 2 stops, 5 min, ¥150.</span>
+<span class="s">             Local only — the Rapid does not stop at Inari."</span>
+  }
+}</div>
+  <p class="cap"><b>Fig. 4</b> — <span class="tab">locked</span> survives re-planning; <span class="tab">reason_terms</span> ties the sentence back to the scoring that produced it.</p>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§09</span><h2>Architecture</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Concern</th><th>Choice</th><th>Reasoning</th></tr></thead>
+      <tbody>
+        <tr><td><strong>App</strong></td><td class="tab">Next.js (App Router) · TypeScript</td><td>One deployable. Server actions keep keys server-side — matters the moment we hold confirmation numbers.</td></tr>
+        <tr><td><strong>UI</strong></td><td class="tab">Tailwind · shadcn/ui</td><td>Credible interface without a design-system detour.</td></tr>
+        <tr><td><strong>Data &amp; auth</strong></td><td class="tab">Supabase — Postgres, Auth, Storage</td><td>RLS gives per-user isolation of booking data nearly free. PostGIS answers "what is near this stop".</td></tr>
+        <tr><td><strong>Engine</strong></td><td class="tab">Pure TypeScript in <span class="tab">/lib</span></td><td>No framework, no model, no network. Called by routes, never by components — which is also what keeps the mobile path open (§14).</td></tr>
+        <tr><td><strong>Transit</strong></td><td class="tab">GTFS-JP / ODPT → local routing graph</td><td>Whole-Japan scope rules out a precomputed matrix (~9,000 stations is ~80M pairs). Open data is free, licensed, and works offline.</td></tr>
+        <tr><td><strong>Language model</strong></td><td class="tab">Claude Opus 5, streaming, cached</td><td>Intent and prose only. Haiku 4.5 for parsing uploads. Expect to test Sonnet 5 after the eval — the hard reasoning is not in the model, so the downgrade is likely to hold.</td></tr>
+        <tr><td><strong>Live maps</strong></td><td class="tab">None</td><td>All planning data is local. Cost stops scaling with users, offline works by construction, and the engine becomes testable.</td></tr>
+        <tr><td><strong>Hosting</strong></td><td class="tab">Vercel</td><td>Zero-config for this stack.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="kicker">Core tables</div>
+  <div class="code"><span class="k">users</span>              <span class="c">— auth identity (Supabase)</span>
+<span class="k">user_preferences</span>   <span class="c">— pace, interest_tags[], style axes, mobility, diet,</span>
+                   <span class="c">  display_currency, excludes[] ← hard filter, not a penalty</span>
+                   <span class="c">  visible and editable by the user, never inferred silently</span>
+<span class="k">trips</span>              <span class="c">— dates, party_size, status</span>
+<span class="k">trip_cities</span>        <span class="c">— city, nights, arrival/departure, order, reason,</span>
+                   <span class="c">  budget_band ← per city, not per trip  (D14)</span>
+<span class="k">itinerary_days</span>     <span class="c">— one per date; weather and closures resolved here</span>
+<span class="k">itinerary_items</span>    <span class="c">— ordered stops · locked · reason · reason_terms  (Fig. 4)</span>
+<span class="k">bookings</span>           <span class="c">— type, ref (encrypted), provider, cost, file, linked day/leg</span>
+<span class="k">places</span>             <span class="c">— the guide database · verification_status        (Fig. 3)</span>
+<span class="k">cities</span>             <span class="c">— region, prefecture, coverage_tier               (§06)</span>
+<span class="k">stations</span> / <span class="k">edges</span>   <span class="c">— the routing graph, built from GTFS</span>
+<span class="k">fx_rates</span>           <span class="c">— daily rates; every cost stored in JPY, converted on read</span>
+<span class="k">chat_messages</span>      <span class="c">— conversation log and the diffs proposed in it</span></div>
+
+  <div class="call">
+    <h4>Security, since we hold booking references</h4>
+    <p>A PNR plus a surname is often enough to view or cancel someone's flight. So: references encrypted at rest, never logged, never placed in a model prompt; storage buckets scoped per user; RLS on every table from the first migration; uploaded confirmations parsed in a <b>separate model call with no tools attached</b>, so a malicious pasted blob has nothing to steer.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§10</span><h2>How 2,000 records get written</h2></div>
+  <div class="col">
+    <p>D6 settled this, and it is the largest single piece of work in the project. Hand-writing every record at the Fig. 3 quality bar is 500+ hours. The pipeline below brings that to roughly 150, without letting an unverified guess reach a traveller.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Stage</th><th>Source</th><th>Produces</th><th>Gate</th></tr></thead>
+      <tbody>
+        <tr><td><strong>1 · Skeleton</strong></td><td>Wikidata, OpenStreetMap, Wikivoyage — free, openly licensed, attribution where required</td><td>Name, coordinates, category, prefecture, nearest station</td><td><span class="badge stub">stub</span> immediately visible</td></tr>
+        <tr><td><strong>2 · Draft</strong></td><td>A model drafts judgement fields from sources it is handed</td><td>Proposed duration, best_window, crowd_note, skip_if</td><td><span class="badge hi">hidden</span> from users entirely</td></tr>
+        <tr><td><strong>3 · Verify</strong></td><td>A human reads, corrects, and signs off in the admin UI</td><td><span class="tab">verified_by</span> + <span class="tab">last_verified</span> stamped</td><td><span class="badge outline">outline</span> or <span class="badge deep">deep</span></td></tr>
+        <tr><td><strong>4 · Re-verify</strong></td><td>Queue prioritised by how often a place appears in real itineraries</td><td>Refreshed hours, prices, booking windows</td><td>Effort goes where users are</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="call">
+    <h4>The one rule that makes this safe</h4>
+    <p>A drafted judgement field is <b>never shown to a traveller</b>. Stage 2 output is invisible until a human has passed it through stage 3. Without this gate, the AI-assisted pipeline reintroduces exactly the hallucination risk the whole product exists to avoid — and it would do so at 2,000-record scale.</p>
+  </div>
+
+  <div class="kicker">Refresh cadences — daily is the wrong answer for most of it</div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Data</th><th>Cadence</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Station-to-station times</td><td class="num">2× a year</td><td>Timetables barely move</td></tr>
+        <tr><td>Opening hours</td><td class="num">monthly</td><td>Seasonal shifts, occasional permanent change</td></tr>
+        <tr><td>Prices and fares</td><td class="num">quarterly</td><td>Rail fares change rarely, entry fees less</td></tr>
+        <tr><td>Booking release windows</td><td class="num">monthly</td><td>Policies change; dates are usually formulaic</td></tr>
+        <tr><td>Holidays and festivals</td><td class="num">annually</td><td>Published a year ahead</td></tr>
+        <tr><td class="risk">Closures and disruptions</td><td class="num">never</td><td><strong>Do not attempt.</strong> A cached app cannot know a line is down. Link to official status and say so.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§11</span><h2>Gaps the traveller can understand</h2></div>
+  <div class="col">
+    <p>Bookings are only ever what the traveller uploads — nothing is fetched from airline or hotel sites. That removes OAuth, scraping and a large share of the security surface in one decision. What remains is pure logic over their own data, which means the gap detector needs no external anything.</p>
+    <p>The mental model is <strong>coverage</strong>, not a checklist. Three things must be continuously covered: every night needs a bed, every city transition needs a way to get there, every timed-entry place needs a ticket.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Severity</th><th>Meaning</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge hi">blocking</span></td><td>The trip physically does not work</td><td>No accommodation, night of 14 April, Kyoto</td></tr>
+        <tr><td><span class="badge outline">closing</span></td><td>Still possible, but not for long</td><td>Ghibli Museum tickets release in 6 days for your date</td></tr>
+        <tr><td><span class="badge def">advisory</span></td><td>Fine to leave, worth knowing</td><td>No dinner booked on your one free evening in Osaka</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col">
+    <p style="margin-top:22px">In the interface: a <strong>coverage ribbon</strong> down the trip — one bar per night, solid where covered, hatched where not — so the gap is visible before a word is read. Under it, plain sentences:</p>
+  </div>
+  <div class="call">
+    <h4>You have nowhere to sleep on the night of 14 April.</h4>
+    <p>You arrive in Kyoto that afternoon and your next booking is the Osaka hotel on the 16th.</p>
+  </div>
+  <div class="col">
+    <p style="margin-top:18px">Not <span class="tab">MISSING: accommodation_booking [day_4]</span>. The sentence says what is wrong, where, and what it sits between — which is what makes it understandable rather than merely flagged.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§12</span><h2>Japan rules the engine must encode</h2></div>
+  <div class="col">
+    <p>These are the things first-timers reliably get wrong. Each is a rule in the scheduler or a check in the gap detector — not advice buried in prose nobody reads.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Rule</th><th>Why it bites</th><th>Where it lives</th></tr></thead>
+      <tbody>
+        <tr><td><strong>JR Pass rarely pays off</strong></td><td>After the Oct 2023 increase the 7-day ordinary pass is ¥50,000; a Tokyo↔Kyoto round trip on <em>Hikari</em> is roughly ¥27,000. The pass also excludes <em>Nozomi</em>, the fast service everyone assumes they are buying.</td><td class="tab">Break-even run on the user's own legs</td></tr>
+        <tr><td><strong>Oversized luggage needs a reserved seat</strong></td><td>Bags over 160cm total dimensions require a reserved seat with baggage space on Tokaido / Sanyo / Kyushu Shinkansen.</td><td class="tab">Gap detector, from declared case size</td></tr>
+        <tr><td><strong>Luggage forwarding exists</strong></td><td>Hotel-to-hotel <em>takkyubin</em> is roughly ¥2,000–2,500 per large case, usually next-day. Most visitors have never heard of it.</td><td class="tab">Offered on every city change</td></tr>
+        <tr><td><strong>Some tickets sell out weeks ahead</strong></td><td>Ghibli Museum releases on the 10th of the prior month at 10:00 JST and goes in minutes. teamLab, Shibuya Sky sunset slots, sumo and kaiseki counters all need lead time.</td><td class="tab">Per-place <span class="tab">booking_lead_days</span> → countdown</td></tr>
+        <tr><td><strong>Mondays close museums</strong></td><td>Many close Monday — or Tuesday when Monday is a public holiday. A Monday built without this is locked doors.</td><td class="tab">Hard filter, scheduler step 2</td></tr>
+        <tr><td><strong>IC card, not paper tickets</strong></td><td>Suica / Pasmo runs almost everything. Physical card supply has been unreliable for visitors; Apple Wallet Suica is the dependable route on iPhone.</td><td class="tab">Arrival-day checklist</td></tr>
+        <tr><td><strong>Cash still matters</strong></td><td>Small restaurants, shrine offerings, rural buses and market stalls are cash-only. 7-Eleven ATMs are the reliable foreign-card withdrawal.</td><td class="tab">Budget model — a cash line, not just card</td></tr>
+        <tr><td class="risk"><strong>Peak weeks are a different country</strong></td><td>Golden Week (late Apr – early May), Obon (mid-August) and New Year (29 Dec – 3 Jan): full hotels, booked trains, doubled prices.</td><td class="tab">Date check at onboarding, before planning</td></tr>
+        <tr><td><strong>Kyoto buses are a trap</strong></td><td>Tourist bus routes are slow and overloaded. Subway plus walking plus the occasional taxi usually wins.</td><td class="tab">City-level transit preference</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§13</span><h2>Build order</h2></div>
+  <div class="col">
+    <p>D3 set this: engine before chat. The scope grew with D2, so this is eight phases rather than six, and realistically <strong>8–12 weeks part-time</strong> to a usable MVP rather than draft 1's three to five.</p>
+  </div>
+  <div class="phases">
+    <div class="phase">
+      <div class="p">P1</div>
+      <div><h4>Foundation</h4><p>Next.js scaffold, Supabase project, auth, full schema with RLS, coverage tiers, spend caps and rate limits from the start.</p></div>
+      <div class="out">→ Sign in; an empty trip persists</div>
+    </div>
+    <div class="phase">
+      <div class="p">P2</div>
+      <div><h4>Data spine</h4><p>Open-data import for all of Japan at stub tier. Curation admin UI with schema validation and the verification gate.</p></div>
+      <div class="out">→ Every city exists, honestly labelled</div>
+    </div>
+    <div class="phase">
+      <div class="p">P3</div>
+      <div><h4>Transit graph</h4><p>GTFS-JP / ODPT ingest, station graph, routing queries, intercity rail table.</p></div>
+      <div class="out">→ Real travel times, offline, free</div>
+    </div>
+    <div class="phase">
+      <div class="p">P4</div>
+      <div><h4>The engine</h4><p>Recommender and scheduler as pure functions (Figs. 1–2), unit-tested against hand-built fixtures including the known traps.</p></div>
+      <div class="out">→ Correct itineraries, no model involved</div>
+    </div>
+    <div class="phase">
+      <div class="p">P5</div>
+      <div><h4>Deep data</h4><p>Osaka, Kyoto, Nara and Hiroshima to deep tier through the draft-and-verify pipeline — with Miyajima folded into Hiroshima and Himeji as an en-route cluster. ~160 verified records.</p></div>
+      <div class="out">→ The Kansai–Sanyo corridor, genuinely usable</div>
+    </div>
+    <div class="phase">
+      <div class="p">P6</div>
+      <div><h4>Conversation</h4><p>Claude with tool use over the engine. Onboarding, route proposal, diff generation. Eval set built here, then Sonnet 5 tested against it.</p></div>
+      <div class="out">→ The bot, over reasoning that already works</div>
+    </div>
+    <div class="phase">
+      <div class="p">P7</div>
+      <div><h4>Itinerary UI</h4><p>Day view, drag to reorder, pin and reject, accept-a-diff, reasons visible on every item.</p></div>
+      <div class="out">→ Feedback loop closes</div>
+    </div>
+    <div class="phase">
+      <div class="p">P8</div>
+      <div><h4>Vault and gaps</h4><p>Booking upload and parsing, coverage ribbon, gap detector, printable export, offline today-view.</p></div>
+      <div class="out">→ MVP — usable for a real trip</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§14</span><h2>Cost, and the mobile path</h2></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Line</th><th>Estimate</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Model tokens</strong></td><td class="num">$0.50–1.50</td><td>Per completed trip plan, Opus 5 with prompt caching. <strong>Corrected from draft 1's $0.10–0.30.</strong> Expect $0.20–0.60 if Sonnet 5 holds after the eval.</td></tr>
+        <tr><td><strong>Maps / transit</strong></td><td class="num">~$0</td><td>Open data, ingested once. Was the scaling worry in draft 1; no longer is.</td></tr>
+        <tr><td><strong>Supabase</strong></td><td class="num">$0 → $25/mo</td><td>Free tier covers private use comfortably.</td></tr>
+        <tr><td><strong>Vercel</strong></td><td class="num">$0 → $20/mo</td><td>Hobby is fine until there is traffic.</td></tr>
+        <tr><td><strong>Total, private phase</strong></td><td class="num">~$25–50/mo</td><td>Dominated by the conversation, not infrastructure.</td></tr>
+        <tr><td><strong>Curation</strong></td><td class="num">~150 hrs</td><td>To full whole-Japan depth, through the §10 pipeline. The real cost of this project.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="kicker">Keeping iOS and Android open</div>
+  <div class="col">
+    <p>The decision costs nothing today provided one discipline holds now: <strong>all logic lives in <span class="tab">/lib</span> as pure functions and behind API routes — never in React components.</strong> Supabase's auth SDK has React Native bindings, so sessions port for free, and the offline today-view is the hard part of any native travel app, already solved by building it in the PWA.</p>
+    <p>Sequence when the time comes: <strong>PWA</strong> (free, and the ticket-gate case is the one that matters) → <strong>Capacitor</strong> for a store listing in 1–2 weeks → <strong>Expo</strong> only if there is traction to justify a separate UI.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§15</span><h2>Risks</h2></div>
+  <div class="col">
+    <p>Restructured per D7. Draft 1's list contained only engineering risks — the ones an engineer naturally thinks of while designing a schema — and two entries that were decisions rather than risks. Grouped below, with the commercial ones kept but marked deferred under D4.</p>
+  </div>
+
+  <div class="grp">Engineering <em>act on these now</em></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Risk</th><th>L / I</th><th>Consequence</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Curation upkeep at scale</strong></td><td class="tab risk">High / High</td><td>2,000 records rot. The product is visibly wrong within a year, and wrong is the one thing we sell against.</td><td>§10 pipeline; usage-prioritised re-verify queue; <span class="tab">last_verified</span> shown in the UI; user error reporting from day one.</td></tr>
+        <tr><td><strong>Uncapped API spend</strong></td><td class="tab risk">Med / High</td><td>A loop bug or a scraper produces a four-figure bill on a personal card overnight.</td><td>Hard monthly cap, per-user rate limits, a kill switch. Built in P1, not added later.</td></tr>
+        <tr><td><strong>GTFS ingest complexity</strong></td><td class="tab">Med / Med</td><td>Japanese transit data is large and inconsistent; P3 overruns and blocks P4.</td><td>Timebox to two weeks. Fall back to a hand-built intercity table plus per-city station matrices for deep cities only.</td></tr>
+        <tr><td><strong>Hallucinated logistics</strong></td><td class="tab">Low / High</td><td>A traveller misses a train. One incident destroys the trust the product runs on.</td><td>Much reduced by D8 — the engine owns every number. Reinforced by the §04 rule: the model may not state a fact it was not handed.</td></tr>
+        <tr><td><strong>Model behaviour drift</strong></td><td class="tab">Low / Med</td><td>Prompts tuned to one model behave differently on the next.</td><td>Structured outputs with schema validation on every diff. The eval set at P6 becomes the regression check.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grp">Legal &amp; safety <em>design around these now</em></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Risk</th><th>L / I</th><th>Consequence</th><th>Action</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Accessibility claims</strong></td><td class="tab risk">Med / High</td><td>"Step-free" that isn't strands a wheelchair user. <span class="tab">skip_if: limited_mobility</span> is exactly where this bites.</td><td>Do not make the claim until it is verified per place. Until then the field is absent, not guessed.</td></tr>
+        <tr><td><strong>Booking-data sensitivity</strong></td><td class="tab">Low / High</td><td>A PNR and a surname can be enough to cancel someone's flight. A leak causes real harm, not embarrassment.</td><td>Encrypted at rest, never logged, never in a prompt, per-user storage scoping, RLS from migration one.</td></tr>
+        <tr><td><strong>Prompt injection via uploads</strong></td><td class="tab">Low / Med</td><td>A malicious pasted confirmation steers a tool-enabled model.</td><td>Parse uploads in a separate call with no tools attached.</td></tr>
+        <tr><td><strong>Open-data licence compliance</strong></td><td class="tab">Low / Med</td><td>Wikivoyage is CC BY-SA; ODPT and GTFS feeds carry their own terms. Attribution obligations are easy to miss.</td><td>Record <span class="tab">sources</span> per record; attribution page; check each feed's terms at ingest, before it becomes load-bearing.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grp">Commercial <em><span class="badge def">deferred</span> revisit before opening up</em></div>
+  <div class="tw">
+    <table>
+      <thead><tr><th>Risk</th><th>Why deferred</th><th>What would trigger it</th></tr></thead>
+      <tbody>
+        <tr><td><strong>One trip, one lifetime</strong></td><td>Most people visit Japan once. No habit, no retention curve, and the heaviest usage happens before anyone would pay. Irrelevant while private.</td><td>Any decision to open sign-ups. Answer it <em>before</em>, not after.</td></tr>
+        <tr><td><strong>Distribution</strong></td><td>Nobody finds a new travel app. Not a technical problem, and not a problem at all with an audience of one.</td><td>Same trigger. Decides whether the rest matters.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col">
+    <p style="margin-top:26px"><strong>Demoted out of the risk table:</strong> <em>destructive re-planning</em> and <em>scope creep into booking</em>. Both were decisions already taken (§08 and §14 respectively), not risks — and a register full of solved problems is a register nobody reads.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§16</span><h2>User zero</h2></div>
+  <div class="col">
+    <p>D5 made the owner the first real traveller, so onboarding is designed against an actual person rather than an invented persona. This profile also sets curation priority and becomes the first eval fixture — if the engine cannot plan a good trip for this profile, it does not work.</p>
+  </div>
+  <div class="split">
+    <div class="half">
+      <h4>The profile</h4>
+      <div class="sub">seeds user_preferences</div>
+      <ul>
+        <li><b>Pace</b> — standard, ~8 active hours a day</li>
+        <li><b>Crowds</b> — avoids them, willing to start early. Weights scheduler step 3 toward early <span class="tab">best_window</span> anchors</li>
+        <li><b>Budget</b> — varies by city, so the band lives on <span class="tab">trip_cities</span></li>
+        <li><b>Interests</b> — shrines &amp; temples · history &amp; castles · nature as scenery</li>
+        <li><b>Excludes</b> — beaches, and nature that requires hiking. Hard filter, not a penalty</li>
+      </ul>
+    </div>
+    <div class="half">
+      <h4>What it implies</h4>
+      <div class="sub">why the first cities changed</div>
+      <ul>
+        <li>Shrines, castles and low-effort scenery is a <b>Kansai</b> profile, not a Tokyo one</li>
+        <li>Osaka · Kyoto · Nara · Hiroshima go deep first (D15)</li>
+        <li>Miyajima folds into Hiroshima — Itsukushima is a shrine, and nobody visits one without the other</li>
+        <li>Himeji is a near-free addition: the best surviving castle in Japan, directly on the line between Osaka and Hiroshima</li>
+        <li>All four sit on one rail corridor, so a single transit graph serves them all</li>
+      </ul>
+    </div>
+  </div>
+  <div class="call">
+    <h4>The distinction that broke the schema</h4>
+    <p>"Nature but not hiking" is why D10 chose tags <em>plus</em> axes. A flat <span class="tab">nature</span> tag cannot separate Kenroku-en from the Kumano Kodo; the tag with a low <b>energy</b> axis can. And "no beaches" needed somewhere to live at all — hence <span class="tab">excludes[]</span>. A real profile found both holes in an afternoon; invented personas would not have.</p>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head"><span class="sec-num">§17</span><h2>Still open</h2></div>
+  <div class="dec">
+    <div class="decision">
+      <div class="q"><span class="id">O1</span><h4>Eval set design</h4></div>
+      <p>Deferred to P6 by design — the ~30 planning scenarios with known-correct answers are easier to write once the engine exists to be wrong about them. §16 is fixture one.</p>
+    </div>
+    <div class="decision">
+      <div class="q"><span class="id">O2</span><h4>Monetisation</h4></div>
+      <p>Deferred with the commercial risks (§15). Only becomes a question if sign-ups open.</p>
+    </div>
+    <div class="decision">
+      <div class="q"><span class="id">O3</span><h4>Scoring weights</h4></div>
+      <p>Fig. 1's weights are seed values. They are configuration, not constants, and the first thing to tune once the eval set exists.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>Meguri · 巡り · product specification, draft 3 · all decisions closed</span>
+  <span>sairam7775/sairam7775 · claude/japan-travel-guide-bot-s5crhl</span>
+</footer>
+
+</div>
