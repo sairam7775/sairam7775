@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Bento's palette, carried over from the spec so the product and its
+   design document look like one thing. Kon-iro indigo as the accent,
+   shu-iro vermilion reserved for things that block a trip. */
+@theme {
+  --color-paper: #f0f1f4;
+  --color-surface: #fdfdfe;
+  --color-sunk: #e5e8ef;
+  --color-ink: #161a24;
+  --color-ink-2: #4b5263;
+  --color-ink-3: #767e92;
+  --color-rule: #d2d7e1;
+
+  --color-indigo: #1e3c78;
+  --color-indigo-soft: #dee5f3;
+  --color-vermilion: #bc4029;
+  --color-vermilion-soft: #f7e1db;
+  --color-moss: #3f6a4a;
+  --color-moss-soft: #dceadf;
+  --color-amber: #8d6210;
+  --color-amber-soft: #f4e9cf;
+
+  --font-display: var(--font-zen), "Hiragino Kaku Gothic ProN", sans-serif;
+  --font-body: var(--font-newsreader), Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-paper: #0f131b;
+    --color-surface: #171b26;
+    --color-sunk: #1d2230;
+    --color-ink: #e6e9f0;
+    --color-ink-2: #a7aebf;
+    --color-ink-3: #7b8497;
+    --color-rule: #2b3142;
+
+    --color-indigo: #8cabe2;
+    --color-indigo-soft: #1b2840;
+    --color-vermilion: #e58a73;
+    --color-vermilion-soft: #38211c;
+    --color-moss: #8abe97;
+    --color-moss-soft: #1b2b21;
+    --color-amber: #d9ae5e;
+    --color-amber-soft: #33280f;
+  }
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  text-wrap: balance;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
