@@ -1,0 +1,10 @@
+trip_id,arrival_time,departure_time,stop_id,stop_sequence
+T-local,08:00:00,08:00:00,S1,1
+T-local,08:03:00,08:03:30,S2,2
+T-local,08:05:30,08:06:00,S3,3
+T-local,08:20:00,08:20:00,S4,4
+T-rapid,08:10:00,08:10:00,S1,1
+T-rapid,08:12:00,08:12:30,S2,2
+T-rapid,08:22:00,08:22:00,S4,3
+T-keihan,09:00:00,09:00:00,K1,1
+T-keihan,09:02:00,09:02:00,K2,2

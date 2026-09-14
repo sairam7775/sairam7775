@@ -15,8 +15,13 @@ prefectures, 99 destinations. Plus the curation UI at `/admin` — coverage
 tiers, the place editor, and the verification workflow that decides what a
 traveller is allowed to see.
 
-Phases P3–P8 (transit graph, the planning engine, deep curation, Bento Man,
-the itinerary UI, and the booking vault) are in §13 of the spec.
+**P3 — transit graph.** A routing engine over stations and edges (Dijkstra
+on station × line, so a change of train is charged as a transfer), fares
+from per-operator distance bands, and a GTFS importer. The Kansai–Sanyo
+corridor is hand-seeded so the four deep cities route today.
+
+Phases P4–P8 (the planning engine, deep curation, Bento Man, the itinerary
+UI, and the booking vault) are in §13 of the spec.
 
 ## Setup
 
@@ -86,6 +91,35 @@ the itinerary UI, and the booking vault) are in §13 of the spec.
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
 
+## Transit
+
+```bash
+npx tsx scripts/route.ts kyoto inari          # route over the hand seed, no DB
+npx tsx scripts/route.ts --stations
+npx tsx scripts/export-transit-seed.ts > supabase/seed_transit.sql
+npx tsx scripts/import-gtfs.ts ./feeds/odpt --prefix odpt   # dry run; --apply to write
+```
+
+Three things the engine does that a naive graph would not:
+
+- **A change of train costs time.** Search state is (station, line), so
+  Kyoto → Inari stays on one Local rather than taking the Rapid one stop
+  and changing — even though the Rapid is faster to Tofukuji.
+- **Fares are bands, not sums.** A run of hops on one operator is one
+  ticket: Kyoto → Inari is 2.7 km in the ¥150 band, not two ¥150 hops.
+  Intercity legs carry exact fares; everything else is marked `estimate`
+  and shown to the traveller as `~¥`.
+- **Notes ride on edges.** "The Rapid does not stop at Inari" is data on the
+  hop, so it surfaces on any route that uses it.
+
+GTFS-JP and ODPT feeds are downloads this repo's CI cannot reach, so the
+importer runs locally against an unzipped feed. It dry-runs by default and
+flags edges over 90 minutes — a bad `stop_sequence` produces absurd
+minutes, and absurd minutes corrupt every itinerary built on them.
+
+`GET /api/transit?from=kyoto&to=inari` returns a route over the database
+graph, signed-in only.
+
 ## Logo
 
 A bento box, four compartments, one umeboshi — a Hinomaru bento. The
@@ -147,6 +181,7 @@ src/
     admin/            curation: tiers, place editor, verification
   lib/
     admin.ts          the curation gate
+    transit/          graph, router, fares, GTFS parser, corridor seed
 scripts/
   grant-admin.ts      grant or revoke curation access
   import-geography.ts Wikidata enrichment for seeded cities

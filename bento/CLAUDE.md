@@ -45,6 +45,20 @@ Practically:
   Fushimi Inari must not land in the same day; a Monday must not fill with
   museums.
 
+## Transit (P3)
+
+- `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.
+  Search state is (station, line); a line change pays `transferPenaltyMin`
+  (default 5). Walks never pay it — the walk is the transfer.
+- Line names include the service where it matters: "JR Nara Line · Local"
+  and "JR Nara Line · Miyakoji Rapid" are different lines.
+- Fares: a run of consecutive edges on one operator sums km and takes one
+  band from `fares.ts`. An edge with `fareJpy` set is exact and stands
+  alone. `fareKind: "estimate"` must render as `~¥`.
+- `seed/kansai-sanyo.ts` is the one source of truth for the corridor; the
+  tests, the CLI and `supabase/seed_transit.sql` all derive from it. Never
+  edit the SQL by hand.
+
 ## Voice
 
 Bento Man is a local friend who knows the place and will tell you the truth
