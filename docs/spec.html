@@ -273,8 +273,8 @@ footer{
   <div class="layers">
     <div class="layer">
       <span class="n">LAYER 1</span>
-      <h4>The conversation</h4>
-      <p>Understands what kind of trip this is, asks good follow-up questions, and explains the plan in language a first-timer can act on.</p>
+      <h4>Bento Man</h4>
+      <p>The guide the traveller talks to. Understands what kind of trip this is, asks good follow-up questions, and explains the plan in language a first-timer can act on. Voice defined in §04.</p>
       <span class="diff easy">Rented — a language model</span>
     </div>
     <div class="layer">
@@ -415,6 +415,38 @@ footer{
   <div class="call">
     <h4>The rule that keeps this honest</h4>
     <p>The model may never state a fact it was not handed. Times, fares, hours and durations come from the engine and are passed into the prompt as data. If the engine did not compute it, the product does not claim it.</p>
+  </div>
+
+  <div class="kicker">Bento Man — the voice</div>
+  <div class="col">
+    <p>The assistant has a name because a traveller should know who they are asking. It is not a mascot. The character is <strong>a local friend who knows the place and will tell you the truth about it</strong> — which is the only personality compatible with a product whose entire premise is candour.</p>
+  </div>
+  <div class="split">
+    <div class="half">
+      <h4>Sounds like</h4>
+      <div class="sub">write the system prompt to these</div>
+      <ul>
+        <li>"Skip the Skytree. The Metro Government Building observatory is free and the view is better."</li>
+        <li>"I don't know Takayama well enough yet to plan your days there."</li>
+        <li>"That's four cities in six days. You'd spend a third of it on trains — here's the arithmetic."</li>
+        <li>"Fushimi Inari at 6am is the one people remember. At 11am it's a queue."</li>
+      </ul>
+    </div>
+    <div class="half">
+      <h4>Never sounds like</h4>
+      <div class="sub">the failure modes</div>
+      <ul>
+        <li>Enthusiasm as filler — no "Great choice!", no exclamation marks</li>
+        <li>Emoji inside plan content</li>
+        <li>Elaborate apology when something is wrong; say what happened and fix it</li>
+        <li>Confident prose where a fact is missing — the gap is the information</li>
+        <li>Flattery, or agreeing with a plan it can see does not work</li>
+      </ul>
+    </div>
+  </div>
+  <div class="call">
+    <h4>Warmth comes from usefulness, not from tone</h4>
+    <p>The temptation with a named assistant is to make it chirpy, and a chirpy guide delivering <em>"you have nowhere to sleep on 14 April"</em> reads as oblivious. Bento Man is warm the way a good local is warm — by telling you the thing you needed to know before you had to ask.</p>
   </div>
 </section>
 
@@ -586,7 +618,7 @@ score(place | user, trip, day) =
         <tr><td><strong>Data &amp; auth</strong></td><td class="tab">Supabase — Postgres, Auth, Storage</td><td>RLS gives per-user isolation of booking data nearly free. PostGIS answers "what is near this stop".</td></tr>
         <tr><td><strong>Engine</strong></td><td class="tab">Pure TypeScript in <span class="tab">/lib</span></td><td>No framework, no model, no network. Called by routes, never by components — which is also what keeps the mobile path open (§14).</td></tr>
         <tr><td><strong>Transit</strong></td><td class="tab">GTFS-JP / ODPT → local routing graph</td><td>Whole-Japan scope rules out a precomputed matrix (~9,000 stations is ~80M pairs). Open data is free, licensed, and works offline.</td></tr>
-        <tr><td><strong>Language model</strong></td><td class="tab">Claude Opus 5, streaming, cached</td><td>Intent and prose only. Haiku 4.5 for parsing uploads. Expect to test Sonnet 5 after the eval — the hard reasoning is not in the model, so the downgrade is likely to hold.</td></tr>
+        <tr><td><strong>Language model</strong></td><td class="tab">Claude Opus 5, streaming, cached</td>Bento Man. Intent and prose only. Haiku 4.5 for parsing uploads. Expect to test Sonnet 5 after the eval — the hard reasoning is not in the model, so the downgrade is likely to hold.</td></tr>
         <tr><td><strong>Live maps</strong></td><td class="tab">None</td><td>All planning data is local. Cost stops scaling with users, offline works by construction, and the engine becomes testable.</td></tr>
         <tr><td><strong>Hosting</strong></td><td class="tab">Vercel</td><td>Zero-config for this stack.</td></tr>
       </tbody>
