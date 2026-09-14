@@ -1,0 +1,34 @@
+{
+  "artboards": [
+    { "file": "Onboarding.dc.html", "x": 0,    "y": 0,    "w": 900, "h": 1080 },
+    { "file": "Route.dc.html",      "x": 1000, "y": 0,    "w": 900, "h": 1180 },
+    { "file": "Main.dc.html",       "x": 2000, "y": 0,    "w": 900, "h": 1180 },
+    { "file": "Gaps.dc.html",       "x": 0,    "y": 1320, "w": 900, "h": 1120 },
+    { "file": "Vault.dc.html",      "x": 1000, "y": 1320, "w": 900, "h": 1180 },
+    { "file": "DayPhone.dc.html",   "x": 2000, "y": 1320, "w": 390, "h": 844 }
+  ],
+  "annotations": [
+    {
+      "id": "brief",
+      "x": 0,
+      "y": -190,
+      "w": 520,
+      "text": "Bento — traveller-facing screens.\n\nStatic mockups, matched to the app's real design system (globals.css): kon-iro indigo, square corners, hairline rules, Zen Kaku / Newsreader / JetBrains Mono.\n\nContent is a real nine-night Kansai–Sanyo trip scored against the owner profile: standard pace, avoids crowds, shrines + history + scenery, excludes beaches and hiking."
+    },
+    {
+      "id": "bento-note",
+      "x": 2000,
+      "y": -190,
+      "w": 420,
+      "text": "The day view is where the name earns itself — compartment height is proportional to the time each stop actually takes, so an over-packed day looks over-packed before you read a word."
+    },
+    {
+      "id": "engine-note",
+      "x": 1000,
+      "y": 1230,
+      "w": 420,
+      "text": "Three engine requirements this drawing surfaced — see the handover: a 'considered and left out' list, a per-stop swap affordance, and cost totals per city rather than per trip."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

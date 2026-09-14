@@ -1,0 +1,158 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: "Newsreader", Georgia, serif; }
+    a { color: #1e3c78; } a:hover { color: #142a55; }
+    .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+    .disp { font-family: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", sans-serif; }
+  </style>
+</helmet>
+
+<div style="width: 900px; background: #f0f1f4; color: #161a24; padding: 40px 48px 48px; box-sizing: border-box;">
+
+  <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px;">
+    <span class="mono" style="font-size: 11.2px; letter-spacing: 0.14em; text-transform: uppercase; color: #767e92;">弁当 Bento</span>
+    <span class="mono" style="font-size: 11.2px; letter-spacing: 0.1em; text-transform: uppercase; color: #767e92;">Question 5 of 7</span>
+  </div>
+
+  <div style="display: flex; gap: 4px; margin-top: 14px;">
+    <div style="height: 3px; flex-grow: 1; background: #1e3c78;"></div>
+    <div style="height: 3px; flex-grow: 1; background: #1e3c78;"></div>
+    <div style="height: 3px; flex-grow: 1; background: #1e3c78;"></div>
+    <div style="height: 3px; flex-grow: 1; background: #1e3c78;"></div>
+    <div style="height: 3px; flex-grow: 1; background: #1e3c78;"></div>
+    <div style="height: 3px; flex-grow: 1; background: #d2d7e1;"></div>
+    <div style="height: 3px; flex-grow: 1; background: #d2d7e1;"></div>
+  </div>
+
+  <!-- answered, collapsed -->
+  <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 32px;">
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span class="mono" style="font-size: 10.2px; letter-spacing: 0.1em; text-transform: uppercase; color: #767e92; width: 96px; flex-shrink: 0;">Dates</span>
+      <span style="font-size: 15.2px; color: #4b5263;">Nine nights, late November — no dates fixed yet</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span class="mono" style="font-size: 10.2px; letter-spacing: 0.1em; text-transform: uppercase; color: #767e92; width: 96px; flex-shrink: 0;">Party</span>
+      <span style="font-size: 15.2px; color: #4b5263;">Two people</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span class="mono" style="font-size: 10.2px; letter-spacing: 0.1em; text-transform: uppercase; color: #767e92; width: 96px; flex-shrink: 0;">Pace</span>
+      <span style="font-size: 15.2px; color: #4b5263;">Standard — about eight active hours a day</span>
+    </div>
+    <div style="display: flex; align-items: baseline; gap: 14px;">
+      <span class="mono" style="font-size: 10.2px; letter-spacing: 0.1em; text-transform: uppercase; color: #767e92; width: 96px; flex-shrink: 0;">Budget</span>
+      <span style="font-size: 15.2px; color: #4b5263;">Varies by city — splurge in one or two places</span>
+    </div>
+  </div>
+
+  <!-- current question -->
+  <div style="border-top: 2px solid #161a24; margin-top: 30px; padding-top: 26px;">
+    <p style="margin: 0; font-size: 19px; line-height: 1.5; color: #161a24; max-width: 62ch;">
+      What actually pulls you somewhere? Pick as many as fit — I use these to
+      score every place, so being honest here matters more than being broad.
+    </p>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 22px;">
+      <div style="display: flex; align-items: center; gap: 12px; border: 1px solid #1e3c78; background: #dee5f3; padding: 13px 16px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1e3c78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 6.2 12 13 4.5"/></svg>
+        <span style="font-size: 15.2px; font-weight: 500;">Shrines &amp; temples</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; border: 1px solid #1e3c78; background: #dee5f3; padding: 13px 16px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1e3c78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 6.2 12 13 4.5"/></svg>
+        <span style="font-size: 15.2px; font-weight: 500;">History &amp; castles</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; border: 1px solid #1e3c78; background: #dee5f3; padding: 13px 16px;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#1e3c78" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5 6.2 12 13 4.5"/></svg>
+        <span style="font-size: 15.2px; font-weight: 500;">Nature &amp; landscape</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; border: 1px solid #d2d7e1; background: #fdfdfe; padding: 13px 16px;">
+        <span style="width: 16px; height: 16px; border: 1px solid #d2d7e1; display: inline-block; flex-shrink: 0;"></span>
+        <span style="font-size: 15.2px; color: #4b5263;">Food &amp; drink</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; border: 1px solid #d2d7e1; background: #fdfdfe; padding: 13px 16px;">
+        <span style="width: 16px; height: 16px; border: 1px solid #d2d7e1; display: inline-block; flex-shrink: 0;"></span>
+        <span style="font-size: 15.2px; color: #4b5263;">Onsen</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px; border: 1px solid #d2d7e1; background: #fdfdfe; padding: 13px 16px;">
+        <span style="width: 16px; height: 16px; border: 1px solid #d2d7e1; display: inline-block; flex-shrink: 0;"></span>
+        <span style="font-size: 15.2px; color: #4b5263;">Art &amp; museums</span>
+      </div>
+    </div>
+    <p class="mono" style="margin: 12px 0 0; font-size: 11.2px; color: #767e92;">+ 4 more — shopping, nightlife, anime &amp; pop culture, off the beaten path</p>
+  </div>
+
+  <!-- style axes -->
+  <div style="border-top: 1px solid #d2d7e1; margin-top: 30px; padding-top: 26px;">
+    <p style="margin: 0 0 20px; font-size: 15.2px; line-height: 1.6; color: #4b5263; max-width: 62ch;">
+      Two things the tags can&rsquo;t say. These are what separate a garden from a mountain trail.
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span class="mono" style="font-size: 10.6px; letter-spacing: 0.1em; text-transform: uppercase; color: #767e92;">Effort</span>
+          <span style="font-size: 14px; color: #161a24; font-weight: 500;">Scenery, not a hike</span>
+        </div>
+        <div style="position: relative; height: 4px; background: #e5e8ef; margin-top: 10px;">
+          <div style="position: absolute; left: 0; top: 0; height: 4px; width: 22%; background: #1e3c78;"></div>
+          <div style="position: absolute; left: 22%; top: -6px; width: 2px; height: 16px; background: #161a24;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 7px;">
+          <span class="mono" style="font-size: 10.2px; color: #767e92;">Sit and look at it</span>
+          <span class="mono" style="font-size: 10.2px; color: #767e92;">All-day climb</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+          <span class="mono" style="font-size: 10.6px; letter-spacing: 0.1em; text-transform: uppercase; color: #767e92;">Crowds</span>
+          <span style="font-size: 14px; color: #161a24; font-weight: 500;">Avoid them — I&rsquo;ll get up early</span>
+        </div>
+        <div style="position: relative; height: 4px; background: #e5e8ef; margin-top: 10px;">
+          <div style="position: absolute; left: 0; top: 0; height: 4px; width: 15%; background: #1e3c78;"></div>
+          <div style="position: absolute; left: 15%; top: -6px; width: 2px; height: 16px; background: #161a24;"></div>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-top: 7px;">
+          <span class="mono" style="font-size: 10.2px; color: #767e92;">6am to have it to myself</span>
+          <span class="mono" style="font-size: 10.2px; color: #767e92;">Crowds don&rsquo;t bother me</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- excludes -->
+  <div style="border-left: 3px solid #bc4029; background: #f7e1db; padding: 15px 18px; margin-top: 28px;">
+    <p style="margin: 0; font-size: 14.4px; line-height: 1.55; color: #4b5263;">
+      <strong style="color: #161a24;">Anything you never want to see?</strong>
+      I&rsquo;ll filter these out entirely rather than just rank them lower.
+    </p>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 13px;">
+      <span class="mono" style="font-size: 11.2px; background: #bc4029; color: #fdfdfe; padding: 5px 10px; display: inline-flex; align-items: center; gap: 7px;">
+        Beaches
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fdfdfe" stroke-width="1.6" stroke-linecap="round"><path d="M1 1 9 9M9 1 1 9"/></svg>
+      </span>
+      <span class="mono" style="font-size: 11.2px; background: #bc4029; color: #fdfdfe; padding: 5px 10px; display: inline-flex; align-items: center; gap: 7px;">
+        Hiking
+        <svg width="9" height="9" viewBox="0 0 10 10" fill="none" stroke="#fdfdfe" stroke-width="1.6" stroke-linecap="round"><path d="M1 1 9 9M9 1 1 9"/></svg>
+      </span>
+      <span class="mono" style="font-size: 11.2px; border: 1px dashed #bc4029; color: #bc4029; padding: 5px 10px;">+ add</span>
+    </div>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 18px; margin-top: 30px;">
+    <button style="border: none; background: #1e3c78; color: #fdfdfe; font-family: inherit; font-size: 14px; font-weight: 500; padding: 10px 20px; cursor: pointer;">Continue</button>
+    <span class="mono" style="font-size: 11.2px; color: #767e92;">Two questions left — mobility, then anything you already booked</span>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
