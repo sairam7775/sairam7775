@@ -36,14 +36,32 @@ Practically:
 - **Check the spend cap before any model call** (`assertWithinSpendCap`). It
   throws rather than returning a flag so a forgotten check cannot spend money.
 
-## Engine rules (from P4)
+## Engine (P4)
 
 - Pure functions in `src/lib/engine/`. No framework, no network, no model.
-- Called from route handlers and server actions, never from components —
+  Called from route handlers and server actions, never from components —
   this is also what keeps the React Native path open (§14).
-- Unit-tested against fixtures, including the known traps: Arashiyama and
-  Fushimi Inari must not land in the same day; a Monday must not fill with
-  museums.
+- `scorePlace` (Fig. 1) returns a breakdown; every term that moved the
+  score owns a clause, and `buildReason` assembles the shown reason from
+  those clauses. A reason is never written after the fact.
+- `planDay` (Fig. 2): budget → filter → anchor → grow → order → time →
+  validate. Rejects are returned in `considered` with the term that
+  removed them. Per-slot `alternatives` are kept so a swap has options.
+- Hard rules live in `filter.ts` and never become penalties: stub tier,
+  unverified, excluded, a hard mobility `skip_if`, closed today, booking
+  required and not booked.
+- The anchor holds position 0 through growth and ordering. Timed pins are
+  slotted where the clock reaches them. Ordering charges 30 min for a busy
+  place that would miss its quiet window.
+- Scores shown on items are recomputed against the final order, so "your
+  third temple today" is the third one shown.
+- Known gaps: windows are soft except for the anchor; a place with no
+  station costs a flat 45 min and a warning; season tags are optional and
+  neutral when absent.
+- Tests: `src/lib/engine/__tests__`, fixtures in `__fixtures__/kyoto.ts`.
+  The traps must stay green: Arashiyama and Fushimi Inari never share a
+  day; a Monday never fills with something closed on Mondays; "no hiking"
+  means never.
 
 ## Transit (P3)
 

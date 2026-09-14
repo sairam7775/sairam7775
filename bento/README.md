@@ -20,8 +20,14 @@ on station × line, so a change of train is charged as a transfer), fares
 from per-operator distance bands, and a GTFS importer. The Kansai–Sanyo
 corridor is hand-seeded so the four deep cities route today.
 
-Phases P4–P8 (the planning engine, deep curation, Bento Man, the itinerary
-UI, and the booking vault) are in §13 of the spec.
+**P4 — the engine.** The recommender and day scheduler as pure TypeScript:
+Fig. 1's scoring with a reason clause per term, and Fig. 2's seven steps —
+budget, filter, anchor, grow, order, time, validate. Every item carries the
+terms that put it there; every place left out carries the rule or term that
+removed it.
+
+Phases P5–P8 (deep curation, Bento Man, the itinerary UI, and the booking
+vault) are in §13 of the spec.
 
 ## Setup
 
@@ -90,6 +96,29 @@ UI, and the booking vault) are in §13 of the spec.
 | `npm run typecheck` | Route typegen, then `tsc --noEmit` |
 | `npm run lint` | ESLint |
 | `npm test` | Vitest |
+
+## The engine
+
+```bash
+npx tsx scripts/plan-day.ts                              # Wed 25 Nov, the owner profile
+npx tsx scripts/plan-day.ts 2026-11-23                   # a Monday — the museum drops out
+npx tsx scripts/plan-day.ts 2026-11-25 --pin kyt-sanjusangendo@10:00
+```
+
+`planDay` takes a city's places (through the verification gate), the
+traveller, and a travel function (the P3 router), and returns a `DayPlan`:
+timed items with a reason each, meals, budget and slack, per-day cost, and
+`considered` — everything left out, with the term that removed it.
+`planTrip` runs days in sequence so a place is never reused and totals cost
+per city.
+
+What it will not do, by design: plan on a draft (its durations are hidden),
+put two `conflicts_with` places in one day, fill a Monday with something
+closed on Mondays, rank a place the traveller excluded, or invent a travel
+time — when the graph has no route it assumes 45 minutes and says so.
+
+Weights in `src/lib/engine/score.ts` are configuration, not constants, and
+are the first thing to tune once the eval set exists (spec §17).
 
 ## Transit
 
@@ -181,6 +210,7 @@ src/
     admin/            curation: tiers, place editor, verification
   lib/
     admin.ts          the curation gate
+    engine/           scoring, filters, scheduler, trip totals, fixtures
     transit/          graph, router, fares, GTFS parser, corridor seed
 scripts/
   grant-admin.ts      grant or revoke curation access
