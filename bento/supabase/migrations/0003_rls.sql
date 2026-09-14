@@ -42,7 +42,8 @@ create policy "calendar_notes readable" on calendar_notes for select to authenti
 -- past that table's RLS while users hold no direct grant on it.
 -- ================================================================
 
-create view places_public as
+create view places_public
+with (security_invoker = false) as
 select
   p.id,
   p.city_id,
