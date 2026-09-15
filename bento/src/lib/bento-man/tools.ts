@@ -373,6 +373,71 @@ function dayNarration(d: ReturnType<typeof computeDayDiff>) {
   };
 }
 
+export type ReplanOp = z.infer<typeof ReplanDay>["ops"][number];
+
+/** One day re-planned around the traveller's pins and the given ops. Used
+ *  by the replan_day tool and by the "re-plan this day" button, so a hand
+ *  edit and a spoken one go through the same engine call. */
+export async function replanDay(store: TripStore, date: string, ops: ReplanOp[]): Promise<{ diff: ReturnType<typeof computeDayDiff> } | { error: string }> {
+  const [state, cities, graph] = await Promise.all([store.state(), store.cities(), store.graph()]);
+  const existing = state.days.find((d) => d.date === date);
+  const cityId = existing?.cityId ?? plannedDates(state).get(date);
+  if (!cityId) return { error: `${date} is not a day of this trip` };
+  const f = factsMap(cities).get(cityId);
+  if (!f || f.tier === "stub") return { error: `${f?.name ?? cityId} is at stub tier — Bento can't plan days there yet` };
+
+  const all = await store.places(cityId);
+  const byId = new Map(all.map((x) => [x.id, x]));
+  const lockedMap = new Map<string, LockedItem>((existing?.items ?? []).filter((i) => i.locked).map((i) => [i.placeId, { placeId: i.placeId, startMin: i.startMin }]));
+  const excluded = new Set<string>();
+  const avoidCategories = new Set<string>();
+  let dayStartMin: number | undefined;
+  for (const op of ops) {
+    if (["pin", "unpin", "remove", "add"].includes(op.op)) {
+      if (!op.place_id) return { error: `${op.op} needs place_id` };
+      if (!byId.has(op.place_id)) return { error: `no place ${op.place_id} in ${f.name} — use get_place to find the id` };
+    }
+    switch (op.op) {
+      case "pin":
+      case "add":
+        lockedMap.set(op.place_id!, { placeId: op.place_id!, startMin: parseHHMM(op.time) });
+        excluded.delete(op.place_id!);
+        break;
+      case "unpin":
+        lockedMap.delete(op.place_id!);
+        break;
+      case "remove":
+        lockedMap.delete(op.place_id!);
+        excluded.add(op.place_id!);
+        break;
+      case "avoid_category":
+        if (!op.category) return { error: "avoid_category needs category" };
+        avoidCategories.add(op.category.toLowerCase());
+        break;
+      case "start_at": {
+        const m = parseHHMM(op.time);
+        if (m == null) return { error: "start_at needs time HH:MM" };
+        dayStartMin = m;
+        break;
+      }
+    }
+  }
+  const pool = all.filter((x) => !excluded.has(x.id) && !(avoidCategories.has(x.category.toLowerCase()) && !lockedMap.has(x.id)));
+  const used = new Set(state.days.filter((d) => d.date !== date).flatMap((d) => d.items.map((i) => i.placeId)));
+  const budget = state.cities.find((c) => c.cityId === cityId)?.budgetBand ?? null;
+  const plan = planDay({
+    date,
+    cityId,
+    places: pool,
+    traveller: travellerFor(state.prefs, budget),
+    travel: travelFromGraph(graph),
+    locked: [...lockedMap.values()],
+    usedPlaceIds: [...used],
+    dayStartMin,
+  });
+  return { diff: computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan) };
+}
+
 // ------------------------------------------------------------------ run
 
 export async function runTool(name: string, rawInput: unknown, ctx: ToolContext): Promise<ToolOutcome> {
@@ -523,69 +588,14 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
     case "replan_day": {
       const p = ReplanDay.safeParse(rawInput);
       if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
-      const [state, cities, graph] = await Promise.all([store.state(), store.cities(), store.graph()]);
-      const { date, ops } = p.data;
-      const existing = state.days.find((d) => d.date === date);
-      const cityId = existing?.cityId ?? plannedDates(state).get(date);
-      if (!cityId) return fail(`${date} is not a day of this trip`);
-      const f = factsMap(cities).get(cityId);
-      if (!f || f.tier === "stub") return fail(`${f?.name ?? cityId} is at stub tier — Bento can't plan days there yet`);
-
-      const all = await store.places(cityId);
-      const byId = new Map(all.map((x) => [x.id, x]));
-      const lockedMap = new Map<string, LockedItem>((existing?.items ?? []).filter((i) => i.locked).map((i) => [i.placeId, { placeId: i.placeId, startMin: i.startMin }]));
-      const excluded = new Set<string>();
-      const avoidCategories = new Set<string>();
-      let dayStartMin: number | undefined;
-      for (const op of ops) {
-        if (["pin", "unpin", "remove", "add"].includes(op.op)) {
-          if (!op.place_id) return fail(`${op.op} needs place_id`);
-          if (!byId.has(op.place_id)) return fail(`no place ${op.place_id} in ${f.name} — use get_place to find the id`);
-        }
-        switch (op.op) {
-          case "pin":
-          case "add":
-            lockedMap.set(op.place_id!, { placeId: op.place_id!, startMin: parseHHMM(op.time) });
-            excluded.delete(op.place_id!);
-            break;
-          case "unpin":
-            lockedMap.delete(op.place_id!);
-            break;
-          case "remove":
-            lockedMap.delete(op.place_id!);
-            excluded.add(op.place_id!);
-            break;
-          case "avoid_category":
-            if (!op.category) return fail("avoid_category needs category");
-            avoidCategories.add(op.category.toLowerCase());
-            break;
-          case "start_at": {
-            const m = parseHHMM(op.time);
-            if (m == null) return fail("start_at needs time HH:MM");
-            dayStartMin = m;
-            break;
-          }
-        }
-      }
-      const pool = all.filter((x) => !excluded.has(x.id) && !(avoidCategories.has(x.category.toLowerCase()) && !lockedMap.has(x.id)));
-      const used = new Set(state.days.filter((d) => d.date !== date).flatMap((d) => d.items.map((i) => i.placeId)));
-      const budget = state.cities.find((c) => c.cityId === cityId)?.budgetBand ?? null;
-      const plan = planDay({
-        date,
-        cityId,
-        places: pool,
-        traveller: travellerFor(state.prefs, budget),
-        travel: travelFromGraph(graph),
-        locked: [...lockedMap.values()],
-        usedPlaceIds: [...used],
-        dayStartMin,
-      });
-      const diff = computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan);
-      ctx.proposal = mergeProposals(ctx.proposal, { summary: `${date} re-planned`, days: [diff] });
-      return { result: j({ proposed: true, note: "Shown as a proposal; not applied yet.", day: dayNarration(diff) }) };
+      const r = await replanDay(store, p.data.date, p.data.ops);
+      if ("error" in r) return fail(r.error);
+      ctx.proposal = mergeProposals(ctx.proposal, { summary: `${p.data.date} re-planned`, days: [r.diff] });
+      return { result: j({ proposed: true, note: "Shown as a proposal; not applied yet.", day: dayNarration(r.diff) }) };
     }
 
     case "get_place": {
+
       const p = GetPlace.safeParse(rawInput);
       if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
       const matches = await store.searchPlaces(p.data.query, p.data.city_id ?? null);

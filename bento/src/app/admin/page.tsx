@@ -15,8 +15,8 @@ interface Progress {
 }
 
 const TIER_STYLE: Record<Progress["coverage_tier"], string> = {
-  deep: "bg-moss-soft text-moss",
-  outline: "bg-amber-soft text-amber",
+  deep: "bg-edamame-soft text-edamame",
+  outline: "bg-tamago-soft text-tamago",
   stub: "bg-sunk text-ink-3",
 };
 
@@ -57,7 +57,7 @@ export default async function AdminHome() {
       </p>
 
       {totals.drafts > 0 && (
-        <Link href="/admin/review" className="mt-6 inline-block bg-moss px-5 py-2.5 text-sm font-medium text-surface">
+        <Link href="/admin/review" className="mt-6 inline-block bg-edamame px-5 py-2.5 text-sm font-medium text-surface">
           Review {totals.drafts} draft{totals.drafts === 1 ? "" : "s"}
         </Link>
       )}

@@ -50,7 +50,7 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
 
       <p className="mt-6 text-sm text-ink-2">
         No account yet?{" "}
-        <Link href="/sign-up" className="text-indigo underline underline-offset-2">
+        <Link href="/sign-up" className="text-accent underline underline-offset-2">
           Create one
         </Link>
         .

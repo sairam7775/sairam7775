@@ -114,6 +114,24 @@ Practically:
   regression check for prompt edits and the Sonnet 5 test. Add a scenario
   with every prompt rule you add; `voiceLint` runs on every reply.
 
+## Day view (P7)
+
+- `src/app/trips/[id]/day-box.tsx` is the box; `day-actions.ts` are the
+  traveller's edits. An edit is applied at once and re-timed by
+  `engine/retime.ts` — never by the component, never by a model. The
+  component only reorders an id list optimistically.
+- `retimeDay` makes no choices: the order is the traveller's, the times
+  follow. `planDay` (via `replanDay` in tools.ts) is the only thing that
+  chooses, and it always returns a proposal.
+- `engine/day-stats.ts` sums what is stored for the view (active time,
+  over-budget index, the lunch gap). It must not invent times.
+- Palette and motion live in `globals.css`: `paper`/`surface`/`sunk`/
+  `lacquer`/`rice`, ink levels, `accent` (salmon), `ume`, `edamame`,
+  `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.pop`, `.grow`,
+  `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
+- Fonts are fontsource packages imported in `layout.tsx` — no build-time
+  fetch. Bricolage Grotesque display, DM Sans body, DM Mono data.
+
 ## Transit (P3)
 
 - `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.

@@ -66,7 +66,7 @@ export default async function Review({ searchParams }: PageProps<"/admin/review"
               <h2 className="text-xl font-bold">{next.name} <span className="ml-2 text-base font-medium text-ink-3">{next.name_ja}</span></h2>
               <p className="mono mt-1 text-[0.72rem] text-ink-3">{next.id} · {next.cities?.name} · {next.category}</p>
             </div>
-            <Link href={`/admin/places/${next.id}`} className="mono text-[0.7rem] uppercase tracking-[0.08em] text-indigo underline underline-offset-2">Open editor</Link>
+            <Link href={`/admin/places/${next.id}`} className="mono text-[0.7rem] uppercase tracking-[0.08em] text-accent underline underline-offset-2">Open editor</Link>
           </header>
 
           <section className="grid gap-x-8 gap-y-5 px-6 py-5 sm:grid-cols-2">
@@ -96,7 +96,7 @@ export default async function Review({ searchParams }: PageProps<"/admin/review"
             <form action={verifyPlace}>
               <input type="hidden" name="id" value={next.id} />
               <input type="hidden" name="back" value={`/admin/review${city ? `?city=${city}` : ""}`} />
-              <button className="bg-moss px-5 py-2.5 text-sm font-medium text-surface">Verify — this is what I&rsquo;d tell a friend</button>
+              <button className="bg-edamame px-5 py-2.5 text-sm font-medium text-surface">Verify — this is what I&rsquo;d tell a friend</button>
             </form>
             <Link
               href={`/admin/review?${new URLSearchParams({ ...(city ? { city } : {}), skip: [...skip, next.id].join(",") })}`}

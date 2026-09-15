@@ -40,8 +40,16 @@ of questions, route proposals that refuse over-packed trips with the
 arithmetic shown, day plans and changes as proposals the traveller accepts
 or rejects (§08). Plus the eval set the D8 model test runs against.
 
-Phases P7–P8 (the itinerary UI and the booking vault) are in §13 of the
-spec.
+**P7 — the itinerary UI.** A day is a bento box: a lacquer frame holding
+one compartment per stop, sized to the time the stop takes, with the
+train between them written on the frame. An over-packed day spills past
+the line where the day's budget ends before you read a word. Drag to
+reorder, pin, remove — the traveller's edits apply at once and the engine
+re-times the day; "re-plan this day" asks the engine to choose again
+around the pins and comes back as a proposal. The app moved to the
+bento palette and self-hosted fonts.
+
+Phase P8 (the booking vault and gap detection) is in §13 of the spec.
 
 ## Setup
 
@@ -148,6 +156,25 @@ the four deep cities can get there:
 Once a city clears the bar, promote it on its `/admin/cities` page. The
 planner will not build a day anywhere still at stub tier, however many
 records it has.
+
+## The day view
+
+`/trips/<id>?day=YYYY-MM-DD`. The strip across the top is every date of
+the accepted route; the bar under each is how full that day is. The open
+box is the selected day.
+
+Three kinds of change, and who makes them:
+
+| Change | Who decides | What happens |
+|---|---|---|
+| Drag, ↑ ↓, pin, unpin, remove | The traveller | Applied at once. `retimeDay` runs the clock through the new order with real legs, inserts lunch in the first gap, and says if the day no longer fits. |
+| Re-plan this day | The engine | `planDay` chooses again around what is pinned. Comes back as a proposal in the conversation. |
+| Anything Bento Man is asked | The engine, narrated by the model | Also a proposal. |
+
+Compartment height is time (about a pixel a minute), so a 3-hour stop is
+a tall tile and a 15-minute one is a short one. The dashed salmon line is
+where the day's budget for that pace runs out; tiles past it carry an
+"over" mark and the ring in the side compartment turns red.
 
 ## Bento Man
 
@@ -311,7 +338,7 @@ src/
   app/
     (auth)/           sign-in, sign-up, shared form UI, auth actions
     auth/callback/    OAuth and email confirmation exchange
-    trips/            trip list and creation; trips/[id] is the trip and the chat
+    trips/            trip list and creation; trips/[id] is the day view and the chat
     api/chat/         one streamed turn with Bento Man
   lib/
     supabase/         browser, server and service-role clients
@@ -323,7 +350,7 @@ src/
   lib/
     admin.ts          the curation gate
     bento-man/        prompt, tools, diff model, stores, the chat loop, evals
-    engine/           scoring, filters, scheduler, route assessor, fixtures
+    engine/           scoring, filters, scheduler, route assessor, re-timer, fixtures
     places/seed/      the drafted place records, one file per city
     transit/          graph, router, fares, GTFS parser, corridor seed
 scripts/

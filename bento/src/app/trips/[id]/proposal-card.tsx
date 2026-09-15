@@ -5,9 +5,9 @@ export type ProposalStatus = "proposed" | "accepted" | "rejected";
 
 const CHANGE: Record<DayDiff["after"][number]["change"], { label: string; cls: string }> = {
   kept: { label: "kept", cls: "text-ink-3" },
-  added: { label: "new", cls: "bg-moss-soft text-moss" },
-  moved: { label: "moved", cls: "bg-amber-soft text-amber" },
-  removed: { label: "out", cls: "bg-vermilion-soft text-vermilion" },
+  added: { label: "new", cls: "bg-edamame-soft text-edamame" },
+  moved: { label: "moved", cls: "bg-tamago-soft text-tamago" },
+  removed: { label: "out", cls: "bg-ume-soft text-ume" },
 };
 
 const fmtDate = (d: string) =>
@@ -18,11 +18,11 @@ const fmtDate = (d: string) =>
  *  Renders from stored data, so it looks the same an hour later. */
 export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: string; messageId: string; proposal: Proposal; status: ProposalStatus }) {
   return (
-    <div className="mt-3 overflow-hidden rounded-2xl border border-rule bg-surface">
+    <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-sunk px-4 py-2.5">
         <span className="mono text-[0.66rem] uppercase tracking-[0.12em] text-ink-3">Proposal · {proposal.summary}</span>
         {status !== "proposed" && (
-          <span className={`mono rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.1em] ${status === "accepted" ? "bg-moss-soft text-moss" : "bg-vermilion-soft text-vermilion"}`}>
+          <span className={`mono rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.1em] ${status === "accepted" ? "bg-edamame-soft text-edamame" : "bg-ume-soft text-ume"}`}>
             {status}
           </span>
         )}
@@ -44,7 +44,7 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
               </li>
             ))}
           </ol>
-          <p className={`mt-2 text-[0.85rem] ${proposal.route.verdict === "overpacked" ? "text-vermilion" : proposal.route.verdict === "tight" ? "text-amber" : "text-ink-2"}`}>
+          <p className={`mt-2 text-[0.85rem] ${proposal.route.verdict === "overpacked" ? "text-ume" : proposal.route.verdict === "tight" ? "text-tamago" : "text-ink-2"}`}>
             {proposal.route.arithmetic}
           </p>
         </div>
@@ -62,7 +62,7 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
                 <span className="mono pt-0.5 text-[0.72rem] text-ink-3">{clock(it.startMin)}</span>
                 <div>
                   <span className="font-medium">{it.name}</span>
-                  {it.locked && <span className="mono ml-2 text-[0.6rem] uppercase tracking-[0.1em] text-indigo">pinned</span>}
+                  {it.locked && <span className="mono ml-2 text-[0.6rem] uppercase tracking-[0.1em] text-accent">pinned</span>}
                   <span className={`mono ml-2 rounded-full px-1.5 py-0.5 text-[0.58rem] uppercase tracking-[0.1em] ${CHANGE[it.change].cls}`}>{CHANGE[it.change].label}</span>
                   <p className="text-[0.82rem] leading-snug text-ink-2">{it.reason}</p>
                   {it.arriveDetail && <p className="mono mt-0.5 text-[0.66rem] text-ink-3">↳ {it.arriveDetail}</p>}
@@ -78,7 +78,7 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
           {d.warnings.length > 0 && (
             <ul className="mt-2 flex flex-col gap-1">
               {d.warnings.map((w) => (
-                <li key={w} className="border-l-[3px] border-amber bg-amber-soft px-3 py-1.5 text-[0.8rem] text-ink-2">{w}</li>
+                <li key={w} className="border-l-[3px] border-tamago bg-tamago-soft px-3 py-1.5 text-[0.8rem] text-ink-2">{w}</li>
               ))}
             </ul>
           )}
@@ -100,7 +100,7 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
           <form action={acceptProposal}>
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
-            <button className="rounded-full bg-indigo px-4 py-1.5 text-[0.85rem] font-medium text-surface">Accept</button>
+            <button className="rounded-full bg-accent px-4 py-1.5 text-[0.85rem] font-medium text-white hover:bg-accent-deep">Accept</button>
           </form>
           <form action={rejectProposal}>
             <input type="hidden" name="tripId" value={tripId} />

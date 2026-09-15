@@ -60,11 +60,11 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
       </div>
 
       {trips && trips.length > 0 ? (
-        <ul className="flex flex-col border border-rule bg-surface">
+        <ul className="box flex flex-col gap-2.5 p-3">
           {trips.map((trip) => (
             <li
               key={trip.id}
-              className="flex items-start justify-between gap-4 border-b border-rule px-5 py-4 last:border-b-0"
+              className="tile lift up flex items-start justify-between gap-4 px-5 py-4"
             >
               <div>
                 <h2 className="text-base font-bold">
@@ -85,12 +85,12 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
           ))}
         </ul>
       ) : (
-        <p className="border border-dashed border-rule px-5 py-8 text-center text-[0.95rem] text-ink-2">
+        <p className="tile up px-5 py-8 text-center text-[0.95rem] text-ink-2">
           No trips yet. Start one below — dates can come later.
         </p>
       )}
 
-      <section className="mt-12 border-t-2 border-ink pt-6">
+      <section className="tile up mt-10 p-6" style={{ animationDelay: ".15s" }}>
         <h2 className="text-lg font-bold">Start a trip</h2>
         <form action={createTrip} className="mt-5 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
@@ -105,7 +105,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
               name="title"
               type="text"
               placeholder="Kansai, autumn"
-              className="border border-rule bg-surface px-3 py-2.5 text-[0.95rem]"
+              className="rounded-xl border border-rule bg-paper px-3 py-2.5 text-[0.95rem]"
             />
           </div>
 
@@ -121,7 +121,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
                 id="startDate"
                 name="startDate"
                 type="date"
-                className="border border-rule bg-surface px-3 py-2.5 text-[0.95rem]"
+                className="rounded-xl border border-rule bg-paper px-3 py-2.5 text-[0.95rem]"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -135,7 +135,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
                 id="endDate"
                 name="endDate"
                 type="date"
-                className="border border-rule bg-surface px-3 py-2.5 text-[0.95rem]"
+                className="rounded-xl border border-rule bg-paper px-3 py-2.5 text-[0.95rem]"
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -152,14 +152,14 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
                 min={1}
                 max={20}
                 defaultValue={1}
-                className="border border-rule bg-surface px-3 py-2.5 text-[0.95rem]"
+                className="rounded-xl border border-rule bg-paper px-3 py-2.5 text-[0.95rem]"
               />
             </div>
           </div>
 
           <button
             type="submit"
-            className="mt-1 self-start bg-indigo px-5 py-2.5 text-sm font-medium text-surface"
+            className="mt-1 self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep"
           >
             Create trip
           </button>

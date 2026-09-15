@@ -42,7 +42,7 @@ export default async function CityDetail({ params, searchParams }: PageProps<"/a
         <span className="text-xl font-medium text-ink-3">{city.name_ja}</span>
       </h1>
       {city.transit_note && (
-        <p className="mt-3 max-w-xl border-l-[3px] border-indigo bg-indigo-soft px-4 py-3 text-[0.9rem] text-ink-2">
+        <p className="mt-3 max-w-xl border-l-[3px] border-accent bg-accent-soft px-4 py-3 text-[0.9rem] text-ink-2">
           {city.transit_note}
         </p>
       )}
@@ -63,7 +63,7 @@ export default async function CityDetail({ params, searchParams }: PageProps<"/a
               <button
                 className={`border px-4 py-2 text-left text-[0.85rem] ${
                   city.coverage_tier === tier.id
-                    ? "border-indigo bg-indigo text-surface"
+                    ? "border-accent bg-accent text-surface"
                     : "border-rule bg-surface"
                 }`}
               >
@@ -94,8 +94,8 @@ export default async function CityDetail({ params, searchParams }: PageProps<"/a
                   <span
                     className={`mono rounded-[3px] px-1.5 py-0.5 text-[0.62rem] uppercase tracking-[0.08em] ${
                       place.verification_status === "verified"
-                        ? "bg-moss-soft text-moss"
-                        : "bg-amber-soft text-amber"
+                        ? "bg-edamame-soft text-edamame"
+                        : "bg-tamago-soft text-tamago"
                     }`}
                   >
                     {place.verification_status}
@@ -141,7 +141,7 @@ export default async function CityDetail({ params, searchParams }: PageProps<"/a
               />
             </div>
           ))}
-          <button className="self-start bg-indigo px-5 py-2.5 text-sm font-medium text-surface sm:col-span-2">
+          <button className="self-start bg-accent px-5 py-2.5 text-sm font-medium text-surface sm:col-span-2">
             Create draft
           </button>
         </form>

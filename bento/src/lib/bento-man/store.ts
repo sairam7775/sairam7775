@@ -104,9 +104,12 @@ export interface TripStore {
   graph(): Promise<Graph>;
   history(limit: number): Promise<ChatTurn[]>;
   append(role: "user" | "assistant", content: string, proposal?: Proposal | null): Promise<{ id: string }>;
-  /** Writes the accepted proposal into the itinerary. The only path by
-   *  which a plan changes. */
+  /** Writes the accepted proposal into the itinerary. */
   applyProposal(p: Proposal): Promise<void>;
+  /** Replaces one day's stops with the traveller's own edit (reorder, pin,
+   *  remove), already re-timed by the engine. The other path by which a
+   *  plan changes — and it is the traveller's hand, never the model's. */
+  saveDay(day: DayRow): Promise<void>;
 }
 
 /** Nights between two ISO dates, or null. */

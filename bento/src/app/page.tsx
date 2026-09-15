@@ -12,12 +12,12 @@ export default async function Home() {
     <main className="mx-auto w-full max-w-2xl px-5 py-20">
       <BentoLogo size={30} />
       <p className="mono mt-8 text-[0.7rem] uppercase tracking-[0.16em] text-ink-3">
-        <span className="mr-3 inline-block h-[2px] w-6 align-middle bg-vermilion" />
+        <span className="mr-3 inline-block h-[2px] w-6 align-middle bg-accent" />
         Japan, planned properly
       </p>
 
       <h1 className="mt-6 text-5xl font-black leading-none tracking-tight sm:text-6xl">
-        <span className="block text-[0.42em] font-medium tracking-[0.06em] text-indigo">
+        <span className="block text-[0.42em] font-medium tracking-[0.06em] text-accent">
           弁当
         </span>
         Bento
@@ -33,7 +33,7 @@ export default async function Home() {
         {user ? (
           <Link
             href="/trips"
-            className="bg-indigo px-5 py-2.5 text-sm font-medium text-surface"
+            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep"
           >
             Your trips
           </Link>
@@ -41,7 +41,7 @@ export default async function Home() {
           <>
             <Link
               href="/sign-up"
-              className="bg-indigo px-5 py-2.5 text-sm font-medium text-surface"
+              className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep"
             >
               Create an account
             </Link>

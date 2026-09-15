@@ -161,6 +161,15 @@ export class MemoryStore implements TripStore {
     return { id };
   }
 
+  async saveDay(day: DayRow): Promise<void> {
+    const items = day.items.map((i, idx) => ({ ...i, sortOrder: idx }));
+    const existing = this.days.find((x) => x.date === day.date);
+    if (existing) {
+      existing.cityId = day.cityId;
+      existing.items = items;
+    } else this.days.push({ date: day.date, cityId: day.cityId, items });
+  }
+
   async applyProposal(p: Proposal): Promise<void> {
     if (p.route) this.setRoute(p.route.after.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));
     for (const d of p.days) {

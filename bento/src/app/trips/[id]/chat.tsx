@@ -112,7 +112,7 @@ export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage
     <div className="flex h-full min-h-[60vh] flex-col">
       <div className="flex-1 space-y-5 overflow-y-auto px-1 py-2">
         {messages.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-rule px-5 py-6 text-[0.92rem] text-ink-2">
+          <div className="up rounded-tile bg-sunk px-5 py-6 text-[0.92rem] text-ink-2">
             <p>Tell Bento Man what kind of trip this is. Dates and how many nights are the useful first thing; the rest can come as you go.</p>
             <p className="mt-2 mono text-[0.7rem] text-ink-3">Try: “Ten nights in November, first time, we like temples and food, no hiking.”</p>
           </div>
@@ -120,7 +120,7 @@ export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage
         {messages.map((m) =>
           m.role === "user" ? (
             <div key={m.id} className="flex justify-end">
-              <p className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-md bg-indigo-soft px-4 py-2.5 text-[0.92rem] leading-relaxed">{m.content}</p>
+              <p className="max-w-[85%] whitespace-pre-wrap rounded-tile rounded-br-md bg-lacquer px-4 py-2.5 text-[0.92rem] leading-relaxed text-rice">{m.content}</p>
             </div>
           ) : (
             <div key={m.id} className="flex gap-3">
@@ -139,11 +139,11 @@ export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage
             </div>
           ),
         )}
-        {error && <p className="border-l-[3px] border-vermilion bg-vermilion-soft px-4 py-2.5 text-[0.85rem] text-ink-2">{error}</p>}
+        {error && <p className="border-l-[3px] border-ume bg-ume-soft px-4 py-2.5 text-[0.85rem] text-ink-2">{error}</p>}
         <div ref={bottom} />
       </div>
 
-      <form onSubmit={send} className="sticky bottom-0 mt-3 flex items-end gap-2 border-t border-rule bg-paper pt-3 pb-[env(safe-area-inset-bottom,0px)]">
+      <form onSubmit={send} className="sticky bottom-0 mt-3 flex items-end gap-2 border-t border-rule bg-surface pt-3 pb-[env(safe-area-inset-bottom,0px)]">
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -156,9 +156,9 @@ export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage
           rows={2}
           placeholder="Ask Bento Man…"
           disabled={busy}
-          className="min-h-[2.75rem] flex-1 resize-none rounded-2xl border border-rule bg-surface px-4 py-2.5 text-[0.95rem] disabled:opacity-60"
+          className="min-h-[2.75rem] flex-1 resize-none rounded-tile border border-rule bg-paper px-4 py-2.5 text-[0.95rem] disabled:opacity-60"
         />
-        <button type="submit" disabled={busy || !input.trim()} className="rounded-full bg-indigo px-5 py-2.5 text-[0.9rem] font-medium text-surface disabled:opacity-50">
+        <button type="submit" disabled={busy || !input.trim()} className="rounded-full bg-accent px-5 py-2.5 text-[0.9rem] font-medium text-white hover:bg-accent-deep disabled:opacity-50">
           Send
         </button>
       </form>

@@ -1,49 +1,66 @@
 @import "tailwindcss";
 
-/* Bento's palette, carried over from the spec so the product and its
-   design document look like one thing. Kon-iro indigo as the accent,
-   shu-iro vermilion reserved for things that block a trip. */
+/* Bento's palette — direction 2 from design/README.md: the app is a bento
+   box. Lacquer-dark frames hold compartment tiles in food colours on warm
+   rice white. Salmon is the one accent; umeboshi red is reserved for
+   things that block a trip; edamame green for things that are fine. */
 @theme {
-  --color-paper: #f0f1f4;
-  --color-surface: #fdfdfe;
-  --color-sunk: #e5e8ef;
-  --color-ink: #161a24;
-  --color-ink-2: #4b5263;
-  --color-ink-3: #767e92;
-  --color-rule: #d2d7e1;
+  --color-paper: #fbf8f3;        /* rice */
+  --color-surface: #ffffff;      /* a tile */
+  --color-sunk: #f3eee8;         /* a tile's well */
+  --color-lacquer: #221c1e;      /* the box */
+  --color-rice: #fbf8f3;
+  --color-ink: #221c1e;
+  --color-ink-2: #4a4145;
+  --color-ink-3: #8c8388;
+  --color-rule: #eae3dc;
 
-  --color-indigo: #1e3c78;
-  --color-indigo-soft: #dee5f3;
-  --color-vermilion: #bc4029;
-  --color-vermilion-soft: #f7e1db;
-  --color-moss: #3f6a4a;
-  --color-moss-soft: #dceadf;
-  --color-amber: #8d6210;
-  --color-amber-soft: #f4e9cf;
+  --color-accent: #ff7757;       /* salmon */
+  --color-accent-deep: #e85f3f;
+  --color-accent-soft: #ffe9e2;
+  --color-ume: #e5484d;
+  --color-ume-soft: #fbe2e3;
+  --color-edamame: #3f9a60;
+  --color-edamame-soft: #e2f4e8;
+  --color-tamago: #b07b00;
+  --color-tamago-bright: #ffc94a;
+  --color-tamago-soft: #fff3d1;
+  --color-lavender-soft: #e4e7fb;
 
-  --font-display: var(--font-zen), "Hiragino Kaku Gothic ProN", sans-serif;
-  --font-body: var(--font-newsreader), Georgia, serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-display: "Bricolage Grotesque Variable", "DM Sans Variable", system-ui, sans-serif;
+  --font-body: "DM Sans Variable", system-ui, sans-serif;
+  --font-mono: "DM Mono", ui-monospace, monospace;
+
+  --radius-tile: 20px;
+  --radius-box: 30px;
+  --shadow-tile: 0 1px 2px rgba(34, 28, 30, 0.04), 0 16px 36px -20px rgba(34, 28, 30, 0.25);
 }
 
 @media (prefers-color-scheme: dark) {
   @theme {
-    --color-paper: #0f131b;
-    --color-surface: #171b26;
-    --color-sunk: #1d2230;
-    --color-ink: #e6e9f0;
-    --color-ink-2: #a7aebf;
-    --color-ink-3: #7b8497;
-    --color-rule: #2b3142;
+    --color-paper: #171213;
+    --color-surface: #221c1e;
+    --color-sunk: #2a2325;
+    --color-lacquer: #0f0c0d;
+    --color-rice: #fbf8f3;
+    --color-ink: #fbf8f3;
+    --color-ink-2: #d5cdc9;
+    --color-ink-3: #9a9095;
+    --color-rule: #3a3235;
 
-    --color-indigo: #8cabe2;
-    --color-indigo-soft: #1b2840;
-    --color-vermilion: #e58a73;
-    --color-vermilion-soft: #38211c;
-    --color-moss: #8abe97;
-    --color-moss-soft: #1b2b21;
-    --color-amber: #d9ae5e;
-    --color-amber-soft: #33280f;
+    --color-accent: #ff8a6e;
+    --color-accent-deep: #ff7757;
+    --color-accent-soft: #3a231d;
+    --color-ume: #f26b6f;
+    --color-ume-soft: #3a1f21;
+    --color-edamame: #6fcb8e;
+    --color-edamame-soft: #1e3327;
+    --color-tamago: #ffd066;
+    --color-tamago-bright: #ffc94a;
+    --color-tamago-soft: #3a2f14;
+    --color-lavender-soft: #262a3f;
+
+    --shadow-tile: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 36px -20px rgba(0, 0, 0, 0.6);
   }
 }
 
@@ -51,10 +68,12 @@ body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-body);
+  font-optical-sizing: auto;
 }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -62,11 +81,53 @@ h1, h2, h3, h4 {
   font-family: var(--font-mono);
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-indigo);
-  outline-offset: 3px;
-  border-radius: 2px;
+.disp {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
 }
+
+/* A compartment. */
+.tile {
+  background: var(--color-surface);
+  border-radius: var(--radius-tile);
+  box-shadow: var(--shadow-tile);
+}
+
+/* The box the compartments sit in. */
+.box {
+  background: var(--color-lacquer);
+  border-radius: var(--radius-box);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* ---- Motion. Tiles settle into place; bars fill; badges pop. ---- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.985); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes ring {
+  from { stroke-dashoffset: var(--ring-full); }
+}
+.up { animation: rise 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.grow { transform-origin: left center; animation: grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.pop { animation: pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.ring { animation: ring 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.lift { transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s; }
+.lift:hover { transform: translateY(-2px); }
 
 /* ---- Loader: the umeboshi hops compartment to compartment, clockwise.
    Holds in each box, then a quick hop with a little squash on landing. ---- */
@@ -94,6 +155,8 @@ h1, h2, h3, h4 {
   animation: bento-squish 1.8s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
+  .up, .grow, .pop, .ring { animation: none; }
+  .lift, .lift:hover { transform: none; transition: none; }
   .bento-hop { animation: none; transform: translate(18px, 18px); }
   .bento-squish { animation: bento-pulse 1.6s ease-in-out infinite; }
 }

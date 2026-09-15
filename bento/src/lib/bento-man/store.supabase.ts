@@ -216,32 +216,57 @@ export class SupabaseStore implements TripStore {
       if (ins.error) throw ins.error;
     }
     for (const d of p.days) {
-      const day = await this.db
-        .from("itinerary_days")
-        .upsert({ trip_id: this.tripId, date: d.date, city_id: d.cityId }, { onConflict: "trip_id,date" })
-        .select("id")
-        .single();
-      if (day.error) throw day.error;
-      const clear = await this.db.from("itinerary_items").delete().eq("day_id", day.data.id);
-      if (clear.error) throw clear.error;
-      if (d.after.length) {
-        const ins = await this.db.from("itinerary_items").insert(
-          d.after.map((it, i) => ({
-            day_id: day.data.id,
-            place_id: it.placeId,
-            sort_order: i,
-            start_time: clock(it.startMin),
-            duration_min: it.durationMin,
-            locked: it.locked,
-            reason: it.reason,
-            reason_terms: it.reasonTerms,
-            arrive_mode: it.arriveMode,
-            arrive_minutes: it.arriveMinutes,
-            arrive_detail: it.arriveDetail,
-          })),
-        );
-        if (ins.error) throw ins.error;
-      }
+      await this.writeDay(d.date, d.cityId, d.after.map((it) => ({
+        placeId: it.placeId,
+        startMin: it.startMin,
+        durationMin: it.durationMin,
+        locked: it.locked,
+        reason: it.reason,
+        reasonTerms: it.reasonTerms,
+        arriveMode: it.arriveMode,
+        arriveMinutes: it.arriveMinutes,
+        arriveDetail: it.arriveDetail,
+      })));
+    }
+  }
+
+  async saveDay(day: DayRow): Promise<void> {
+    await this.writeDay(day.date, day.cityId, day.items);
+  }
+
+  private async writeDay(
+    date: string,
+    cityId: string | null,
+    items: {
+      placeId: string; startMin: number | null; durationMin: number | null; locked: boolean; reason: string | null;
+      reasonTerms: string[]; arriveMode: string | null; arriveMinutes: number | null; arriveDetail: string | null;
+    }[],
+  ): Promise<void> {
+    const day = await this.db
+      .from("itinerary_days")
+      .upsert({ trip_id: this.tripId, date, city_id: cityId }, { onConflict: "trip_id,date" })
+      .select("id")
+      .single();
+    if (day.error) throw day.error;
+    const clear = await this.db.from("itinerary_items").delete().eq("day_id", day.data.id);
+    if (clear.error) throw clear.error;
+    if (items.length) {
+      const ins = await this.db.from("itinerary_items").insert(
+        items.map((it, i) => ({
+          day_id: day.data.id,
+          place_id: it.placeId,
+          sort_order: i,
+          start_time: it.startMin == null ? null : clock(it.startMin),
+          duration_min: it.durationMin,
+          locked: it.locked,
+          reason: it.reason,
+          reason_terms: it.reasonTerms,
+          arrive_mode: it.arriveMode,
+          arrive_minutes: it.arriveMinutes,
+          arrive_detail: it.arriveDetail,
+        })),
+      );
+      if (ins.error) throw ins.error;
     }
   }
 }

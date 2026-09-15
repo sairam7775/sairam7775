@@ -86,7 +86,7 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
         <h1 className="text-3xl font-bold tracking-tight">{place.name}</h1>
         <span
           className={`mono rounded-[3px] px-2 py-1 text-[0.65rem] uppercase tracking-[0.08em] ${
-            verified ? "bg-moss-soft text-moss" : "bg-amber-soft text-amber"
+            verified ? "bg-edamame-soft text-edamame" : "bg-tamago-soft text-tamago"
           }`}
         >
           {place.verification_status}
@@ -107,14 +107,14 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
       </div>
 
       {verified ? (
-        <p className="border-l-[3px] border-moss bg-moss-soft px-4 py-3 text-[0.9rem] text-ink-2">
+        <p className="border-l-[3px] border-edamame bg-edamame-soft px-4 py-3 text-[0.9rem] text-ink-2">
           Signed off by <strong>{place.verified_by}</strong> on{" "}
           <span className="mono">{place.last_verified}</span>. Saving an edit
           returns this record to draft — changing a claim withdraws the
           signature until someone puts it back.
         </p>
       ) : (
-        <p className="border-l-[3px] border-amber bg-amber-soft px-4 py-3 text-[0.9rem] text-ink-2">
+        <p className="border-l-[3px] border-tamago bg-tamago-soft px-4 py-3 text-[0.9rem] text-ink-2">
           Draft. Everything under <strong>Judgement</strong> reads as empty to
           travellers until this is verified — the factual fields above it are
           safe to show as soon as they are imported.
@@ -177,7 +177,7 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
         </section>
 
         <section>
-          <h2 className="border-b-2 border-vermilion pb-1.5 text-base font-bold">
+          <h2 className="border-b-2 border-ume pb-1.5 text-base font-bold">
             Judgement
           </h2>
           <p className="mt-1.5 text-[0.87rem] text-ink-2">
@@ -197,7 +197,7 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
           </div>
         </section>
 
-        <button className="self-start bg-indigo px-5 py-2.5 text-sm font-medium text-surface">
+        <button className="self-start bg-accent px-5 py-2.5 text-sm font-medium text-surface">
           Save as draft
         </button>
       </form>
@@ -213,7 +213,7 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
         </p>
         <form action={verifyPlace} className="mt-5">
           <input type="hidden" name="id" value={place.id} />
-          <button className="bg-moss px-5 py-2.5 text-sm font-medium text-surface">
+          <button className="bg-edamame px-5 py-2.5 text-sm font-medium text-surface">
             {verified ? "Re-verify (stamp today)" : "Verify this record"}
           </button>
         </form>
