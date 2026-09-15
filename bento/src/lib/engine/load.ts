@@ -45,6 +45,7 @@ export async function loadPlacesForCity(cityId: string): Promise<PlaceInput[]> {
     coverageTier: tier,
     nearestStation: r.nearest_station,
     stationWalkMin: r.station_walk_min,
+    seasons: r.seasons ?? [],
     crowdNote: r.crowd_note,
     localTip: r.local_tip,
   }));

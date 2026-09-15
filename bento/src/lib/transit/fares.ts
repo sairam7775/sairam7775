@@ -17,8 +17,10 @@ const BANDS: Record<string, [number, number][]> = {
   "kyoto-subway": [[3, 220], [7, 260], [11, 290], [15, 330], [20, 360]],
   "osaka-metro": [[3, 190], [7, 240], [13, 290], [19, 340], [25, 390]],
   nankai: [[3, 160], [6, 200], [10, 260], [15, 310], [20, 370], [30, 470], [40, 590], [50, 700]],
-  /** Flat fare inside the city. */
+  /** Flat fares. */
   hiroden: [[999, 240]],
+  "kyoto-bus": [[999, 230]],
+  "shinki-bus": [[999, 280]],
 };
 
 export function bandFare(operator: string, km: number): number | null {

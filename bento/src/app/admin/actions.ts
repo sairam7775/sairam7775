@@ -149,6 +149,7 @@ export async function savePlace(formData: FormData) {
       conflicts_with: splitList(formData.get("conflictsWith")),
       pairs_with: splitList(formData.get("pairsWith")),
       sources: splitList(formData.get("sources")),
+      seasons: splitList(formData.get("seasons")),
 
       verification_status: "draft",
       verified_by: null,
@@ -186,10 +187,9 @@ export async function verifyPlace(formData: FormData) {
   if (!place?.sources?.length) missing.push("at least one source");
 
   if (missing.length) {
-    redirect(
-      `/admin/places/${id}?error=` +
-        encodeURIComponent(`Can't verify without ${missing.join(", ")}.`),
-    );
+    const back = String(formData.get("back") ?? "");
+    const base = back.startsWith("/admin/") ? back : `/admin/places/${id}`;
+    redirect(`${base}${base.includes("?") ? "&" : "?"}error=` + encodeURIComponent(`Can't verify ${id} without ${missing.join(", ")}.`));
   }
 
   await db
@@ -202,5 +202,7 @@ export async function verifyPlace(formData: FormData) {
     .eq("id", id);
 
   revalidatePath(`/admin/places/${id}`);
-  redirect(`/admin/places/${id}?verified=1`);
+  revalidatePath("/admin/review");
+  const back = String(formData.get("back") ?? "");
+  redirect(back.startsWith("/admin/") ? `${back}${back.includes("?") ? "&" : "?"}verified=1` : `/admin/places/${id}?verified=1`);
 }

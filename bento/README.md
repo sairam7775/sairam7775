@@ -26,8 +26,15 @@ budget, filter, anchor, grow, order, time, validate. Every item carries the
 terms that put it there; every place left out carries the rule or term that
 removed it.
 
-Phases P5–P8 (deep curation, Bento Man, the itinerary UI, and the booking
-vault) are in §13 of the spec.
+**P5 — deep data.** The first draft batch for the corridor: 134 place
+records across Kyoto, Osaka, Nara, Hiroshima, Miyajima and Himeji, each at
+the full Fig. 3 shape — three durations, a quiet window, a crowd note, a
+tip, who should skip it, cost, hours, conflicts and pairings, seasons, and
+where to check. Every one is a draft: the verification gate hides its
+judgement until a human signs it off in `/admin/review`.
+
+Phases P6–P8 (Bento Man, the itinerary UI, and the booking vault) are in
+§13 of the spec.
 
 ## Setup
 
@@ -43,7 +50,18 @@ vault) are in §13 of the spec.
    ```
 
    `0001` is reference data, `0002` user data, `0003` row-level security and
-   the verification gate, `0004` storage for uploaded bookings.
+   the verification gate, `0004` storage for uploaded bookings, `0005`–`0008`
+   hardening, curation progress and seasons. Then the seeds, in this order:
+
+   ```bash
+   psql "$DATABASE_URL" -f supabase/seed_destinations.sql
+   psql "$DATABASE_URL" -f supabase/seed_transit.sql
+   psql "$DATABASE_URL" -f supabase/seed_places_draft.sql
+   ```
+
+   Places reference stations, so transit goes in first. Re-applying the
+   places seed refreshes drafts only — a record you have verified is never
+   overwritten by a re-export.
 
 3. **Enable Google sign-in** under Authentication → Providers, and add
    `http://localhost:3000/auth/callback` to the redirect allowlist.
@@ -86,6 +104,41 @@ vault) are in §13 of the spec.
    default because label matching is fuzzy, and a wrong match silently moves
    a city hundreds of kilometres — corrupting every travel-time estimate
    built on top of it.
+
+## Curation
+
+```bash
+npx tsx scripts/export-places-seed.ts > supabase/seed_places_draft.sql
+```
+
+The drafts live in `src/lib/places/seed/*.ts`, one file per city, and the
+SQL is generated from them — edit the TypeScript, never the SQL. The
+exporter refuses duplicate ids and any `conflicts`/`pairs` that point at a
+record that does not exist, because a dangling link is a silent no-op in
+the engine.
+
+Signing off is done in `/admin/review`: one draft at a time, every field on
+screen, one button to verify and one to skip. What to check per record is
+in spec §10 — the durations against your own sense of the place, the hours
+and cost against the source listed, the tip for anything that is not true.
+A record that needs a change goes through the editor first, then back to
+the queue.
+
+Deep tier needs 25 verified places (§10); the batch is sized so each of
+the four deep cities can get there:
+
+| City | Drafts |
+|---|---|
+| Kyoto | 41 |
+| Osaka | 28 |
+| Nara | 26 |
+| Hiroshima | 25 |
+| Miyajima | 8 |
+| Himeji | 6 |
+
+Once a city clears the bar, promote it on its `/admin/cities` page. The
+planner will not build a day anywhere still at stub tier, however many
+records it has.
 
 ## Commands
 
@@ -211,14 +264,19 @@ src/
   lib/
     admin.ts          the curation gate
     engine/           scoring, filters, scheduler, trip totals, fixtures
+    places/seed/      the drafted place records, one file per city
     transit/          graph, router, fares, GTFS parser, corridor seed
 scripts/
   grant-admin.ts      grant or revoke curation access
   import-geography.ts Wikidata enrichment for seeded cities
+  export-places-seed.ts  drafts → supabase/seed_places_draft.sql
+  export-transit-seed.ts corridor → supabase/seed_transit.sql
 supabase/
-  migrations/         schema, RLS, storage, curation
+  migrations/         schema, RLS, storage, curation, seasons
   seed.sql            regions and all 47 prefectures
   seed_destinations.sql  99 destinations at stub tier
+  seed_transit.sql    46 stations, 132 directed edges (generated)
+  seed_places_draft.sql  134 drafted places (generated)
 ```
 
 ## Coverage tiers

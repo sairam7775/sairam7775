@@ -56,6 +56,12 @@ export default async function AdminHome() {
         letting a thin plan pass for a good one.
       </p>
 
+      {totals.drafts > 0 && (
+        <Link href="/admin/review" className="mt-6 inline-block bg-moss px-5 py-2.5 text-sm font-medium text-surface">
+          Review {totals.drafts} draft{totals.drafts === 1 ? "" : "s"}
+        </Link>
+      )}
+
       <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-3 border-y border-rule py-4">
         {[
           ["Cities", totals.cities],

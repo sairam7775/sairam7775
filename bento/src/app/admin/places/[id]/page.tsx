@@ -136,6 +136,7 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
             <Text name="costJpy" label="Cost (¥)" value={place.cost_jpy?.toString()} />
             <Text name="bookingLeadDays" label="Booking lead (days)" value={place.booking_lead_days?.toString()} hint="How far ahead tickets must be bought." />
             <Text name="sources" label="Sources" value={place.sources?.join(", ")} hint="Comma separated. Required to verify — licence compliance depends on it." />
+            <Text name="seasons" label="Seasons" value={place.seasons?.join(", ")} hint='When it is at its best: "koyo", "sakura". Leave empty for no season.' />
           </div>
         </section>
 
