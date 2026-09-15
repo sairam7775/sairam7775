@@ -19,6 +19,7 @@ Practically:
 - Durations, fares, opening hours, travel times → the engine, always.
 - The model may never state a fact it was not handed.
 - The model proposes diffs; it never writes the itinerary directly.
+- Opus 5 first, Sonnet 5 only once the eval holds (D8).
 
 ## Invariants
 
@@ -84,6 +85,34 @@ Practically:
 - `/admin/review` is the sign-off queue. `verifyPlace` redirects to the
   `back` field so the next draft loads without a round trip to the list;
   `back` must start with `/admin/`.
+
+## Bento Man (P6)
+
+- `src/lib/bento-man/`. `chat.ts` runs one turn: history + a
+  `<trip_state>` block + the message → the model → tools → prose. The
+  system prompt (`prompt.ts`) and tool list (`tools.ts`) are the cached
+  prefix and must stay byte-stable: no dates, names or state in them.
+- The model calls `claude-opus-5` through the beta client with
+  `fallbacks: "default"`, adaptive thinking, `output_config.effort` from
+  `BENTO_MAN_EFFORT`. Streaming always; `finalMessage()` for the result.
+- Every tool validates its input with Zod and returns a JSON string. A
+  bad input is an `is_error` result the model can recover from, never a
+  throw. Tools that change the plan write to `ctx.proposal`, nothing else.
+- A `Proposal` (`diff.ts`) is validated on the way into `chat_messages`
+  and again on the way out. `acceptProposal` is the only writer of
+  `trip_cities`, `itinerary_days` and `itinerary_items` from the chat.
+- `TripStore` has two implementations. `SupabaseStore` is the product and
+  reads places through `places_public`; `MemoryStore` is the eval set and
+  the tests, and treats the drafted corridor as verified. Never let the
+  memory store near a request handler.
+- `city_coverage` is the traveller-safe view for tiers and verified
+  counts; `curation_progress` stays admin-only because it counts drafts.
+- Guards before every model call: auth → `rateLimit` → `assertWithinSpendCap`.
+  `recordUsage` after, with `costUsd` from `cost.ts` — keep the price table
+  current or the cap lies.
+- The eval (`evals/scenarios.ts`, `scripts/eval-bento-man.ts`) is the
+  regression check for prompt edits and the Sonnet 5 test. Add a scenario
+  with every prompt rule you add; `voiceLint` runs on every reply.
 
 ## Transit (P3)
 

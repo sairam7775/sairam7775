@@ -15,7 +15,14 @@ export async function loadPlacesForCity(cityId: string): Promise<PlaceInput[]> {
   if (e2) throw e2;
   const tier = (city?.coverage_tier ?? "stub") as CoverageTier;
 
-  return (rows ?? []).map((r) => ({
+  return (rows ?? []).map((r) => rowToPlace(r, tier));
+}
+
+/** A places_public row as the engine reads it. Shared with Bento Man's
+ *  store so both paths read the same gate the same way. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
+  return {
     id: r.id,
     cityId: r.city_id,
     name: r.name,
@@ -48,7 +55,7 @@ export async function loadPlacesForCity(cityId: string): Promise<PlaceInput[]> {
     seasons: r.seasons ?? [],
     crowdNote: r.crowd_note,
     localTip: r.local_tip,
-  }));
+  };
 }
 
 const num = (v: unknown): number | null => (v == null ? null : Number(v));

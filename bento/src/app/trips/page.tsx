@@ -67,7 +67,9 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
               className="flex items-start justify-between gap-4 border-b border-rule px-5 py-4 last:border-b-0"
             >
               <div>
-                <h2 className="text-base font-bold">{trip.title ?? "Untitled trip"}</h2>
+                <h2 className="text-base font-bold">
+                  <Link href={`/trips/${trip.id}`} className="underline-offset-4 hover:underline">{trip.title ?? "Untitled trip"}</Link>
+                </h2>
                 <p className="mono mt-1 text-[0.78rem] text-ink-3">
                   {formatRange(trip.start_date, trip.end_date)}
                   {trip.party_size > 1 && ` · ${trip.party_size} people`}

@@ -33,8 +33,15 @@ tip, who should skip it, cost, hours, conflicts and pairings, seasons, and
 where to check. Every one is a draft: the verification gate hides its
 judgement until a human signs it off in `/admin/review`.
 
-Phases P6–P8 (Bento Man, the itinerary UI, and the booking vault) are in
-§13 of the spec.
+**P6 — Bento Man.** The conversation, over reasoning that already works.
+Claude Opus 5 with nine tools that call the engine and the store; it does
+intent and prose, the engine does every number. Onboarding in a handful
+of questions, route proposals that refuse over-packed trips with the
+arithmetic shown, day plans and changes as proposals the traveller accepts
+or rejects (§08). Plus the eval set the D8 model test runs against.
+
+Phases P7–P8 (the itinerary UI and the booking vault) are in §13 of the
+spec.
 
 ## Setup
 
@@ -51,7 +58,8 @@ Phases P6–P8 (Bento Man, the itinerary UI, and the booking vault) are in
 
    `0001` is reference data, `0002` user data, `0003` row-level security and
    the verification gate, `0004` storage for uploaded bookings, `0005`–`0008`
-   hardening, curation progress and seasons. Then the seeds, in this order:
+   hardening, curation progress and seasons, `0009` proposal status and the
+   traveller-safe coverage view. Then the seeds, in this order:
 
    ```bash
    psql "$DATABASE_URL" -f supabase/seed_destinations.sql
@@ -74,7 +82,8 @@ Phases P6–P8 (Bento Man, the itinerary UI, and the booking vault) are in
 
    Fill in the project URL and anon key from Project Settings → API. The
    service-role key is server-only — it bypasses every RLS policy, so it must
-   never reach the browser.
+   never reach the browser. `ANTHROPIC_API_KEY` turns Bento Man on;
+   without it the chat says so and everything else still works.
 
 5. **Run it:**
 
@@ -139,6 +148,55 @@ the four deep cities can get there:
 Once a city clears the bar, promote it on its `/admin/cities` page. The
 planner will not build a day anywhere still at stub tier, however many
 records it has.
+
+## Bento Man
+
+Open a trip at `/trips/<id>` and the right-hand panel is the conversation.
+What it can do is exactly what its tools can do, and every tool is a call
+into the engine or the store — the model never touches the itinerary:
+
+| Tool | Does |
+|---|---|
+| `set_preferences`, `set_trip_dates` | Onboarding answers, saved where the traveller can read and correct them |
+| `assess_route` | Cities and nights → tier per city, train time per leg, share of the trip spent moving, and a verdict with the arithmetic |
+| `suggest_route` | The corridor's starting route for the trip length |
+| `propose_route` | A route as a proposal |
+| `plan_days` | Day plans from the engine as a proposal — every empty day, or named dates, or a day trip |
+| `replan_day` | Pin, unpin, remove, add, avoid a category, start later — the engine re-plans around what is kept |
+| `get_place`, `route_between` | The verified facts and the journey, so a description quotes the record rather than the model's memory |
+
+A proposal is a diff: the day as it would be next to the day as it is,
+each stop flagged kept, new, moved or out, with what was left out and why.
+It sits on the assistant message with a status, and `acceptProposal`
+applies it in one request — the only path by which a plan changes.
+
+Guards, in order: sign-in, a per-user throttle, the monthly spend cap,
+then the model. Every turn records its tokens and cost against the user.
+
+```bash
+BENTO_MAN_MODEL=claude-opus-5     # default
+BENTO_MAN_EFFORT=medium           # low | medium | high
+```
+
+### The eval set
+
+`src/lib/bento-man/evals/scenarios.ts` holds ~30 planning scenarios with
+known-correct answers: onboarding, over-packed routes, stub cities, day
+plans, changes that must not regenerate the rest, facts that must come
+from the database, and the voice. Each is graded mechanically — tools
+called or not called, prose patterns, proposal kind, and the voice lint —
+so a prompt edit or a model swap fails loudly.
+
+```bash
+npx tsx scripts/eval-bento-man.ts                           # Opus 5
+npx tsx scripts/eval-bento-man.ts --model claude-sonnet-5   # the D8 test
+npx tsx scripts/eval-bento-man.ts --only route-overpacked --out evals/run.json
+```
+
+It runs the real model against the in-memory store (the drafted corridor
+treated as verified, no database), so it needs `ANTHROPIC_API_KEY` and a
+network. Expect a few cents per run at medium effort with caching. The
+engine-side half of every scenario is also a Vitest test and runs offline.
 
 ## Commands
 
@@ -253,7 +311,8 @@ src/
   app/
     (auth)/           sign-in, sign-up, shared form UI, auth actions
     auth/callback/    OAuth and email confirmation exchange
-    trips/            trip list and creation
+    trips/            trip list and creation; trips/[id] is the trip and the chat
+    api/chat/         one streamed turn with Bento Man
   lib/
     supabase/         browser, server and service-role clients
     guards/           spend cap and rate limiting
@@ -263,12 +322,14 @@ src/
     admin/            curation: tiers, place editor, verification
   lib/
     admin.ts          the curation gate
-    engine/           scoring, filters, scheduler, trip totals, fixtures
+    bento-man/        prompt, tools, diff model, stores, the chat loop, evals
+    engine/           scoring, filters, scheduler, route assessor, fixtures
     places/seed/      the drafted place records, one file per city
     transit/          graph, router, fares, GTFS parser, corridor seed
 scripts/
   grant-admin.ts      grant or revoke curation access
   import-geography.ts Wikidata enrichment for seeded cities
+  eval-bento-man.ts   the eval set against a model
   export-places-seed.ts  drafts → supabase/seed_places_draft.sql
   export-transit-seed.ts corridor → supabase/seed_transit.sql
 supabase/
