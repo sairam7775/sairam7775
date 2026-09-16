@@ -50,11 +50,13 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
   }
 
   const known = cities.filter((c) => c.tier !== "stub");
+  const stubs = cities.filter((c) => c.tier === "stub");
   lines.push(
     known.length
-      ? `cities Bento knows: ${known.map((c) => `${c.name} (${c.id}, ${c.tier}, ${c.verifiedPlaces} verified)`).join("; ")}. Everything else is stub tier.`
+      ? `cities Bento knows: ${known.map((c) => `${c.name} (${c.id}, ${c.tier}, ${c.verifiedPlaces} verified)`).join("; ")}.`
       : "cities Bento knows: none above stub tier yet — say so if asked to plan days anywhere.",
   );
+  if (stubs.length) lines.push(`stub tier (name and location only; no day plans): ${stubs.map((c) => `${c.name}=${c.id}`).join(", ")}`);
 
   return `<trip_state>\n${lines.join("\n")}\n</trip_state>`;
 }

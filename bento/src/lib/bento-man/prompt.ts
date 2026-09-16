@@ -54,7 +54,8 @@ export const BANNED_PHRASES = [
   "as an ai",
 ];
 
-const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F2FF}]/u;
+/** Pictographs only. Dingbats like ✓ and ✗ are list markers, not emoji. */
+const EMOJI = /[\u{1F000}-\u{1FAFF}]/u;
 
 export interface VoiceViolation {
   rule: "exclamation" | "emoji" | "phrase";

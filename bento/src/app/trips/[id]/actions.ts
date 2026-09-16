@@ -15,23 +15,36 @@ const Ids = z.object({ tripId: z.string().uuid(), messageId: z.string().uuid() }
 export async function acceptProposal(formData: FormData) {
   const { db, user, tripId, messageId } = await guard(formData);
 
+  // Claim it first. The update only matches a row that is still
+  // "proposed", so two submits racing each other cannot both apply — the
+  // loser gets no row back.
+  const now = new Date().toISOString();
   const { data: msg } = await db
     .from("chat_messages")
-    .select("id, proposed_diff, diff_status")
+    .update({ diff_status: "accepted", resolved_at: now })
     .eq("id", messageId)
     .eq("trip_id", tripId)
     .eq("diff_status", "proposed")
+    .select("id, proposed_diff")
     .maybeSingle();
   if (!msg) redirect(`/trips/${tripId}?error=${encodeURIComponent("That proposal has already been answered.")}`);
 
   const proposal = parseProposal(msg.proposed_diff);
-  if (!proposal) redirect(`/trips/${tripId}?error=${encodeURIComponent("That proposal can't be read any more. Ask Bento Man again.")}`);
+  if (!proposal) {
+    await db.from("chat_messages").update({ diff_status: "rejected" }).eq("id", messageId);
+    redirect(`/trips/${tripId}?error=${encodeURIComponent("That proposal can't be read any more. Ask Bento Man again.")}`);
+  }
 
   const store = new SupabaseStore(db, tripId, user.id);
-  await store.applyProposal(proposal);
+  try {
+    await store.applyProposal(proposal);
+  } catch (e) {
+    // Hand it back so the traveller can try again rather than losing it.
+    await db.from("chat_messages").update({ diff_status: "proposed", resolved_at: null }).eq("id", messageId);
+    const why = e instanceof Error ? e.message : "the database refused the change";
+    redirect(`/trips/${tripId}?error=${encodeURIComponent(`That didn't apply: ${why}`)}`);
+  }
 
-  const now = new Date().toISOString();
-  await db.from("chat_messages").update({ diff_status: "accepted", resolved_at: now }).eq("id", messageId);
   // Older proposals described a trip that no longer exists; close them.
   await db.from("chat_messages").update({ diff_status: "rejected", resolved_at: now }).eq("trip_id", tripId).eq("diff_status", "proposed");
 

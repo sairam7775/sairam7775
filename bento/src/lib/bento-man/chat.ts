@@ -6,7 +6,7 @@
  *  everything that changes per turn — today's date, the trip state — rides
  *  in the final user message, after the cache breakpoint. */
 import Anthropic from "@anthropic-ai/sdk";
-import { addUsage, ZERO_USAGE, type Effort, type Usage } from "./cost";
+import { addUsage, totalUsage, ZERO_USAGE, type Effort, type Usage, type UsageByModel } from "./cost";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
 import { SYSTEM_PROMPT } from "./prompt";
@@ -44,6 +44,8 @@ export interface RunResult {
   text: string;
   proposal: Proposal | null;
   usage: Usage;
+  /** Priced per model: a refusal fallback bills two models in one turn. */
+  usageByModel: UsageByModel;
   stopReason: string | null;
   toolCalls: ToolCallRecord[];
   assistantMessageId: string | null;
@@ -51,7 +53,9 @@ export interface RunResult {
   servedBy: string;
 }
 
-const MAX_TOKENS = 8192;
+/** Adaptive thinking comes out of this too, so leave room: a truncated
+ *  turn can cut a tool_use block in half. */
+const MAX_TOKENS = 24_000;
 const REFUSAL_TEXT = "I can't help with that one. Ask me about the trip and I will.";
 
 export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
@@ -71,10 +75,18 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   const ctx: ToolContext = { store, today, proposal: null };
   const texts: string[] = [];
   const toolCalls: ToolCallRecord[] = [];
-  let usage: Usage = ZERO_USAGE;
+  const usageByModel: UsageByModel = {};
   let stopReason: string | null = null;
   let servedBy = model;
 
+  // A turn that dies after a model call still cost money. The partial
+  // usage rides on the error so the caller can record it (E2).
+  const fail = (e: unknown) => {
+    if (e instanceof Error) (e as Error & { usageByModel?: UsageByModel }).usageByModel = usageByModel;
+    return e;
+  };
+
+  try {
   for (let i = 0; i < maxIterations; i++) {
     const stream = client.beta.messages.stream({
       model,
@@ -89,7 +101,8 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     stream.on("text", (delta) => events?.onText?.(delta));
     const msg = await stream.finalMessage();
 
-    usage = addUsage(usage, {
+    // Price against the model that served this iteration, not the last one.
+    usageByModel[msg.model] = addUsage(usageByModel[msg.model] ?? ZERO_USAGE, {
       inputTokens: msg.usage.input_tokens,
       outputTokens: msg.usage.output_tokens,
       cacheWriteTokens: msg.usage.cache_creation_input_tokens ?? 0,
@@ -105,9 +118,10 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       events?.onText?.(REFUSAL_TEXT);
       break;
     }
-    if (msg.stop_reason === "pause_turn") {
-      messages.push({ role: "assistant", content: msg.content });
-      continue;
+    if (msg.stop_reason === "max_tokens") {
+      // A cut-off turn can hold half a tool call. Never run it.
+      texts.push("That answer ran long and got cut off. Ask me again, or narrower.");
+      break;
     }
     if (msg.stop_reason !== "tool_use") break;
 
@@ -131,9 +145,18 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     messages.push({ role: "user", content: results });
   }
 
+  } catch (e) {
+    throw fail(e);
+  }
+
   const text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
   let assistantMessageId: string | null = null;
   if (persist) assistantMessageId = (await store.append("assistant", text, ctx.proposal)).id;
 
-  return { text, proposal: ctx.proposal, usage, stopReason, toolCalls, assistantMessageId, servedBy };
+  return { text, proposal: ctx.proposal, usage: totalUsage(usageByModel), usageByModel, stopReason, toolCalls, assistantMessageId, servedBy };
+}
+
+/** Partial usage from a turn that threw, so a failed turn still counts. */
+export function usageFromError(e: unknown): UsageByModel {
+  return (e as { usageByModel?: UsageByModel })?.usageByModel ?? {};
 }

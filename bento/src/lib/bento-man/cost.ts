@@ -37,6 +37,18 @@ export function addUsage(a: Usage, b: Partial<Usage>): Usage {
   };
 }
 
+/** Usage split by the model that actually served it. A refusal fallback
+ *  means one turn can be billed at two models' rates. */
+export type UsageByModel = Record<string, Usage>;
+
+export function costOfAll(byModel: UsageByModel): number {
+  return Object.entries(byModel).reduce((sum, [model, u]) => sum + costUsd(model, u), 0);
+}
+
+export function totalUsage(byModel: UsageByModel): Usage {
+  return Object.values(byModel).reduce(addUsage, ZERO_USAGE);
+}
+
 export function costUsd(model: string, u: Usage): number {
   const p = PRICES[model] ?? PRICES["claude-opus-5"];
   const perM = 1_000_000;

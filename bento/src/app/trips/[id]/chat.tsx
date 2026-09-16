@@ -35,8 +35,21 @@ type Event =
 export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage[] }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
+  // The server is the truth for a proposal's status. After Accept or
+  // Reject the page re-renders with a new `initial`; without this the card
+  // keeps its buttons and a second click hits an already-answered
+  // proposal. An in-flight turn is kept: it has no server row yet.
+  useEffect(() => {
+    if (busyRef.current) return;
+    setMessages((local) => {
+      const ids = new Set(initial.map((m) => m.id));
+      const inFlight = local.filter((m) => !ids.has(m.id) && (m.id.startsWith("u-") || m.id.startsWith("a-")));
+      return [...initial, ...inFlight];
+    });
+  }, [initial]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [activity, setActivity] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
@@ -52,6 +65,7 @@ export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage
     setInput("");
     setError(null);
     setBusy(true);
+    busyRef.current = true;
     const userId = `u-${Date.now()}`;
     const draftId = `a-${Date.now()}`;
     setMessages((m) => [
@@ -104,6 +118,7 @@ export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage
       setMessages((m) => m.filter((x) => x.id !== draftId || x.content));
     } finally {
       setActivity(null);
+      busyRef.current = false;
       setBusy(false);
     }
   }

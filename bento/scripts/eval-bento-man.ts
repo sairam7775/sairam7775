@@ -18,7 +18,7 @@ import { dirname } from "node:path";
 import { SCENARIOS, type Scenario } from "../src/lib/bento-man/evals/scenarios";
 import { MemoryStore } from "../src/lib/bento-man/store.memory";
 import { runBentoMan } from "../src/lib/bento-man/chat";
-import { costUsd, DEFAULT_MODEL, type Effort } from "../src/lib/bento-man/cost";
+import { costOfAll, DEFAULT_MODEL, type Effort } from "../src/lib/bento-man/cost";
 import { voiceLint } from "../src/lib/bento-man/prompt";
 
 const args = process.argv.slice(2);
@@ -48,11 +48,15 @@ interface Result {
   ms: number;
 }
 
-function grade(s: Scenario, text: string, tools: string[], proposal: { route?: unknown; days: unknown[] } | null): string[] {
+function grade(s: Scenario, text: string, calls: { name: string; ok: boolean }[], proposal: { route?: unknown; days: unknown[] } | null): string[] {
   const f: string[] = [];
   const e = s.expect;
+  const tools = calls.map((c) => c.name);
+  // A tool that refused cleanly (is_error) was the tool doing its job, so
+  // only a successful call counts against notTools.
+  const okTools = calls.filter((c) => c.ok).map((c) => c.name);
   for (const t of e.tools ?? []) if (!tools.includes(t)) f.push(`did not call ${t} (called: ${tools.join(", ") || "none"})`);
-  for (const t of e.notTools ?? []) if (tools.includes(t)) f.push(`called ${t}`);
+  for (const t of e.notTools ?? []) if (okTools.includes(t)) f.push(`called ${t} successfully`);
   for (const re of e.mustMatch ?? []) if (!re.test(text)) f.push(`prose does not match ${re}`);
   for (const re of e.mustNotMatch ?? []) if (re.test(text)) f.push(`prose matches ${re}`);
   if (e.proposal) {
@@ -75,7 +79,7 @@ async function main() {
     const store = new MemoryStore(s.setup);
     const t0 = Date.now();
     let text = "";
-    let tools: string[] = [];
+    let calls: { name: string; ok: boolean }[] = [];
     let proposal: { route?: unknown; days: unknown[] } | null = null;
     let usage = { input: 0, output: 0, cached: 0 };
     let cost = 0;
@@ -83,17 +87,18 @@ async function main() {
     try {
       const r = await runBentoMan({ store, client, model, effort, today, message: s.user, persist: false });
       text = r.text;
-      tools = r.toolCalls.map((c) => c.name);
+      calls = r.toolCalls.map((c) => ({ name: c.name, ok: c.ok }));
       proposal = r.proposal;
       usage = { input: r.usage.inputTokens, output: r.usage.outputTokens, cached: r.usage.cacheReadTokens };
-      cost = costUsd(r.servedBy, r.usage);
-      failures = grade(s, text, tools, proposal);
+      cost = costOfAll(r.usageByModel);
+      failures = grade(s, text, calls, proposal);
       if (r.stopReason === "refusal") failures.push("model refused");
     } catch (e) {
       failures = [`error: ${e instanceof Error ? e.message : String(e)}`];
     }
     totalCost += cost;
     const ms = Date.now() - t0;
+    const tools = calls.map((c) => (c.ok ? c.name : `${c.name}(err)`));
     results.push({ id: s.id, pass: failures.length === 0, failures, tools, text, usage, costUsd: cost, ms });
     console.log(`${failures.length ? "✗" : "✓"} ${s.id.padEnd(28)} ${String(ms).padStart(6)}ms  $${cost.toFixed(4)}  ${tools.join(",") || "-"}`);
     for (const f of failures) console.log(`      ${f}`);

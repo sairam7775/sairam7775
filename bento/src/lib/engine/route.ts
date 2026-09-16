@@ -228,12 +228,12 @@ export function suggestRoute(totalNights: number, interests: InterestTag[] = [])
   const likesHistory = interests.includes("history") || interests.includes("shrines");
   const kyoto = (n: number) => ({ cityId: "kyoto-city", nights: n, reason: "The reason most people come. Temples, gardens, and the two mornings that make the trip." });
   const osaka = (n: number) => ({ cityId: "osaka-city", nights: n, reason: "Where the airport is, and the food. Two nights is enough; it is a base, not a sight." });
-  const nara = { cityId: "nara-city", nights: 0, reason: "A day trip from Kyoto: 45 minutes each way, the deer and Todai-ji, back for dinner." };
+  const nara = { cityId: "nara-city", nights: 0, reason: "A day trip from Kyoto: the deer and Todai-ji, back for dinner. Bento Man can give the train." };
   const hiroshima = (n: number) => ({ cityId: "hiroshima-city", nights: n, reason: "The Peace Park in the morning, Miyajima in the afternoon. Worth the Shinkansen." });
-  const himeji = { cityId: "himeji", nights: 0, reason: "On the line to Hiroshima. Get off, see the castle, get back on. Three hours." };
+  const himeji = { cityId: "himeji", nights: 0, reason: "On the line to Hiroshima. Get off, see the castle, get back on." };
 
   if (totalNights <= 2) return { cities: [kyoto(totalNights)], note: "Too short to move. One city, done properly." };
-  if (totalNights === 3) return { cities: [kyoto(3), nara], note: "Kyoto with a day in Nara. Osaka is 30 minutes away if you want an evening there." };
+  if (totalNights === 3) return { cities: [kyoto(3), nara], note: "Kyoto with a day in Nara. Osaka is close enough for an evening if you want one." };
   if (totalNights <= 5) return { cities: [osaka(Math.min(2, totalNights - 3)), kyoto(totalNights - Math.min(2, totalNights - 3)), nara], note: "Land in Osaka, move to Kyoto. Nara as a day trip." };
   if (totalNights <= 7) {
     return {

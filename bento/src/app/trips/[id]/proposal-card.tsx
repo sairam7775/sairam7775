@@ -1,3 +1,6 @@
+"use client";
+
+import { useFormStatus } from "react-dom";
 import { clock, type DayDiff, type Proposal } from "@/lib/bento-man/diff";
 import { acceptProposal, rejectProposal } from "./actions";
 
@@ -100,15 +103,25 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
           <form action={acceptProposal}>
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
-            <button className="rounded-full bg-accent px-4 py-1.5 text-[0.85rem] font-medium text-white hover:bg-accent-deep">Accept</button>
+            <Submit className="rounded-full bg-accent px-4 py-1.5 text-[0.85rem] font-medium text-white hover:bg-accent-deep" label="Accept" pendingLabel="Applying…" />
           </form>
           <form action={rejectProposal}>
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
-            <button className="rounded-full border border-rule bg-surface px-4 py-1.5 text-[0.85rem] font-medium">Reject</button>
+            <Submit className="rounded-full border border-rule bg-surface px-4 py-1.5 text-[0.85rem] font-medium" label="Reject" pendingLabel="…" />
           </form>
         </div>
       )}
     </div>
+  );
+}
+
+/** One submit at a time: a double click must not apply a proposal twice. */
+function Submit({ className, label, pendingLabel }: { className: string; label: string; pendingLabel: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button type="submit" disabled={pending} className={`${className} disabled:opacity-60`}>
+      {pending ? pendingLabel : label}
+    </button>
   );
 }

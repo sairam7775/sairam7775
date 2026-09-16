@@ -56,7 +56,13 @@ const SetTripDates = z.object({
   title: z.string().max(120).optional(),
 });
 
-const RouteCities = z.array(z.object({ city_id: z.string(), nights: z.number().int().min(0).max(30) })).min(1).max(8);
+/** A city appears once in a route. Landing and leaving from the same city
+ *  is a real pattern, but trip_cities is keyed by (trip, city); express it
+ *  as one stay with more nights or as a day trip. */
+const uniqueCities = (cs: { city_id: string }[]) => new Set(cs.map((c) => c.city_id)).size === cs.length;
+const DUP_MSG = "a city can appear only once in a route — fold a return visit into one stay, or make it a day trip";
+
+const RouteCities = z.array(z.object({ city_id: z.string(), nights: z.number().int().min(0).max(30) })).min(1).max(8).refine(uniqueCities, DUP_MSG);
 
 const AssessRoute = z.object({ cities: RouteCities });
 
@@ -71,7 +77,8 @@ const ProposeRoute = z.object({
       }),
     )
     .min(1)
-    .max(8),
+    .max(8)
+    .refine(uniqueCities, DUP_MSG),
 });
 
 const SuggestRoute = z.object({ nights: z.number().int().min(1).max(30).optional() });
@@ -286,15 +293,18 @@ function factsMap(cities: CityFacts[]): Map<string, CityFacts> {
   return new Map(cities.map((c) => [c.id, c]));
 }
 
-/** Every date of the trip with the city it is spent in, from the accepted route. */
-function plannedDates(state: TripState): Map<string, string> {
+/** Every date of the trip with the city it is spent in, from the accepted
+ *  route, clipped to the trip's own dates. A day the traveller already has
+ *  keeps its city only while that city is still on the route. */
+export function plannedDates(state: TripState): Map<string, string> {
   const out = new Map<string, string>();
   const sorted = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
+  const inRange = (d: string) => (!state.trip.startDate || d >= state.trip.startDate) && (!state.trip.endDate || d <= state.trip.endDate);
   for (const c of allocateDates(state.trip.startDate, sorted, state.trip.endDate)) {
-    for (const d of c.dates) out.set(d, c.cityId);
+    for (const d of c.dates) if (inRange(d)) out.set(d, c.cityId);
   }
-  // A day the traveller already has in the itinerary keeps its city.
-  for (const d of state.days) if (d.cityId) out.set(d.date, d.cityId);
+  const onRoute = new Set(sorted.map((c) => c.cityId));
+  for (const d of state.days) if (d.cityId && onRoute.has(d.cityId) && inRange(d.date)) out.set(d.date, d.cityId);
   return out;
 }
 
@@ -320,7 +330,7 @@ function placeFacts(p: PlaceInput) {
     city_tier: p.coverageTier,
     verified,
     cost_jpy: p.costJpy,
-    hours: p.opensAt ? `${p.opensAt}–${p.closesAt}` : "always open",
+    hours: p.opensAt ? `${p.opensAt}–${p.closesAt}` : "no fixed hours on record (open ground, a street, or open all hours)",
     closed: p.closedWeekdays.length ? p.closedWeekdays.map((d) => WEEKDAY[d]).join(", ") : null,
     booking: p.bookingReq === "none" ? null : `${p.bookingReq}${p.bookingLeadDays ? `, about ${p.bookingLeadDays} days ahead` : ""}`,
     station: p.nearestStation ? `${p.nearestStation} · ${p.stationWalkMin ?? "?"} min walk` : "no station on record",
@@ -495,6 +505,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       if (unknown.length) return fail(`unknown city id(s): ${unknown.join(", ")}`);
       const input = p.data.cities.map((c) => ({ cityId: c.city_id, nights: c.nights }));
       const a = assessRoute(input, facts, graph, nightsBetween(state.trip.startDate, state.trip.endDate));
+      if (a.nightsMismatch) return fail(`${a.nightsMismatch} — change the nights so the route fits the trip, or change the trip dates first`);
       const dated = allocateDates(state.trip.startDate, input, state.trip.endDate);
       const after: RouteCity[] = p.data.cities.map((c, i) => ({
         cityId: c.city_id,
@@ -607,13 +618,15 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const p = RouteBetween.safeParse(rawInput);
       if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
       const graph = await store.graph();
-      const resolve = async (key: string): Promise<{ stationId: string; walkMin: number; label: string } | null> => {
-        if (graph.stations.has(key)) return { stationId: key, walkMin: 0, label: graph.stations.get(key)!.name };
+      // A walk to the station is only counted when it is on record. The
+      // journey never contains a number nobody verified.
+      const resolve = async (key: string): Promise<{ stationId: string; walkMin: number; walkKnown: boolean; label: string } | null> => {
+        if (graph.stations.has(key)) return { stationId: key, walkMin: 0, walkKnown: true, label: graph.stations.get(key)!.name };
         const hits = await store.searchPlaces(key, null);
         const exact = hits.find((h) => h.id === key) ?? hits[0];
-        if (exact?.nearestStation) return { stationId: exact.nearestStation, walkMin: exact.stationWalkMin ?? 10, label: exact.name };
+        if (exact?.nearestStation) return { stationId: exact.nearestStation, walkMin: exact.stationWalkMin ?? 0, walkKnown: exact.stationWalkMin != null, label: exact.name };
         const hub = hubFor(key, graph);
-        if (hub) return { stationId: hub, walkMin: 0, label: graph.stations.get(hub)!.name };
+        if (hub) return { stationId: hub, walkMin: 0, walkKnown: true, label: graph.stations.get(hub)!.name };
         return null;
       };
       const [a, b] = await Promise.all([resolve(p.data.from), resolve(p.data.to)]);
@@ -622,7 +635,10 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const r = a.walkMin || b.walkMin ? placeRoute(graph, a, b) : route(graph, a.stationId, b.stationId);
       if (!r) return { result: j({ route: null, note: `no route in the graph between ${a.label} and ${b.label} — say you can't give the journey yet` }) };
       const d = describeRoute(r);
-      return { result: j({ from: a.label, to: b.label, summary: d.summary, legs: d.lines, walk_in: a.walkMin || undefined, walk_out: b.walkMin || undefined }) };
+      const notes: string[] = [];
+      if (!a.walkKnown) notes.push(`the walk from ${a.label} to ${graph.stations.get(a.stationId)?.name ?? a.stationId} is not on record and is not included`);
+      if (!b.walkKnown) notes.push(`the walk from ${graph.stations.get(b.stationId)?.name ?? b.stationId} to ${b.label} is not on record and is not included`);
+      return { result: j({ from: a.label, to: b.label, summary: d.summary, legs: d.lines, walk_in_min: a.walkKnown ? a.walkMin || undefined : null, walk_out_min: b.walkKnown ? b.walkMin || undefined : null, notes: notes.length ? notes : undefined }) };
     }
 
     default:

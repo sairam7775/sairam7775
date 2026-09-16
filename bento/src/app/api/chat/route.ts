@@ -4,8 +4,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit, CHAT_LIMIT } from "@/lib/guards/rate-limit";
 import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guards/spend";
-import { runBentoMan } from "@/lib/bento-man/chat";
-import { configuredEffort, configuredModel, costUsd } from "@/lib/bento-man/cost";
+import { runBentoMan, usageFromError } from "@/lib/bento-man/chat";
+import { configuredEffort, configuredModel, costOfAll, totalUsage, type UsageByModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 
 /** POST /api/chat — one turn with Bento Man, streamed as server-sent events.
@@ -54,7 +54,19 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+      // The traveller can navigate away mid-turn; writing to a closed
+      // controller throws, and that must not lose the usage record.
+      let open = true;
+      const send = (obj: unknown) => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        } catch {
+          open = false;
+        }
+      };
+
+      let byModel: UsageByModel = {};
       try {
         const result = await runBentoMan({
           store, client, model, effort, today, message,
@@ -63,20 +75,31 @@ export async function POST(req: NextRequest) {
             onTool: (name, phase, ok) => send({ type: "tool", name, phase, ok }),
           },
         });
-        await recordUsage({
-          userId: user.id,
-          kind: "chat",
-          model: result.servedBy,
-          inputTokens: result.usage.inputTokens,
-          outputTokens: result.usage.outputTokens,
-          cachedTokens: result.usage.cacheReadTokens,
-          costUsd: costUsd(result.servedBy, result.usage),
-        });
+        byModel = result.usageByModel;
         send({ type: "done", messageId: result.assistantMessageId, text: result.text, proposal: result.proposal });
       } catch (e) {
+        // A turn that died after a model call still spent money (E2).
+        byModel = usageFromError(e);
         send({ type: "error", message: friendly(e) });
       } finally {
-        controller.close();
+        const total = totalUsage(byModel);
+        if (total.inputTokens || total.outputTokens) {
+          await recordUsage({
+            userId: user.id,
+            kind: "chat",
+            model: Object.keys(byModel).join("+") || model,
+            inputTokens: total.inputTokens,
+            outputTokens: total.outputTokens,
+            cachedTokens: total.cacheReadTokens,
+            costUsd: costOfAll(byModel),
+          }).catch(() => {});
+        }
+        open = false;
+        try {
+          controller.close();
+        } catch {
+          // already closed by the client going away
+        }
       }
     },
   });
