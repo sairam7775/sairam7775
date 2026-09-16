@@ -34,6 +34,8 @@ Practically:
   must not make the Tokyo days score as overspending.
 - **`excludes` is a hard filter**, applied before scoring. "No beaches" means
   never, not rarely.
+- **A booking reference is encrypted at rest, never logged, and never
+  placed in a model prompt.** A PNR plus a surname can cancel a flight.
 - **Check the spend cap before any model call** (`assertWithinSpendCap`). It
   throws rather than returning a flag so a forgotten check cannot spend money.
 
@@ -131,6 +133,29 @@ Practically:
   `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
 - Fonts are fontsource packages imported in `layout.tsx` — no build-time
   fetch. Bricolage Grotesque display, DM Sans body, DM Mono data.
+
+## The vault (P8)
+
+- `src/lib/vault/`. `gaps.ts` is pure and testable: trip dates, route,
+  planned places and bookings in, sentences out. No network, no model.
+- A gap's `key` is stable across runs, because a dismissal is stored
+  against it. Changing how a key is built un-dismisses things.
+- The detector must distinguish *never needed a booking* from *not booked
+  yet*. `booking_req = 'none'` is never a gap. Consecutive uncovered
+  nights are one gap, not one per night.
+- Severities: `blocking` (the trip does not work), `closing` (a window is
+  running out), `worth_knowing` (probably fine). A missing bed is
+  blocking; an unbooked corridor train is not.
+- `crypto.ts` is AES-256-GCM with a random nonce per record and a version
+  prefix on the stored string. A reference is decrypted only to render it
+  for its owner. Never log one, never put one in a prompt, never widen
+  `VaultBooking.reference` to a list view.
+- Without `BENTO_BOOKING_REF_KEY` the vault saves everything except the
+  reference and says so. It never falls back to storing one in the clear.
+- `parse.ts` runs Haiku 4.5 with **no tools**, no trip state and no
+  history — that is the whole mitigation for prompt injection via an
+  upload (§15). Never add a tool to that call. The output is schema-
+  validated and only ever fills a form the traveller reviews.
 
 ## Transit (P3)
 

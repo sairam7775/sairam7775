@@ -49,7 +49,15 @@ re-times the day; "re-plan this day" asks the engine to choose again
 around the pins and comes back as a proposal. The app moved to the
 bento palette and self-hosted fonts.
 
-Phase P8 (the booking vault and gap detection) is in §13 of the spec.
+**P8 — the vault and the gaps.** Everything the traveller has booked, and
+what is still missing. A coverage ribbon shows one bar per night, solid
+where covered and hatched where not, so a gap is visible before a word is
+read. Under it, plain sentences: "You have nowhere to sleep on the night
+of 26 November. Your Kyoto hotel runs through the 25th and the next
+booking starts on the 27th." References are encrypted at rest. A pasted
+confirmation is read by a separate model call with no tools attached.
+
+That is every phase in §13.
 
 ## Setup
 
@@ -175,6 +183,51 @@ Compartment height is time (about a pixel a minute), so a 3-hour stop is
 a tall tile and a 15-minute one is a short one. The dashed salmon line is
 where the day's budget for that pace runs out; tiles past it carry an
 "over" mark and the ring in the side compartment turns red.
+
+## The vault
+
+`/trips/<id>/vault`. Bookings are only ever what the traveller uploads.
+Nothing is fetched from an airline or a hotel, which removes OAuth,
+scraping and most of the security surface in one decision, and leaves the
+gap detector as pure logic over their own data.
+
+Three kinds of gap, and what each means:
+
+| Severity | Means | Example |
+|---|---|---|
+| Blocking | The trip does not work without this | A night with no bed; a place on the plan that requires a ticket you do not have |
+| Closing | A booking window is running out | A timed ticket whose lead time is nearly up |
+| Worth knowing | Probably fine, but you should know | An unbooked city change on a corridor where an IC card is enough |
+
+The detector distinguishes *never needed a booking* from *not booked
+yet*, which is the difference between a useful list and a noisy one. A
+temple with no ticket is not a gap. Consecutive uncovered nights are one
+sentence, not five. A gap the traveller has seen and chosen to live with
+is dismissed and kept, never deleted.
+
+### Holding a reference safely
+
+A PNR plus a surname is often enough to view or cancel someone's flight.
+So a reference is encrypted with AES-256-GCM before it is stored, with a
+random nonce per record, decrypted only to show the traveller their own
+booking, never logged, and never placed in a model prompt. Lists show
+`•••902`; the full value needs a click.
+
+```bash
+openssl rand -base64 32   # BENTO_BOOKING_REF_KEY
+```
+
+Without that key the vault still works and still saves everything else.
+It refuses to store a reference rather than store one in the clear, and
+says so.
+
+### Reading a pasted confirmation
+
+`POST /api/parse-booking` sends the pasted text to Claude Haiku 4.5 with
+**no tools attached**, no trip state, and no history, so a malicious
+paste has nothing to steer. The model can only return JSON against a
+schema, the JSON is validated, and the result fills the form in. Nothing
+is saved until the traveller presses Save.
 
 ## Bento Man
 
@@ -339,7 +392,9 @@ src/
     (auth)/           sign-in, sign-up, shared form UI, auth actions
     auth/callback/    OAuth and email confirmation exchange
     trips/            trip list and creation; trips/[id] is the day view and the chat
+    trips/[id]/vault/ bookings and the gap detector
     api/chat/         one streamed turn with Bento Man
+    api/parse-booking/ a pasted confirmation, read with no tools attached
   lib/
     supabase/         browser, server and service-role clients
     guards/           spend cap and rate limiting
@@ -350,6 +405,7 @@ src/
   lib/
     admin.ts          the curation gate
     bento-man/        prompt, tools, diff model, stores, the chat loop, evals
+    vault/            reference encryption, the gap detector, upload parsing
     engine/           scoring, filters, scheduler, route assessor, re-timer, fixtures
     places/seed/      the drafted place records, one file per city
     transit/          graph, router, fares, GTFS parser, corridor seed

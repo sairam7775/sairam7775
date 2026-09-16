@@ -1,13 +1,13 @@
 # Bento — where the project stands
 
-Last updated 16 September 2026, after P7.
+Last updated 16 September 2026, after P8. Every phase in §13 has shipped.
 
 The design document is [`spec.html`](./spec.html); it is the source of truth
 for decisions, and section numbers here refer to it. Working notes for
 anyone writing code live in [`../bento/CLAUDE.md`](../bento/CLAUDE.md).
 
 Branch: `claude/japan-travel-guide-bot-s5crhl`. Supabase project
-`xjlrnhwmvlcidtnobrsg` (ap-south-1). Migrations `0001`–`0010` applied.
+`xjlrnhwmvlcidtnobrsg` (ap-south-1). Migrations `0001`–`0011` applied.
 
 ---
 
@@ -39,11 +39,12 @@ tool and writes prose; it never writes the itinerary.
 | P5 | 134 drafted place records across the corridor, the export pipeline, and the `/admin/review` sign-off queue | Done — **awaiting your verification** |
 | P6 | Bento Man: nine tools over the engine, proposals the traveller accepts or rejects, the eval set | Done — **eval unrun** |
 | P7 | The day view: a day is a bento box, drag/pin/remove, the bento palette | Done |
-| P8 | Booking vault and gap detection | Next |
+| P8 | The vault: bookings, encrypted references, upload parsing, and the gap detector | Done |
 
 ### Commits
 
 ```
+28fd8f2  Fix the P6 review findings, and write the progress report
 e985038  P7: the itinerary UI — a day is a bento box
 c8d8497  P6: Bento Man — the conversation over the engine
 f14dd54  P5: deep data — 134 drafted places for the Kansai–Sanyo corridor
@@ -74,11 +75,20 @@ Sign in, start a trip, and talk to Bento Man at `/trips/<id>`.
    time each stop takes, the train written on the frame between them, lunch
    in the first gap, and a dashed line where the day's budget runs out.
    Drag, pin and remove apply at once; the engine re-times the day.
+6. **The vault.** `/trips/<id>/vault` holds what they have booked and names
+   what is missing. A ribbon shows one bar per night, solid where covered
+   and hatched where not. Under it, sentences rather than error codes:
+   "You have nowhere to sleep on the night of 26 November. Your Kyoto
+   hotel runs through the 25th and the next booking starts on the 27th."
+   References are encrypted at rest and masked in lists. A pasted
+   confirmation is read by Haiku with no tools attached, and fills the
+   form in for review.
 
 What it will not do, by design: plan a city it has not verified enough
 records for, put two conflicting places in one day, fill a Monday with
 something closed on Mondays, rank a place the traveller excluded, invent a
-travel time, or claim a fare it did not compute.
+travel time, claim a fare it did not compute, fetch anything from an
+airline or a hotel, or store a booking reference in the clear.
 
 ---
 
@@ -127,9 +137,18 @@ two blockers and nine smaller defects. Verdict was "fix first".
 
 Three things need you, and nothing in the product can do them.
 
-1. **Set `ANTHROPIC_API_KEY`** in `bento/.env.local`. Without it the chat
-   says so plainly and everything else still works. `BENTO_MAN_MODEL`
-   defaults to `claude-opus-5` and `BENTO_MAN_EFFORT` to `medium`.
+1. **Set the two keys** in `bento/.env.local`. Without either, the feature
+   it powers says so plainly and everything else still works.
+
+   ```bash
+   ANTHROPIC_API_KEY=...                    # Bento Man, and reading pastes
+   BENTO_BOOKING_REF_KEY=$(openssl rand -base64 32)   # booking references
+   ```
+
+   `BENTO_MAN_MODEL` defaults to `claude-opus-5` and `BENTO_MAN_EFFORT` to
+   `medium`. Keep the booking key safe: change it and every stored
+   reference becomes unreadable, which the vault will tell you rather than
+   show you rubbish.
 
 2. **Verify the drafts.** All 134 records are drafts, and the planner
    refuses to build a day from a draft — so until you sign records off,
@@ -162,12 +181,13 @@ Three things need you, and nothing in the product can do them.
 |---|---|
 | `npm run typecheck` | Clean |
 | `npx eslint .` | Clean |
-| `npm test` (83 tests) | Green |
+| `npm test` (97 tests) | Green |
 | `npm run build` | Compiles |
 | Supabase advisors | Two intentional findings, both documented |
 | Bento Man eval (31 scenarios) | **Never run** — needs an API key |
 | The chat against a real model | **Never run** — same reason |
-| The day view in a browser | **Never run** — no dev server in this environment |
+| The day view and the vault in a browser | **Never run** — no dev server in this environment |
+| Reading a pasted confirmation | **Never run** — needs an API key |
 
 Everything marked "never run" is not a claim of brokenness; it is an honest
 statement that the code has been typechecked, linted, unit-tested and built,
@@ -175,18 +195,51 @@ but nobody has watched it work.
 
 ---
 
-## Next: P8, the vault and the gaps
+## What P8 actually holds
 
-The remaining phase, from §13:
+The gap detector is pure logic over the traveller's own data, which is
+what the decision not to fetch from airlines or hotels bought. Three
+severities:
 
-- Uploaded confirmations, parsed in a separate model call with no tools
-  attached, so a malicious pasted blob has nothing to steer.
-- References encrypted at rest, never logged, never placed in a prompt.
-- Gap detection: "you have nowhere to sleep on 14 April" shown where it
-  belongs in the plan, distinguishing *never needed a booking* from *not
-  booked yet*.
-- Storage buckets scoped per user, which migration `0004` already set up.
+| Severity | Means | Example |
+|---|---|---|
+| Blocking | The trip does not work without this | A night with no bed; a place on the plan that needs a ticket you do not have |
+| Closing | A booking window is running out | A timed ticket whose lead time is nearly up |
+| Worth knowing | Probably fine, but you should know | An unbooked city change where an IC card is enough |
 
-After that the open questions in §17 are scoring weights (tune once the
-eval exists, which it now does) and monetisation (deferred until sign-ups
-open).
+The distinction that makes the list usable is *never needed a booking*
+against *not booked yet*. A temple is not a gap. Consecutive uncovered
+nights are one sentence, not five. A gap you have seen and decided to live
+with is dismissed and kept, so it can be brought back.
+
+On holding references: AES-256-GCM, a random nonce per record, a version
+prefix so a future algorithm change can still read old rows, decrypted
+only to render for its owner, masked to the last three characters in any
+list. Without `BENTO_BOOKING_REF_KEY` the vault saves everything else and
+refuses the reference rather than storing it in the clear.
+
+On reading a paste: Haiku 4.5, no tools, no trip state, no history. That
+is the entire mitigation for prompt injection through an upload, and it
+works because there is nothing for a malicious blob to reach.
+
+## Open, and next
+
+From §17, now that every phase has shipped:
+
+- **Scoring weights.** Fig. 1's weights are seed values and the first
+  thing to tune. The eval set exists now, so this is measurable rather
+  than a matter of taste.
+- **The Sonnet 5 test.** D8 deferred it until the eval held. Run the eval
+  on both and compare.
+- **Monetisation.** Deferred with the commercial risks until sign-ups open.
+
+Engineering work that is not a phase but will be needed before anyone else
+uses this:
+
+- The rate limiter is in-memory, so it holds per instance. It must move to
+  Postgres or Redis before sign-ups open.
+- Currency conversion reads `fx_rates`, which is seeded but not yet wired
+  into the vault's totals. Non-JPY costs are stored in their own currency
+  and not summed.
+- A multi-day proposal writes each day in its own transaction. A failure
+  mid-way leaves earlier days applied and hands the proposal back.

@@ -6,6 +6,7 @@ import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
 import { dayStats } from "@/lib/engine/day-stats";
+import { loadGaps } from "@/lib/vault/store";
 import { allocateDates } from "@/lib/engine/route";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { Chat, type ChatMessage } from "./chat";
@@ -66,6 +67,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
+  const gaps = await loadGaps(db, id, new Date().toISOString().slice(0, 10)).catch(() => null);
+  const worst = gaps?.gaps[0] ?? null;
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
@@ -93,6 +96,29 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
       </header>
 
       <div className="mt-4"><ErrorNote message={error} /></div>
+
+      {gaps && (gaps.totalNights > 0 || gaps.gaps.length > 0) && (
+        <Link
+          href={`/trips/${id}/vault`}
+          className={`up lift mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tile px-4 py-3 shadow-tile ${gaps.blocking ? "bg-ume-soft" : "bg-surface"}`}
+          style={{ animationDelay: ".08s" }}
+        >
+          <span className={`mono text-[0.62rem] uppercase tracking-[0.1em] ${gaps.blocking ? "text-ume" : "text-ink-3"}`}>
+            {gaps.blocking ? `${gaps.blocking} blocking` : "Bookings"}
+          </span>
+          <span className="min-w-0 flex-1 text-[0.9rem] leading-snug">
+            {worst ? worst.title : `Every night has a bed. ${gaps.coveredNights} of ${gaps.totalNights} covered.`}
+          </span>
+          {gaps.totalNights > 0 && (
+            <span aria-hidden className="flex shrink-0 gap-[3px]">
+              {gaps.nights.map((n) => (
+                <span key={n.date} className={`h-4 w-1.5 rounded-full ${n.covered ? "bg-edamame" : "bg-ume"}`} />
+              ))}
+            </span>
+          )}
+          <span className="mono text-[0.68rem] text-accent">The vault →</span>
+        </Link>
+      )}
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
         <section aria-label="The plan" className="min-w-0">
