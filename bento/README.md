@@ -130,6 +130,71 @@ That is every phase in §13.
    a city hundreds of kilometres — corrupting every travel-time estimate
    built on top of it.
 
+## Deploying
+
+The app is a normal Next.js deployment and the spec picked Vercel for it
+(§09). Nothing here is Vercel-only except the region: security headers
+live in `next.config.ts` so they apply in development and on any host.
+
+**Set the root directory to `bento`.** The repository holds the spec and
+the design canvas alongside the app, so a default import finds no
+`package.json`. This is the one setting that will otherwise fail the first
+build.
+
+`vercel.json` pins the functions to `bom1` (Mumbai) because the Supabase
+project is in `ap-south-1`. One chat turn makes several round trips to the
+database, so a function in Washington talking to a database in Mumbai adds
+a second of latency per turn for no reason. Move both together or neither.
+
+**Environment variables**, all five, on every environment you deploy:
+
+| | |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Project Settings → API |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same page. Safe in the browser |
+| `SUPABASE_SERVICE_ROLE_KEY` | Same page. **Server only** — it bypasses every RLS policy |
+| `ANTHROPIC_API_KEY` | Bento Man, and reading pasted confirmations |
+| `BENTO_BOOKING_REF_KEY` | `openssl rand -base64 32`. Booking references |
+
+`BENTO_MONTHLY_SPEND_CAP_USD` defaults to 20 and `BENTO_MAN_MODEL` to
+`claude-opus-5`; set them only to change those.
+
+Keep the booking key somewhere you will not lose it. Rotating it makes
+every stored reference unreadable, which the vault reports honestly rather
+than showing rubbish, but it cannot recover them.
+
+**Then add the deployed URL to Supabase.** Authentication → URL
+Configuration → Redirect URLs needs `https://your-app.vercel.app/auth/callback`.
+Without it Google sign-in bounces, and the failure looks like a broken
+login rather than a missing setting. Preview deployments get their own
+URLs, so add the wildcard too if you want sign-in to work on them.
+
+### Before anyone else uses it
+
+Two things are fine for a trip you are planning yourself and are not fine
+for a public sign-up.
+
+- **The rate limiter is in-memory** (`src/lib/guards/rate-limit.ts`), so
+  on serverless it holds per instance and effectively stops limiting under
+  load. The spend cap still holds, because that is a database read. Move
+  the limiter to Postgres or Redis before opening sign-ups.
+- **`maxDuration` is 120 seconds** on `/api/chat`. Check that against your
+  plan's ceiling; a turn that plans ten days can use it. The route streams,
+  so the traveller sees text long before the limit, but the tool loop
+  behind it still needs the time.
+
+### What the first deploy gives you
+
+A working sign-up and an empty product. Every city is at stub tier until
+records are verified, so Bento Man will correctly say it does not know
+anywhere well enough to plan days. Grant yourself curation access against
+the deployed database and work through `/admin/review`; the app becomes
+useful at 25 verified places in a city, not before.
+
+```bash
+npx tsx scripts/grant-admin.ts you@example.com   # needs the service-role key
+```
+
 ## Curation
 
 ```bash

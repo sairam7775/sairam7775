@@ -8,6 +8,8 @@ anyone writing code live in [`../bento/CLAUDE.md`](../bento/CLAUDE.md).
 
 Branch: `claude/japan-travel-guide-bot-s5crhl`. Supabase project
 `xjlrnhwmvlcidtnobrsg` (ap-south-1). Migrations `0001`–`0011` applied.
+Not deployed anywhere yet; the Vercel config and the steps are in the
+app's README under Deploying.
 
 ---
 
@@ -186,7 +188,8 @@ Three things need you, and nothing in the product can do them.
 | Supabase advisors | Two intentional findings, both documented |
 | Bento Man eval (31 scenarios) | **Never run** — needs an API key |
 | The chat against a real model | **Never run** — same reason |
-| The day view and the vault in a browser | **Never run** — no dev server in this environment |
+| The production server booting, and the security headers | Verified — the home page served 200 with all six headers |
+| The day view and the vault in a browser | **Never run** — needs a signed-in account and data |
 | Reading a pasted confirmation | **Never run** — needs an API key |
 
 Everything marked "never run" is not a claim of brokenness; it is an honest
