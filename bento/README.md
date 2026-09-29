@@ -136,10 +136,18 @@ The app is a normal Next.js deployment and the spec picked Vercel for it
 (§09). Nothing here is Vercel-only except the region: security headers
 live in `next.config.ts` so they apply in development and on any host.
 
+Two settings decide whether the first build works at all.
+
 **Set the root directory to `bento`.** The repository holds the spec and
 the design canvas alongside the app, so a default import finds no
-`package.json`. This is the one setting that will otherwise fail the first
-build.
+`package.json`.
+
+**Set the production branch to the branch that carries the app.** Vercel
+builds the repository's default branch unless told otherwise, and the app
+does not have to live there. If the default branch has no `bento/`
+directory the build fails before it reads any of this — either merge the
+app into the default branch or name the working branch under Settings →
+Git → Production Branch.
 
 `vercel.json` pins the functions to `bom1` (Mumbai) because the Supabase
 project is in `ap-south-1`. One chat turn makes several round trips to the
