@@ -7,7 +7,7 @@ for decisions, and section numbers here refer to it. Working notes for
 anyone writing code live in [`../bento/CLAUDE.md`](../bento/CLAUDE.md).
 
 Branch: `claude/japan-travel-guide-bot-s5crhl`. Supabase project
-`xjlrnhwmvlcidtnobrsg` (ap-south-1). Migrations `0001`–`0011` applied.
+`xjlrnhwmvlcidtnobrsg` (ap-south-1). Migrations `0001`–`0012` applied.
 Not deployed anywhere yet; the Vercel config and the steps are in the
 app's README under Deploying.
 
@@ -249,8 +249,8 @@ uses this:
   let anyone refill their own bucket over RPC. It keys on `auth.uid()`
   and fails closed. Exercised against the live project in a rolled-back
   transaction: 20 allowed, the 21st refused with a 3-second retry, kinds
-  separate, `anon` cannot execute, no user is refused. **Not yet
-  applied** — run `supabase db push`.
+  separate, `anon` cannot execute, no user is refused. Applied to the
+  project on 12 October 2026.
 - **Currency in the vault.** `vaultTotal` (`src/lib/vault/money.ts`)
   converts on read against `fx_rates` and shows a converted sum as `~¥`
   with the date of the oldest rate used. A currency with no rate is named
