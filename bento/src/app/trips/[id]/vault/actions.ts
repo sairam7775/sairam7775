@@ -61,7 +61,7 @@ export async function saveBooking(formData: FormData) {
     cost_amount: Number.isFinite(amount) ? amount : null,
     cost_currency: data.costCurrency ? data.costCurrency.toUpperCase() : null,
     // Costs are stored in JPY; a non-JPY amount keeps its own currency and
-    // is converted on read once fx_rates is wired (P8 follow-up).
+    // is converted on read against fx_rates (`vaultTotal`).
     cost_jpy: data.costCurrency?.toUpperCase() === "JPY" && Number.isFinite(amount) ? Math.round(amount!) : null,
     notes: data.notes || null,
     ...(referenceEncrypted ? { reference_encrypted: referenceEncrypted } : {}),

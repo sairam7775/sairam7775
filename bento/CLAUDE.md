@@ -109,7 +109,7 @@ Practically:
   memory store near a request handler.
 - `city_coverage` is the traveller-safe view for tiers and verified
   counts; `curation_progress` stays admin-only because it counts drafts.
-- Guards before every model call: auth → `rateLimit` → `assertWithinSpendCap`.
+- Guards before every model call: auth → `rateLimit` (Postgres, `take_rate_token`; limits live in the SQL) → `assertWithinSpendCap`.
   `recordUsage` after, with `costUsd` from `cost.ts` — keep the price table
   current or the cap lies.
 - The eval (`evals/scenarios.ts`, `scripts/eval-bento-man.ts`) is the

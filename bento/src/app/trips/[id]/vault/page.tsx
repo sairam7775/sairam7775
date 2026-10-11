@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { BentoLogo } from "@/components/logo";
 import { loadBookings, loadGaps, type VaultBooking } from "@/lib/vault/store";
 import { canEncrypt } from "@/lib/vault/crypto";
+import { vaultTotal, type VaultTotal } from "@/lib/vault/money";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { BookingForm } from "./booking-form";
 import { CoverageRibbon, DismissedGaps, GapCard } from "./gap-cards";
@@ -27,6 +28,18 @@ const when = (b: VaultBooking) => {
 const money = (b: VaultBooking) =>
   b.costAmount == null ? null : `${b.costCurrency ?? "JPY"} ${b.costAmount.toLocaleString("en")}`;
 
+/** "~¥48,200 at rates from 10 Oct, plus GBP 120 with no rate on record".
+ *  A converted sum is an estimate and says so with the tilde. */
+const totalLine = (t: VaultTotal) => {
+  const day = (ts: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  const parts: string[] = [];
+  if (t.jpy > 0) {
+    parts.push(`${t.converted ? "~" : ""}¥${t.jpy.toLocaleString("en")}${t.oldestRateAt ? ` at rates from ${day(t.oldestRateAt)}` : ""}`);
+  }
+  for (const m of t.missing) parts.push(`${parts.length ? "plus " : ""}${m.currency} ${m.amount.toLocaleString("en")} with no rate on record`);
+  return parts.join(", ");
+};
+
 /** The vault: everything the traveller has booked, and what is still
  *  missing. Nothing here is fetched from an airline or a hotel — which is
  *  also why it can hold reference numbers safely (§11). */
@@ -42,10 +55,11 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
 
   const reveal = typeof sp.reveal === "string" ? sp.reveal : undefined;
   const today = new Date().toISOString().slice(0, 10);
-  const [bookings, report, cityRows] = await Promise.all([
+  const [bookings, report, cityRows, fxRows] = await Promise.all([
     loadBookings(db, id, reveal),
     loadGaps(db, id, today),
     db.from("trip_cities").select("city_id, sort_order, cities(name)").eq("trip_id", id).order("sort_order"),
+    db.from("fx_rates").select("currency, jpy_per_unit, fetched_at"),
   ]);
 
   const cities = (cityRows.data ?? []).map((c) => ({
@@ -54,7 +68,10 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
     name: (c.cities as any)?.name ?? c.city_id,
   }));
 
-  const spentJpy = bookings.reduce((s, b) => s + (b.costJpy ?? 0), 0);
+  const spent = totalLine(vaultTotal(
+    bookings,
+    (fxRows.data ?? []).map((r) => ({ currency: r.currency, jpyPerUnit: Number(r.jpy_per_unit), fetchedAt: r.fetched_at })),
+  ));
   const error = typeof sp.error === "string" ? sp.error : null;
   const warning = typeof sp.warning === "string" ? sp.warning : null;
   const saved = sp.saved === "1";
@@ -114,7 +131,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
         <div className="flex flex-wrap items-baseline justify-between gap-3">
           <h2 className="text-[1.5rem] font-bold">Everything you&rsquo;ve booked</h2>
           <span className="mono text-[0.72rem] text-ink-3">
-            {bookings.length} recorded{spentJpy > 0 && ` · ¥${spentJpy.toLocaleString("en")} in yen`}
+            {bookings.length} recorded{spent && ` · ${spent}`}
           </span>
         </div>
 

@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { rateLimit, CHAT_LIMIT } from "@/lib/guards/rate-limit";
+import { rateLimit } from "@/lib/guards/rate-limit";
 import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guards/spend";
 import { runBentoMan, usageFromError } from "@/lib/bento-man/chat";
 import { configuredEffort, configuredModel, costOfAll, totalUsage, type UsageByModel } from "@/lib/bento-man/cost";
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) return NextResponse.json({ error: "Say something, up to 2000 characters." }, { status: 400 });
   const { tripId, message } = parsed.data;
 
-  const limit = rateLimit(`chat:${user.id}`, CHAT_LIMIT);
+  const limit = await rateLimit(db, "chat");
   if (!limit.allowed) {
     return NextResponse.json({ error: "Slow down a little — try again in a moment." }, { status: 429, headers: { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } });
   }

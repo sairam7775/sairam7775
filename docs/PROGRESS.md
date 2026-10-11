@@ -125,13 +125,11 @@ two blockers and nine smaller defects. Verdict was "fix first".
   covering ten days writes each day in its own transaction. A failure
   mid-way leaves earlier days applied. The proposal is handed back as
   pending so the traveller can retry, which is enough for now.
-- **Trip dates are baked into a route proposal.** Changing the dates now
-  rejects any pending proposal rather than recomputing it. The cleaner fix
-  is to compute dates at apply time; it is a schema change to `RouteCity`.
 - **`state()` and `cities()` re-run per tool call.** Memoising per request
   would cut a handful of queries per turn. Not hot yet.
-- **The rate limiter is in-memory**, so it holds per instance. It must move
-  to Postgres or Redis before sign-ups open.
+
+Since fixed (see "Pre-launch engineering" below): route dates are now laid
+out at apply time, and the rate limiter is in Postgres.
 
 ---
 
@@ -239,10 +237,28 @@ From §17, now that every phase has shipped:
 Engineering work that is not a phase but will be needed before anyone else
 uses this:
 
-- The rate limiter is in-memory, so it holds per instance. It must move to
-  Postgres or Redis before sign-ups open.
-- Currency conversion reads `fx_rates`, which is seeded but not yet wired
-  into the vault's totals. Non-JPY costs are stored in their own currency
-  and not summed.
 - A multi-day proposal writes each day in its own transaction. A failure
   mid-way leaves earlier days applied and hands the proposal back.
+
+## Pre-launch engineering (12 October 2026)
+
+- **Rate limiter in Postgres.** `0012_rate_limit.sql`: a token bucket per
+  (user, kind) taken under a row lock by `take_rate_token`, so the limit
+  holds across serverless instances. The limits (chat 20/min, parse
+  10/min) live in the SQL function, because a caller-supplied limit would
+  let anyone refill their own bucket over RPC. It keys on `auth.uid()`
+  and fails closed. Exercised against the live project in a rolled-back
+  transaction: 20 allowed, the 21st refused with a 3-second retry, kinds
+  separate, `anon` cannot execute, no user is refused. **Not yet
+  applied** — run `supabase db push`.
+- **Currency in the vault.** `vaultTotal` (`src/lib/vault/money.ts`)
+  converts on read against `fx_rates` and shows a converted sum as `~¥`
+  with the date of the oldest rate used. A currency with no rate is named
+  beside the total, never guessed. `scripts/import-fx-rates.ts` fills the
+  table from ECB reference rates (dry run by default; `--apply` needs the
+  service-role key). Until it is run, only JPY converts.
+- **Route dates at apply time.** `applyProposal` lays the route on the
+  trip's current dates instead of the dates stored on the proposal, and
+  refuses one that no longer fits. A date change now closes only pending
+  day plans and routes that no longer fit; a route that still fits stays
+  open.

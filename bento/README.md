@@ -75,8 +75,9 @@ That is every phase in §13.
    `0001` is reference data, `0002` user data, `0003` row-level security and
    the verification gate, `0004` storage for uploaded bookings, `0005`–`0008`
    hardening, curation progress and seasons, `0009` proposal status and the
-   traveller-safe coverage view, `0010` the atomic route and day writes, and
-   `0011` the vault. Then the seeds, in this order:
+   traveller-safe coverage view, `0010` the atomic route and day writes,
+   `0011` the vault, and `0012` the rate limiter. Then the seeds, in this
+   order:
 
    ```bash
    psql "$DATABASE_URL" -f supabase/seed_destinations.sql
@@ -180,13 +181,6 @@ URLs, so add the wildcard too if you want sign-in to work on them.
 
 ### Before anyone else uses it
 
-Two things are fine for a trip you are planning yourself and are not fine
-for a public sign-up.
-
-- **The rate limiter is in-memory** (`src/lib/guards/rate-limit.ts`), so
-  on serverless it holds per instance and effectively stops limiting under
-  load. The spend cap still holds, because that is a database read. Move
-  the limiter to Postgres or Redis before opening sign-ups.
 - **`maxDuration` is 120 seconds** on `/api/chat`. Check that against your
   plan's ceiling; a turn that plans ten days can use it. The route streams,
   so the traveller sees text long before the limit, but the tool loop

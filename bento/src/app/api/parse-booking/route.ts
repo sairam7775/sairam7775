@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { rateLimit, UPLOAD_LIMIT } from "@/lib/guards/rate-limit";
+import { rateLimit } from "@/lib/guards/rate-limit";
 import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guards/spend";
 import { costUsd } from "@/lib/bento-man/cost";
 import { PARSE_MODEL, ParseFailed, parseConfirmation, toFormValues } from "@/lib/vault/parse";
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Paste the confirmation text first." }, { status: 400 });
 
-  const limit = rateLimit(`parse:${user.id}`, UPLOAD_LIMIT);
+  const limit = await rateLimit(db, "parse");
   if (!limit.allowed) {
     return NextResponse.json({ error: "That's a lot of confirmations at once. Try again in a moment." }, { status: 429 });
   }

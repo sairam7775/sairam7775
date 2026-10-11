@@ -13,6 +13,16 @@ import { DEFAULT_PREFS, type ChatTurn, type DayRow, type Prefs, type TripMeta, t
 
 const toMin = (t: string | null): number | null => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
 
+/** Why a route cannot be laid on the trip's dates, or null if it can. */
+function routeMisfit(trip: { startDate: string | null; endDate: string | null }, cities: { nights: number }[]): string | null {
+  if (!trip.startDate || !trip.endDate) return null;
+  const tripNights = Math.round((Date.parse(trip.endDate) - Date.parse(trip.startDate)) / 86_400_000);
+  const routeNights = cities.reduce((s, c) => s + c.nights, 0);
+  return routeNights > tripNights
+    ? `the route is ${routeNights} nights and the trip is now ${tripNights}`
+    : null;
+}
+
 export class SupabaseStore implements TripStore {
   private tierCache: Map<string, CoverageTier> | null = null;
 
@@ -129,16 +139,30 @@ export class SupabaseStore implements TripStore {
       const { error } = await this.db.from("trips").update(row).eq("id", this.tripId);
       if (error) throw error;
     }
+    const s = await this.state();
     if (p.startDate !== undefined || p.endDate !== undefined) {
-      // A pending proposal carries dates computed against the old trip
-      // dates. Close it rather than let it be accepted into a contradiction.
-      await this.db
+      // A route is laid on the calendar when it is applied, so a pending
+      // route survives a date change as long as it still fits. Day plans
+      // are written against particular dates and cannot; close those
+      // rather than let them be accepted into a contradiction.
+      const { data: pending } = await this.db
         .from("chat_messages")
-        .update({ diff_status: "rejected", resolved_at: new Date().toISOString() })
+        .select("id, proposed_diff")
         .eq("trip_id", this.tripId)
         .eq("diff_status", "proposed");
+      const stale = (pending ?? [])
+        .filter((m) => {
+          const prop = ProposalSchema.safeParse(m.proposed_diff);
+          return !prop.success || prop.data.days.length > 0 || (prop.data.route && routeMisfit(s.trip, prop.data.route.after));
+        })
+        .map((m) => m.id);
+      if (stale.length) {
+        await this.db
+          .from("chat_messages")
+          .update({ diff_status: "rejected", resolved_at: new Date().toISOString() })
+          .in("id", stale);
+      }
     }
-    const s = await this.state();
     // Dates moved: re-lay the accepted route on the calendar.
     if (s.cities.length && (p.startDate !== undefined || p.endDate !== undefined)) {
       const dated = allocateDates(s.trip.startDate, s.cities, s.trip.endDate);
@@ -209,6 +233,15 @@ export class SupabaseStore implements TripStore {
 
   async applyProposal(p: Proposal): Promise<void> {
     if (p.route) {
+      // The dates on the proposal are for showing; the route is laid on
+      // the calendar as the trip stands now, which may have moved since.
+      const { data: trip, error: tripError } = await this.db.from("trips").select("start_date, end_date").eq("id", this.tripId).single();
+      if (tripError) throw tripError;
+      const meta = { startDate: trip.start_date as string | null, endDate: trip.end_date as string | null };
+      const misfit = routeMisfit(meta, p.route.after);
+      if (misfit) throw new Error(misfit);
+      const dated = allocateDates(meta.startDate, p.route.after, meta.endDate);
+
       // One transaction: a failed insert must not leave the route empty.
       const { error } = await this.db.rpc("replace_trip_route", {
         p_trip: this.tripId,
@@ -218,8 +251,8 @@ export class SupabaseStore implements TripStore {
           sort_order: i,
           budget_band: c.budgetBand ?? "",
           reason: c.reason ?? "",
-          arrive_date: c.arriveDate ?? "",
-          depart_date: c.departDate ?? "",
+          arrive_date: dated[i].arriveDate ?? "",
+          depart_date: dated[i].departDate ?? "",
         })),
       });
       if (error) throw error;
