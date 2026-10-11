@@ -75,7 +75,8 @@ That is every phase in §13.
    `0001` is reference data, `0002` user data, `0003` row-level security and
    the verification gate, `0004` storage for uploaded bookings, `0005`–`0008`
    hardening, curation progress and seasons, `0009` proposal status and the
-   traveller-safe coverage view. Then the seeds, in this order:
+   traveller-safe coverage view, `0010` the atomic route and day writes, and
+   `0011` the vault. Then the seeds, in this order:
 
    ```bash
    psql "$DATABASE_URL" -f supabase/seed_destinations.sql
