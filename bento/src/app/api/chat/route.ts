@@ -7,6 +7,7 @@ import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guard
 import { runBentoMan, usageFromError } from "@/lib/bento-man/chat";
 import { configuredEffort, configuredModel, costOfAll, totalUsage, type UsageByModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
+import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 
 /** POST /api/chat — one turn with Bento Man, streamed as server-sent events.
  *
@@ -41,12 +42,13 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const mock = mockModeEnabled();
+  if (!mock && !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "Bento Man isn't configured on this server yet (ANTHROPIC_API_KEY)." }, { status: 503 });
   }
 
   const store = new SupabaseStore(db, tripId, user.id);
-  const client = new Anthropic();
+  const client = mock ? createMockClient() : new Anthropic();
   const model = configuredModel();
   const effort = configuredEffort();
   const today = new Date().toISOString().slice(0, 10);

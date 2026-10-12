@@ -112,6 +112,10 @@ Practically:
 - Guards before every model call: auth → `rateLimit` (Postgres, `take_rate_token`; limits live in the SQL) → `assertWithinSpendCap`.
   `recordUsage` after, with `costUsd` from `cost.ts` — keep the price table
   current or the cap lies.
+- `mock.ts` is a fake client for local work without a key
+  (`BENTO_MAN_MOCK=1`, never in production). It replaces only the model —
+  keyword → tool, canned prose, zero usage — so tools, engine and
+  proposals still run for real. Not a substitute for the eval.
 - The eval (`evals/scenarios.ts`, `scripts/eval-bento-man.ts`) is the
   regression check for prompt edits and the Sonnet 5 test. Add a scenario
   with every prompt rule you add; `voiceLint` runs on every reply.

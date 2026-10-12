@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
 import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guards/spend";
 import { costUsd } from "@/lib/bento-man/cost";
+import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { PARSE_MODEL, ParseFailed, parseConfirmation, toFormValues } from "@/lib/vault/parse";
 
 /** POST /api/parse-booking — read a pasted confirmation into form fields.
@@ -36,12 +37,13 @@ export async function POST(req: NextRequest) {
     throw e;
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  const mock = mockModeEnabled();
+  if (!mock && !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "Reading confirmations isn't configured on this server. Fill the form in by hand." }, { status: 503 });
   }
 
   try {
-    const result = await parseConfirmation(new Anthropic(), parsed.data.text);
+    const result = await parseConfirmation(mock ? createMockClient() : new Anthropic(), parsed.data.text);
     await recordUsage({
       userId: user.id,
       kind: "parse",
