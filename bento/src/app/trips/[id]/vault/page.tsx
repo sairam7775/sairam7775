@@ -131,12 +131,14 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
           </span>
         </div>
 
-        <div className="mt-4">
+        <div id="add-booking" className="mt-4 scroll-mt-6">
           <BookingForm
             tripId={id}
             cities={cities}
             defaultType={typeof sp.add === "string" ? sp.add : undefined}
             defaultDate={typeof sp.on === "string" ? sp.on : undefined}
+            defaultPlaceId={typeof sp.place === "string" ? sp.place : undefined}
+            defaultTitle={typeof sp.title === "string" ? sp.title.slice(0, 160) : undefined}
           />
         </div>
 

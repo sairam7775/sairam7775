@@ -62,6 +62,8 @@ export interface TravelLeg {
   minutes: number;
   fareJpy: number;
   fareKind: "exact" | "estimate";
+  /** Rides on this leg with no fare Bento can price; not in fareJpy. */
+  unpricedRides?: number;
   /** One line a traveller can follow. */
   detail: string;
   lines: string[];

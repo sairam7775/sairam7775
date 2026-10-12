@@ -275,13 +275,14 @@ export function planDay(input: DayInput): DayPlan {
   };
 
   // 6 TIME — clock times from opening hours, transit and a lunch slot.
-  const time = (): { items: PlannedItem[]; meals: Meal[]; violations: Rejected[]; endMin: number; fares: number; fareKind: "exact" | "estimate" } => {
+  const time = (): { items: PlannedItem[]; meals: Meal[]; violations: Rejected[]; endMin: number; fares: number; fareKind: "exact" | "estimate"; unpriced: number } => {
     const items: PlannedItem[] = [];
     const meals: Meal[] = [];
     const violations: Rejected[] = [];
     let tNow = dayStart;
     let fares = 0;
     let fareKind: "exact" | "estimate" = "exact";
+    let unpriced = 0;
     let lunchDone = false;
 
     seq.forEach((d, i) => {
@@ -292,6 +293,7 @@ export function planDay(input: DayInput): DayPlan {
         tNow += arriveBy.minutes;
         fares += arriveBy.fareJpy;
         if (arriveBy.fareKind === "estimate") fareKind = "estimate";
+        if (arriveBy.unpricedRides) unpriced += arriveBy.unpricedRides;
       }
       if (!lunchDone && tNow >= LUNCH_EARLIEST && tNow <= LUNCH_LATEST) {
         meals.push({ kind: "lunch", startMin: tNow, endMin: tNow + LUNCH_MIN });
@@ -353,22 +355,44 @@ export function planDay(input: DayInput): DayPlan {
       meals.push({ kind: "lunch", startMin: tNow, endMin: tNow + LUNCH_MIN });
       tNow += LUNCH_MIN;
     }
-    return { items, meals, violations, endMin: tNow, fares, fareKind };
+    return { items, meals, violations, endMin: tNow, fares, fareKind, unpriced };
   };
 
   // 7 VALIDATE — drop what the hours reject, refill, re-time. Bounded.
-  let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], endMin: dayStart, fares: 0, fareKind: "exact" };
+  let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], endMin: dayStart, fares: 0, fareKind: "exact", unpriced: 0 };
+  const unlockedViolations = () => timed.violations.filter((v) => !seq.find((d) => d.place.id === v.placeId)?.locked);
+  let stale = false;
   for (let round = 0; round < MAX_VALIDATE_ROUNDS; round++) {
     grow();
     order();
     timed = time();
-    const drop = timed.violations.filter((v) => !seq.find((d) => d.place.id === v.placeId)?.locked);
+    stale = false;
+    const drop = unlockedViolations();
     if (!drop.length) break;
     considered.push(...drop);
     seq = seq.filter((d) => !drop.some((v) => v.placeId === d.place.id));
+    stale = true;
     if (round === MAX_VALIDATE_ROUNDS - 1) warnings.push("Some places could not be fitted to their opening hours");
   }
+  // Out of rounds with drops still pending: `timed` was computed before the
+  // last drop and still holds the places just rejected — the plan would show
+  // a stop the engine itself reported as dropped. Re-time without refilling,
+  // and keep dropping until nothing unlocked breaks its hours (re-timing can
+  // shift later stops). Bounded by the sequence shrinking every pass.
+  while (stale) {
+    order();
+    timed = time();
+    const drop = unlockedViolations();
+    stale = drop.length > 0;
+    if (stale) {
+      considered.push(...drop);
+      seq = seq.filter((d) => !drop.some((v) => v.placeId === d.place.id));
+    }
+  }
 
+  if (timed.unpriced) {
+    warnings.push(`${timed.unpriced === 1 ? "One ride's fare isn't" : `${timed.unpriced} rides' fares aren't`} in Bento yet, so the day's cost leaves ${timed.unpriced === 1 ? "it" : "them"} out`);
+  }
   const activeMin = usedMin();
   const placesJpy = timed.items.reduce((s, i) => s + i.costJpy, 0);
 

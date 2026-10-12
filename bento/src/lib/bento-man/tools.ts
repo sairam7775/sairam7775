@@ -16,6 +16,7 @@ import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand } from "@/lib/types";
 import { clock, computeDayDiff, mergeProposals, routeDiffFrom, type Proposal, type RouteCity } from "./diff";
 import { nightsBetween, type Prefs, type TripState, type TripStore } from "./store";
+import { bookedPlaceIds } from "@/lib/vault/match";
 
 export interface ToolContext {
   store: TripStore;
@@ -308,6 +309,18 @@ export function plannedDates(state: TripState): Map<string, string> {
   return out;
 }
 
+/** The trip as it will be if this turn's proposed route is accepted. */
+function withProposedRoute(state: TripState, proposal: Proposal | null): TripState {
+  const route = proposal?.route?.after;
+  if (!route) return state;
+  const onRoute = new Set(route.map((c) => c.cityId));
+  return {
+    ...state,
+    cities: route.map((c, i) => ({ ...c, sortOrder: i })),
+    days: state.days.filter((d) => d.cityId != null && onRoute.has(d.cityId)),
+  };
+}
+
 function compactAssessment(a: RouteAssessment) {
   return {
     verdict: a.verdict,
@@ -389,7 +402,7 @@ export type ReplanOp = z.infer<typeof ReplanDay>["ops"][number];
  *  by the replan_day tool and by the "re-plan this day" button, so a hand
  *  edit and a spoken one go through the same engine call. */
 export async function replanDay(store: TripStore, date: string, ops: ReplanOp[]): Promise<{ diff: ReturnType<typeof computeDayDiff> } | { error: string }> {
-  const [state, cities, graph] = await Promise.all([store.state(), store.cities(), store.graph()]);
+  const [state, cities, graph, bookings] = await Promise.all([store.state(), store.cities(), store.graph(), store.bookings()]);
   const existing = state.days.find((d) => d.date === date);
   const cityId = existing?.cityId ?? plannedDates(state).get(date);
   if (!cityId) return { error: `${date} is not a day of this trip` };
@@ -444,6 +457,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     locked: [...lockedMap.values()],
     usedPlaceIds: [...used],
     dayStartMin,
+    bookedPlaceIds: bookedPlaceIds(bookings, pool, date),
   });
   return { diff: computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan) };
 }
@@ -550,14 +564,22 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
     case "plan_days": {
       const p = PlanDays.safeParse(rawInput);
       if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
-      const [state, cities, graph] = await Promise.all([store.state(), store.cities(), store.graph()]);
-      if (!state.trip.startDate) return fail("the trip has no start date yet — set dates first");
+      const [accepted, cities, graph, bookings] = await Promise.all([store.state(), store.cities(), store.graph(), store.bookings()]);
+      if (!accepted.trip.startDate) return fail("the trip has no start date yet — set dates first");
+      // A route proposed earlier in this turn is what these days will be
+      // accepted alongside, so plan against it, not the old one: otherwise
+      // the days land in cities the new route no longer visits.
+      const state = withProposedRoute(accepted, ctx.proposal);
       const facts = factsMap(cities);
       const byDate = plannedDates(state);
+      const startDate = accepted.trip.startDate;
+      const { endDate } = state.trip;
       let targets: { date: string; cityId: string }[];
       if (p.data.dates?.length) {
         targets = [];
         for (const d of p.data.dates) {
+          // A day outside the trip would be stored and shown as a day of it.
+          if (d.date < startDate || (endDate && d.date > endDate)) return fail(`${d.date} is outside the trip (${startDate} to ${endDate ?? "no end date"})`);
           const cityId = d.city_id ?? byDate.get(d.date);
           if (!cityId) return fail(`${d.date} is not in the accepted route and no city_id was given`);
           if (!facts.has(cityId)) return fail(`unknown city id: ${cityId}`);
@@ -586,14 +608,17 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         const existing = state.days.find((d) => d.date === t.date);
         const locked: LockedItem[] = (existing?.items ?? []).filter((i) => i.locked).map((i) => ({ placeId: i.placeId, startMin: i.startMin }));
         const budget = state.cities.find((c) => c.cityId === t.cityId)?.budgetBand ?? null;
+        const places = placesCache.get(t.cityId)!;
         const plan = planDay({
           date: t.date,
           cityId: t.cityId,
-          places: placesCache.get(t.cityId)!,
+          places,
           traveller: travellerFor(state.prefs, budget),
           travel,
           locked,
           usedPlaceIds: [...used],
+          // A ticket the traveller holds lets a booking-required place in.
+          bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
         });
         for (const it of plan.items) used.add(it.placeId);
         days.push(computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan));

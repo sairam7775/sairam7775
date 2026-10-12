@@ -12,6 +12,16 @@ import type { BookingKind } from "@/lib/types";
 
 const KINDS = ["flight", "accommodation", "transport", "activity", "restaurant", "other"] as const;
 
+/** A local date, optionally with a time: what a datetime-local field sends. */
+const WALL_TIME = /^d{4}-d{2}-d{2}(Td{2}:d{2}(:d{2})?)?$/;
+
+const wallTime = (which: string) =>
+  z
+    .string()
+    .trim()
+    .refine((v) => v === "" || (WALL_TIME.test(v) && !Number.isNaN(Date.parse(`${v.split("T")[0]}T00:00:00Z`))
+      && new Date(`${v.split("T")[0]}T00:00:00Z`).toISOString().startsWith(v.split("T")[0])), `That ${which} date does not look right. Use the date picker.`);
+
 const BookingForm = z.object({
   tripId: z.string().uuid(),
   id: z.string().uuid().optional(),
@@ -19,8 +29,8 @@ const BookingForm = z.object({
   title: z.string().trim().min(1).max(160),
   provider: z.string().trim().max(120).optional(),
   reference: z.string().trim().max(60).optional(),
-  startsAt: z.string().trim().max(32).optional(),
-  endsAt: z.string().trim().max(32).optional(),
+  startsAt: wallTime("start").optional(),
+  endsAt: wallTime("end").optional(),
   cityId: z.string().trim().max(60).optional(),
   toCityId: z.string().trim().max(60).optional(),
   placeId: z.string().trim().max(80).optional(),
@@ -29,12 +39,20 @@ const BookingForm = z.object({
   notes: z.string().trim().max(600).optional(),
 });
 
-const stamp = (s: string | undefined) => (s ? new Date(s).toISOString() : null);
+/** Booking times are wall-clock times at the place, stored as if UTC: every
+ *  reader slices the date or formats in UTC (`dayOf`, the vault list). So a
+ *  2am check-in on the 21st must be stored as 21st 02:00Z — not converted
+ *  through whatever timezone this server runs in, which put it on the 20th. */
+const stamp = (s: string | undefined) => {
+  if (!s) return null;
+  const [date, time = "00:00"] = s.split("T");
+  return new Date(`${date}T${time.length === 5 ? `${time}:00` : time}Z`).toISOString();
+};
 
 export async function saveBooking(formData: FormData) {
   const { db, tripId, data } = await guard(formData, BookingForm);
 
-  if (data.startsAt && data.endsAt && new Date(data.endsAt) < new Date(data.startsAt)) {
+  if (data.startsAt && data.endsAt && stamp(data.endsAt)! < stamp(data.startsAt)!) {
     back(tripId, "That booking ends before it starts.");
   }
 

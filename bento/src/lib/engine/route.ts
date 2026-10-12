@@ -111,23 +111,56 @@ export function assessRoute(
     };
   });
 
-  const legs: RouteLegAssessment[] = [];
-  for (let i = 0; i + 1 < input.length; i++) {
-    const a = input[i].cityId;
-    const b = input[i + 1].cityId;
+  const nameOf = (id: string) => cities.find((c) => c.cityId === id)?.name ?? id;
+  const between = (a: string, b: string) => {
     const ha = facts.get(a)?.hubStation ?? hubFor(a, graph);
     const hb = facts.get(b)?.hubStation ?? hubFor(b, graph);
-    const r = ha && hb ? route(graph, ha, hb) : null;
+    return ha && hb ? route(graph, ha, hb) : null;
+  };
+  const legs: RouteLegAssessment[] = [];
+  const leg = (a: string, b: string) => {
+    const r = between(a, b);
     if (r) {
       const d = describeRoute(r);
       legs.push({ fromCityId: a, toCityId: b, minutes: r.minutes, fareJpy: r.fareJpy, fareKind: r.fareKind, summary: d.summary, lines: d.lines });
     } else {
       legs.push({
         fromCityId: a, toCityId: b, minutes: null, fareJpy: null, fareKind: "estimate",
-        summary: `${cities[i].name} → ${cities[i + 1].name} · no route in the graph yet`, lines: [],
+        summary: `${nameOf(a)} → ${nameOf(b)} · no route in the graph yet`, lines: [],
       });
     }
-  }
+  };
+  // A 0-night city is either a stop on the way between two stays (Himeji
+  // between Kyoto and Hiroshima: get off, see the castle, get back on) or a
+  // day trip from where you sleep (Nara from Kyoto: there and back). Costing
+  // every city as a leg from the one before charged Kyoto → Nara → Hiroshima
+  // for a trip that goes Kyoto ⇄ Nara, then Kyoto → Hiroshima.
+  const onTheWay = (from: string, stop: string, to: string) => {
+    const a = between(from, stop);
+    const b = between(stop, to);
+    const direct = between(from, to);
+    return a != null && b != null && direct != null && a.minutes + b.minutes <= direct.minutes * 1.25 + 30;
+  };
+  let at: string | null = null; // where the traveller is when the next move starts
+  let base: string | null = null; // where they last slept
+  input.forEach((c, i) => {
+    if (c.nights > 0) {
+      if (at && at !== c.cityId) leg(at, c.cityId);
+      at = base = c.cityId;
+      return;
+    }
+    const next = input.slice(i + 1).find((x) => x.nights > 0)?.cityId ?? null;
+    if (at && next && at !== next && onTheWay(at, c.cityId, next)) {
+      leg(at, c.cityId);
+      at = c.cityId;
+      return;
+    }
+    const home = base ?? next;
+    if (home && home !== c.cityId) {
+      leg(home, c.cityId);
+      leg(c.cityId, home);
+    }
+  });
 
   const totalNights = input.reduce((s, c) => s + c.nights, 0);
   const staying = input.filter((c) => c.nights > 0).length;

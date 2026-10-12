@@ -227,7 +227,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         </section>
 
         <section id="bento-man" aria-label="Bento Man" className="tile up flex scroll-mt-4 h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
-          <Chat tripId={id} initial={messages} />
+          <Chat tripId={id} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
         </section>
       </div>
     </main>

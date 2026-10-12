@@ -16,6 +16,7 @@ import type { CoverageTier } from "@/lib/types";
 import type { Proposal } from "./diff";
 import { allocateDates } from "@/lib/engine/route";
 import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripCityRow, type TripMeta, type TripState, type TripStore } from "./store";
+import type { TicketLike } from "@/lib/vault/match";
 
 const CORRIDOR: { id: string; name: string; tier: CoverageTier }[] = [
   { id: "kyoto-city", name: "Kyoto", tier: "deep" },
@@ -44,6 +45,7 @@ export interface MemorySetup {
   prefs?: Partial<Prefs>;
   cities?: { cityId: string; nights: number; reason?: string; budgetBand?: TripCityRow["budgetBand"] }[];
   days?: DayRow[];
+  bookings?: TicketLike[];
   /** Override a city's tier — e.g. make Kyoto a stub to test the refusal. */
   tiers?: Record<string, CoverageTier>;
   history?: ChatTurn[];
@@ -54,6 +56,7 @@ export class MemoryStore implements TripStore {
   prefs: Prefs;
   tripCities: TripCityRow[] = [];
   days: DayRow[] = [];
+  ticketRows: TicketLike[] = [];
   messages: (ChatTurn & { id: string; proposal: Proposal | null; status: "proposed" | "accepted" | "rejected" | null })[] = [];
   readonly tiers: Record<string, CoverageTier>;
   private g: Graph | null = null;
@@ -66,6 +69,7 @@ export class MemoryStore implements TripStore {
     this.tiers = { ...Object.fromEntries(CORRIDOR.map((c) => [c.id, c.tier])), ...setup.tiers };
     if (setup.cities) this.setRoute(setup.cities.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason ?? null, budgetBand: c.budgetBand ?? null })));
     this.days = setup.days ? setup.days.map((d) => ({ ...d, items: d.items.map((i) => ({ ...i })) })) : [];
+    this.ticketRows = setup.bookings ? setup.bookings.map((b) => ({ ...b })) : [];
     for (const h of setup.history ?? []) this.messages.push({ ...h, id: `m${++this.seq}`, proposal: null, status: null });
   }
 
@@ -106,7 +110,7 @@ export class MemoryStore implements TripStore {
   }
 
   async setTripDates(p: { startDate?: string | null; endDate?: string | null; partySize?: number; title?: string | null }): Promise<TripMeta> {
-    const change = planDateChange(this.trip, p, this.tripCities);
+    const change = planDateChange(this.trip, p, this.tripCities, this.days.filter((d) => d.items.length).map((d) => d.date));
     if (change.error) throw new Error(change.error);
     if (p.partySize !== undefined) this.trip.partySize = p.partySize;
     if (p.title !== undefined) this.trip.title = p.title;
@@ -148,6 +152,10 @@ export class MemoryStore implements TripStore {
       if (p.id === q || p.name.toLowerCase().includes(q) || p.id.includes(q.replace(/\s+/g, "-"))) out.push(p);
     }
     return out.sort((a, b) => (a.id === q ? -1 : b.id === q ? 1 : b.signature - a.signature)).slice(0, 8);
+  }
+
+  async bookings(): Promise<TicketLike[]> {
+    return this.ticketRows.map((b) => ({ ...b }));
   }
 
   async graph(): Promise<Graph> {

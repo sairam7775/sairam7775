@@ -172,3 +172,17 @@ describe("planTrip", () => {
     expect(trip.byCity[0].costJpy).toBe(trip.days[0].costJpy + trip.days[1].costJpy);
   });
 });
+
+describe("planDay — validation never returns a stop it dropped", () => {
+  it("when opening hours keep rejecting stops through every round", () => {
+    // Every place shuts after an hour in the morning, so each round's growth
+    // brings in more stops the hours will reject.
+    const tight = Array.from({ length: 6 }, (_, n) => kyoto.map((p) => ({ ...p, id: `${p.id}-${n}`, conflictsWith: [], opensAt: "09:00", closesAt: "10:00", closedWeekdays: [] }))).flat();
+    const plan = day({ places: tight });
+    const dropped = new Set(plan.considered.filter((r) => r.term === "hours" || r.stage === "validate").map((r) => r.placeId));
+    for (const it of plan.items) expect(dropped.has(it.placeId)).toBe(false);
+    // And the day's numbers describe the stops actually returned.
+    const fromItems = plan.items.reduce((s, i) => s + i.durationMin, 0);
+    expect(plan.activeMin).toBeGreaterThanOrEqual(fromItems);
+  });
+});

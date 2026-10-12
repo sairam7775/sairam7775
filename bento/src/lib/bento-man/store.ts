@@ -9,6 +9,7 @@ import type { CityFacts } from "@/lib/engine/route";
 import type { Graph } from "@/lib/transit/graph";
 import type { BudgetBand, CoverageTier, InterestTag, TravelPace, TripStatus } from "@/lib/types";
 import type { Proposal } from "./diff";
+import type { TicketLike } from "@/lib/vault/match";
 
 export interface Prefs {
   pace: TravelPace;
@@ -102,6 +103,9 @@ export interface TripStore {
   places(cityId: string): Promise<PlaceInput[]>;
   searchPlaces(query: string, cityId?: string | null): Promise<PlaceInput[]>;
   graph(): Promise<Graph>;
+  /** The trip's bookings, as much as the planner needs to know a ticket is
+   *  held (lib/vault/match.ts). Never the reference. */
+  bookings(): Promise<TicketLike[]>;
   history(limit: number): Promise<ChatTurn[]>;
   append(role: "user" | "assistant", content: string, proposal?: Proposal | null): Promise<{ id: string }>;
   /** Writes the accepted proposal into the itinerary. */
@@ -132,11 +136,15 @@ export function shiftDate(date: string, n: number): string {
  *  - `error`: the new range can't hold the accepted route. Laying a 9-night
  *    route into 3 nights would look like a working plan and isn't one.
  *  - `shift`: how far the start moved. The route is laid from the start, so
- *    planned days move by the same amount to stay on their city's dates. */
+ *    planned days move by the same amount to stay on their city's dates.
+ *  - A planned day that would land outside the new range is refused too,
+ *    rather than deleted (someone's plan) or left showing after the trip ends. */
 export function planDateChange(
   current: { startDate: string | null; endDate: string | null },
   next: { startDate?: string | null; endDate?: string | null },
   route: { nights: number }[],
+  /** Dates of days that have stops planned. */
+  plannedDays: string[] = [],
 ): { changed: boolean; error: string | null; shift: number; startDate: string | null; endDate: string | null } {
   const startDate = next.startDate !== undefined ? next.startDate : current.startDate;
   const endDate = next.endDate !== undefined ? next.endDate : current.endDate;
@@ -158,5 +166,19 @@ export function planDateChange(
     };
   }
   const shift = current.startDate && startDate ? nightsBetween(current.startDate, startDate)! : 0;
+  const outside = plannedDays
+    .map((d) => shiftDate(d, shift))
+    .filter((d) => (startDate != null && d < startDate) || (endDate != null && d > endDate))
+    .sort();
+  if (outside.length) {
+    const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    return {
+      changed,
+      error: `You have day plans that would fall outside the new dates (${outside.map(fmt).join(", ")}). Clear those days first, or keep the trip longer.`,
+      shift: 0,
+      startDate,
+      endDate,
+    };
+  }
   return { changed, error: null, shift, startDate, endDate };
 }

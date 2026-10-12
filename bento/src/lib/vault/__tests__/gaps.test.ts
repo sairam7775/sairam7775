@@ -50,11 +50,22 @@ describe("detectGaps — a bed for every night", () => {
     expect(r.blocking).toBe(1);
   });
 
-  it("runs consecutive uncovered nights together as one sentence", () => {
-    const r = detectGaps(base({ bookings: [hotel("Hotel Kanra", "2026-11-20", "2026-11-22", "osaka-city")] }));
+  it("runs consecutive uncovered nights in one city together as one sentence", () => {
+    const r = detectGaps(base({
+      bookings: [hotel("Hotel Kanra", "2026-11-20", "2026-11-22", "osaka-city"), hotel("Miyajima ryokan", "2026-11-27", "2026-11-29", "hiroshima-city")],
+    }));
     const beds = r.gaps.filter((g) => g.key.startsWith("bed:"));
     expect(beds).toHaveLength(1);
-    expect(beds[0].title).toMatch(/^You have nowhere to sleep on 7 nights, 22 November to 28 November in Kyoto\./);
+    expect(beds[0].title).toBe("You have nowhere to sleep on 5 nights, 22 November to 26 November in Kyoto.");
+  });
+
+  it("splits a run that crosses cities, so each city names its own nights", () => {
+    const r = detectGaps(base({ bookings: [hotel("Hotel Kanra", "2026-11-20", "2026-11-22", "osaka-city")] }));
+    const beds = r.gaps.filter((g) => g.key.startsWith("bed:")).map((g) => g.title);
+    expect(beds).toEqual([
+      "You have nowhere to sleep on 5 nights, 22 November to 26 November in Kyoto.",
+      "You have nowhere to sleep on 2 nights, 27 November to 28 November in Hiroshima.",
+    ]);
   });
 
   it("is quiet when every night has a bed", () => {
@@ -88,11 +99,33 @@ describe("detectGaps — tickets", () => {
     expect(g.detail).toMatch(/leave it out of the day until a booking exists/);
   });
 
-  it("becomes 'closing' once the lead window is in reach", () => {
+  it("stays blocking once the lead window is in reach — and says how close", () => {
     const r = detectGaps(base({ places: [teamlab], today: "2026-11-10" }));
     const g = r.gaps.find((x) => x.key.startsWith("ticket:"))!;
-    expect(g.severity).toBe("closing");
+    expect(g.severity).toBe("blocking");
     expect(g.daysLeft).toBe(11);
+    expect(g.detail).toMatch(/11 days from closing/);
+  });
+
+  it("a window that has passed is the most urgent, not the least", () => {
+    const r = detectGaps(base({ places: [teamlab], today: "2026-11-21" }));
+    const g = r.gaps.find((x) => x.key.startsWith("ticket:"))!;
+    expect(g.severity).toBe("blocking");
+    expect(g.detail).toMatch(/window is gone/);
+  });
+
+  it("one ticket does not hold every ticketed place that day", () => {
+    const ghibli: GapPlace = { placeId: "ghibli", name: "Ghibli Museum (Mitaka)", date: "2026-11-21", bookingReq: "required", bookingLeadDays: 30 };
+    const r = detectGaps(base({
+      places: [teamlab, ghibli],
+      bookings: [{ id: "b1", type: "activity", title: "teamLab Botanical Garden 19:00", startsOn: "2026-11-21", endsOn: null, cityId: null, toCityId: null, placeId: null }],
+    }));
+    expect(r.gaps.filter((g) => g.key.startsWith("ticket:")).map((g) => g.key)).toEqual(["ticket:ghibli:2026-11-21"]);
+  });
+
+  it("the Add a booking action carries the place, so the booking links to it", () => {
+    const g = detectGaps(base({ places: [teamlab] })).gaps.find((x) => x.key.startsWith("ticket:"))!;
+    expect(g.actions[0]).toMatchObject({ kind: "add_booking", placeId: "osk-teamlab-botanical", title: "teamLab Botanical Garden" });
   });
 
   it("a place that needs no booking is never a gap", () => {

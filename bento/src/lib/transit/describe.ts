@@ -18,7 +18,11 @@ export function describeRoute(r: Route): { summary: string; lines: string[] } {
   const h = Math.floor(r.minutes / 60);
   const m = r.minutes % 60;
   const dur = h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m} min`;
-  const fare = r.fareJpy ? yen(r.fareJpy, r.fareKind) : "free";
+  const unpriced = r.unpricedRides ?? 0;
+  const missing = `${unpriced === 1 ? "a fare" : `${unpriced} fares`} not in Bento yet`;
+  const fare = unpriced
+    ? r.fareJpy ? `${yen(r.fareJpy, r.fareKind)} + ${missing}` : `fare not in Bento yet`
+    : r.fareJpy ? yen(r.fareJpy, r.fareKind) : "free";
   const changes = r.transfers === 0 ? "no changes" : r.transfers === 1 ? "1 change" : `${r.transfers} changes`;
   return {
     summary: `${r.from.name} → ${r.to.name} · ${dur} · ${fare} · ${changes}`,

@@ -33,7 +33,9 @@ type Event =
   | { type: "done"; messageId: string | null; text: string; proposal: Proposal | null }
   | { type: "error"; message: string };
 
-export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage[] }) {
+/** `ask` arrives from a gap card's "Ask Bento Man": it starts in the box,
+ *  ready to send or edit — never sent on the traveller's behalf. */
+export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMessage[]; ask?: string }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   // The server is the truth for a proposal's status. After Accept or
@@ -47,7 +49,7 @@ export function Chat({ tripId, initial }: { tripId: string; initial: ChatMessage
     if (busyRef.current) return;
     setMessages(initial);
   }, [initial]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(ask ?? "");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [activity, setActivity] = useState<string | null>(null);

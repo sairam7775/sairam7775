@@ -12,6 +12,7 @@
  *  It also distinguishes never needed a booking from not booked yet. A
  *  temple with no ticket is not a gap; a teamLab slot with no ticket is. */
 import type { BookingKind } from "@/lib/types";
+import { bookingHoldsPlace } from "./match";
 
 export type GapSeverity = "blocking" | "closing" | "worth_knowing";
 
@@ -21,6 +22,10 @@ export interface GapAction {
   kind: "add_booking" | "ask_bento_man";
   /** Pre-fills the booking form, or seeds the message to Bento Man. */
   hint?: string;
+  /** For a ticket gap: the booking made from it is linked to this place. */
+  placeId?: string;
+  /** For a ticket gap: the booking title, so the form starts with it. */
+  title?: string;
 }
 
 export interface Gap {
@@ -201,9 +206,15 @@ export function detectGaps(input: GapInput): GapReport {
     });
     run = [];
   };
+  // One gap per city, though: a run that crosses from Kyoto into Osaka is
+  // two hotels to book, and naming only the first city sent travellers to
+  // book Kyoto for every night.
   for (const n of nights) {
     if (n.covered) flushBed();
-    else run.push(n);
+    else {
+      if (run.length && run[0].cityId !== n.cityId) flushBed();
+      run.push(n);
+    }
   }
   flushBed();
 
@@ -238,16 +249,21 @@ export function detectGaps(input: GapInput): GapReport {
   // ------------------------------------------- 3. tickets a place requires
   for (const p of places) {
     if (p.bookingReq === "none") continue;
-    const held = bookings.some((b) => b.placeId === p.placeId || (b.startsOn === p.date && b.type === "activity"));
+    const held = bookings.some((b) => bookingHoldsPlace(b, { id: p.placeId, name: p.name }, p.date));
     if (held) continue;
 
     const lead = p.bookingLeadDays;
     const daysUntil = daysBetween(today, p.date);
     if (p.bookingReq === "required") {
+      // Without the ticket the place is out of the day, so this blocks the
+      // plan whether or not its release window is open. A window that is
+      // closing — or gone — is more urgent, not less: it stays blocking and
+      // says so in the detail. (It used to drop to "closing", sorting the
+      // most urgent ticket below one months away.)
       const closing = lead != null && daysUntil <= lead;
       all.push({
         key: `ticket:${p.placeId}:${p.date}`,
-        severity: closing ? "closing" : "blocking",
+        severity: "blocking",
         title: `${p.name} needs a ticket booked in advance, and none is recorded.`,
         detail: lead
           ? `It is on your ${longDate(p.date)}. These release about ${lead} days ahead${closing ? `, and that window is ${daysUntil <= 0 ? "gone" : `${daysUntil} days from closing`}` : ""}. The planner will leave it out of the day until a booking exists.`
@@ -255,7 +271,7 @@ export function detectGaps(input: GapInput): GapReport {
         date: p.date,
         bookingType: "activity",
         actions: [
-          { label: "Add a booking", kind: "add_booking", hint: "activity" },
+          { label: "Add a booking", kind: "add_booking", hint: "activity", placeId: p.placeId, title: p.name },
           { label: "Ask Bento Man", kind: "ask_bento_man", hint: `Tell me about booking ${p.name}.` },
         ],
         daysLeft: lead != null ? Math.max(0, daysUntil) : undefined,
@@ -272,7 +288,7 @@ export function detectGaps(input: GapInput): GapReport {
         detail: `It is on your ${longDate(p.date)}, ${daysUntil === 0 ? "today" : `${daysUntil} day${daysUntil === 1 ? "" : "s"} away`}, and it usually wants about ${lead} days' notice. Walking up often works; it is not a certainty.`,
         date: p.date,
         bookingType: "activity",
-        actions: [{ label: "Add a booking", kind: "add_booking", hint: "activity" }],
+        actions: [{ label: "Add a booking", kind: "add_booking", hint: "activity", placeId: p.placeId, title: p.name }],
         daysLeft: Math.max(0, daysUntil),
       });
     }

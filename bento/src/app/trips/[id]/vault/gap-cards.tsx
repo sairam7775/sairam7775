@@ -99,7 +99,7 @@ export function GapCard({ tripId, gap }: { tripId: string; gap: Gap }) {
           a.kind === "add_booking" ? (
             <a
               key={a.label}
-              href={`/trips/${tripId}/vault?add=${encodeURIComponent(a.hint ?? "other")}${gap.date ? `&on=${gap.date}` : ""}`}
+              href={`/trips/${tripId}/vault?add=${encodeURIComponent(a.hint ?? "other")}${gap.date ? `&on=${gap.date}` : ""}${a.placeId ? `&place=${encodeURIComponent(a.placeId)}` : ""}${a.title ? `&title=${encodeURIComponent(a.title)}` : ""}#add-booking`}
               className="rounded-full bg-lacquer px-4 py-2 text-[0.82rem] font-medium text-rice"
             >
               {a.label}
@@ -107,7 +107,7 @@ export function GapCard({ tripId, gap }: { tripId: string; gap: Gap }) {
           ) : (
             <a
               key={a.label}
-              href={`/trips/${tripId}?ask=${encodeURIComponent(a.hint ?? "")}`}
+              href={`/trips/${tripId}?ask=${encodeURIComponent(a.hint ?? "")}#bento-man`}
               className="rounded-full border border-ink/15 px-4 py-2 text-[0.82rem] font-medium"
             >
               {a.label}

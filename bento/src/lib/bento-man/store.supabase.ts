@@ -10,6 +10,7 @@ import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { clock, ProposalSchema, type Proposal } from "./diff";
 import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
+import type { TicketLike } from "@/lib/vault/match";
 
 const toMin = (t: string | null): number | null => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
 
@@ -133,7 +134,7 @@ export class SupabaseStore implements TripStore {
     const before = await this.state();
     // Decide before writing: a range too short for the accepted route is
     // refused outright, and a "change" to the same dates is no change.
-    const change = planDateChange(before.trip, p, before.cities);
+    const change = planDateChange(before.trip, p, before.cities, before.days.filter((d) => d.items.length).map((d) => d.date));
     if (change.error) throw new Error(change.error);
 
     const row: Record<string, unknown> = {};
@@ -234,6 +235,15 @@ export class SupabaseStore implements TripStore {
     const out: PlaceInput[] = [];
     for (const r of data ?? []) out.push(rowToPlace(r, await this.tierOf(r.city_id)));
     return out.sort((a, b) => (a.id === q ? -1 : b.id === q ? 1 : b.signature - a.signature));
+  }
+
+  async bookings(): Promise<TicketLike[]> {
+    // RLS scopes bookings to the owner. The reference is not selected.
+    const { data, error } = await this.db.from("bookings").select("type, title, starts_at, place_id").eq("trip_id", this.tripId);
+    if (error) throw error;
+    // starts_at is the wall time at the place stored as UTC, so its date
+    // part is the local date (see vault/actions.ts stamp).
+    return (data ?? []).map((b) => ({ type: b.type, title: b.title, startsOn: b.starts_at ? String(b.starts_at).slice(0, 10) : null, placeId: b.place_id }));
   }
 
   graph(): Promise<Graph> {

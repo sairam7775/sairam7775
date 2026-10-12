@@ -262,3 +262,31 @@ uses this:
   refuses one that no longer fits. A date change now closes only pending
   day plans and routes that no longer fit; a route that still fits stays
   open.
+
+## UI pass and full-codebase review (12 October 2026)
+
+- **UI** (`cda5908`): one-row header, edit-trip panel, confirms, chat panel
+  that fits the window, Zen Maru / Zen Kaku fonts, loaders and skeletons,
+  seasonal animated backdrop, redesigned landing and auth pages,
+  `bento/DESIGN.md`. Fixed the app always rendering dark (nested `@theme`).
+- **Security** (`51150b7`): `0013_lock_public_views` (applied) — `places_public`
+  was writable with the anon key; `safeNext` for post-sign-in redirects;
+  failed booking reads now count against the spend cap; excludes normalised.
+- **Wrong-answer fixes** (uncommitted at time of writing): bed gaps split per
+  city; shared ticket matcher (`vault/match.ts`) for gaps and planner;
+  required tickets always blocking; plan_days honours a same-turn route and
+  refuses out-of-trip dates; validate rounds never return a dropped stop;
+  0-night cities costed as day trip or stop-on-the-way; unpriced fares never
+  "free"; chat history normalised; booking times stored as wall time; date
+  changes refused when planned days would fall outside.
+
+### Still open from the review
+
+- Spend cap is per user only, and concurrent turns can overshoot it (#4, #5)
+  — needs a project-wide cap and a reservation before the model call.
+- `applyProposal` and `setTripDates` are multi-statement, not atomic
+  (#7, #8) — one SQL function each.
+- Decision needed: should `set_trip_dates` from the chat be a proposal the
+  traveller accepts, like every other plan change (#6)?
+- Cleanup: engine called from the trip page component, two actions without
+  Zod, duplicated helpers, repeated store reads per tool call (#23–#25).

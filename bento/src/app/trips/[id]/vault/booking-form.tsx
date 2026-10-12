@@ -27,14 +27,17 @@ const field = "rounded-xl border border-rule bg-paper px-3 py-2.5 text-[0.92rem]
 
 /** Add a booking by typing it, or paste the confirmation and let it fill
  *  the form in. The paste never saves anything: every field is reviewed. */
-export function BookingForm({ tripId, cities, defaultType, defaultDate }: { tripId: string; cities: CityOption[]; defaultType?: string; defaultDate?: string }) {
+/** `defaultPlaceId` / `defaultTitle` come from a ticket gap's "Add a booking":
+ *  the booking is saved linked to that place, so the gap detector and the
+ *  planner both see the ticket as held (lib/vault/match.ts). */
+export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultPlaceId, defaultTitle }: { tripId: string; cities: CityOption[]; defaultType?: string; defaultDate?: string; defaultPlaceId?: string; defaultTitle?: string }) {
   const [type, setType] = useState<BookingKind>((KINDS.find((k) => k.id === defaultType)?.id ?? "accommodation") as BookingKind);
   const [open, setOpen] = useState(Boolean(defaultType));
   const [paste, setPaste] = useState("");
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
   const [values, setValues] = useState({
-    title: "", provider: "", reference: "",
+    title: defaultTitle ?? "", provider: "", reference: "",
     startsAt: defaultDate ? `${defaultDate}T15:00` : "", endsAt: "",
     costAmount: "", costCurrency: "", notes: "",
   });
@@ -105,6 +108,7 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate }: { trip
 
       <form action={saveBooking} className="mt-5 flex flex-col gap-4">
         <input type="hidden" name="tripId" value={tripId} />
+        {defaultPlaceId && <input type="hidden" name="placeId" value={defaultPlaceId} />}
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="type">What is it</Label>

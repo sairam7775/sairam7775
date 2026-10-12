@@ -67,10 +67,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   if (persist) await store.append("user", message);
 
   const context = buildContext(state, cities, today);
-  const messages: Anthropic.Beta.BetaMessageParam[] = [
-    ...history.map((h) => ({ role: h.role, content: h.content }) as Anthropic.Beta.BetaMessageParam),
-    { role: "user", content: `${context}\n\n${message}` },
-  ];
+  const messages: Anthropic.Beta.BetaMessageParam[] = conversation(history, `${context}\n\n${message}`);
 
   const ctx: ToolContext = { store, today, proposal: null };
   const texts: string[] = [];
@@ -154,6 +151,25 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   if (persist) assistantMessageId = (await store.append("assistant", text, ctx.proposal)).id;
 
   return { text, proposal: ctx.proposal, usage: totalUsage(usageByModel), usageByModel, stopReason, toolCalls, assistantMessageId, servedBy };
+}
+
+/** The stored history as the API wants it: starting with the traveller,
+ *  alternating, ending on this turn's message. The store doesn't guarantee
+ *  that shape — "re-plan this day" writes a Bento Man message with no
+ *  traveller turn before it, a failed turn leaves a traveller message with
+ *  no reply, and the history window can start mid-exchange. Leading
+ *  assistant turns are dropped and same-role neighbours merged, so one odd
+ *  row can't make every later turn on the trip fail. */
+export function conversation(history: { role: "user" | "assistant"; content: string }[], current: string): Anthropic.Beta.BetaMessageParam[] {
+  const out: { role: "user" | "assistant"; content: string }[] = [];
+  for (const h of [...history, { role: "user" as const, content: current }]) {
+    if (!h.content.trim()) continue;
+    if (!out.length && h.role === "assistant") continue;
+    const last = out[out.length - 1];
+    if (last && last.role === h.role) last.content = `${last.content}\n\n${h.content}`;
+    else out.push({ ...h });
+  }
+  return out;
 }
 
 /** Partial usage from a turn that threw, so a failed turn still counts. */

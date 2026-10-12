@@ -165,10 +165,19 @@ Practically:
   against it. Changing how a key is built un-dismisses things.
 - The detector must distinguish *never needed a booking* from *not booked
   yet*. `booking_req = 'none'` is never a gap. Consecutive uncovered
-  nights are one gap, not one per night.
+  nights are one gap per city, not one per night (a run crossing cities
+  splits, so each names its own city).
 - Severities: `blocking` (the trip does not work), `closing` (a window is
   running out), `worth_knowing` (probably fine). A missing bed is
-  blocking; an unbooked corridor train is not.
+  blocking; an unbooked corridor train is not. A required ticket with none
+  held is always blocking, however close its window; `closing` is for
+  recommended bookings.
+- Whether a booking holds a place's ticket is `match.ts`, shared by the
+  gap detector and the planner (`store.bookings()` → `bookedPlaceIds`) so
+  they never disagree: linked `place_id`, or an activity that day whose
+  title contains the place's name. Never "any ticket that day".
+- Booking times are wall-clock at the place stored as if UTC
+  (`vault/actions.ts` `stamp`); every reader slices or formats in UTC.
 - `crypto.ts` is AES-256-GCM with a random nonce per record and a version
   prefix on the stored string. A reference is decrypted only to render it
   for its owner. Never log one, never put one in a prompt, never widen
@@ -189,7 +198,9 @@ Practically:
   and "JR Nara Line · Miyakoji Rapid" are different lines.
 - Fares: a run of consecutive edges on one operator sums km and takes one
   band from `fares.ts`. An edge with `fareJpy` set is exact and stands
-  alone. `fareKind: "estimate"` must render as `~¥`.
+  alone. `fareKind: "estimate"` must render as `~¥`. A run with no fare
+  table or no km is counted in `unpricedRides`, never charged ¥0 or
+  shown as "free".
 - `seed/kansai-sanyo.ts` is the one source of truth for the corridor; the
   tests, the CLI and `supabase/seed_transit.sql` all derive from it. Never
   edit the SQL by hand.

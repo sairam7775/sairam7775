@@ -58,6 +58,9 @@ export interface Route {
   /** "exact" only when every paid leg carried an explicit fare. Shown to
    *  the traveller as "~¥" otherwise — an estimate must never look precise. */
   fareKind: "exact" | "estimate";
+  /** Rides whose fare Bento cannot price (an operator with no fare table,
+   *  or no distance). Not in fareJpy, and never shown as free. */
+  unpricedRides?: number;
   transfers: number;
 }
 

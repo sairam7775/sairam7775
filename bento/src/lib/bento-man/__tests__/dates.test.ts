@@ -70,3 +70,21 @@ describe("store.setTripDates", () => {
     expect((await store.state()).trip).toMatchObject(nov);
   });
 });
+
+describe("planned days outside the new range", () => {
+  const day = (date: string) => ({ date, cityId: "kyoto", items: [{ placeId: "kyt-tofukuji", name: "Tofuku-ji", sortOrder: 0, startMin: 600, durationMin: 60, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null }] });
+
+  it("refuses to shorten the trip past a planned day, naming it", () => {
+    expect(planDateChange(nov, { endDate: "2026-11-25" }, [], ["2026-11-27"]).error).toMatch(/27 Nov/);
+  });
+  it("allows it when the planned days still fit", () => {
+    expect(planDateChange(nov, { endDate: "2026-11-27" }, [], ["2026-11-27"]).error).toBeNull();
+  });
+  it("the store keeps dates and days unchanged when it refuses", async () => {
+    const store = new MemoryStore({ trip: nov, days: [day("2026-11-28")] as never });
+    await expect(store.setTripDates({ endDate: "2026-11-25" })).rejects.toThrow(/28 Nov/);
+    const s = await store.state();
+    expect(s.trip).toMatchObject(nov);
+    expect(s.days.map((d) => d.date)).toEqual(["2026-11-28"]);
+  });
+});

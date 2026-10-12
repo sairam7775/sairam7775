@@ -27,6 +27,7 @@ export function travelFromGraph(graph: Graph): TravelFn {
             minutes: r.minutes,
             fareJpy: r.fareJpy,
             fareKind: r.fareKind,
+            unpricedRides: r.unpricedRides,
             detail: `Walk ${wa} min to ${r.from.name}, ${lines.join(", then ")}, walk ${wb} min`,
             lines,
           };

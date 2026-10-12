@@ -167,14 +167,21 @@ function assemble(g: Graph, from: Station, to: Station, path: Edge[], minutes: n
   // fare is exact and stands alone. A walk ends a run.
   let fareJpy = 0;
   let allExact = true;
-  let run: { operator: string; km: number; leg: number } | null = null;
+  let unpricedRides = 0;
+  let run: { operator: string; km: number; kmKnown: boolean; leg: number } | null = null;
 
   const closeRun = () => {
     if (!run) return;
-    const fare = bandFare(run.operator, run.km) ?? 0;
-    legs[run.leg].fareJpy += fare; // attributed to the run's first leg
-    fareJpy += fare;
     allExact = false;
+    // An operator with no fare table, or a run with no distance, has no
+    // price Bento can stand behind. Count it rather than charge ¥0: a ride
+    // must never read as free because the data is missing.
+    const fare = run.kmKnown ? bandFare(run.operator, run.km) : null;
+    if (fare == null) unpricedRides++;
+    else {
+      legs[run.leg].fareJpy += fare; // attributed to the run's first leg
+      fareJpy += fare;
+    }
     run = null;
   };
 
@@ -192,8 +199,9 @@ function assemble(g: Graph, from: Station, to: Station, path: Edge[], minutes: n
     }
     const operator = e.operator ?? "unknown";
     if (run && run.operator !== operator) closeRun();
-    if (!run) run = { operator, km: 0, leg };
-    run.km += e.km ?? 0;
+    if (!run) run = { operator, km: 0, kmKnown: true, leg };
+    if (e.km == null) run.kmKnown = false;
+    else run.km += e.km;
   });
   closeRun();
 
@@ -206,6 +214,7 @@ function assemble(g: Graph, from: Station, to: Station, path: Edge[], minutes: n
     minutes,
     fareJpy,
     fareKind: allExact ? "exact" : "estimate",
+    unpricedRides,
     transfers: Math.max(0, ridden - 1),
   };
 }
