@@ -3,6 +3,25 @@ import type { PlaceInput, Rejected, TravellerInput } from "./types";
 
 const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+/** Words people use for a category, mapped to the stored one. */
+const ALIAS: Record<string, string> = {
+  hiking: "hike",
+  trek: "hike",
+  trekking: "hike",
+  hot_spring: "onsen",
+};
+
+/** One spelling for an exclude, a category or a tag: lower case, spaces and
+ *  hyphens as underscores, simple plurals made singular, common synonyms
+ *  mapped. "Beaches" → "beach", "Hot springs" → "onsen", "hiking" → "hike". */
+export function normaliseTerm(x: string): string {
+  let s = x.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (s.endsWith("ies")) s = `${s.slice(0, -3)}y`;
+  else if (/(ch|sh|ss|x)es$/.test(s)) s = s.slice(0, -2);
+  else if (s.endsWith("s") && !s.endsWith("ss")) s = s.slice(0, -1);
+  return ALIAS[s] ?? s;
+}
+
 export interface FilterContext {
   date: string;
   weekday: number;
@@ -26,9 +45,11 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
     return reject("no_duration", "no verified duration on record");
   }
 
-  // Excludes match the category, the tags, and what the place demands.
-  const demands = [p.category, ...p.interestTags, ...((p.energy ?? 0) >= 0.75 ? ["hiking"] : [])];
-  const excluded = t.excludes.find((x) => demands.includes(x));
+  // Excludes match the category, the tags, and what the place demands —
+  // compared as normalised words, because "no beaches" is said in plurals
+  // and capitals and stored categories are singular ("beach", "hike").
+  const demands = new Set([p.category, ...p.interestTags, ...((p.energy ?? 0) >= 0.75 ? ["hiking"] : [])].map(normaliseTerm));
+  const excluded = t.excludes.find((x) => demands.has(normaliseTerm(x)));
   if (excluded) {
     return reject("excluded", `you said never: ${excluded}`);
   }

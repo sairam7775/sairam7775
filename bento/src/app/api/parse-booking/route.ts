@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
 import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guards/spend";
-import { costUsd } from "@/lib/bento-man/cost";
+import { costUsd, type Usage } from "@/lib/bento-man/cost";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { PARSE_MODEL, ParseFailed, parseConfirmation, toFormValues } from "@/lib/vault/parse";
 
@@ -42,20 +42,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Reading confirmations isn't configured on this server. Fill the form in by hand." }, { status: 503 });
   }
 
-  try {
-    const result = await parseConfirmation(mock ? createMockClient() : new Anthropic(), parsed.data.text);
-    await recordUsage({
+  // Every billed call is recorded, read or not: a reply that fails the
+  // schema cost the same as one that passes, and an unrecorded failure is
+  // a way past the spend cap (E2).
+  const record = (model: string, usage: Usage) =>
+    recordUsage({
       userId: user.id,
       kind: "parse",
-      model: result.model,
-      inputTokens: result.usage.inputTokens,
-      outputTokens: result.usage.outputTokens,
-      cachedTokens: result.usage.cacheReadTokens,
-      costUsd: costUsd(PARSE_MODEL, result.usage),
+      model,
+      inputTokens: usage.inputTokens,
+      outputTokens: usage.outputTokens,
+      cachedTokens: usage.cacheReadTokens,
+      costUsd: costUsd(PARSE_MODEL, usage),
     }).catch(() => {});
+
+  try {
+    const result = await parseConfirmation(mock ? createMockClient() : new Anthropic(), parsed.data.text);
+    await record(result.model, result.usage);
     return NextResponse.json({ values: toFormValues(result.booking) });
   } catch (e) {
-    if (e instanceof ParseFailed) return NextResponse.json({ error: e.message }, { status: 422 });
+    if (e instanceof ParseFailed) {
+      if (e.usage) await record(e.model ?? PARSE_MODEL, e.usage);
+      return NextResponse.json({ error: e.message }, { status: 422 });
+    }
     if (e instanceof Anthropic.APIError) return NextResponse.json({ error: "Couldn't read that one. Fill the form in by hand." }, { status: 502 });
     return NextResponse.json({ error: "Something went wrong reading that. Fill the form in by hand." }, { status: 500 });
   }

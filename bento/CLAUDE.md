@@ -26,6 +26,13 @@ Practically:
 - **Nothing unverified reaches a traveller.** Judgement fields on `places` are
   `NULL` until `verification_status = 'verified'`, enforced by the
   `places_public` view. Never query `places` directly from user-facing code.
+- **Every new view gets an explicit `revoke insert, update, delete … from
+  anon, authenticated`.** Supabase's default privileges grant writes on
+  every new relation, a simple single-table view is auto-updatable, and a
+  definer view bypasses the base table's RLS — `places_public` was
+  writable by anyone with the anon key until `0013_lock_public_views`.
+- **Redirects after sign-in go through `safeNext`** (`lib/safe-next.ts`).
+  "Starts with /" is not enough: `//evil` leaves the site.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
 - **Costs are stored in JPY.** Conversion happens on read, so a stale rate can

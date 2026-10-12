@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/safe-next";
 
 const credentials = z.object({
   email: z.email("That doesn't look like an email address."),
@@ -25,7 +26,7 @@ async function origin() {
 }
 
 export async function signInWithPassword(formData: FormData) {
-  const next = String(formData.get("next") ?? "/trips");
+  const next = safeNext(formData.get("next"));
   const parsed = credentials.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -71,7 +72,7 @@ export async function signUpWithPassword(formData: FormData) {
 }
 
 export async function signInWithGoogle(formData: FormData) {
-  const next = String(formData.get("next") ?? "/trips");
+  const next = safeNext(formData.get("next"));
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({

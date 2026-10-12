@@ -79,8 +79,15 @@ const JSON_SCHEMA = {
   additionalProperties: false,
 };
 
+/** A confirmation that could not be read. When the model was called before
+ *  it failed, `usage` says what that call cost: a failed read is still
+ *  billed, and must still count against the spend cap (E2). */
 export class ParseFailed extends Error {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly usage: Usage | null = null,
+    readonly model: string | null = null,
+  ) {
     super(message);
     this.name = "ParseFailed";
   }
@@ -104,30 +111,34 @@ export async function parseConfirmation(client: Anthropic, text: string): Promis
     ],
   });
 
-  if (response.stop_reason === "refusal") throw new ParseFailed("That text could not be read.");
+  // Billed from here on, whatever happens to the answer.
+  const usage = addUsage(ZERO_USAGE, {
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+    cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
+  });
+  const fail = (message: string) => new ParseFailed(message, usage, response.model);
+
+  if (response.stop_reason === "refusal") throw fail("That text could not be read.");
 
   const block = response.content.find((b) => b.type === "text");
-  if (!block || block.type !== "text") throw new ParseFailed("Nothing came back. Enter the booking by hand.");
+  if (!block || block.type !== "text") throw fail("Nothing came back. Enter the booking by hand.");
 
   let raw: unknown;
   try {
     raw = JSON.parse(block.text);
   } catch {
-    throw new ParseFailed("That did not come back as a booking. Enter it by hand.");
+    throw fail("That did not come back as a booking. Enter it by hand.");
   }
 
   const parsed = ParsedBookingSchema.safeParse(raw);
-  if (!parsed.success) throw new ParseFailed(`That did not look like a booking: ${parsed.error.issues[0].message}`);
+  if (!parsed.success) throw fail(`That did not look like a booking: ${parsed.error.issues[0].message}`);
 
   return {
     booking: parsed.data,
     model: response.model,
-    usage: addUsage(ZERO_USAGE, {
-      inputTokens: response.usage.input_tokens,
-      outputTokens: response.usage.output_tokens,
-      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
-      cacheWriteTokens: response.usage.cache_creation_input_tokens ?? 0,
-    }),
+    usage,
   };
 }
 
