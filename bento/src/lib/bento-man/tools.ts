@@ -481,7 +481,14 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const start = i.start_date ?? current.startDate;
       const end = i.end_date ?? current.endDate;
       if (start && end && end < start) return fail("end_date is before start_date");
-      const trip = await store.setTripDates({ startDate: i.start_date, endDate: i.end_date, partySize: i.party_size, title: i.title });
+      // The store refuses a range too short for the accepted route; that
+      // refusal is for the traveller, with its arithmetic, not a crash.
+      let trip;
+      try {
+        trip = await store.setTripDates({ startDate: i.start_date, endDate: i.end_date, partySize: i.party_size, title: i.title });
+      } catch (e) {
+        return fail(e instanceof Error ? e.message : "could not change the dates");
+      }
       return { result: j({ saved: true, trip, nights: nightsBetween(trip.startDate, trip.endDate) }) };
     }
 

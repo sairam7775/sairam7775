@@ -136,7 +136,19 @@ Practically:
   `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.pop`, `.grow`,
   `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
 - Fonts are fontsource packages imported in `layout.tsx` — no build-time
-  fetch. Bricolage Grotesque display, DM Sans body, DM Mono data.
+  fetch. Zen Maru Gothic display, Zen Kaku Gothic New body, DM Mono data.
+  The logo wordmark stays outlined Bricolage Grotesque (it is artwork).
+- The seasonal scenes and particles (`components/seasonal/`) are the one
+  exception to "tokens, not hex": they are illustration with their own
+  palette, like the logo. Keep them behind the veil, `aria-hidden`, and
+  out of anything a traveller reads.
+- No `backdrop-filter` or `filter` on anything that animates or sits over
+  animation — it re-rasterises every frame. Blur only static layers.
+- `DESIGN.md` is the design system in prose and tokens: read it before UI
+  work. `globals.css` wins if the two disagree — then fix `DESIGN.md`.
+- The dark palette overrides variables on `:root` inside the media query.
+  Never nest `@theme` in `@media`: Tailwind v4 hoists it and the dark
+  values apply in light mode too.
 
 ## The vault (P8)
 

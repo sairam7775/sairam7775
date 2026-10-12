@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { BentoLogo } from "@/components/logo";
+import { AppHeader } from "@/components/app-header";
 import { loadBookings, loadGaps, type VaultBooking } from "@/lib/vault/store";
 import { canEncrypt } from "@/lib/vault/crypto";
 import { vaultTotal, type VaultTotal } from "@/lib/vault/money";
@@ -77,16 +77,12 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
   const saved = sp.saved === "1";
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6">
-      <div className="up flex flex-wrap items-center justify-between gap-3">
-        <Link href="/" className="inline-flex" aria-label="Bento home"><BentoLogo /></Link>
-        <div className="flex flex-wrap items-center gap-2">
-          {report.blocking > 0 && (
-            <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.72rem] text-white">{report.blocking} blocking</span>
-          )}
-          <Link href={`/trips/${id}`} className="mono rounded-full bg-surface px-3 py-1.5 text-[0.72rem] text-ink-2 shadow-[0_1px_2px_rgba(34,28,30,.06)]">← The plan</Link>
-        </div>
-      </div>
+    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
+      <AppHeader back={{ href: `/trips/${id}`, label: "Back to the plan" }}>
+        {report.blocking > 0 && (
+          <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-white">{report.blocking} blocking</span>
+        )}
+      </AppHeader>
 
       <header className="up mt-7" style={{ animationDelay: ".05s" }}>
         <h1 className="text-[2.2rem] font-extrabold leading-none sm:text-[2.8rem]">What&rsquo;s still missing</h1>

@@ -15,7 +15,7 @@ import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import type { CoverageTier } from "@/lib/types";
 import type { Proposal } from "./diff";
 import { allocateDates } from "@/lib/engine/route";
-import { DEFAULT_PREFS, type ChatTurn, type DayRow, type Prefs, type TripCityRow, type TripMeta, type TripState, type TripStore } from "./store";
+import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripCityRow, type TripMeta, type TripState, type TripStore } from "./store";
 
 const CORRIDOR: { id: string; name: string; tier: CoverageTier }[] = [
   { id: "kyoto-city", name: "Kyoto", tier: "deep" },
@@ -106,10 +106,14 @@ export class MemoryStore implements TripStore {
   }
 
   async setTripDates(p: { startDate?: string | null; endDate?: string | null; partySize?: number; title?: string | null }): Promise<TripMeta> {
-    if (p.startDate !== undefined) this.trip.startDate = p.startDate;
-    if (p.endDate !== undefined) this.trip.endDate = p.endDate;
+    const change = planDateChange(this.trip, p, this.tripCities);
+    if (change.error) throw new Error(change.error);
     if (p.partySize !== undefined) this.trip.partySize = p.partySize;
     if (p.title !== undefined) this.trip.title = p.title;
+    if (!change.changed) return { ...this.trip };
+    this.trip.startDate = change.startDate;
+    this.trip.endDate = change.endDate;
+    if (change.shift) for (const d of this.days) d.date = shiftDate(d.date, change.shift);
     if (this.tripCities.length) this.setRoute(this.tripCities.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));
     return { ...this.trip };
   }

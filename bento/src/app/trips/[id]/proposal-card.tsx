@@ -1,7 +1,7 @@
 "use client";
 
-import { useFormStatus } from "react-dom";
 import { clock, type DayDiff, type Proposal } from "@/lib/bento-man/diff";
+import { SubmitButton } from "@/components/form-controls";
 import { acceptProposal, rejectProposal } from "./actions";
 
 export type ProposalStatus = "proposed" | "accepted" | "rejected";
@@ -23,9 +23,9 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
   return (
     <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-sunk px-4 py-2.5">
-        <span className="mono text-[0.66rem] uppercase tracking-[0.12em] text-ink-3">Proposal · {proposal.summary}</span>
+        <span className="text-[0.88rem] leading-snug text-ink-2"><span className="font-semibold text-ink">Proposal</span> · {proposal.summary}</span>
         {status !== "proposed" && (
-          <span className={`mono rounded-full px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.1em] ${status === "accepted" ? "bg-edamame-soft text-edamame" : "bg-ume-soft text-ume"}`}>
+          <span className={`mono rounded-full px-2 py-0.5 text-[0.76rem] uppercase tracking-[0.1em] ${status === "accepted" ? "bg-edamame-soft text-edamame" : "bg-ume-soft text-ume"}`}>
             {status}
           </span>
         )}
@@ -33,13 +33,13 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
 
       {proposal.route && (
         <div className="border-b border-rule px-4 py-3">
-          <p className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">Route</p>
+          <p className="mono text-[0.76rem] uppercase tracking-[0.1em] text-ink-3">Route</p>
           <ol className="mt-2 flex flex-col gap-1.5">
             {proposal.route.after.map((c, i) => (
               <li key={c.cityId} className="flex flex-wrap items-baseline gap-x-2 text-[0.92rem]">
-                <span className="mono text-[0.72rem] text-ink-3">{i + 1}.</span>
+                <span className="mono text-[0.78rem] text-ink-3">{i + 1}.</span>
                 <span className="font-medium">{c.name}</span>
-                <span className="mono text-[0.72rem] text-ink-3">
+                <span className="mono text-[0.78rem] text-ink-3">
                   {c.nights ? `${c.nights} night${c.nights === 1 ? "" : "s"}` : "day trip"} · {c.tier}
                   {c.arriveDate ? ` · ${fmtDate(c.arriveDate)}` : ""}
                 </span>
@@ -56,19 +56,19 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
       {proposal.days.map((d) => (
         <div key={d.date} className="border-b border-rule px-4 py-3 last:border-b-0">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <p className="font-display text-[0.95rem] font-bold">{fmtDate(d.date)} <span className="mono text-[0.7rem] font-normal text-ink-3">{d.cityId}</span></p>
-            <p className="mono text-[0.68rem] text-ink-3">{d.summary}</p>
+            <p className="font-display text-[0.95rem] font-bold">{fmtDate(d.date)} <span className="mono text-[0.76rem] font-normal text-ink-3">{d.cityId}</span></p>
+            <p className="mono text-[0.74rem] text-ink-3">{d.summary}</p>
           </div>
           <ol className="mt-2 flex flex-col gap-2">
             {d.after.map((it) => (
               <li key={it.placeId} className="grid grid-cols-[3.4rem_1fr] gap-x-3 text-[0.9rem]">
-                <span className="mono pt-0.5 text-[0.72rem] text-ink-3">{clock(it.startMin)}</span>
+                <span className="mono pt-0.5 text-[0.78rem] text-ink-3">{clock(it.startMin)}</span>
                 <div>
                   <span className="font-medium">{it.name}</span>
-                  {it.locked && <span className="mono ml-2 text-[0.6rem] uppercase tracking-[0.1em] text-accent">pinned</span>}
-                  <span className={`mono ml-2 rounded-full px-1.5 py-0.5 text-[0.58rem] uppercase tracking-[0.1em] ${CHANGE[it.change].cls}`}>{CHANGE[it.change].label}</span>
+                  {it.locked && <span className="mono ml-2 text-[0.74rem] uppercase tracking-[0.1em] text-accent">pinned</span>}
+                  <span className={`mono ml-2 rounded-full px-1.5 py-0.5 text-[0.74rem] uppercase tracking-[0.1em] ${CHANGE[it.change].cls}`}>{CHANGE[it.change].label}</span>
                   <p className="text-[0.82rem] leading-snug text-ink-2">{it.reason}</p>
-                  {it.arriveDetail && <p className="mono mt-0.5 text-[0.66rem] text-ink-3">↳ {it.arriveDetail}</p>}
+                  {it.arriveDetail && <p className="mono mt-0.5 text-[0.78rem] text-ink-3">↳ {it.arriveDetail}</p>}
                 </div>
               </li>
             ))}
@@ -87,7 +87,7 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
           )}
           {d.considered.length > 0 && (
             <details className="mt-2">
-              <summary className="mono cursor-pointer text-[0.66rem] uppercase tracking-[0.1em] text-ink-3">Left out, and why</summary>
+              <summary className="mono cursor-pointer text-[0.78rem] uppercase tracking-[0.1em] text-ink-3">Left out, and why</summary>
               <ul className="mt-1.5 flex flex-col gap-1">
                 {d.considered.map((c) => (
                   <li key={c.name} className="text-[0.8rem] text-ink-2"><span className="font-medium text-ink">{c.name}</span> — {c.detail}</li>
@@ -103,25 +103,15 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
           <form action={acceptProposal}>
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
-            <Submit className="rounded-full bg-accent px-4 py-1.5 text-[0.85rem] font-medium text-white hover:bg-accent-deep" label="Accept" pendingLabel="Applying…" />
+            <SubmitButton className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep" pending="Applying…">Accept</SubmitButton>
           </form>
           <form action={rejectProposal}>
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
-            <Submit className="rounded-full border border-rule bg-surface px-4 py-1.5 text-[0.85rem] font-medium" label="Reject" pendingLabel="…" />
+            <SubmitButton className="min-h-10 rounded-full border border-rule bg-surface px-5 text-[0.9rem] font-medium" pending="Rejecting…">Reject</SubmitButton>
           </form>
         </div>
       )}
     </div>
-  );
-}
-
-/** One submit at a time: a double click must not apply a proposal twice. */
-function Submit({ className, label, pendingLabel }: { className: string; label: string; pendingLabel: string }) {
-  const { pending } = useFormStatus();
-  return (
-    <button type="submit" disabled={pending} className={`${className} disabled:opacity-60`}>
-      {pending ? pendingLabel : label}
-    </button>
   );
 }

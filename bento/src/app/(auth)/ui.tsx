@@ -1,27 +1,71 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BentoLogo } from "@/components/logo";
+import { PasswordInput, SubmitButton } from "@/components/form-controls";
+import { fieldInput, fieldLabel } from "@/components/form-styles";
 
+/** Sign-in and sign-up: the form on a frosted tile, and beside it (on wide
+ *  screens) a lacquer panel saying what the account is for. */
 export function AuthShell({
   title,
   subtitle,
+  aside,
   children,
 }: {
   title: string;
   subtitle: string;
+  aside: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <main className="mx-auto w-full max-w-md px-5 py-16">
-      <Link href="/" className="inline-flex" aria-label="Bento home">
-        <BentoLogo />
-      </Link>
-      <h1 className="mt-8 text-3xl font-bold tracking-tight">{title}</h1>
-      <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">{subtitle}</p>
-      <div className="mt-8">{children}</div>
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 py-8 sm:px-8">
+      <header className="up flex items-center justify-between">
+        <Link href="/" className="inline-flex" aria-label="Bento home">
+          <BentoLogo />
+        </Link>
+        <Link href="/" className="min-h-10 rounded-full px-3 py-2 text-[0.88rem] text-ink-2 hover:bg-sunk hover:text-ink">
+          ← Home
+        </Link>
+      </header>
+
+      <div className="mt-8 grid items-start gap-6 md:mt-12 md:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] md:items-stretch">
+        <section className="tile up p-6 sm:p-8" style={{ animationDelay: ".05s" }}>
+          <h1 className="text-[2rem] font-bold leading-tight">{title}</h1>
+          <p className="mt-2 text-[0.98rem] leading-relaxed text-ink-2">{subtitle}</p>
+          <div className="mt-7">{children}</div>
+        </section>
+        <aside className="box up hidden p-3 md:block" style={{ animationDelay: ".12s" }}>
+          <div className="flex h-full flex-col justify-between gap-6 rounded-tile p-6 text-rice">{aside}</div>
+        </aside>
+      </div>
     </main>
   );
 }
+
+/** A point on the lacquer panel: a food-colour dot, a heading, a line. */
+export function AsidePoint({ tone, title, children }: { tone: "accent" | "edamame" | "tamago" | "ume"; title: string; children: ReactNode }) {
+  const dot = { accent: "bg-accent", edamame: "bg-edamame", tamago: "bg-tamago-bright", ume: "bg-ume" }[tone];
+  return (
+    <li className="flex gap-3">
+      <span aria-hidden className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${dot}`} />
+      <div>
+        <p className="disp text-[1.02rem] font-bold">{title}</p>
+        <p className="mt-0.5 text-[0.9rem] leading-relaxed text-rice/75">{children}</p>
+      </div>
+    </li>
+  );
+}
+
+export function Divider({ label = "or" }: { label?: string }) {
+  return (
+    <div className="my-6 flex items-center gap-3">
+      <span className="h-px flex-1 bg-rule" />
+      <span className="text-[0.8rem] text-ink-3">{label}</span>
+      <span className="h-px flex-1 bg-rule" />
+    </div>
+  );
+}
+
 
 export function Field({
   id,
@@ -30,6 +74,7 @@ export function Field({
   type,
   autoComplete,
   hint,
+  placeholder,
 }: {
   id: string;
   name: string;
@@ -37,36 +82,28 @@ export function Field({
   type: string;
   autoComplete?: string;
   hint?: string;
+  placeholder?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label
-        htmlFor={id}
-        className="mono text-[0.66rem] uppercase tracking-[0.1em] text-ink-3"
-      >
+      <label htmlFor={id} className={fieldLabel}>
         {label}
       </label>
-      <input
-        id={id}
-        name={name}
-        type={type}
-        required
-        autoComplete={autoComplete}
-        className="rounded-xl border border-rule bg-paper px-3 py-2.5 text-[0.95rem] text-ink"
-      />
+      {type === "password" ? (
+        <PasswordInput id={id} name={name} required autoComplete={autoComplete} placeholder={placeholder} className={fieldInput} />
+      ) : (
+        <input id={id} name={name} type={type} required autoComplete={autoComplete} placeholder={placeholder} className={fieldInput} />
+      )}
       {hint && <p className="text-[0.8rem] text-ink-3">{hint}</p>}
     </div>
   );
 }
 
-export function Submit({ label }: { label: string }) {
+export function Submit({ label, pending }: { label: string; pending: string }) {
   return (
-    <button
-      type="submit"
-      className="mt-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep"
-    >
+    <SubmitButton pending={pending} className="mt-2 min-h-11 rounded-full bg-accent px-5 text-[0.95rem] font-medium text-white hover:bg-accent-deep">
       {label}
-    </button>
+    </SubmitButton>
   );
 }
 
@@ -74,7 +111,7 @@ export function GoogleButton({ label }: { label: string }) {
   return (
     <button
       type="submit"
-      className="flex w-full items-center justify-center gap-2.5 rounded-full border border-rule bg-surface px-5 py-2.5 text-sm font-medium"
+      className="flex min-h-11 w-full items-center justify-center gap-2.5 rounded-full border border-rule bg-surface px-5 text-[0.95rem] font-medium hover:bg-sunk"
     >
       <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
         <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
@@ -90,7 +127,7 @@ export function GoogleButton({ label }: { label: string }) {
 export function ErrorNote({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p className="mb-6 border-l-[3px] border-ume bg-ume-soft px-4 py-3 text-[0.9rem] text-ink-2">
+    <p role="alert" className="mb-6 rounded-r-lg border-l-[3px] border-ume bg-ume-soft px-4 py-3 text-[0.9rem] text-ink-2">
       {message}
     </p>
   );
@@ -98,7 +135,7 @@ export function ErrorNote({ message }: { message: string | null }) {
 
 export function Notice({ children }: { children: ReactNode }) {
   return (
-    <p className="mb-6 border-l-[3px] border-edamame bg-edamame-soft px-4 py-3 text-[0.9rem] text-ink-2">
+    <p role="status" className="mb-6 rounded-r-lg border-l-[3px] border-edamame bg-edamame-soft px-4 py-3 text-[0.9rem] text-ink-2">
       {children}
     </p>
   );

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { BentoLogo } from "@/components/logo";
+import { AppHeader } from "@/components/app-header";
+import { DateRangeInputs, SubmitButton } from "@/components/form-controls";
+import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
@@ -9,6 +11,9 @@ import { dayStats } from "@/lib/engine/day-stats";
 import { loadGaps } from "@/lib/vault/store";
 import { allocateDates } from "@/lib/engine/route";
 import { ErrorNote } from "@/app/(auth)/ui";
+import { updateTrip } from "../actions";
+import { UseSeason } from "@/components/seasonal/background";
+import { seasonOf } from "@/components/seasonal/season";
 import { Chat, type ChatMessage } from "./chat";
 import { DayBox } from "./day-box";
 
@@ -71,59 +76,87 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const worst = gaps?.gaps[0] ?? null;
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
-      <div className="up flex flex-wrap items-center justify-between gap-3">
-        <Link href="/" className="inline-flex" aria-label="Bento home"><BentoLogo /></Link>
-        <div className="flex flex-wrap gap-2">
-          {state.trip.startDate && state.trip.endDate && (
-            <span className="mono rounded-full bg-lacquer px-3 py-1.5 text-[0.72rem] text-rice">
-              {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
-            </span>
-          )}
-          <Link href="/trips" className="mono rounded-full bg-surface px-3 py-1.5 text-[0.72rem] text-ink-2 shadow-[0_1px_2px_rgba(34,28,30,.06)]">← Your trips</Link>
-        </div>
-      </div>
-
-      <header className="up mt-7" style={{ animationDelay: ".05s" }}>
-        <h1 className="text-[2.4rem] font-extrabold leading-none sm:text-[3rem]">{state.trip.title ?? "Untitled trip"}</h1>
-        <p className="mt-2.5 max-w-[60ch] text-[0.98rem] leading-relaxed text-ink-2">
-          {state.cities.length
-            ? `${state.cities.map((c) => (c.nights ? `${c.name} ${c.nights}n` : `${c.name} day trip`)).join(" → ")}.`
-            : "No route yet. Tell Bento Man the dates and what kind of trip this is."}
-          {state.trip.partySize > 1 && ` ${state.trip.partySize} travelling.`}
-          {state.prefs.set && ` ${state.prefs.pace[0].toUpperCase()}${state.prefs.pace.slice(1)} pace.`}
-        </p>
-      </header>
-
-      <div className="mt-4"><ErrorNote message={error} /></div>
-
-      {gaps && (gaps.totalNights > 0 || gaps.gaps.length > 0) && (
-        <Link
-          href={`/trips/${id}/vault`}
-          className={`up lift mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tile px-4 py-3 shadow-tile ${gaps.blocking ? "bg-ume-soft" : "bg-surface"}`}
-          style={{ animationDelay: ".08s" }}
-        >
-          <span className={`mono text-[0.62rem] uppercase tracking-[0.1em] ${gaps.blocking ? "text-ume" : "text-ink-3"}`}>
-            {gaps.blocking ? `${gaps.blocking} blocking` : "Bookings"}
+    <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
+      {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
+      <AppHeader back={{ href: "/trips", label: "Your trips" }}>
+        {state.trip.startDate && state.trip.endDate && (
+          <span className="mono rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice">
+            {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
           </span>
-          <span className="min-w-0 flex-1 text-[0.9rem] leading-snug">
-            {worst ? worst.title : `Every night has a bed. ${gaps.coveredNights} of ${gaps.totalNights} covered.`}
-          </span>
-          {gaps.totalNights > 0 && (
-            <span aria-hidden className="flex shrink-0 gap-[3px]">
-              {gaps.nights.map((n) => (
-                <span key={n.date} className={`h-4 w-1.5 rounded-full ${n.covered ? "bg-edamame" : "bg-ume"}`} />
-              ))}
-            </span>
-          )}
-          <span className="mono text-[0.68rem] text-accent">The vault →</span>
-        </Link>
-      )}
+        )}
+      </AppHeader>
 
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+      <div className="mt-6 grid lg:items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,34%)]">
         <section aria-label="The plan" className="min-w-0">
+          <header className="up" style={{ animationDelay: ".05s" }}>
+            <h1 className="text-[2.4rem] font-extrabold leading-none sm:text-[3rem]">{state.trip.title ?? "Untitled trip"}</h1>
+            <p className="mt-2.5 max-w-[60ch] text-[0.98rem] leading-relaxed text-ink-2">
+              {state.cities.length
+                ? `${state.cities.map((c) => (c.nights ? `${c.name} ${c.nights}n` : `${c.name} day trip`)).join(" → ")}.`
+                : "No route yet. Tell Bento Man the dates and what kind of trip this is."}
+              {state.trip.partySize > 1 && ` ${state.trip.partySize} travelling.`}
+              {state.prefs.set && ` ${state.prefs.pace[0].toUpperCase()}${state.prefs.pace.slice(1)} pace.`}
+            </p>
+            <details className="group mt-3 max-w-xl" open={!state.trip.startDate || !state.trip.endDate}>
+              <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk [&::-webkit-details-marker]:hidden">
+                {state.trip.startDate && state.trip.endDate ? "Edit trip" : "Add dates"}
+                <span aria-hidden className="transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              <form
+                key={`${state.trip.title ?? ""}|${state.trip.startDate ?? ""}|${state.trip.endDate ?? ""}|${state.trip.partySize}`}
+                action={updateTrip}
+                className="tile mt-3 flex flex-col gap-4 p-5">
+                <input type="hidden" name="id" value={id} />
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="title" className={fieldLabel}>Trip name</label>
+                  <input id="title" name="title" defaultValue={state.trip.title ?? ""} placeholder="Kansai, autumn" className={fieldInput} />
+                </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <DateRangeInputs startLabel="Arrive in Japan" endLabel="Leave Japan" defaultStart={state.trip.startDate} defaultEnd={state.trip.endDate} labelClass={fieldLabel} inputClass={fieldInput} />
+                  <div className="flex flex-col gap-1.5">
+                    <label htmlFor="partySize" className={fieldLabel}>People travelling</label>
+                    <input id="partySize" name="partySize" type="number" min={1} max={20} defaultValue={state.trip.partySize} className={fieldInput} />
+                  </div>
+                </div>
+                {state.cities.length > 0 && (
+                  <p className="text-[0.84rem] text-ink-3">Changing dates moves your route and your planned days with it. Day plans still waiting for an answer in the chat are closed, since they were made for the old dates. The new dates need room for every night of the route.</p>
+                )}
+                <SubmitButton pending="Saving…" className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">Save</SubmitButton>
+              </form>
+            </details>
+            {/* On a phone the conversation sits below the whole plan. */}
+            <a href="#bento-man" className="mt-2 flex w-fit min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-white hover:bg-accent-deep lg:hidden">
+              Ask Bento Man ↓
+            </a>
+          </header>
+
+          <div className="mt-4"><ErrorNote message={error} /></div>
+
+          {gaps && (
+            <Link
+              href={`/trips/${id}/vault`}
+              className={`up lift mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tile px-4 py-3 shadow-tile ${gaps.blocking ? "bg-ume-soft" : "bg-surface"}`}
+              style={{ animationDelay: ".08s" }}
+            >
+              <span className={`mono text-[0.62rem] uppercase tracking-[0.1em] ${gaps.blocking ? "text-ume" : "text-ink-3"}`}>
+                {gaps.blocking ? `${gaps.blocking} blocking` : "Bookings"}
+              </span>
+              <span className="order-last min-w-0 basis-full text-[0.9rem] leading-snug sm:order-none sm:basis-auto sm:flex-1">
+                {worst ? worst.title : gaps.totalNights > 0 ? `Every night has a bed. ${gaps.coveredNights} of ${gaps.totalNights} covered.` : "Flights, hotels and tickets — keep them here, and see what’s still missing once the trip has dates."}
+              </span>
+              {gaps.totalNights > 0 && (
+                <span aria-hidden className="flex shrink-0 gap-[3px]">
+                  {gaps.nights.map((n) => (
+                    <span key={n.date} className={`h-4 w-1.5 rounded-full ${n.covered ? "bg-edamame" : "bg-ume"}`} />
+                  ))}
+                </span>
+              )}
+              <span className="ml-auto text-[0.85rem] font-medium text-accent sm:ml-0">Bookings →</span>
+            </Link>
+          )}
+
           {dayList.length > 0 && (
-            <nav aria-label="Days" className="up -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" style={{ animationDelay: ".1s" }}>
+            <nav aria-label="Days" className="up mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" style={{ animationDelay: ".1s" }}>
               <ol className="flex w-max gap-2 pb-1">
                 {dayList.map(([date, meta], i) => {
                   const day = daysByDate.get(date);
@@ -193,7 +226,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           )}
         </section>
 
-        <section aria-label="Bento Man" className="tile up p-4 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)]" style={{ animationDelay: ".15s" }}>
+        <section id="bento-man" aria-label="Bento Man" className="tile up flex scroll-mt-4 h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
           <Chat tripId={id} initial={messages} />
         </section>
       </div>

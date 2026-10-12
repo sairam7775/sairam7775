@@ -9,7 +9,7 @@ import { loadGraph } from "@/lib/transit/load";
 import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { clock, ProposalSchema, type Proposal } from "./diff";
-import { DEFAULT_PREFS, type ChatTurn, type DayRow, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
+import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 
 const toMin = (t: string | null): number | null => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
 
@@ -130,9 +130,17 @@ export class SupabaseStore implements TripStore {
   }
 
   async setTripDates(p: { startDate?: string | null; endDate?: string | null; partySize?: number; title?: string | null }): Promise<TripMeta> {
+    const before = await this.state();
+    // Decide before writing: a range too short for the accepted route is
+    // refused outright, and a "change" to the same dates is no change.
+    const change = planDateChange(before.trip, p, before.cities);
+    if (change.error) throw new Error(change.error);
+
     const row: Record<string, unknown> = {};
-    if (p.startDate !== undefined) row.start_date = p.startDate;
-    if (p.endDate !== undefined) row.end_date = p.endDate;
+    if (change.changed) {
+      row.start_date = change.startDate;
+      row.end_date = change.endDate;
+    }
     if (p.partySize !== undefined) row.party_size = p.partySize;
     if (p.title !== undefined) row.title = p.title;
     if (Object.keys(row).length) {
@@ -140,7 +148,25 @@ export class SupabaseStore implements TripStore {
       if (error) throw error;
     }
     const s = await this.state();
-    if (p.startDate !== undefined || p.endDate !== undefined) {
+    if (!change.changed) return s.trip;
+
+    // Planned days move with the start, so each stays on its city's dates.
+    // (trip_id, date) is unique, so move the far end first: latest-first
+    // when moving later, earliest-first when moving earlier. Each target
+    // date is then always free.
+    if (change.shift && before.days.length) {
+      const order = [...before.days].sort((a, b) => (change.shift > 0 ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)));
+      for (const d of order) {
+        const { error } = await this.db
+          .from("itinerary_days")
+          .update({ date: shiftDate(d.date, change.shift) })
+          .eq("trip_id", this.tripId)
+          .eq("date", d.date);
+        if (error) throw error;
+      }
+    }
+
+    {
       // A route is laid on the calendar when it is applied, so a pending
       // route survives a date change as long as it still fits. Day plans
       // are written against particular dates and cannot; close those
@@ -164,7 +190,7 @@ export class SupabaseStore implements TripStore {
       }
     }
     // Dates moved: re-lay the accepted route on the calendar.
-    if (s.cities.length && (p.startDate !== undefined || p.endDate !== undefined)) {
+    if (s.cities.length) {
       const dated = allocateDates(s.trip.startDate, s.cities, s.trip.endDate);
       await Promise.all(
         s.cities.map((c, i) =>

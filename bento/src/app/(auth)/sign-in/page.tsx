@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signInWithPassword, signInWithGoogle } from "../actions";
-import { AuthShell, Field, Submit, GoogleButton, ErrorNote } from "../ui";
+import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Submit } from "../ui";
 
 export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
   const supabase = await createClient();
@@ -17,8 +17,27 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
 
   return (
     <AuthShell
-      title="Sign in"
-      subtitle="Your trips, bookings and preferences are waiting."
+      title="Welcome back"
+      subtitle="Sign in to pick up where you left off — your route, your days, and what’s still missing."
+      aside={
+        <>
+          <div>
+            <p lang="ja" className="disp text-[1.4rem] font-bold text-accent">おかえりなさい</p>
+            <p className="mt-1 text-[0.9rem] text-rice/70">“Welcome home” — what a ryokan says when you come back in from the cold.</p>
+          </div>
+          <ul className="flex flex-col gap-5">
+            <AsidePoint tone="accent" title="Your plan, as you left it">
+              Every accepted day, every pinned stop, and the conversation with Bento Man.
+            </AsidePoint>
+            <AsidePoint tone="ume" title="The gaps, still flagged">
+              A night with no bed or a train with no ticket stays on the list until it’s booked.
+            </AsidePoint>
+            <AsidePoint tone="edamame" title="Bookings in one place">
+              Confirmation numbers are encrypted, and only you can see them.
+            </AsidePoint>
+          </ul>
+        </>
+      }
     >
       <ErrorNote message={error} />
 
@@ -27,33 +46,20 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
         <GoogleButton label="Continue with Google" />
       </form>
 
-      <div className="my-6 flex items-center gap-3">
-        <span className="h-px flex-1 bg-rule" />
-        <span className="mono text-[0.65rem] uppercase tracking-[0.12em] text-ink-3">
-          or
-        </span>
-        <span className="h-px flex-1 bg-rule" />
-      </div>
+      <Divider label="or with your email" />
 
       <form action={signInWithPassword} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={next} />
-        <Field id="email" name="email" type="email" label="Email" autoComplete="email" />
-        <Field
-          id="password"
-          name="password"
-          type="password"
-          label="Password"
-          autoComplete="current-password"
-        />
-        <Submit label="Sign in" />
+        <Field id="email" name="email" type="email" label="Email" autoComplete="email" placeholder="you@example.com" />
+        <Field id="password" name="password" type="password" label="Password" autoComplete="current-password" />
+        <Submit label="Sign in" pending="Signing in…" />
       </form>
 
-      <p className="mt-6 text-sm text-ink-2">
-        No account yet?{" "}
-        <Link href="/sign-up" className="text-accent underline underline-offset-2">
-          Create one
+      <p className="mt-6 text-[0.92rem] text-ink-2">
+        New to Bento?{" "}
+        <Link href="/sign-up" className="font-medium text-accent underline underline-offset-2">
+          Create an account
         </Link>
-        .
       </p>
     </AuthShell>
   );

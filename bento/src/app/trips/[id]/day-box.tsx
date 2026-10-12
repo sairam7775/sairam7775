@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type DragEvent } from "react";
 import { moveItem, removeItem, reorderDay, replanDayAction, togglePin } from "./day-actions";
+import { ConfirmButton } from "@/components/form-controls";
 
 export interface DayBoxItem {
   placeId: string;
@@ -174,16 +175,16 @@ export function DayBox(p: DayBoxProps) {
                     {p.editable && (
                       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                         <form action={togglePin}>{hidden}<input type="hidden" name="placeId" value={it.placeId} />
-                          <button className="mono rounded-full border border-ink/15 px-2.5 py-1 text-[0.64rem] uppercase tracking-[0.08em] text-ink-2 hover:border-ink/40" title={it.locked ? "Let the engine move this" : "Keep this exactly here"}>{it.locked ? "unpin" : "pin"}</button>
+                          <button className="min-h-9 rounded-full border border-ink/15 px-3 text-[0.78rem] text-ink-2 hover:border-ink/40" title={it.locked ? "Let the engine move this" : "Keep this exactly here"}>{it.locked ? "Unpin" : "Pin"}</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="up" />
-                          <button className="mono rounded-full border border-ink/15 px-2 py-1 text-[0.64rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === 0} aria-label="Move earlier">↑</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === 0} aria-label="Move earlier">↑</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="down" />
-                          <button className="mono rounded-full border border-ink/15 px-2 py-1 text-[0.64rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === items.length - 1} aria-label="Move later">↓</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === items.length - 1} aria-label="Move later">↓</button>
                         </form>
                         <form action={removeItem} className="ml-auto">{hidden}<input type="hidden" name="placeId" value={it.placeId} />
-                          <button className="mono rounded-full px-2.5 py-1 text-[0.64rem] uppercase tracking-[0.08em] text-ink-3 hover:bg-ume-soft hover:text-ume">remove</button>
+                          <ConfirmButton message={`Remove ${it.name} from this day?`} aria-label={`Remove ${it.name}`} className="min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume">Remove</ConfirmButton>
                         </form>
                       </div>
                     )}

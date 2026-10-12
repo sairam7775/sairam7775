@@ -117,3 +117,46 @@ export function nightsBetween(start: string | null, end: string | null): number 
   if (!start || !end) return null;
   return Math.round((Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000);
 }
+
+/** "YYYY-MM-DD" moved by n days. */
+export function shiftDate(date: string, n: number): string {
+  return new Date(Date.parse(`${date}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+}
+
+/** What a change of trip dates means for the accepted plan, decided before
+ *  anything is written. Both stores and both callers (the Edit trip form and
+ *  Bento Man's set_trip_dates) go through this, so they agree.
+ *
+ *  - `changed`: the dates actually differ. Saving a rename with the same
+ *    dates is not a date change and must not close pending day plans.
+ *  - `error`: the new range can't hold the accepted route. Laying a 9-night
+ *    route into 3 nights would look like a working plan and isn't one.
+ *  - `shift`: how far the start moved. The route is laid from the start, so
+ *    planned days move by the same amount to stay on their city's dates. */
+export function planDateChange(
+  current: { startDate: string | null; endDate: string | null },
+  next: { startDate?: string | null; endDate?: string | null },
+  route: { nights: number }[],
+): { changed: boolean; error: string | null; shift: number; startDate: string | null; endDate: string | null } {
+  const startDate = next.startDate !== undefined ? next.startDate : current.startDate;
+  const endDate = next.endDate !== undefined ? next.endDate : current.endDate;
+  const changed = startDate !== current.startDate || endDate !== current.endDate;
+  if (!changed) return { changed, error: null, shift: 0, startDate, endDate };
+
+  if (startDate && endDate && endDate < startDate) {
+    return { changed, error: "The end date is before the start date.", shift: 0, startDate, endDate };
+  }
+  const tripNights = nightsBetween(startDate, endDate);
+  const routeNights = route.reduce((s, c) => s + c.nights, 0);
+  if (route.length && tripNights != null && routeNights > tripNights) {
+    return {
+      changed,
+      error: `Your route is ${routeNights} nights, and those dates are only ${tripNights}. Shorten the route first, or pick dates with at least ${routeNights} nights.`,
+      shift: 0,
+      startDate,
+      endDate,
+    };
+  }
+  const shift = current.startDate && startDate ? nightsBetween(current.startDate, startDate)! : 0;
+  return { changed, error: null, shift, startDate, endDate };
+}

@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import type { BookingKind } from "@/lib/types";
 import { saveBooking } from "./actions";
+import { DateInput } from "@/components/form-controls";
 
 const KINDS: { id: BookingKind; label: string; hint: string }[] = [
   { id: "accommodation", label: "Somewhere to sleep", hint: "Hotel, ryokan, hostel, apartment" },
@@ -137,11 +138,11 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate }: { trip
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="startsAt">{type === "accommodation" ? "Check in" : "Starts"}</Label>
-            <input id="startsAt" name="startsAt" type="datetime-local" value={values.startsAt} onChange={(e) => set("startsAt", e.target.value)} className={field} />
+            <DateInput id="startsAt" name="startsAt" type="datetime-local" value={values.startsAt} onChange={(e) => set("startsAt", e.target.value)} className={field} />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="endsAt">{type === "accommodation" ? "Check out" : "Ends"}</Label>
-            <input id="endsAt" name="endsAt" type="datetime-local" value={values.endsAt} onChange={(e) => set("endsAt", e.target.value)} className={field} />
+            <DateInput id="endsAt" name="endsAt" type="datetime-local" min={values.startsAt || undefined} value={values.endsAt} onChange={(e) => set("endsAt", e.target.value)} className={field} />
           </div>
         </div>
 
