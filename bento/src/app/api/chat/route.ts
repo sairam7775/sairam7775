@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
-import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guards/spend";
+import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
 import { runBentoMan, usageFromError } from "@/lib/bento-man/chat";
 import { configuredEffort, configuredModel, costOfAll, totalUsage, type UsageByModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
@@ -35,16 +35,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Slow down a little — try again in a moment." }, { status: 429, headers: { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } });
   }
 
-  try {
-    await assertWithinSpendCap(user.id);
-  } catch (e) {
-    if (e instanceof SpendCapExceeded) return NextResponse.json({ error: e.message }, { status: 402 });
-    throw e;
-  }
-
   const mock = mockModeEnabled();
   if (!mock && !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "Bento Man isn't configured on this server yet (ANTHROPIC_API_KEY)." }, { status: 503 });
+  }
+
+  // Reserve before the call, so parallel turns see each other's holds.
+  let reservation;
+  try {
+    reservation = await reserveSpend(user.id, "chat");
+  } catch (e) {
+    if (e instanceof SpendCapExceeded) return NextResponse.json({ error: e.message }, { status: 402 });
+    throw e;
   }
 
   const store = new SupabaseStore(db, tripId, user.id);
@@ -85,17 +87,17 @@ export async function POST(req: NextRequest) {
         send({ type: "error", message: friendly(e) });
       } finally {
         const total = totalUsage(byModel);
-        if (total.inputTokens || total.outputTokens) {
-          await recordUsage({
-            userId: user.id,
-            kind: "chat",
-            model: Object.keys(byModel).join("+") || model,
-            inputTokens: total.inputTokens,
-            outputTokens: total.outputTokens,
-            cachedTokens: total.cacheReadTokens,
-            costUsd: costOfAll(byModel),
-          }).catch(() => {});
-        }
+        await reservation.settle(
+          total.inputTokens || total.outputTokens
+            ? {
+                model: Object.keys(byModel).join("+") || model,
+                inputTokens: total.inputTokens,
+                outputTokens: total.outputTokens,
+                cachedTokens: total.cacheReadTokens,
+                costUsd: costOfAll(byModel),
+              }
+            : null,
+        );
         open = false;
         try {
           controller.close();

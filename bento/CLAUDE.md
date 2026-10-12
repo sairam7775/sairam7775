@@ -43,8 +43,10 @@ Practically:
   never, not rarely.
 - **A booking reference is encrypted at rest, never logged, and never
   placed in a model prompt.** A PNR plus a surname can cancel a flight.
-- **Check the spend cap before any model call** (`assertWithinSpendCap`). It
-  throws rather than returning a flag so a forgotten check cannot spend money.
+- **Reserve spend before any model call** (`reserveSpend`, 0014) and settle it
+  in a `finally`. It throws rather than returning a flag so a forgotten check
+  cannot spend money. The hold is taken under a database lock, so parallel
+  requests see each other; there is a per-user cap and a project-wide cap.
 
 ## Engine (P4)
 
@@ -116,9 +118,10 @@ Practically:
   memory store near a request handler.
 - `city_coverage` is the traveller-safe view for tiers and verified
   counts; `curation_progress` stays admin-only because it counts drafts.
-- Guards before every model call: auth → `rateLimit` (Postgres, `take_rate_token`; limits live in the SQL) → `assertWithinSpendCap`.
-  `recordUsage` after, with `costUsd` from `cost.ts` — keep the price table
-  current or the cap lies.
+- Guards before every model call: auth → `rateLimit` (Postgres, `take_rate_token`; limits live in the SQL) → `reserveSpend`.
+  `reservation.settle()` after, with `costUsd` from `cost.ts` — keep the price
+  table current or the cap lies. A call that never reached the model settles
+  with `null`.
 - `mock.ts` is a fake client for local work without a key
   (`BENTO_MAN_MOCK=1`, never in production). It replaces only the model —
   keyword → tool, canned prose, zero usage — so tools, engine and

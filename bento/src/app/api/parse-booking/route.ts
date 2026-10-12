@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
-import { assertWithinSpendCap, recordUsage, SpendCapExceeded } from "@/lib/guards/spend";
+import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
 import { costUsd, type Usage } from "@/lib/bento-man/cost";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { PARSE_MODEL, ParseFailed, parseConfirmation, toFormValues } from "@/lib/vault/parse";
@@ -30,31 +30,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "That's a lot of confirmations at once. Try again in a moment." }, { status: 429 });
   }
 
-  try {
-    await assertWithinSpendCap(user.id);
-  } catch (e) {
-    if (e instanceof SpendCapExceeded) return NextResponse.json({ error: e.message }, { status: 402 });
-    throw e;
-  }
-
   const mock = mockModeEnabled();
   if (!mock && !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "Reading confirmations isn't configured on this server. Fill the form in by hand." }, { status: 503 });
+  }
+
+  let reservation;
+  try {
+    reservation = await reserveSpend(user.id, "parse");
+  } catch (e) {
+    if (e instanceof SpendCapExceeded) return NextResponse.json({ error: e.message }, { status: 402 });
+    throw e;
   }
 
   // Every billed call is recorded, read or not: a reply that fails the
   // schema cost the same as one that passes, and an unrecorded failure is
   // a way past the spend cap (E2).
   const record = (model: string, usage: Usage) =>
-    recordUsage({
-      userId: user.id,
-      kind: "parse",
+    reservation.settle({
       model,
       inputTokens: usage.inputTokens,
       outputTokens: usage.outputTokens,
       cachedTokens: usage.cacheReadTokens,
       costUsd: costUsd(PARSE_MODEL, usage),
-    }).catch(() => {});
+    });
 
   try {
     const result = await parseConfirmation(mock ? createMockClient() : new Anthropic(), parsed.data.text);
@@ -63,8 +62,10 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     if (e instanceof ParseFailed) {
       if (e.usage) await record(e.model ?? PARSE_MODEL, e.usage);
+      else await reservation.settle(null);
       return NextResponse.json({ error: e.message }, { status: 422 });
     }
+    await reservation.settle(null);
     if (e instanceof Anthropic.APIError) return NextResponse.json({ error: "Couldn't read that one. Fill the form in by hand." }, { status: 502 });
     return NextResponse.json({ error: "Something went wrong reading that. Fill the form in by hand." }, { status: 500 });
   }

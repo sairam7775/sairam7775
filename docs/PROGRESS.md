@@ -282,7 +282,7 @@ uses this:
 
 ### Still open from the review
 
-- Spend cap is per user only, and concurrent turns can overshoot it (#4, #5)
+- ~~Spend cap is per user only, and concurrent turns can overshoot it (#4, #5)~~ Done on branch `claude/spend-cap`: `0014_spend_reservations.sql` (NOT yet applied to the live database), `reserveSpend`/`settle` in `lib/guards/spend.ts`, `BENTO_GLOBAL_MONTHLY_SPEND_CAP_USD`.
   — needs a project-wide cap and a reservation before the model call.
 - `applyProposal` and `setTripDates` are multi-statement, not atomic
   (#7, #8) — one SQL function each.
