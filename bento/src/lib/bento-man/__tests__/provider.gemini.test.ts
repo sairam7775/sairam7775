@@ -17,14 +17,14 @@ function sse(chunks: unknown[], fragmented = false) {
 }
 
 describe("GeminiProvider", () => {
-  it("streams text across byte boundaries and maps cumulative usage, cached input and thinking", async () => {
+  it("streams text across byte boundaries and maps cumulative usage, cached input, tool-use input and thinking", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(sse([
       { candidates: [{ content: { parts: [{ text: "private thought", thought: true }, { text: "Kyoto 京都" }] } }], usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 2 } },
-      { candidates: [{ content: { parts: [{ text: " is here." }] }, finishReason: "STOP" }], modelVersion: "gemini-2.5-flash", usageMetadata: { cachedContentTokenCount: 20, candidatesTokenCount: 8, thoughtsTokenCount: 4 } },
+      { candidates: [{ content: { parts: [{ text: " is here." }] }, finishReason: "STOP" }], modelVersion: "gemini-2.5-flash", usageMetadata: { cachedContentTokenCount: 20, toolUsePromptTokenCount: 5, candidatesTokenCount: 8, thoughtsTokenCount: 4 } },
     ], true));
     const onText = vi.fn();
     const result = await new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher).call({ ...request, onText });
-    expect(result).toEqual({ text: "Kyoto 京都 is here.", toolCalls: [], stopReason: "end", model: "gemini-2.5-flash", usage: { inputTokens: 80, outputTokens: 12, cacheReadTokens: 20, cacheWriteTokens: 0 } });
+    expect(result).toEqual({ text: "Kyoto 京都 is here.", toolCalls: [], stopReason: "end", model: "gemini-2.5-flash", usage: { inputTokens: 85, outputTokens: 12, cacheReadTokens: 20, cacheWriteTokens: 0 } });
     expect(onText.mock.calls).toEqual([["Kyoto 京都"], [" is here."]]);
     const [url, options] = fetcher.mock.calls[0];
     expect(url).toContain(":streamGenerateContent?alt=sse");

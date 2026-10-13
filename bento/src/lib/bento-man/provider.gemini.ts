@@ -13,7 +13,7 @@ type Chunk = {
   candidates?: { index?: number; content?: { parts?: Part[] }; finishReason?: string }[];
   promptFeedback?: { blockReason?: string };
   modelVersion?: string;
-  usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number; cachedContentTokenCount?: number };
+  usageMetadata?: { promptTokenCount?: number; toolUsePromptTokenCount?: number; candidatesTokenCount?: number; thoughtsTokenCount?: number; cachedContentTokenCount?: number };
   error?: { code?: number; message?: string };
 };
 
@@ -75,7 +75,8 @@ function usageFromMetadata(metadata: NonNullable<Chunk["usageMetadata"]>): Usage
   const cacheReadTokens = metadata.cachedContentTokenCount ?? 0;
   return {
     // Gemini promptTokenCount includes cached input; neutral input is uncached.
-    inputTokens: Math.max(0, (metadata.promptTokenCount ?? 0) - cacheReadTokens),
+    // Tool-use prompt tokens are billed as input but reported separately.
+    inputTokens: Math.max(0, (metadata.promptTokenCount ?? 0) - cacheReadTokens) + (metadata.toolUsePromptTokenCount ?? 0),
     outputTokens: (metadata.candidatesTokenCount ?? 0) + (metadata.thoughtsTokenCount ?? 0),
     cacheWriteTokens: 0,
     cacheReadTokens,
