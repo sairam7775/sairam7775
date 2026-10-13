@@ -219,6 +219,16 @@ Practically:
   tests, the CLI and `supabase/seed_transit.sql` all derive from it. Never
   edit the SQL by hand.
 
+## Walkthrough
+
+- `src/components/tour/`: one short tour per page (`steps.ts`), started on first
+  visit and replayable from the Tour button in the header. A step points at
+  `data-tour="<name>"` on the page, or is a centred card if that element
+  isn't there. If you rename or remove one of those anchors, update the step.
+- Seen state is a cookie (`bento_tour`, read on the server so nothing flashes
+  in); the tour only points and never changes data. Copy follows the voice
+  rule below.
+
 ## Voice
 
 Bento Man is a local friend who knows the place and will tell you the truth

@@ -104,7 +104,7 @@ export function DayBox(p: DayBoxProps) {
   );
 
   return (
-    <div className={`box up p-3 sm:p-3.5 ${pending ? "opacity-70" : ""}`} aria-busy={pending}>
+    <div data-tour="day-box" className={`box up p-3 sm:p-3.5 ${pending ? "opacity-70" : ""}`} aria-busy={pending}>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_236px]">
         <div className="flex flex-col gap-2.5">
           {items.length === 0 && (
