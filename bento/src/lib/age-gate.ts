@@ -35,3 +35,11 @@ export function ageStatus(cookie: { get(name: string): { value: string } | undef
   if (cookie.get(AGE_BLOCKED_COOKIE)) return "blocked";
   return cookie.get(AGE_OK_COOKIE)?.value === "1" ? "ok" : "unknown";
 }
+
+/** Seconds from `now` until the visitor born on `dob` turns MIN_AGE, so a
+ *  refusal expires on that birthday instead of outliving it. At least 1. */
+export function secondsUntilEligible(dob: string, now: Date): number {
+  const born = new Date(`${dob}T00:00:00Z`);
+  const eligible = Date.UTC(born.getUTCFullYear() + MIN_AGE, born.getUTCMonth(), born.getUTCDate());
+  return Math.max(1, Math.ceil((eligible - now.getTime()) / 1000));
+}
