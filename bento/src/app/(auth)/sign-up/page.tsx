@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signUpWithPassword, signInWithGoogle } from "../actions";
+import { ageStatus } from "@/lib/age-gate";
+import { confirmAge, signUpWithPassword, signInWithGoogle } from "../actions";
 import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
 
 export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
@@ -14,6 +16,8 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
   const params = await searchParams;
   const error = typeof params.error === "string" ? params.error : null;
   const sent = params.sent === "1";
+  const age = ageStatus(await cookies());
+  const today = new Date().toISOString().slice(0, 10);
 
   return (
     <AuthShell
@@ -40,20 +44,36 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
       }
     >
       <ErrorNote message={error} />
-      {sent && <Notice>Check your email for a confirmation link, then come back and sign in.</Notice>}
 
-      <form action={signInWithGoogle}>
-        <input type="hidden" name="next" value="/trips" />
-        <GoogleButton label="Continue with Google" />
-      </form>
+      {age === "blocked" && (
+        <Notice>Sorry, we can’t create an account for you.</Notice>
+      )}
 
-      <Divider label="or with your email" />
+      {age === "unknown" && (
+        <form action={confirmAge} className="flex flex-col gap-4">
+          <Field id="birthdate" name="birthdate" type="date" label="Date of birth" autoComplete="bday" max={today} hint="We use this once, to check you can sign up, and don’t keep it." />
+          <Submit label="Continue" pending="Checking…" />
+        </form>
+      )}
 
-      <form action={signUpWithPassword} className="flex flex-col gap-4">
-        <Field id="email" name="email" type="email" label="Email" autoComplete="email" placeholder="you@example.com" />
-        <Field id="password" name="password" type="password" label="Password" autoComplete="new-password" hint="At least 8 characters." />
-        <Submit label="Create account" pending="Creating your account…" />
-      </form>
+      {age === "ok" && (
+        <>
+          {sent && <Notice>Check your email for a confirmation link, then come back and sign in.</Notice>}
+
+          <form action={signInWithGoogle}>
+            <input type="hidden" name="next" value="/trips" />
+            <GoogleButton label="Continue with Google" />
+          </form>
+
+          <Divider label="or with your email" />
+
+          <form action={signUpWithPassword} className="flex flex-col gap-4">
+            <Field id="email" name="email" type="email" label="Email" autoComplete="email" placeholder="you@example.com" />
+            <Field id="password" name="password" type="password" label="Password" autoComplete="new-password" hint="At least 8 characters." />
+            <Submit label="Create account" pending="Creating your account…" />
+          </form>
+        </>
+      )}
 
       <p className="mt-6 text-[0.92rem] text-ink-2">
         Already have an account?{" "}

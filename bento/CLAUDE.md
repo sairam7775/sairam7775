@@ -33,6 +33,9 @@ Practically:
   writable by anyone with the anon key until `0013_lock_public_views`.
 - **Redirects after sign-in go through `safeNext`** (`lib/safe-next.ts`).
   "Starts with /" is not enough: `//evil` leaves the site.
+- **Every way to create an account passes the age screen** (`lib/age-gate.ts`,
+  COPPA): email sign-up and Google sign-in both check the cookie, and the
+  birth date is never stored. A new sign-up route needs the same check.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
 - **Costs are stored in JPY.** Conversion happens on read, so a stale rate can
