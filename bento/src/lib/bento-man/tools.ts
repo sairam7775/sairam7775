@@ -414,7 +414,12 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   const lockedMap = new Map<string, LockedItem>((existing?.items ?? []).filter((i) => i.locked).map((i) => [i.placeId, { placeId: i.placeId, startMin: i.startMin }]));
   const excluded = new Set<string>();
   const avoidCategories = new Set<string>();
-  let dayStartMin: number | undefined;
+  // The day's start isn't stored, but nothing precedes the first stop, so
+  // an unpinned first stop's start IS the day's start. Keep it unless the
+  // traveller asks for a different one — otherwise "drop the museum" after
+  // an accepted 10:00 start would quietly put the day back at 09:00.
+  const firstStop = [...(existing?.items ?? [])].sort((x, y) => x.sortOrder - y.sortOrder)[0];
+  let dayStartMin: number | undefined = firstStop && !firstStop.locked ? firstStop.startMin ?? undefined : undefined;
   for (const op of ops) {
     if (["pin", "unpin", "remove", "add"].includes(op.op)) {
       if (!op.place_id) return { error: `${op.op} needs place_id` };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, type DragEvent } from "react";
+import { useOptimistic, useState, useTransition, type DragEvent } from "react";
 import { moveItem, removeItem, reorderDay, replanDayAction, togglePin } from "./day-actions";
 import { ConfirmButton } from "@/components/form-controls";
 
@@ -61,7 +61,11 @@ const TERM_LABEL: Record<string, string> = {
  *  Drag reorders; pin and remove apply at once and the engine re-times
  *  the day. Re-plan asks the engine to choose again around the pins. */
 export function DayBox(p: DayBoxProps) {
-  const [order, setOrder] = useState(p.items.map((i) => i.placeId));
+  // The order is the server's. A drag shows its own order only while the
+  // reorder is in flight, then falls back to what the server sent — so a
+  // later change (an accepted proposal, up/down) is never shown stale, and
+  // a stale order is never written back.
+  const [order, setOrder] = useOptimistic(p.items.map((i) => i.placeId));
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -80,14 +84,16 @@ export function DayBox(p: DayBoxProps) {
     if (!dragging || dragging === targetId) return;
     const next = order.filter((id) => id !== dragging);
     next.splice(next.indexOf(targetId), 0, dragging);
-    setOrder(next);
     setDragging(null);
     setOver(null);
     const fd = new FormData();
     fd.set("tripId", p.tripId);
     fd.set("date", p.date);
     fd.set("order", JSON.stringify(next));
-    start(() => reorderDay(fd));
+    start(async () => {
+      setOrder(next);
+      await reorderDay(fd);
+    });
   }
 
   const hidden = (
