@@ -190,7 +190,7 @@ export class MemoryStore implements TripStore {
     } else this.days.push({ date: day.date, cityId: day.cityId, items });
   }
 
-  async applyProposal(p: Proposal, _messageId?: string): Promise<void> {
+  async applyProposal(p: Proposal): Promise<void> {
     if (p.route) {
       this.setRoute(p.route.after.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));
       // Same rule as apply_proposal in the database: a day the new route no

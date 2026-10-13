@@ -10,7 +10,7 @@ import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { clock, ProposalSchema, type Proposal } from "./diff";
 import { shiftConflicts, shiftRefusal } from "./shift";
-import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
+import { DEFAULT_PREFS, planDateChange, type ChatTurn, type DayRow, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
 
 const toMin = (t: string | null): number | null => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
