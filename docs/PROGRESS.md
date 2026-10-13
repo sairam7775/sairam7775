@@ -125,8 +125,8 @@ two blockers and nine smaller defects. Verdict was "fix first".
   covering ten days writes each day in its own transaction. A failure
   mid-way leaves earlier days applied. The proposal is handed back as
   pending so the traveller can retry, which is enough for now.
-- **`state()` and `cities()` re-run per tool call.** Memoising per request
-  would cut a handful of queries per turn. Not hot yet.
+- ~~**`state()` and `cities()` re-run per tool call.**~~ Fixed by cleanup #25:
+  each request's Supabase store shares these reads and refreshes state after writes.
 
 Since fixed (see "Pre-launch engineering" below): route dates are now laid
 out at apply time, and the rate limiter is in Postgres.
@@ -289,5 +289,6 @@ uses this:
   (#7, #8) — one SQL function each.
 - Decision needed: should `set_trip_dates` from the chat be a proposal the
   traveller accepts, like every other plan change (#6)?
-- Cleanup: engine called from the trip page component, two actions without
-  Zod, duplicated helpers, repeated store reads per tool call (#23–#25).
+- ~~Cleanup (#23–#25).~~ Done on `codex/cleanup-2`: trip-page engine calls
+  moved into a tested lib helper; `deleteTrip` and `savePlace` validate with
+  Zod; shared clock formatter, day statistics and request-local store reads.

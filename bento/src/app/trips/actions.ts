@@ -99,8 +99,9 @@ export async function updateTrip(formData: FormData) {
 }
 
 export async function deleteTrip(formData: FormData) {
-  const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  const parsed = z.object({ id: z.string().uuid() }).safeParse({ id: formData.get("id") });
+  if (!parsed.success) return;
+  const { id } = parsed.data;
 
   const supabase = await createClient();
   // No user check needed: RLS will not delete a row this user doesn't own.
