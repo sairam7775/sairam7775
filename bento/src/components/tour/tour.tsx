@@ -3,17 +3,9 @@
 import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
 import { markTourSeen } from "./actions";
 import { TOURS, type TourId } from "./steps";
+import { PAD, placeCard, type Box } from "./place";
 
-interface Box {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
-
-const PAD = 8;
 const CARD_W = 360;
-const GAP = 14;
 
 /** A spotlight tour. It starts by itself the first time a page is opened
  *  (`seen` comes from a cookie, read on the server) and can be replayed from
@@ -24,6 +16,7 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
   const [open, setOpen] = useState(!seen);
   const [i, setI] = useState(0);
   const [box, setBox] = useState<Box | null>(null);
+  const [cardH, setCardH] = useState(190);
   const [, start] = useTransition();
   const card = useRef<HTMLDivElement>(null);
   const step = steps[i];
@@ -44,6 +37,7 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
       frame = 0;
       const r = el?.getBoundingClientRect();
       setBox(r && r.width > 0 && r.height > 0 ? { top: r.top, left: r.left, width: r.width, height: r.height } : null);
+      if (card.current) setCardH(card.current.offsetHeight);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
@@ -88,9 +82,7 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
   const width = Math.min(CARD_W, vw - 24);
   let style: CSSProperties;
   if (box) {
-    const below = box.top + box.height + PAD + GAP + 190 < vh;
-    const left = Math.min(Math.max(12, box.left), vw - width - 12);
-    style = below ? { top: box.top + box.height + PAD + GAP, left, width } : { bottom: vh - box.top + PAD + GAP, left, width };
+    style = { ...placeCard(box, cardH, width, vw, vh), width };
   } else {
     style = { top: "50%", left: "50%", width, transform: "translate(-50%, -50%)" };
   }
