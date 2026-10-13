@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageOn, ageStatus, AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE } from "./age-gate";
+import { ageOn, ageStatus, secondsUntilEligible, AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE } from "./age-gate";
 
 const today = new Date("2026-10-13T12:00:00Z");
 
@@ -25,5 +25,18 @@ describe("ageStatus", () => {
   it("is ok after an adult answer", () => expect(ageStatus(jar({ [AGE_OK_COOKIE]: "1" }))).toBe("ok"));
   it("a refusal wins, even if an ok cookie is also there", () => {
     expect(ageStatus(jar({ [AGE_BLOCKED_COOKIE]: "1", [AGE_OK_COOKIE]: "1" }))).toBe("blocked");
+  });
+});
+
+describe("secondsUntilEligible", () => {
+  it("runs out on the 13th birthday, not a year later", () => {
+    // Born 2013-10-14: turns 13 at 00:00 UTC tomorrow, 12 hours after `today`.
+    expect(secondsUntilEligible("2013-10-14", today)).toBe(12 * 60 * 60);
+    expect(ageOn("2013-10-14", new Date(today.getTime() + 12 * 60 * 60 * 1000))).toBe(MIN_AGE);
+  });
+  it("a 29 February birthday turns over on 1 March in a common year", () => {
+    const eligible = new Date(today.getTime() + secondsUntilEligible("2016-02-29", today) * 1000);
+    expect(eligible.toISOString()).toBe("2029-03-01T00:00:00.000Z");
+    expect(ageOn("2016-02-29", eligible)).toBe(MIN_AGE);
   });
 });

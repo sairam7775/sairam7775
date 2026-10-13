@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ageStatus } from "@/lib/age-gate";
+import { safeNext } from "@/lib/safe-next";
 import { confirmAge, signUpWithPassword, signInWithGoogle } from "../actions";
 import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
 
@@ -11,9 +12,10 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (user) redirect("/trips");
-
   const params = await searchParams;
+  const next = safeNext(params.next);
+  if (user) redirect(next);
+
   const error = typeof params.error === "string" ? params.error : null;
   const sent = params.sent === "1";
   const age = ageStatus(await cookies());
@@ -51,6 +53,7 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
 
       {age === "unknown" && (
         <form action={confirmAge} className="flex flex-col gap-4">
+          <input type="hidden" name="next" value={next} />
           <Field id="birthdate" name="birthdate" type="date" label="Date of birth" autoComplete="bday" max={today} hint="We use this once, to check you can sign up, and don’t keep it." />
           <Submit label="Continue" pending="Checking…" />
         </form>
@@ -61,7 +64,7 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
           {sent && <Notice>Check your email for a confirmation link, then come back and sign in.</Notice>}
 
           <form action={signInWithGoogle}>
-            <input type="hidden" name="next" value="/trips" />
+            <input type="hidden" name="next" value={next} />
             <GoogleButton label="Continue with Google" />
           </form>
 
@@ -77,7 +80,7 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
 
       <p className="mt-6 text-[0.92rem] text-ink-2">
         Already have an account?{" "}
-        <Link href="/sign-in" className="font-medium text-accent underline underline-offset-2">
+        <Link href={next === "/trips" ? "/sign-in" : `/sign-in?${new URLSearchParams({ next })}`} className="font-medium text-accent underline underline-offset-2">
           Sign in
         </Link>
       </p>
