@@ -2,8 +2,9 @@
  *
  *  The spend cap (E2) is only as honest as this table. Prices are per
  *  million tokens; cache writes are 1.25× input and cache reads 0.1×.
- *  Unknown models are charged at Opus rates, so a typo in BENTO_MAN_MODEL
- *  over-counts rather than under-counts. */
+ *  Unknown Claude models are charged at Opus rates. Other unknown models
+ *  must have an explicit price before they can take a spend hold. */
+import { configuredProvider, type ProviderName } from "./provider";
 
 export interface Price {
   input: number;
@@ -17,6 +18,11 @@ export const PRICES: Record<string, Price> = {
   "claude-opus-4-8": { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   "claude-sonnet-5": { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 },
   "claude-haiku-4-5": { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
+  // Gemini Developer API free tier only. Update these before using paid billing.
+  // https://ai.google.dev/gemini-api/docs/pricing
+  "gemini-2.5-flash": { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
+  "gemini-2.5-flash-lite": { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
+  mock: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
 };
 
 export interface Usage {
@@ -50,7 +56,8 @@ export function totalUsage(byModel: UsageByModel): Usage {
 }
 
 export function costUsd(model: string, u: Usage): number {
-  const p = PRICES[model] ?? PRICES["claude-opus-5"];
+  const p = PRICES[model] ?? (model.startsWith("claude-") ? PRICES["claude-opus-5"] : undefined);
+  if (!p) throw new Error(`No price configured for model: ${model}`);
   const perM = 1_000_000;
   return (
     (u.inputTokens * p.input +
@@ -82,9 +89,10 @@ export function callBoundUsd(model: string, kind: "chat" | "parse"): number {
 
 /** D8: Opus 5 first, Sonnet 5 measured against the eval before switching. */
 export const DEFAULT_MODEL = "claude-opus-5";
+export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 
-export function configuredModel(): string {
-  return process.env.BENTO_MAN_MODEL?.trim() || DEFAULT_MODEL;
+export function configuredModel(provider: ProviderName = configuredProvider()): string {
+  return process.env.BENTO_MAN_MODEL?.trim() || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : DEFAULT_MODEL);
 }
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";

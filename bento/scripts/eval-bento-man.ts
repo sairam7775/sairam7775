@@ -1,24 +1,28 @@
 /**
  * Run the Bento Man eval set (src/lib/bento-man/evals/scenarios.ts) against
- * a model. Needs ANTHROPIC_API_KEY. No database: the in-memory store, the
- * drafted corridor as verified, the hand-seeded graph.
+ * a model. Needs the selected provider's API key. No database: the
+ * in-memory store, drafted corridor as verified, hand-seeded graph.
  *
  *   npx tsx scripts/eval-bento-man.ts                          # claude-opus-5
  *   npx tsx scripts/eval-bento-man.ts --model claude-sonnet-5  # the D8 test
  *   npx tsx scripts/eval-bento-man.ts --only route-overpacked,fact-lookup
  *   npx tsx scripts/eval-bento-man.ts --effort low --out evals/run.json
+ *   # For Gemini, set BENTO_MAN_PROVIDER=gemini and GEMINI_API_KEY first.
  *
  * Grading is mechanical: tools called, tools not called, prose patterns,
  * proposal kind, and the voice lint. A judge model can be added later; the
  * point of this set is that a prompt edit or a model swap fails loudly.
  */
 import Anthropic from "@anthropic-ai/sdk";
+import { AnthropicProvider } from "../src/lib/bento-man/provider.anthropic";
+import { GeminiProvider } from "../src/lib/bento-man/provider.gemini";
+import { configuredProvider, providerKeyVariable } from "../src/lib/bento-man/provider";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { SCENARIOS, type Scenario } from "../src/lib/bento-man/evals/scenarios";
 import { MemoryStore } from "../src/lib/bento-man/store.memory";
 import { runBentoMan } from "../src/lib/bento-man/chat";
-import { costOfAll, DEFAULT_MODEL, type Effort } from "../src/lib/bento-man/cost";
+import { configuredModel, costOfAll, type Effort } from "../src/lib/bento-man/cost";
 import { voiceLint } from "../src/lib/bento-man/prompt";
 
 const args = process.argv.slice(2);
@@ -26,14 +30,16 @@ const flag = (name: string) => {
   const i = args.indexOf(name);
   return i > -1 ? args[i + 1] : undefined;
 };
-const model = flag("--model") ?? DEFAULT_MODEL;
+const providerName = configuredProvider();
+const model = flag("--model") ?? configuredModel(providerName);
 const effort = (flag("--effort") ?? "medium") as Effort;
 const only = flag("--only")?.split(",").map((s) => s.trim()).filter(Boolean);
 const out = flag("--out");
 const today = "2026-09-15";
 
-if (!process.env.ANTHROPIC_API_KEY) {
-  console.error("ANTHROPIC_API_KEY is not set. This runs the real model.");
+const keyVariable = providerKeyVariable(providerName);
+if (!process.env[keyVariable]) {
+  console.error(`${keyVariable} is not set. This runs the real model.`);
   process.exit(2);
 }
 
@@ -68,7 +74,9 @@ function grade(s: Scenario, text: string, calls: { name: string; ok: boolean }[]
 }
 
 async function main() {
-  const client = new Anthropic();
+  const provider = providerName === "gemini"
+    ? new GeminiProvider(process.env.GEMINI_API_KEY, model)
+    : new AnthropicProvider(new Anthropic(), model, effort);
   const list = only ? SCENARIOS.filter((s) => only.includes(s.id)) : SCENARIOS;
   const results: Result[] = [];
   let totalCost = 0;
@@ -85,7 +93,7 @@ async function main() {
     let cost = 0;
     let failures: string[];
     try {
-      const r = await runBentoMan({ store, client, model, effort, today, message: s.user, persist: false });
+      const r = await runBentoMan({ store, provider, today, message: s.user, persist: false });
       text = r.text;
       calls = r.toolCalls.map((c) => ({ name: c.name, ok: c.ok }));
       proposal = r.proposal;

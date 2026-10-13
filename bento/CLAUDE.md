@@ -105,9 +105,20 @@ Practically:
   `<trip_state>` block + the message → the model → tools → prose. The
   system prompt (`prompt.ts`) and tool list (`tools.ts`) are the cached
   prefix and must stay byte-stable: no dates, names or state in them.
-- The model calls `claude-opus-5` through the beta client with
+- `provider.ts` is the model-call boundary. `BENTO_MAN_PROVIDER` selects
+  `anthropic` (default) or `gemini`; `BENTO_MAN_MODEL` overrides the
+  provider's default model. The chat loop owns tool execution and spend holds.
+- The Anthropic provider calls `claude-opus-5` through the beta client with
   `fallbacks: "default"`, adaptive thinking, `output_config.effort` from
   `BENTO_MAN_EFFORT`. Streaming always; `finalMessage()` for the result.
+- Gemini uses REST streaming and defaults to `gemini-2.5-flash`. Its prices
+  in `cost.ts` assume the free tier; update them before enabling paid billing.
+  Free-tier prompts may be used by Google to improve products: do not send
+  production booking text through it. `src/lib/vault/parse.ts`, the booking
+  reader, stays on Anthropic and is independent of the chat provider.
+- Every new provider must pass `scripts/eval-bento-man.ts` against the real
+  model before use. Set `BENTO_MAN_PROVIDER` and its API key to evaluate it;
+  mocks and unit tests do not satisfy this rule.
 - Every tool validates its input with Zod and returns a JSON string. A
   bad input is an `is_error` result the model can recover from, never a
   throw. Tools that change the plan write to `ctx.proposal`, nothing else.

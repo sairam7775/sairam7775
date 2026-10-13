@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
 import { runBentoMan, usageFromError } from "../chat";
+import { AnthropicProvider } from "../provider.anthropic";
 import { MemoryStore } from "../store.memory";
 
 const prefs = { pace: "standard" as const, interestTags: ["art"] as "art"[], energy: 0.4, crowdTolerance: 0.6, discovery: 0.5, excludes: [] };
@@ -32,7 +33,7 @@ describe("a billed turn whose reply can't be saved", () => {
       return append(role, content, proposal);
     };
 
-    const err = await runBentoMan({ store, client: billedClient, model: "claude-opus-5", effort: "medium", today: "2026-09-15", message: "hi" }).catch((e) => e);
+    const err = await runBentoMan({ store, provider: new AnthropicProvider(billedClient, "claude-opus-5", "medium"), today: "2026-09-15", message: "hi" }).catch((e) => e);
 
     expect(err).toBeInstanceOf(Error);
     expect(err.message).toBe("database outage");
@@ -65,7 +66,7 @@ function toolThenDone(rounds: number): Anthropic {
 }
 
 const run = (client: Anthropic, spend: NonNullable<Parameters<typeof runBentoMan>[0]["spend"]>) =>
-  runBentoMan({ store: new MemoryStore(setup), client, model: "claude-opus-5", effort: "medium", today: "2026-09-15", message: "hi", spend });
+  runBentoMan({ store: new MemoryStore(setup), provider: new AnthropicProvider(client, "claude-opus-5", "medium"), today: "2026-09-15", message: "hi", spend });
 
 describe("spend holds", () => {
   it("each model call takes its own hold and settles it with that call's cost", async () => {
