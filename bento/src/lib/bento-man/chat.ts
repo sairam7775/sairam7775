@@ -148,7 +148,15 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
 
   const text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
   let assistantMessageId: string | null = null;
-  if (persist) assistantMessageId = (await store.append("assistant", text, ctx.proposal)).id;
+  if (persist) {
+    // The model has been paid by now: if saving the reply fails, the usage
+    // must still ride on the error (E2).
+    try {
+      assistantMessageId = (await store.append("assistant", text, ctx.proposal)).id;
+    } catch (e) {
+      throw fail(e);
+    }
+  }
 
   return { text, proposal: ctx.proposal, usage: totalUsage(usageByModel), usageByModel, stopReason, toolCalls, assistantMessageId, servedBy };
 }

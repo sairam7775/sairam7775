@@ -88,6 +88,28 @@ describe("detectGaps — a bed for every night", () => {
   });
 });
 
+describe("detectGaps — a bed in the right city", () => {
+  const osakaOnly: GapCity[] = [{ cityId: "osaka-city", name: "Osaka", nights: 1, sortOrder: 0, arriveDate: "2026-11-20", departDate: "2026-11-21" }];
+  const oneNight = (b: BookingRow) => detectGaps(base({ endDate: "2026-11-21", cities: osakaOnly, bookings: [b] }));
+
+  it("a hotel in another city doesn't cover the night", () => {
+    const r = oneNight(hotel("Kyoto Machiya", "2026-11-20", "2026-11-21", "kyoto-city"));
+    expect(r.coveredNights).toBe(0);
+    expect(r.gaps.some((g) => g.key.startsWith("bed:") && g.severity === "blocking")).toBe(true);
+  });
+  it("a hotel in the same city does", () => {
+    expect(oneNight(hotel("Hotel Kanra", "2026-11-20", "2026-11-21", "osaka-city")).coveredNights).toBe(1);
+  });
+  it("a hotel with no city is given the benefit of the doubt", () => {
+    const noCity = { ...hotel("Somewhere", "2026-11-20", "2026-11-21", "x"), cityId: null };
+    expect(oneNight(noCity).coveredNights).toBe(1);
+  });
+  it("a night the route doesn't place is covered by any hotel that night", () => {
+    const r = detectGaps(base({ endDate: "2026-11-21", cities: [], bookings: [hotel("Kyoto Machiya", "2026-11-20", "2026-11-21", "kyoto-city")] }));
+    expect(r.coveredNights).toBe(1);
+  });
+});
+
 describe("detectGaps — tickets", () => {
   const teamlab: GapPlace = { placeId: "osk-teamlab-botanical", name: "teamLab Botanical Garden", date: "2026-11-21", bookingReq: "required", bookingLeadDays: 14 };
 
