@@ -43,8 +43,10 @@ Practically:
   never, not rarely.
 - **A booking reference is encrypted at rest, never logged, and never
   placed in a model prompt.** A PNR plus a surname can cancel a flight.
-- **Reserve spend before any model call** (`reserveSpend`, 0014) and settle it
-  in a `finally`. It throws rather than returning a flag so a forgotten check
+- **Reserve spend before every model call** (`reserveSpend`, 0014), sized to
+  the most one call can cost (`callBoundUsd`), and settle it with what the
+  call really cost. A chat turn takes a hold per model call and ends
+  politely when none is left. It throws rather than returning a flag so a forgotten check
   cannot spend money. The hold is taken under a database lock, so parallel
   requests see each other; there is a per-user cap and a project-wide cap.
 
@@ -118,6 +120,12 @@ Practically:
   memory store near a request handler.
 - `city_coverage` is the traveller-safe view for tiers and verified
   counts; `curation_progress` stays admin-only because it counts drafts.
+- Accepting a proposal (`apply_proposal`) and changing the dates
+  (`update_trip_dates`) are each ONE database function (0015): never add a
+  second write after them from TypeScript. A date change that would put a
+  planned stop on a day it is closed, or a ticketed stop on a day with no
+  ticket, is refused (`shift.ts`). Accepting a route drops planned days the
+  new calendar gives to another city (day trips included: re-propose them).
 - Guards before every model call: auth → `rateLimit` (Postgres, `take_rate_token`; limits live in the SQL) → `reserveSpend`.
   `reservation.settle()` after, with `costUsd` from `cost.ts` — keep the price
   table current or the cap lies. A call that never reached the model settles

@@ -17,6 +17,7 @@ import type { Proposal } from "./diff";
 import { allocateDates } from "@/lib/engine/route";
 import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripCityRow, type TripMeta, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
+import { shiftConflicts, shiftRefusal, staleDayDates } from "./shift";
 
 const CORRIDOR: { id: string; name: string; tier: CoverageTier }[] = [
   { id: "kyoto-city", name: "Kyoto", tier: "deep" },
@@ -110,8 +111,15 @@ export class MemoryStore implements TripStore {
   }
 
   async setTripDates(p: { startDate?: string | null; endDate?: string | null; partySize?: number; title?: string | null }): Promise<TripMeta> {
-    const change = planDateChange(this.trip, p, this.tripCities, this.days.filter((d) => d.items.length).map((d) => d.date));
+    const planned = this.days.filter((d) => d.items.length);
+    const change = planDateChange(this.trip, p, this.tripCities, planned.map((d) => d.date));
     if (change.error) throw new Error(change.error);
+    if (change.changed && change.shift && planned.length) {
+      const cityIds = [...new Set(planned.map((d) => d.cityId).filter((c): c is string => Boolean(c)))];
+      const lists = await Promise.all(cityIds.map((c) => this.places(c)));
+      const conflicts = shiftConflicts(planned, new Map(lists.flat().map((x) => [x.id, x])), this.ticketRows, change.shift);
+      if (conflicts.length) throw new Error(shiftRefusal(conflicts));
+    }
     if (p.partySize !== undefined) this.trip.partySize = p.partySize;
     if (p.title !== undefined) this.trip.title = p.title;
     if (!change.changed) return { ...this.trip };
@@ -182,8 +190,14 @@ export class MemoryStore implements TripStore {
     } else this.days.push({ date: day.date, cityId: day.cityId, items });
   }
 
-  async applyProposal(p: Proposal): Promise<void> {
-    if (p.route) this.setRoute(p.route.after.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));
+  async applyProposal(p: Proposal, _messageId?: string): Promise<void> {
+    if (p.route) {
+      this.setRoute(p.route.after.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));
+      // Same rule as apply_proposal in the database: a day the new route no
+      // longer gives to its city is dropped, not left to out-vote the route.
+      const stale = new Set(staleDayDates(this.days, this.tripCities));
+      this.days = this.days.filter((d) => !stale.has(d.date));
+    }
     for (const d of p.days) {
       const items = d.after.map((it, i) => ({
         placeId: it.placeId,

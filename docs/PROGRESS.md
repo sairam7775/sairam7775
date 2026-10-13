@@ -283,6 +283,7 @@ uses this:
 ### Still open from the review
 
 - ~~Spend cap is per user only, and concurrent turns can overshoot it (#4, #5)~~ Done on branch `claude/spend-cap`: `0014_spend_reservations.sql` (NOT yet applied to the live database), `reserveSpend`/`settle` in `lib/guards/spend.ts`, `BENTO_GLOBAL_MONTHLY_SPEND_CAP_USD`.
+- Codex review of PR #3 (10 findings) fixed on `claude/spend-cap`: booking-date regex, billed usage kept when the reply can't be saved, per-call spend holds that must fit the caps, city-aware beds, accepted day start kept on replan, day-box order follows the server, atomic `apply_proposal` / `update_trip_dates` (`0015_atomic_trip_edits.sql`, NOT yet applied), shifted stops revalidated, reordered routes drop mismatched days. **Migrations 0014 and 0015 must both be applied before merge.** SQL itself is untested against a live database.
   — needs a project-wide cap and a reservation before the model call.
 - `applyProposal` and `setTripDates` are multi-statement, not atomic
   (#7, #8) — one SQL function each.

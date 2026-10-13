@@ -9,6 +9,7 @@ import { loadGraph } from "@/lib/transit/load";
 import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { clock, ProposalSchema, type Proposal } from "./diff";
+import { shiftConflicts, shiftRefusal } from "./shift";
 import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
 
@@ -137,69 +138,60 @@ export class SupabaseStore implements TripStore {
     const change = planDateChange(before.trip, p, before.cities, before.days.filter((d) => d.items.length).map((d) => d.date));
     if (change.error) throw new Error(change.error);
 
-    const row: Record<string, unknown> = {};
+    // Planned days move with the start, but a stop's opening days and the
+    // traveller's tickets don't: refuse a move that would break them.
+    const planned = before.days.filter((d) => d.items.length);
+    if (change.changed && change.shift && planned.length) {
+      const cityIds = [...new Set(planned.map((d) => d.cityId).filter((c): c is string => Boolean(c)))];
+      const [lists, bookings] = await Promise.all([Promise.all(cityIds.map((c) => this.places(c))), this.bookings()]);
+      const conflicts = shiftConflicts(planned, new Map(lists.flat().map((x) => [x.id, x])), bookings, change.shift);
+      if (conflicts.length) throw new Error(shiftRefusal(conflicts));
+    }
+
+    const patch: Record<string, unknown> = {};
     if (change.changed) {
-      row.start_date = change.startDate;
-      row.end_date = change.endDate;
+      patch.start_date = change.startDate;
+      patch.end_date = change.endDate;
     }
-    if (p.partySize !== undefined) row.party_size = p.partySize;
-    if (p.title !== undefined) row.title = p.title;
-    if (Object.keys(row).length) {
-      const { error } = await this.db.from("trips").update(row).eq("id", this.tripId);
-      if (error) throw error;
-    }
-    const s = await this.state();
-    if (!change.changed) return s.trip;
+    if (p.partySize !== undefined) patch.party_size = p.partySize;
+    if (p.title !== undefined) patch.title = p.title;
+    if (!Object.keys(patch).length) return before.trip;
 
-    // Planned days move with the start, so each stays on its city's dates.
-    // (trip_id, date) is unique, so move the far end first: latest-first
-    // when moving later, earliest-first when moving earlier. Each target
-    // date is then always free.
-    if (change.shift && before.days.length) {
-      const order = [...before.days].sort((a, b) => (change.shift > 0 ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)));
-      for (const d of order) {
-        const { error } = await this.db
-          .from("itinerary_days")
-          .update({ date: shiftDate(d.date, change.shift) })
-          .eq("trip_id", this.tripId)
-          .eq("date", d.date);
-        if (error) throw error;
+    let cities: unknown = null;
+    let reject: string[] = [];
+    if (change.changed) {
+      // Dates moved: re-lay the accepted route on the calendar.
+      if (before.cities.length) {
+        const dated = allocateDates(change.startDate, before.cities, change.endDate);
+        cities = before.cities.map((c, i) => ({ city_id: c.cityId, arrive_date: dated[i].arriveDate ?? "", depart_date: dated[i].departDate ?? "" }));
       }
-    }
-
-    {
-      // A route is laid on the calendar when it is applied, so a pending
-      // route survives a date change as long as it still fits. Day plans
-      // are written against particular dates and cannot; close those
-      // rather than let them be accepted into a contradiction.
+      // A pending route survives a date change as long as it still fits.
+      // Day plans are written against particular dates and cannot; close
+      // those rather than let them be accepted into a contradiction.
       const { data: pending } = await this.db
         .from("chat_messages")
         .select("id, proposed_diff")
         .eq("trip_id", this.tripId)
         .eq("diff_status", "proposed");
-      const stale = (pending ?? [])
+      reject = (pending ?? [])
         .filter((m) => {
           const prop = ProposalSchema.safeParse(m.proposed_diff);
-          return !prop.success || prop.data.days.length > 0 || (prop.data.route && routeMisfit(s.trip, prop.data.route.after));
+          return !prop.success || prop.data.days.length > 0 || (prop.data.route && routeMisfit({ startDate: change.startDate, endDate: change.endDate }, prop.data.route.after));
         })
         .map((m) => m.id);
-      if (stale.length) {
-        await this.db
-          .from("chat_messages")
-          .update({ diff_status: "rejected", resolved_at: new Date().toISOString() })
-          .in("id", stale);
-      }
     }
-    // Dates moved: re-lay the accepted route on the calendar.
-    if (s.cities.length) {
-      const dated = allocateDates(s.trip.startDate, s.cities, s.trip.endDate);
-      await Promise.all(
-        s.cities.map((c, i) =>
-          this.db.from("trip_cities").update({ arrive_date: dated[i].arriveDate, depart_date: dated[i].departDate }).eq("trip_id", this.tripId).eq("city_id", c.cityId),
-        ),
-      );
-    }
-    return s.trip;
+
+    // One transaction: the dates, the days' shift, the closed proposals and
+    // the re-laid route all land together or not at all.
+    const { error } = await this.db.rpc("update_trip_dates", {
+      p_trip: this.tripId,
+      p_patch: patch,
+      p_shift: change.changed ? change.shift : 0,
+      p_cities: cities,
+      p_reject: reject,
+    });
+    if (error) throw error;
+    return (await this.state()).trip;
   }
 
   async cities(): Promise<CityFacts[]> {
@@ -267,56 +259,50 @@ export class SupabaseStore implements TripStore {
     return { id: data.id };
   }
 
-  async applyProposal(p: Proposal): Promise<void> {
+  async applyProposal(p: Proposal, messageId?: string): Promise<void> {
+    if (!messageId) throw new Error("applyProposal needs the stored proposal's id");
+    // The dates on a route proposal are for showing; the route is laid on
+    // the calendar as the trip stands now, which may have moved since.
+    let meta: { startDate: string | null; endDate: string | null } = { startDate: null, endDate: null };
+    let route: unknown = null;
     if (p.route) {
-      // The dates on the proposal are for showing; the route is laid on
-      // the calendar as the trip stands now, which may have moved since.
       const { data: trip, error: tripError } = await this.db.from("trips").select("start_date, end_date").eq("id", this.tripId).single();
       if (tripError) throw tripError;
-      const meta = { startDate: trip.start_date as string | null, endDate: trip.end_date as string | null };
+      meta = { startDate: trip.start_date as string | null, endDate: trip.end_date as string | null };
       const misfit = routeMisfit(meta, p.route.after);
       if (misfit) throw new Error(misfit);
       const dated = allocateDates(meta.startDate, p.route.after, meta.endDate);
-
-      // One transaction: a failed insert must not leave the route empty.
-      const { error } = await this.db.rpc("replace_trip_route", {
-        p_trip: this.tripId,
-        p_cities: p.route.after.map((c, i) => ({
-          city_id: c.cityId,
-          nights: c.nights,
-          sort_order: i,
-          budget_band: c.budgetBand ?? "",
-          reason: c.reason ?? "",
-          arrive_date: dated[i].arriveDate ?? "",
-          depart_date: dated[i].departDate ?? "",
-        })),
-      });
-      if (error) throw error;
-
-      // Days planned in a city the new route no longer visits describe a
-      // trip that no longer exists. Clear them rather than leave them to
-      // out-vote the route.
-      const keep = new Set(p.route.after.map((c) => c.cityId));
-      const { data: stale } = await this.db.from("itinerary_days").select("id, city_id").eq("trip_id", this.tripId);
-      const drop = (stale ?? []).filter((d) => d.city_id && !keep.has(d.city_id)).map((d) => d.id);
-      if (drop.length) {
-        const del = await this.db.from("itinerary_days").delete().in("id", drop);
-        if (del.error) throw del.error;
-      }
+      route = p.route.after.map((c, i) => ({
+        city_id: c.cityId,
+        nights: c.nights,
+        sort_order: i,
+        budget_band: c.budgetBand ?? "",
+        reason: c.reason ?? "",
+        arrive_date: dated[i].arriveDate ?? "",
+        depart_date: dated[i].departDate ?? "",
+      }));
     }
-    for (const d of p.days) {
-      await this.writeDay(d.date, d.cityId, d.after.map((it) => ({
-        placeId: it.placeId,
-        startMin: it.startMin,
-        durationMin: it.durationMin,
-        locked: it.locked,
-        reason: it.reason,
-        reasonTerms: it.reasonTerms,
-        arriveMode: it.arriveMode,
-        arriveMinutes: it.arriveMinutes,
-        arriveDetail: it.arriveDetail,
-      })));
-    }
+    const days = p.days.map((d) => ({
+      date: d.date,
+      city_id: d.cityId ?? "",
+      items: d.after.map((it, i) => dayItemRow({
+        placeId: it.placeId, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked, reason: it.reason,
+        reasonTerms: it.reasonTerms, arriveMode: it.arriveMode, arriveMinutes: it.arriveMinutes, arriveDetail: it.arriveDetail,
+      }, i)),
+    }));
+
+    // One transaction: claiming the proposal, the route (and the days it
+    // orphans), every day, and closing the older proposals. A failure
+    // anywhere leaves the trip, and the proposal, exactly as they were.
+    const { error } = await this.db.rpc("apply_proposal", {
+      p_trip: this.tripId,
+      p_message: messageId,
+      p_route: route,
+      p_days: days,
+      p_expect_start: meta.startDate,
+      p_expect_end: meta.endDate,
+    });
+    if (error) throw error;
   }
 
   async saveDay(day: DayRow): Promise<void> {
@@ -335,19 +321,30 @@ export class SupabaseStore implements TripStore {
       p_trip: this.tripId,
       p_date: date,
       p_city: cityId,
-      p_items: items.map((it, i) => ({
-        place_id: it.placeId,
-        sort_order: i,
-        start_time: it.startMin == null ? "" : clock(it.startMin),
-        duration_min: it.durationMin == null ? "" : String(it.durationMin),
-        locked: it.locked,
-        reason: it.reason ?? "",
-        reason_terms: it.reasonTerms,
-        arrive_mode: it.arriveMode ?? "",
-        arrive_minutes: it.arriveMinutes == null ? "" : String(it.arriveMinutes),
-        arrive_detail: it.arriveDetail ?? "",
-      })),
+      p_items: items.map((it, i) => dayItemRow(it, i)),
     });
     if (error) throw error;
   }
+}
+
+/** One stop as replace_day_items takes it (empty strings stand for null). */
+function dayItemRow(
+  it: {
+    placeId: string; startMin: number | null; durationMin: number | null; locked: boolean; reason: string | null;
+    reasonTerms: string[]; arriveMode: string | null; arriveMinutes: number | null; arriveDetail: string | null;
+  },
+  i: number,
+) {
+  return {
+    place_id: it.placeId,
+    sort_order: i,
+    start_time: it.startMin == null ? "" : clock(it.startMin),
+    duration_min: it.durationMin == null ? "" : String(it.durationMin),
+    locked: it.locked,
+    reason: it.reason ?? "",
+    reason_terms: it.reasonTerms,
+    arrive_mode: it.arriveMode ?? "",
+    arrive_minutes: it.arriveMinutes == null ? "" : String(it.arriveMinutes),
+    arrive_detail: it.arriveDetail ?? "",
+  };
 }
