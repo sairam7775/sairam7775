@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
 import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
-import { costUsd, type Usage } from "@/lib/bento-man/cost";
+import { callBoundUsd, costUsd, type Usage } from "@/lib/bento-man/cost";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { PARSE_MODEL, ParseFailed, parseConfirmation, toFormValues } from "@/lib/vault/parse";
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   let reservation;
   try {
-    reservation = await reserveSpend(user.id, "parse");
+    reservation = await reserveSpend(user.id, "parse", callBoundUsd(PARSE_MODEL, "parse"));
   } catch (e) {
     if (e instanceof SpendCapExceeded) return NextResponse.json({ error: e.message }, { status: 402 });
     throw e;

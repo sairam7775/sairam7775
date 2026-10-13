@@ -61,6 +61,25 @@ export function costUsd(model: string, u: Usage): number {
   );
 }
 
+/** The most one model call can output. Bento Man's own cap on a reply, and
+ *  the figure a spend hold is sized from. */
+export const CHAT_MAX_OUTPUT_TOKENS = 24_000;
+
+/** A generous ceiling on one call's input, uncached: system prompt, tools,
+ *  thirty messages of history and the trip state. */
+const CALL_INPUT_BOUND: Record<"chat" | "parse", { input: number; output: number }> = {
+  chat: { input: 40_000, output: CHAT_MAX_OUTPUT_TOKENS },
+  parse: { input: 8_000, output: 2_000 },
+};
+
+/** What ONE model call can cost at most, in USD. A spend hold is this, not
+ *  a typical cost: a hold smaller than the spend lets parallel turns
+ *  overshoot the cap together. */
+export function callBoundUsd(model: string, kind: "chat" | "parse"): number {
+  const b = CALL_INPUT_BOUND[kind];
+  return costUsd(model, { inputTokens: b.input, outputTokens: b.output, cacheWriteTokens: 0, cacheReadTokens: 0 });
+}
+
 /** D8: Opus 5 first, Sonnet 5 measured against the eval before switching. */
 export const DEFAULT_MODEL = "claude-opus-5";
 

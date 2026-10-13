@@ -4,8 +4,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
 import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
-import { runBentoMan, usageFromError } from "@/lib/bento-man/chat";
-import { configuredEffort, configuredModel, costOfAll, totalUsage, type UsageByModel } from "@/lib/bento-man/cost";
+import { runBentoMan } from "@/lib/bento-man/chat";
+import { callBoundUsd, configuredEffort, configuredModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 
@@ -40,18 +40,31 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Bento Man isn't configured on this server yet (ANTHROPIC_API_KEY)." }, { status: 503 });
   }
 
-  // Reserve before the call, so parallel turns see each other's holds.
-  let reservation;
+  // Hold budget for one model call at a time, sized to the most a call can
+  // cost, so parallel turns see each other's holds. The first hold is taken
+  // here, where a refusal can still be a plain 402.
+  const model = configuredModel();
+  const hold = () => reserveSpend(user.id, "chat", callBoundUsd(model, "chat"));
+  let first: Awaited<ReturnType<typeof hold>> | null;
   try {
-    reservation = await reserveSpend(user.id, "chat");
+    first = await hold();
   } catch (e) {
     if (e instanceof SpendCapExceeded) return NextResponse.json({ error: e.message }, { status: 402 });
     throw e;
   }
+  const spend = {
+    hold: async () => {
+      if (first) {
+        const h = first;
+        first = null;
+        return h;
+      }
+      return hold();
+    },
+  };
 
   const store = new SupabaseStore(db, tripId, user.id);
   const client = mock ? createMockClient() : new Anthropic();
-  const model = configuredModel();
   const effort = configuredEffort();
   const today = new Date().toISOString().slice(0, 10);
   const encoder = new TextEncoder();
@@ -70,34 +83,22 @@ export async function POST(req: NextRequest) {
         }
       };
 
-      let byModel: UsageByModel = {};
       try {
         const result = await runBentoMan({
-          store, client, model, effort, today, message,
+          store, client, model, effort, today, message, spend,
           events: {
             onText: (delta) => send({ type: "text", delta }),
             onTool: (name, phase, ok) => send({ type: "tool", name, phase, ok }),
           },
         });
-        byModel = result.usageByModel;
         send({ type: "done", messageId: result.assistantMessageId, text: result.text, proposal: result.proposal });
       } catch (e) {
         // A turn that died after a model call still spent money (E2).
-        byModel = usageFromError(e);
         send({ type: "error", message: friendly(e) });
       } finally {
-        const total = totalUsage(byModel);
-        await reservation.settle(
-          total.inputTokens || total.outputTokens
-            ? {
-                model: Object.keys(byModel).join("+") || model,
-                inputTokens: total.inputTokens,
-                outputTokens: total.outputTokens,
-                cachedTokens: total.cacheReadTokens,
-                costUsd: costOfAll(byModel),
-              }
-            : null,
-        );
+        // Each model call settled its own hold. If no call ever started,
+        // the first hold is still ours to give back.
+        await first?.settle(null);
         open = false;
         try {
           controller.close();

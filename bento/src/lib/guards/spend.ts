@@ -32,12 +32,7 @@ export function globalMonthlyCapUsd(): number {
   return positiveEnv("BENTO_GLOBAL_MONTHLY_SPEND_CAP_USD", DEFAULT_GLOBAL_CAP_USD);
 }
 
-/** What a call is assumed to cost until it reports its real usage. Set
- *  above a typical call, so the cap is held a little early rather than
- *  overshot. */
-export const ESTIMATE_USD = { chat: 0.5, parse: 0.05 } as const;
-
-export type SpendKind = keyof typeof ESTIMATE_USD;
+export type SpendKind = "chat" | "parse";
 
 export interface SpendStatus {
   spentUsd: number;
@@ -89,17 +84,21 @@ export class SpendReservation {
   }
 }
 
-/** Call before any model request. Throws `SpendCapExceeded` rather than
- *  returning a flag, so a forgotten check cannot silently spend money. */
+/** Call before every model request, with the most that one request can
+ *  cost (`callBoundUsd`). The hold is granted only if the user's total AND
+ *  the project's total, plus this hold, stay within their caps. Throws
+ *  `SpendCapExceeded` rather than returning a flag, so a forgotten check
+ *  cannot silently spend money. */
 export async function reserveSpend(
   userId: string,
   kind: SpendKind,
+  estimateUsd: number,
   admin: SupabaseClient = createAdminClient(),
 ): Promise<SpendReservation> {
   const { data, error } = await admin.rpc("reserve_spend", {
     p_user: userId,
     p_kind: kind,
-    p_estimate: ESTIMATE_USD[kind],
+    p_estimate: estimateUsd,
     p_user_cap: monthlyCapUsd(),
     p_global_cap: globalMonthlyCapUsd(),
   });

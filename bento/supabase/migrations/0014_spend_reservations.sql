@@ -9,6 +9,8 @@
 -- that serialises every reservation. The reservation is an api_usage row
 -- (model = 'reserved'), so the next caller's total already includes it.
 -- When the call ends, settle_spend swaps the estimate for the real cost.
+-- The estimate is the most ONE model call can cost, and a hold is granted
+-- only if it fits both caps; a chat turn takes a fresh hold per model call.
 --
 -- A reservation whose process died never settles; after ten minutes it
 -- stops counting, so a crash cannot hold the cap down forever.
@@ -54,11 +56,13 @@ begin
   v_user   := spend_since_month_start(p_user);
   v_global := spend_since_month_start(null);
 
-  if v_user >= p_user_cap then
+  -- The hold must FIT: a total just under the cap plus a call that can
+  -- cost more than what's left would otherwise be granted and overshoot.
+  if v_user + p_estimate > p_user_cap then
     return query select null::bigint, 'user'::text, v_user, v_global;
     return;
   end if;
-  if v_global >= p_global_cap then
+  if v_global + p_estimate > p_global_cap then
     return query select null::bigint, 'global'::text, v_user, v_global;
     return;
   end if;
