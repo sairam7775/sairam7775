@@ -1,0 +1,3 @@
+route_id,agency_id,route_short_name,route_long_name
+R1,jr-west,,JR Nara Line
+R2,keihan,,Keihan Main Line

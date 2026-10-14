@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: "DM Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #FF7757; } a:hover { color: #E85F3F; }
+    .disp { font-family: "Bricolage Grotesque", "DM Sans", sans-serif; }
+    .mono { font-family: "DM Mono", ui-monospace, monospace; }
+    .jp { font-family: "Zen Maru Gothic", sans-serif; }
+    .tile { background: #FFFFFF; border-radius: 20px; box-shadow: 0 1px 2px rgba(34,28,30,.04), 0 16px 36px -20px rgba(34,28,30,.25); }
+    @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+    .up { animation: rise .62s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .grow { transform-origin: left center; animation: grow .9s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+    .pop { animation: pop .5s cubic-bezier(.2,.8,.2,1) both; }
+    @media (prefers-reduced-motion: reduce) { .up, .grow, .pop { animation: none; } }
+  </style>
+</helmet>
+<helmet>
+  <style>
+    @keyframes hop {
+      0%, 18%   { transform: translate(18px, 18px); }
+      25%, 43%  { transform: translate(46px, 18px); }
+      50%, 68%  { transform: translate(46px, 46px); }
+      75%, 93%  { transform: translate(18px, 46px); }
+      100%      { transform: translate(18px, 18px); }
+    }
+    @keyframes squish {
+      0%, 18%, 25%, 43%, 50%, 68%, 75%, 93%, 100% { transform: scale(1); }
+      21.5%, 46.5%, 71.5%, 96.5% { transform: scale(1.22, 0.84); }
+    }
+    .hop { animation: hop 1.8s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
+    .squish { transform-box: fill-box; transform-origin: center; animation: squish 1.8s ease-in-out infinite; }
+    @media (prefers-reduced-motion: reduce) { .hop, .squish { animation: none; } .hop { transform: translate(18px, 18px); } }
+  </style>
+</helmet>
+
+<div style="width: 640px; background: #FBF8F3; color: #221C1E; padding: 36px 40px 40px; box-sizing: border-box;">
+
+  <span class="mono" style="font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #8C8388;">Loading</span>
+  <h1 class="disp" style="font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin: 8px 0 0;">The umeboshi does the rounds</h1>
+  <p style="margin: 8px 0 0; font-size: 14.5px; line-height: 1.5; color: #4A4145; max-width: 52ch;">Clockwise, one compartment at a time, with a small squash on landing. 1.8 seconds per lap.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px;">
+    <div class="tile" style="padding: 28px; display: flex; flex-direction: column; align-items: center; gap: 18px;">
+      <svg width="96" height="96" viewBox="0 0 64 64" fill="none">
+        <rect x="4" y="4" width="56" height="56" rx="16" stroke="#221C1E" stroke-width="5"/>
+        <path d="M32 4v56M4 32h56" stroke="#221C1E" stroke-width="5"/>
+        <g class="hop"><circle class="squish" cx="0" cy="0" r="7" fill="#FF7757"/></g>
+      </svg>
+      <span class="mono" style="font-size: 11px; color: #8C8388;">on rice</span>
+    </div>
+    <div class="tile" style="padding: 28px; background: #221C1E; display: flex; flex-direction: column; align-items: center; gap: 18px;">
+      <svg width="96" height="96" viewBox="0 0 64 64" fill="none">
+        <rect x="4" y="4" width="56" height="56" rx="16" stroke="#FBF8F3" stroke-width="5"/>
+        <path d="M32 4v56M4 32h56" stroke="#FBF8F3" stroke-width="5"/>
+        <g class="hop"><circle class="squish" cx="0" cy="0" r="7" fill="#FF7757"/></g>
+      </svg>
+      <span class="mono" style="font-size: 11px; color: #FBF8F3; opacity: .6;">on lacquer</span>
+    </div>
+  </div>
+
+  <div class="tile" style="margin-top: 12px; padding: 22px 24px; display: flex; align-items: center; gap: 16px;">
+    <svg width="36" height="36" viewBox="0 0 64 64" fill="none">
+      <rect x="4" y="4" width="56" height="56" rx="16" stroke="#221C1E" stroke-width="5"/>
+      <path d="M32 4v56M4 32h56" stroke="#221C1E" stroke-width="5"/>
+      <g class="hop"><circle class="squish" cx="0" cy="0" r="7" fill="#FF7757"/></g>
+    </svg>
+    <div>
+      <span class="disp" style="font-size: 17px; font-weight: 700; display: block;">Building your Kyoto days</span>
+      <span style="font-size: 13.5px; color: #8C8388;">Checking 62 places against opening hours and your pace</span>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

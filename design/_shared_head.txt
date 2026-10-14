@@ -1,0 +1,18 @@
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: "DM Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #FF7757; } a:hover { color: #E85F3F; }
+    .disp { font-family: "Bricolage Grotesque", "DM Sans", sans-serif; }
+    .mono { font-family: "DM Mono", ui-monospace, monospace; }
+    .jp { font-family: "Zen Maru Gothic", sans-serif; }
+    .tile { background: #FFFFFF; border-radius: 20px; box-shadow: 0 1px 2px rgba(34,28,30,.04), 0 16px 36px -20px rgba(34,28,30,.25); }
+    @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+    .up { animation: rise .62s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .grow { transform-origin: left center; animation: grow .9s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+    .pop { animation: pop .5s cubic-bezier(.2,.8,.2,1) both; }
+    @media (prefers-reduced-motion: reduce) { .up, .grow, .pop { animation: none; } }
+  </style>
+</helmet>

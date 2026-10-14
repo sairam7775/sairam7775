@@ -1,0 +1,3 @@
+# The seeded canvas is a build artifact: ~2.5 MB, almost all of it the
+# bundled editor, and regenerated from the sources below on every change.
+bento-screens.html

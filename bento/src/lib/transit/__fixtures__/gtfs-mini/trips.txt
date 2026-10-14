@@ -1,0 +1,4 @@
+trip_id,route_id,trip_headsign
+T-local,R1,Nara (Local)
+T-rapid,R1,Nara (Rapid)
+T-keihan,R2,Demachiyanagi

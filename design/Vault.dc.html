@@ -1,0 +1,161 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+  <style>
+    body { margin: 0; font-family: "DM Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+    a { color: #FF7757; } a:hover { color: #E85F3F; }
+    .disp { font-family: "Bricolage Grotesque", "DM Sans", sans-serif; }
+    .mono { font-family: "DM Mono", ui-monospace, monospace; }
+    .jp { font-family: "Zen Maru Gothic", sans-serif; }
+    .tile { background: #FFFFFF; border-radius: 20px; box-shadow: 0 1px 2px rgba(34,28,30,.04), 0 16px 36px -20px rgba(34,28,30,.25); }
+    @keyframes rise { from { opacity: 0; transform: translateY(16px) scale(.985); } to { opacity: 1; transform: none; } }
+    .up { animation: rise .62s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .grow { transform-origin: left center; animation: grow .9s cubic-bezier(.2,.8,.2,1) both; }
+    @keyframes pop { 0% { transform: scale(.6); opacity: 0; } 70% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); } }
+    .pop { animation: pop .5s cubic-bezier(.2,.8,.2,1) both; }
+    @media (prefers-reduced-motion: reduce) { .up, .grow, .pop { animation: none; } }
+  </style>
+</helmet>
+
+<div style="width: 960px; background: #FBF8F3; color: #221C1E; padding: 36px 44px 44px; box-sizing: border-box;">
+
+  <div class="up" style="display: flex; justify-content: space-between; align-items: center; gap: 14px;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <svg width="26" height="26" viewBox="0 0 28 28" fill="none"><rect x="2" y="2" width="24" height="24" rx="7" stroke="#221C1E" stroke-width="2.2"/><path d="M14 2v24M2 14h24" stroke="#221C1E" stroke-width="2.2"/><circle cx="8" cy="8" r="3" fill="#FF7757"/></svg>
+      <span class="disp" style="font-size: 18px; font-weight: 800; letter-spacing: -0.01em;">Bento</span>
+    </div>
+    <button style="border: none; background: #FF7757; color: #FFFFFF; font-family: inherit; font-size: 13.5px; font-weight: 600; padding: 10px 18px; border-radius: 999px; cursor: pointer; box-shadow: 0 8px 20px -10px rgba(255,119,87,.7); display: inline-flex; align-items: center; gap: 8px;">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round"><path d="M6 1v10M1 6h10"/></svg>
+      Add a booking
+    </button>
+  </div>
+
+  <div class="up" style="margin-top: 30px; animation-delay: .05s;">
+    <h1 class="disp" style="font-size: 46px; font-weight: 800; line-height: 1; letter-spacing: -0.025em; margin: 0;">Everything you&rsquo;ve booked</h1>
+    <p style="margin: 12px 0 0; font-size: 16px; line-height: 1.55; color: #4A4145; max-width: 60ch;">Add what you book, as you book it. Nothing is fetched from airlines or hotels — this only knows what you put here, which is also why it can hold your reference numbers safely.</p>
+  </div>
+
+  <!-- stats -->
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 24px;">
+    <div class="tile up" style="padding: 18px 20px; animation-delay: .12s;">
+      <span class="mono" style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8C8388;">Recorded</span>
+      <span class="disp" style="display: block; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-top: 6px;">7 <span style="font-size: 16px; font-weight: 600; color: #8C8388;">bookings</span></span>
+    </div>
+    <div class="tile up" style="padding: 18px 20px; animation-delay: .18s;">
+      <span class="mono" style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8C8388;">Spent so far</span>
+      <span class="disp" style="display: block; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-top: 6px;">¥318,400</span>
+    </div>
+    <div class="tile up" style="padding: 18px 20px; background: #FBE2E3; animation-delay: .24s;">
+      <span class="mono" style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #E5484D;">Gaps</span>
+      <span class="disp" style="display: block; font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-top: 6px; color: #E5484D;">2 <span style="font-size: 16px; font-weight: 600;">blocking</span></span>
+    </div>
+  </div>
+
+  <!-- the vault bento -->
+  <div style="margin-top: 12px; background: #221C1E; border-radius: 30px; padding: 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+
+    <!-- flights -->
+    <div class="tile up" style="padding: 18px 20px; animation-delay: .3s;">
+      <span class="mono" style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8C8388;">Flights</span>
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <div>
+            <span class="disp" style="font-size: 16px; font-weight: 700; display: block;">Bengaluru <span style="color: #8C8388;">→</span> Osaka</span>
+            <span class="mono" style="font-size: 11px; color: #8C8388; display: block; margin-top: 2px;">21 Nov · 00:50 → 14:20 · via SIN</span>
+          </div>
+          <span class="mono" style="font-size: 12px; background: #F3EEE8; padding: 6px 10px; border-radius: 999px;">•••• 4QZ</span>
+        </div>
+        <div style="height: 1px; background: #EAE3DC;"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <div>
+            <span class="disp" style="font-size: 16px; font-weight: 700; display: block;">Hiroshima <span style="color: #8C8388;">→</span> Bengaluru</span>
+            <span class="mono" style="font-size: 11px; color: #8C8388; display: block; margin-top: 2px;">30 Nov · 08:15 → 20:05 · via HND</span>
+          </div>
+          <span class="mono" style="font-size: 12px; background: #F3EEE8; padding: 6px 10px; border-radius: 999px;">•••• 4QZ</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- between cities -->
+    <div class="tile up" style="padding: 18px 20px; display: flex; flex-direction: column; animation-delay: .38s;">
+      <span class="mono" style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8C8388;">Between cities</span>
+      <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 12px; flex-grow: 1;">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <span class="disp" style="font-size: 16px; font-weight: 700;">Osaka <span style="color: #8C8388;">→</span> Kyoto</span>
+          <span class="mono" style="font-size: 11px; background: #E2F4E8; color: #3f6a4a; padding: 5px 10px; border-radius: 999px;">IC card, nothing to book</span>
+        </div>
+        <div style="background: #FBE2E3; border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+          <div>
+            <span class="disp" style="font-size: 16px; font-weight: 700; display: block;">Kyoto <span style="color: #8C8388;">→</span> Hiroshima</span>
+            <span style="font-size: 12.5px; color: #4A4145; display: block; margin-top: 2px;">Not booked. Reserved seat for the case.</span>
+          </div>
+          <button style="border: none; background: #E5484D; color: #FFFFFF; font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; flex-shrink: 0;">Fix</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- where you sleep -->
+    <div class="tile up" style="grid-column: span 2; padding: 18px 20px; animation-delay: .46s;">
+      <span class="mono" style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8C8388;">Where you sleep</span>
+      <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 12px;">
+        <div style="background: #FFF3D1; border-radius: 16px; padding: 14px 16px; min-height: 118px; display: flex; flex-direction: column; box-sizing: border-box;">
+          <span class="mono" style="font-size: 10.5px; color: #8C8388;">21–23 Nov · 2 nights</span>
+          <span class="disp" style="font-size: 16px; font-weight: 700; line-height: 1.2; margin-top: 6px; flex-grow: 1;">Hotel Noum Osaka</span>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px;">
+            <span class="mono" style="font-size: 12px;">¥34,800</span>
+            <span class="mono" style="font-size: 11px; color: #8C8388;">•••• 8813</span>
+          </div>
+        </div>
+        <div style="background: #FFE9E2; border-radius: 16px; padding: 14px 16px; min-height: 118px; display: flex; flex-direction: column; box-sizing: border-box;">
+          <span class="mono" style="font-size: 10.5px; color: #8C8388;">23–26 Nov · 3 nights</span>
+          <span class="disp" style="font-size: 16px; font-weight: 700; line-height: 1.2; margin-top: 6px; flex-grow: 1;">Hotel Kanra Kyoto</span>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px;">
+            <span class="mono" style="font-size: 12px;">¥96,000</span>
+            <span class="mono" style="font-size: 11px; color: #8C8388;">•••• 1902</span>
+          </div>
+        </div>
+        <div class="pop" style="background: repeating-linear-gradient(-45deg, #FBE2E3 0 8px, #FFFFFF 8px 16px); border: 2px dashed #E5484D; border-radius: 16px; padding: 14px 16px; min-height: 118px; display: flex; flex-direction: column; box-sizing: border-box; animation-delay: 1s;">
+          <span class="mono" style="font-size: 10.5px; color: #E5484D;">26 Nov · 1 night</span>
+          <span class="disp" style="font-size: 16px; font-weight: 700; line-height: 1.2; margin-top: 6px; flex-grow: 1; color: #E5484D;">Nothing yet</span>
+          <button style="border: none; background: #E5484D; color: #FFFFFF; font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 8px 14px; border-radius: 999px; cursor: pointer; align-self: flex-start; margin-top: 8px;">Fix this</button>
+        </div>
+        <div style="background: #E4E7FB; border-radius: 16px; padding: 14px 16px; min-height: 118px; display: flex; flex-direction: column; box-sizing: border-box;">
+          <span class="mono" style="font-size: 10.5px; color: #8C8388;">27–30 Nov · 3 nights</span>
+          <span class="disp" style="font-size: 16px; font-weight: 700; line-height: 1.2; margin-top: 6px; flex-grow: 1;">Iwaso, Miyajima</span>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px;">
+            <span class="mono" style="font-size: 12px;">¥142,000</span>
+            <span class="mono" style="font-size: 11px; color: #8C8388;">•••• 5567</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- tickets -->
+    <div class="tile up" style="grid-column: span 2; padding: 18px 20px; display: flex; justify-content: space-between; align-items: center; gap: 20px; animation-delay: .54s;">
+      <div>
+        <span class="mono" style="font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #8C8388;">Tickets &amp; tables</span>
+        <div style="display: flex; align-items: baseline; gap: 12px; margin-top: 8px;">
+          <span class="disp" style="font-size: 16px; font-weight: 700;">Himeji Castle</span>
+          <span class="mono" style="font-size: 11px; color: #8C8388;">27 Nov · walk-up · ¥1,000</span>
+        </div>
+      </div>
+      <span style="font-size: 13.5px; color: #8C8388; text-align: right; max-width: 30ch;">Nothing else on this route needs advance tickets.</span>
+    </div>
+  </div>
+
+  <p class="up" style="margin: 20px 0 0; font-size: 13px; line-height: 1.6; color: #8C8388; max-width: 74ch; animation-delay: .62s;">
+    Reference numbers are stored encrypted and shown masked until you tap them. They are never sent to Bento Man — a booking reference and a surname is often enough to cancel a flight.
+  </p>
+
+</div>
+</x-dc>
+</body>
+</html>

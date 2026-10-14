@@ -1,0 +1,7 @@
+stop_id,stop_name,stop_lat,stop_lon,location_type
+S1,Kyoto,34.9858,135.7588,0
+S2,Tofukuji,34.9770,135.7720,0
+S3,Inari,34.9700,135.7712,0
+S4,Uji,34.8900,135.8000,0
+K1,Tofukuji (Keihan),34.9771,135.7725,0
+K2,Shichijo,34.9900,135.7690,0
