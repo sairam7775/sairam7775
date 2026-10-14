@@ -149,6 +149,16 @@ Practically:
   planned stop on a day it is closed, or a ticketed stop on a day with no
   ticket, is refused (`shift.ts`). Accepting a route drops planned days the
   new calendar gives to another city (day trips included: re-propose them).
+- Moving dates the trip already has is a **proposal** (`Proposal.dates`, #6),
+  unless the traveller allowed changes without asking
+  (`user_preferences.apply_dates_without_asking`). Filling in missing dates,
+  a title or a party size applies at once. Only the traveller's own action
+  sets the permission ("Don't ask" in Edit trip, or the checkbox on an
+  accepted date proposal); `set_preferences` can't, so the model can't grant
+  itself permission. Within a turn, tools after a date proposal plan on the
+  new dates (`withProposedDates` in tools.ts). Accepting runs the date change
+  and the rest of the proposal as ONE function (`apply_proposal_with_dates`,
+  0016), refused if the trip moved since it was proposed.
 - Guards before every model call: auth → `rateLimit` (Postgres, `take_rate_token`; limits live in the SQL) → `reserveSpend`.
   `reservation.settle()` after, with `costUsd` from `cost.ts` — keep the price
   table current or the cap lies. A call that never reached the model settles

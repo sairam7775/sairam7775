@@ -23,7 +23,13 @@ export interface Prefs {
   displayCurrency: string;
   /** False until the traveller has answered anything — onboarding runs. */
   set: boolean;
+  /** The traveller said Bento Man may change trip dates without asking
+   *  (#6). Only the traveller's own action sets it, never a tool. */
+  autoApplyDates: boolean;
 }
+
+/** What the set_preferences tool may write: everything but the flags. */
+export type PrefsPatch = Partial<Omit<Prefs, "set" | "autoApplyDates">>;
 
 export const DEFAULT_PREFS: Prefs = {
   pace: "standard",
@@ -36,6 +42,7 @@ export const DEFAULT_PREFS: Prefs = {
   dietary: [],
   displayCurrency: "JPY",
   set: false,
+  autoApplyDates: false,
 };
 
 export interface TripMeta {
@@ -90,6 +97,13 @@ export interface TripState {
   pendingProposal: { id: string; summary: string } | null;
 }
 
+export interface TripPatch {
+  startDate?: string | null;
+  endDate?: string | null;
+  partySize?: number;
+  title?: string | null;
+}
+
 export interface ChatTurn {
   role: "user" | "assistant";
   content: string;
@@ -97,8 +111,14 @@ export interface ChatTurn {
 
 export interface TripStore {
   state(): Promise<TripState>;
-  savePreferences(p: Partial<Omit<Prefs, "set">>): Promise<Prefs>;
-  setTripDates(p: { startDate?: string | null; endDate?: string | null; partySize?: number; title?: string | null }): Promise<TripMeta>;
+  savePreferences(p: PrefsPatch): Promise<Prefs>;
+  /** The traveller's answer to "change dates without asking?". */
+  setAutoApplyDates(on: boolean): Promise<void>;
+  setTripDates(p: TripPatch): Promise<TripMeta>;
+  /** The trip as setTripDates would leave it, refused with the same message
+   *  if it would refuse, and nothing written. `route` checks the range
+   *  against a route proposed alongside instead of the accepted one. */
+  previewTripDates(p: TripPatch, route?: { nights: number }[]): Promise<TripMeta>;
   cities(): Promise<CityFacts[]>;
   places(cityId: string): Promise<PlaceInput[]>;
   searchPlaces(query: string, cityId?: string | null): Promise<PlaceInput[]>;

@@ -102,3 +102,52 @@ describe("request-local SupabaseStore reads", () => {
     expect(count("trips")).toBe(4);
   });
 });
+
+describe("date proposals (#6)", () => {
+  const dates = (after: { startDate: string; endDate: string }) => ({
+    kind: "dates" as const,
+    before: { startDate: "2026-11-20", endDate: "2026-11-23", partySize: 1, title: "Before" },
+    after: { ...after, partySize: 1, title: "Before" },
+    summary: "Dates",
+  });
+
+  it("previews without writing", async () => {
+    const { store, db } = fixture();
+    const trip = await store.previewTripDates({ startDate: "2026-11-21", endDate: "2026-11-24" });
+    expect(trip).toMatchObject({ startDate: "2026-11-21", endDate: "2026-11-24" });
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+
+  it("accepts dates in one call to apply_proposal_with_dates, never closing the proposal being accepted", async () => {
+    const { store, db } = fixture();
+    await store.applyProposal({ summary: "Dates", dates: dates({ startDate: "2026-11-21", endDate: "2026-11-24" }), days: [] }, "message");
+    expect(db.rpc).toHaveBeenCalledTimes(1);
+    expect(db.rpc).toHaveBeenCalledWith("apply_proposal_with_dates", expect.objectContaining({
+      p_trip: "trip",
+      p_message: "message",
+      p_expect_start: "2026-11-20",
+      p_expect_end: "2026-11-23",
+      p_patch: expect.objectContaining({ start_date: "2026-11-21", end_date: "2026-11-24" }),
+      p_shift: 1,
+      p_route: null,
+      p_days: [],
+    }));
+    const args = vi.mocked(db.rpc).mock.calls[0][1] as { p_reject: string[] };
+    expect(args.p_reject).not.toContain("message");
+  });
+
+  it("refuses when the trip moved since the proposal", async () => {
+    const { store, db } = fixture();
+    const moved = { ...dates({ startDate: "2026-11-21", endDate: "2026-11-24" }), before: { startDate: "2026-11-01", endDate: "2026-11-04", partySize: 1, title: "Before" } };
+    await expect(store.applyProposal({ summary: "Dates", dates: moved, days: [] }, "message")).rejects.toThrow(/changed while this was open/);
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+
+  it("saves the permission only through setAutoApplyDates", async () => {
+    const { store, rows } = fixture();
+    await store.savePreferences({ pace: "relaxed" });
+    expect(rows.user_preferences).not.toHaveProperty("apply_dates_without_asking");
+    await store.setAutoApplyDates(true);
+    expect(rows.user_preferences).toMatchObject({ user_id: "user", apply_dates_without_asking: true });
+  });
+});

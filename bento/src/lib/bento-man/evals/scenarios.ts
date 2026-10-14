@@ -22,7 +22,7 @@ export interface Scenario {
     notTools?: string[];
     mustMatch?: RegExp[];
     mustNotMatch?: RegExp[];
-    proposal?: "route" | "days" | "none";
+    proposal?: "dates" | "route" | "days" | "none";
     /** Skip the voice lint (never used yet; here so the option is explicit). */
     skipVoice?: boolean;
   };
@@ -246,6 +246,26 @@ export const SCENARIOS: Scenario[] = [
     expect: { tools: ["replan_day"], notTools: ["plan_days"], proposal: "days" },
   },
 
+  // --------------------------------------------------------------- dates
+  {
+    id: "dates-move-proposed",
+    intent: "Moving dates the trip has is a proposal (#6): said as waiting for their OK, never as done.",
+    setup: routed,
+    user: "Can we push the whole trip back two days? 2026-11-22 to 2026-12-01.",
+    expect: {
+      tools: ["set_trip_dates"],
+      mustMatch: [/accept|approve|confirm|ok|go ahead/i],
+      mustNotMatch: [/(i've|i have|i) (moved|changed|updated|shifted) (the|your) (trip|dates)/i, /dates (are|have been) (moved|changed|updated)/i],
+      proposal: "dates",
+    },
+  },
+  {
+    id: "dates-move-allowed",
+    intent: "A traveller who allowed it gets the dates moved without a proposal.",
+    setup: { ...routed, prefs: { ...owner, autoApplyDates: true } },
+    user: "Push the trip back two days: 2026-11-22 to 2026-12-01.",
+    expect: { tools: ["set_trip_dates"], proposal: "none" },
+  },
   // --------------------------------------------------------------- facts
   {
     id: "fact-lookup",

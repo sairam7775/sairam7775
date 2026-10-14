@@ -15,7 +15,7 @@ import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import type { CoverageTier } from "@/lib/types";
 import type { Proposal } from "./diff";
 import { allocateDates } from "@/lib/engine/route";
-import { DEFAULT_PREFS, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type TripCityRow, type TripMeta, type TripState, type TripStore } from "./store";
+import { DEFAULT_PREFS, nightsBetween, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripCityRow, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
 import { shiftConflicts, shiftRefusal, staleDayDates } from "./shift";
 
@@ -104,15 +104,20 @@ export class MemoryStore implements TripStore {
     };
   }
 
-  async savePreferences(p: Partial<Omit<Prefs, "set">>): Promise<Prefs> {
+  async setAutoApplyDates(on: boolean): Promise<void> {
+    this.prefs = { ...this.prefs, autoApplyDates: on };
+  }
+
+  async savePreferences(p: PrefsPatch): Promise<Prefs> {
     const clean = Object.fromEntries(Object.entries(p).filter(([, v]) => v !== undefined));
     this.prefs = { ...this.prefs, ...clean, set: true };
     return { ...this.prefs };
   }
 
-  async setTripDates(p: { startDate?: string | null; endDate?: string | null; partySize?: number; title?: string | null }): Promise<TripMeta> {
+  /** The same refusals as the Supabase store, nothing written. */
+  private async checkDates(p: TripPatch, route: { nights: number }[] = this.tripCities) {
     const planned = this.days.filter((d) => d.items.length);
-    const change = planDateChange(this.trip, p, this.tripCities, planned.map((d) => d.date));
+    const change = planDateChange(this.trip, p, route, planned.map((d) => d.date));
     if (change.error) throw new Error(change.error);
     if (change.changed && change.shift && planned.length) {
       const cityIds = [...new Set(planned.map((d) => d.cityId).filter((c): c is string => Boolean(c)))];
@@ -120,6 +125,21 @@ export class MemoryStore implements TripStore {
       const conflicts = shiftConflicts(planned, new Map(lists.flat().map((x) => [x.id, x])), this.ticketRows, change.shift);
       if (conflicts.length) throw new Error(shiftRefusal(conflicts));
     }
+    return change;
+  }
+
+  async previewTripDates(p: TripPatch, route?: { nights: number }[]): Promise<TripMeta> {
+    const change = await this.checkDates(p, route);
+    return {
+      ...this.trip,
+      ...(change.changed ? { startDate: change.startDate, endDate: change.endDate } : {}),
+      ...(p.partySize !== undefined ? { partySize: p.partySize } : {}),
+      ...(p.title !== undefined ? { title: p.title } : {}),
+    };
+  }
+
+  async setTripDates(p: TripPatch, route?: { nights: number }[]): Promise<TripMeta> {
+    const change = await this.checkDates(p, route);
     if (p.partySize !== undefined) this.trip.partySize = p.partySize;
     if (p.title !== undefined) this.trip.title = p.title;
     if (!change.changed) return { ...this.trip };
@@ -191,6 +211,20 @@ export class MemoryStore implements TripStore {
   }
 
   async applyProposal(p: Proposal): Promise<void> {
+    if (p.dates) {
+      const d = p.dates;
+      if (this.trip.startDate !== d.before.startDate || this.trip.endDate !== d.before.endDate) {
+        throw new Error("the trip dates changed while this was open. Ask again.");
+      }
+      // In memory there is no transaction: check everything first, so a
+      // refusal leaves the trip as it was, the way the database does.
+      if (p.route) {
+        const tripNights = nightsBetween(d.after.startDate, d.after.endDate);
+        const routeNights = p.route.after.reduce((s, c) => s + c.nights, 0);
+        if (tripNights != null && routeNights > tripNights) throw new Error(`the route is ${routeNights} nights and the trip is now ${tripNights}`);
+      }
+      await this.setTripDates({ startDate: d.after.startDate, endDate: d.after.endDate, partySize: d.after.partySize, title: d.after.title }, p.route?.after);
+    }
     if (p.route) {
       this.setRoute(p.route.after.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));
       // Same rule as apply_proposal in the database: a day the new route no
