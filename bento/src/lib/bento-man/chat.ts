@@ -6,7 +6,7 @@
  *  everything that changes per turn — today's date, the trip state — rides
  *  in the final user message, after the cache breakpoint. */
 import Anthropic from "@anthropic-ai/sdk";
-import { addUsage, totalUsage, ZERO_USAGE, type Effort, type Usage, type UsageByModel } from "./cost";
+import { addUsage, CHAT_MAX_OUTPUT_TOKENS, costUsd, totalUsage, ZERO_USAGE, type Effort, type Usage, type UsageByModel } from "./cost";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
 import { SYSTEM_PROMPT } from "./prompt";
@@ -32,7 +32,17 @@ export interface RunOptions {
   historyLimit?: number;
   /** Skip persisting the turn (the eval runner keeps its own record). */
   persist?: boolean;
+  /** Asked for before EVERY model call. It holds budget for that call and
+   *  throws when none is left; the returned hold is settled with what the
+   *  call really cost. Absent in the eval and the tests. */
+  spend?: { hold(): Promise<CallHold> };
 }
+
+export interface CallHold {
+  settle(usage: { model: string; inputTokens: number; outputTokens: number; cachedTokens?: number; costUsd: number } | null): Promise<void>;
+}
+
+const isSpendCap = (e: unknown) => e instanceof Error && e.name === "SpendCapExceeded";
 
 export interface ToolCallRecord {
   name: string;
@@ -55,7 +65,7 @@ export interface RunResult {
 
 /** Adaptive thinking comes out of this too, so leave room: a truncated
  *  turn can cut a tool_use block in half. */
-const MAX_TOKENS = 24_000;
+const MAX_TOKENS = CHAT_MAX_OUTPUT_TOKENS;
 const REFUSAL_TEXT = "I can't help with that one. Ask me about the trip and I will.";
 
 export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
@@ -85,6 +95,18 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
 
   try {
   for (let i = 0; i < maxIterations; i++) {
+    let hold: CallHold | undefined;
+    if (opts.spend) {
+      try {
+        hold = await opts.spend.hold();
+      } catch (e) {
+        // Out of budget before the first call is the caller's to report;
+        // out of budget between tool rounds just ends the turn here.
+        if (i === 0 || !isSpendCap(e)) throw fail(e);
+        texts.push("I've reached this month's Bento Man budget, so I'll stop here. Planning still works without me.");
+        break;
+      }
+    }
     const stream = client.beta.messages.stream({
       model,
       max_tokens: MAX_TOKENS,
@@ -96,15 +118,27 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       fallbacks: "default",
     });
     stream.on("text", (delta) => events?.onText?.(delta));
-    const msg = await stream.finalMessage();
+    let msg;
+    try {
+      msg = await stream.finalMessage();
+    } catch (e) {
+      await hold?.settle(null);
+      throw e;
+    }
 
     // Price against the model that served this iteration, not the last one.
-    usageByModel[msg.model] = addUsage(usageByModel[msg.model] ?? ZERO_USAGE, {
+    const callUsage = {
       inputTokens: msg.usage.input_tokens,
       outputTokens: msg.usage.output_tokens,
       cacheWriteTokens: msg.usage.cache_creation_input_tokens ?? 0,
       cacheReadTokens: msg.usage.cache_read_input_tokens ?? 0,
-    });
+    };
+    usageByModel[msg.model] = addUsage(usageByModel[msg.model] ?? ZERO_USAGE, callUsage);
+    await hold?.settle(
+      callUsage.inputTokens || callUsage.outputTokens
+        ? { model: msg.model, inputTokens: callUsage.inputTokens, outputTokens: callUsage.outputTokens, cachedTokens: callUsage.cacheReadTokens, costUsd: costUsd(msg.model, callUsage) }
+        : null,
+    );
     servedBy = msg.model;
     stopReason = msg.stop_reason;
 
@@ -148,7 +182,15 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
 
   const text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
   let assistantMessageId: string | null = null;
-  if (persist) assistantMessageId = (await store.append("assistant", text, ctx.proposal)).id;
+  if (persist) {
+    // The model has been paid by now: if saving the reply fails, the usage
+    // must still ride on the error (E2).
+    try {
+      assistantMessageId = (await store.append("assistant", text, ctx.proposal)).id;
+    } catch (e) {
+      throw fail(e);
+    }
+  }
 
   return { text, proposal: ctx.proposal, usage: totalUsage(usageByModel), usageByModel, stopReason, toolCalls, assistantMessageId, servedBy };
 }

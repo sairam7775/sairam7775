@@ -140,11 +140,17 @@ function cityOfNight(night: string, cities: GapCity[]): GapCity | null {
 
 /** An accommodation booking covers the nights from its start up to, but
  *  not including, its end — a hotel booked 21st to 24th covers three
- *  nights and you leave on the 24th. */
-function coversNight(b: BookingRow, night: string): boolean {
+ *  nights and you leave on the 24th.
+ *
+ *  It covers the night only in the right city: a Kyoto hotel does not give
+ *  an Osaka night a bed. When either side doesn't say where it is (a
+ *  booking with no city, a night the route doesn't place) we can't tell
+ *  them apart, so the booking is given the benefit of the doubt. */
+function coversNight(b: BookingRow, night: string, cityId: string | null): boolean {
   if (b.type !== "accommodation" || !b.startsOn) return false;
   const end = b.endsOn ?? addDays(b.startsOn, 1);
-  return night >= b.startsOn && night < end;
+  if (!(night >= b.startsOn && night < end)) return false;
+  return !cityId || !b.cityId || b.cityId === cityId;
 }
 
 export function detectGaps(input: GapInput): GapReport {
@@ -155,7 +161,7 @@ export function detectGaps(input: GapInput): GapReport {
   // ---------------------------------------------------------- 1. a bed
   const nights: NightCoverage[] = nightList.map((date) => {
     const city = cityOfNight(date, cities);
-    const booking = bookings.find((b) => coversNight(b, date));
+    const booking = bookings.find((b) => coversNight(b, date, city?.cityId ?? null));
     return {
       date,
       cityId: city?.cityId ?? null,

@@ -162,6 +162,32 @@ describe("days", () => {
     expect(ctx2.proposal!.days[0].after.every((i) => byId.get(i.placeId) !== "temple")).toBe(true);
   });
 
+  it("replan_day keeps an accepted later start through unrelated changes", async () => {
+    const store = routed();
+    const ctx = ctxFor(store);
+    await runTool("plan_days", {}, ctx);
+    await store.applyProposal(ctx.proposal!);
+    const date = (await store.state()).days.find((d) => d.cityId === "kyoto-city")!.date;
+
+    const late = ctxFor(store);
+    await runTool("replan_day", { date, ops: [{ op: "start_at", time: "10:00" }] }, late);
+    await store.applyProposal(late.proposal!);
+    const day = (await store.state()).days.find((d) => d.date === date)!;
+    expect(day.items[0].startMin).toBe(600);
+
+    const victim = day.items[day.items.length - 1].placeId;
+    for (const ops of [[{ op: "remove", place_id: victim }], [{ op: "avoid_category", category: "temple" }]]) {
+      const c = ctxFor(store);
+      await runTool("replan_day", { date, ops }, c);
+      const first = c.proposal!.days[0].after[0];
+      expect(first.startMin, JSON.stringify(ops)).toBe(600);
+    }
+
+    const earlier = ctxFor(store);
+    await runTool("replan_day", { date, ops: [{ op: "start_at", time: "08:30" }] }, earlier);
+    expect(earlier.proposal!.days[0].after[0].startMin).toBe(510);
+  });
+
   it("replan_day names a place id it cannot find", async () => {
     const store = routed();
     const r = await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "remove", place_id: "kyt-nope" }] }, ctxFor(store));
