@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
-import { BentoLogo } from "@/components/logo";
+import { AppHeader } from "@/components/app-header";
 
 interface Progress {
   city_id: string;
@@ -45,10 +45,10 @@ export default async function AdminHome() {
   }, {});
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-5 py-14">
-      <Link href="/" className="inline-flex" aria-label="Bento home">
-        <BentoLogo />
-      </Link>
+    <main className="mx-auto w-full max-w-4xl px-5 py-10 sm:py-14">
+      <AppHeader back={{ href: "/trips", label: "Trips" }}>
+        <span className="mono rounded-full bg-sunk px-3 py-1 text-[0.68rem] uppercase tracking-[0.1em] text-ink-2">Admin</span>
+      </AppHeader>
       <h1 className="mt-8 text-3xl font-bold tracking-tight">Curation</h1>
       <p className="mt-2 max-w-xl text-[0.95rem] leading-relaxed text-ink-2">
         Every city exists from day one. What changes is how much of it we can

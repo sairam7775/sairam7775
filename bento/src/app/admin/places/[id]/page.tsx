@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
+import { AppHeader } from "@/components/app-header";
 import { savePlace, verifyPlace } from "../../actions";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { INTEREST_TAGS } from "@/lib/types";
@@ -74,15 +74,12 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
   const verified = place.verification_status === "verified";
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-14">
-      <Link
-        href={`/admin/cities/${place.city_id}`}
-        className="mono text-[0.7rem] uppercase tracking-[0.14em] text-ink-3"
-      >
-        ← {place.city_id}
-      </Link>
+    <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
+      <AppHeader back={{ href: `/admin/cities/${place.city_id}`, label: place.city_id }}>
+        <span className="mono rounded-full bg-sunk px-3 py-1 text-[0.68rem] uppercase tracking-[0.1em] text-ink-2">Admin</span>
+      </AppHeader>
 
-      <div className="mt-7 flex flex-wrap items-start justify-between gap-3">
+      <div className="mt-8 flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-3xl font-bold tracking-tight">{place.name}</h1>
         <span
           className={`mono rounded-[3px] px-2 py-1 text-[0.65rem] uppercase tracking-[0.08em] ${
