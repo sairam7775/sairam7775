@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BentoLogo } from "@/components/logo";
-import { PasswordInput, SubmitButton } from "@/components/form-controls";
+import { DateInput, PasswordInput, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 
 /** Sign-in and sign-up: the form on a frosted tile, and beside it (on wide
@@ -75,6 +75,7 @@ export function Field({
   autoComplete,
   hint,
   placeholder,
+  max,
 }: {
   id: string;
   name: string;
@@ -83,6 +84,7 @@ export function Field({
   autoComplete?: string;
   hint?: string;
   placeholder?: string;
+  max?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -91,6 +93,8 @@ export function Field({
       </label>
       {type === "password" ? (
         <PasswordInput id={id} name={name} required autoComplete={autoComplete} placeholder={placeholder} className={fieldInput} />
+      ) : type === "date" ? (
+        <DateInput id={id} name={name} required max={max} autoComplete={autoComplete} className={fieldInput} />
       ) : (
         <input id={id} name={name} type={type} required autoComplete={autoComplete} placeholder={placeholder} className={fieldInput} />
       )}
