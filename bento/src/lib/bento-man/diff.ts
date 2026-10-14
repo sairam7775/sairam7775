@@ -69,8 +69,28 @@ export const RouteDiffSchema = z.object({
 });
 export type RouteDiff = z.infer<typeof RouteDiffSchema>;
 
+export const TripFieldsSchema = z.object({
+  startDate: z.string().nullable(),
+  endDate: z.string().nullable(),
+  partySize: z.number().int().min(1).max(20),
+  title: z.string().nullable(),
+});
+export type TripFields = z.infer<typeof TripFieldsSchema>;
+
+/** A change of trip dates (#6): proposed, not applied, unless the traveller
+ *  has said Bento Man may change dates without asking. `before` is the trip
+ *  the proposal was made against; accepting refuses if it has moved since. */
+export const DatesDiffSchema = z.object({
+  kind: z.literal("dates"),
+  before: TripFieldsSchema,
+  after: TripFieldsSchema,
+  summary: z.string(),
+});
+export type DatesDiff = z.infer<typeof DatesDiffSchema>;
+
 export const ProposalSchema = z.object({
   summary: z.string(),
+  dates: DatesDiffSchema.optional(),
   route: RouteDiffSchema.optional(),
   days: z.array(DayDiffSchema),
 });
@@ -175,9 +195,26 @@ export function mergeProposals(a: Proposal | null, b: Proposal): Proposal {
   const days = new Map(a.days.map((d) => [d.date, d]));
   for (const d of b.days) days.set(d.date, d);
   const route = b.route ?? a.route;
+  // A later date change in the same turn replaces the earlier one, but
+  // keeps the trip it was first measured against.
+  const dates = b.dates ? (a.dates ? { ...b.dates, before: a.dates.before } : b.dates) : a.dates;
   const dayList = [...days.values()].sort((x, y) => x.date.localeCompare(y.date));
-  const summaryParts = [route ? route.summary : null, dayList.length ? `${dayList.length} day${dayList.length === 1 ? "" : "s"}` : null].filter(Boolean);
-  return { summary: summaryParts.join(" · "), route, days: dayList };
+  const summaryParts = [dates ? dates.summary : null, route ? route.summary : null, dayList.length ? `${dayList.length} day${dayList.length === 1 ? "" : "s"}` : null].filter(Boolean);
+  return { summary: summaryParts.join(" · "), ...(dates ? { dates } : {}), route, days: dayList };
+}
+
+const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+
+/** "1 Oct – 10 Oct (9 nights)", or "no dates". */
+export function describeDates(t: Pick<TripFields, "startDate" | "endDate">): string {
+  if (!t.startDate && !t.endDate) return "no dates";
+  const nights = t.startDate && t.endDate ? Math.round((Date.parse(`${t.endDate}T00:00:00Z`) - Date.parse(`${t.startDate}T00:00:00Z`)) / 86_400_000) : null;
+  const range = `${t.startDate ? shortDate(t.startDate) : "?"} – ${t.endDate ? shortDate(t.endDate) : "?"}`;
+  return nights == null ? range : `${range} (${nights} night${nights === 1 ? "" : "s"})`;
+}
+
+export function datesDiff(before: TripFields, after: TripFields): DatesDiff {
+  return { kind: "dates", before, after, summary: `Dates → ${describeDates(after)}` };
 }
 
 export const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;

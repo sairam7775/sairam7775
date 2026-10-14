@@ -54,7 +54,7 @@ interface Result {
   ms: number;
 }
 
-function grade(s: Scenario, text: string, calls: { name: string; ok: boolean }[], proposal: { route?: unknown; days: unknown[] } | null): string[] {
+function grade(s: Scenario, text: string, calls: { name: string; ok: boolean }[], proposal: { dates?: unknown; route?: unknown; days: unknown[] } | null): string[] {
   const f: string[] = [];
   const e = s.expect;
   const tools = calls.map((c) => c.name);
@@ -66,7 +66,7 @@ function grade(s: Scenario, text: string, calls: { name: string; ok: boolean }[]
   for (const re of e.mustMatch ?? []) if (!re.test(text)) f.push(`prose does not match ${re}`);
   for (const re of e.mustNotMatch ?? []) if (re.test(text)) f.push(`prose matches ${re}`);
   if (e.proposal) {
-    const kind = !proposal ? "none" : proposal.route ? "route" : proposal.days.length ? "days" : "none";
+    const kind = !proposal ? "none" : proposal.route ? "route" : proposal.days.length ? "days" : proposal.dates ? "dates" : "none";
     if (kind !== e.proposal) f.push(`proposal was ${kind}, expected ${e.proposal}`);
   }
   if (!e.skipVoice) for (const v of voiceLint(text)) f.push(`voice: ${v.detail}`);
@@ -89,7 +89,7 @@ async function main() {
     const t0 = Date.now();
     let text = "";
     let calls: { name: string; ok: boolean }[] = [];
-    let proposal: { route?: unknown; days: unknown[] } | null = null;
+    let proposal: { dates?: unknown; route?: unknown; days: unknown[] } | null = null;
     let usage = { input: 0, output: 0, cached: 0 };
     let cost = 0;
     let failures: string[];

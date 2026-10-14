@@ -1,6 +1,6 @@
 "use client";
 
-import { clock, type DayDiff, type Proposal } from "@/lib/bento-man/diff";
+import { clock, describeDates, type DayDiff, type Proposal } from "@/lib/bento-man/diff";
 import { SubmitButton } from "@/components/form-controls";
 import { acceptProposal, rejectProposal } from "./actions";
 
@@ -30,6 +30,22 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
           </span>
         )}
       </div>
+
+      {proposal.dates && (
+        <div className="border-b border-rule px-4 py-3">
+          <p className="mono text-[0.76rem] uppercase tracking-[0.1em] text-ink-3">Dates</p>
+          <p className="mt-1.5 text-[0.92rem]">
+            <span className="text-ink-3 line-through decoration-ink-3">{describeDates(proposal.dates.before)}</span>
+            <span aria-hidden className="mx-2 text-ink-3">→</span>
+            <span className="sr-only"> changes to </span>
+            <span className="font-medium">{describeDates(proposal.dates.after)}</span>
+          </p>
+          {proposal.dates.after.partySize !== proposal.dates.before.partySize && (
+            <p className="mt-1 text-[0.85rem] text-ink-2">{proposal.dates.after.partySize} travelling</p>
+          )}
+          <p className="mt-1 text-[0.82rem] text-ink-3">Your route and planned days move with the dates.</p>
+        </div>
+      )}
 
       {proposal.route && (
         <div className="border-b border-rule px-4 py-3">
@@ -99,11 +115,17 @@ export function ProposalCard({ tripId, messageId, proposal, status }: { tripId: 
       ))}
 
       {status === "proposed" && (
-        <div className="flex gap-2 bg-sunk px-4 py-3">
-          <form action={acceptProposal}>
+        <div className="flex flex-wrap items-center gap-2 bg-sunk px-4 py-3">
+          <form action={acceptProposal} className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
             <SubmitButton className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep" pending="Applying…">Accept</SubmitButton>
+            {proposal.dates && (
+              <label className="order-last flex min-h-10 basis-full cursor-pointer items-center gap-2 text-[0.84rem] text-ink-2">
+                <input type="checkbox" name="remember" className="size-4 accent-accent" />
+                Change dates without asking next time
+              </label>
+            )}
           </form>
           <form action={rejectProposal}>
             <input type="hidden" name="tripId" value={tripId} />

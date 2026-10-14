@@ -14,8 +14,8 @@ import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types"
 import { placeRoute, route } from "@/lib/transit/graph";
 import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand } from "@/lib/types";
-import { clock, computeDayDiff, mergeProposals, routeDiffFrom, type Proposal, type RouteCity } from "./diff";
-import { nightsBetween, type Prefs, type TripState, type TripStore } from "./store";
+import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
+import { nightsBetween, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import { bookedPlaceIds } from "@/lib/vault/match";
 
 export interface ToolContext {
@@ -133,7 +133,8 @@ export const TOOLS: ModelTool[] = [
   },
   {
     name: "set_trip_dates",
-    description: "Set the trip's dates, party size or title. Dates are YYYY-MM-DD. Nights are derived from the dates.",
+    description:
+      "Set the trip's dates, party size or title. Dates are YYYY-MM-DD. Nights are derived from the dates. Filling in dates the trip doesn't have yet, a title or a party size applies at once. Moving dates the trip already has creates a proposal the traveller accepts or rejects, unless the trip state says date changes apply without asking; anything else proposed in the same turn is planned on the new dates.",
     input_schema: {
       type: "object",
       properties: {
@@ -309,6 +310,31 @@ export function plannedDates(state: TripState): Map<string, string> {
   return out;
 }
 
+/** The store, reading as the trip will be if this turn's proposed dates are
+ *  accepted: the dates moved, the accepted route re-laid on them and the
+ *  planned days shifted with the start, the way update_trip_dates does it.
+ *  Writes still go to the real store. */
+function withProposedDates(store: TripStore, d: DatesDiff): TripStore {
+  const state = async (): Promise<TripState> => {
+    const s = await store.state();
+    const shift = s.trip.startDate && d.after.startDate ? nightsBetween(s.trip.startDate, d.after.startDate)! : 0;
+    const dated = allocateDates(d.after.startDate, s.cities, d.after.endDate);
+    return {
+      ...s,
+      trip: { ...s.trip, ...d.after },
+      cities: s.cities.map((c, i) => ({ ...c, arriveDate: dated[i]?.arriveDate ?? null, departDate: dated[i]?.departDate ?? null })),
+      days: shift ? s.days.map((x) => ({ ...x, date: shiftDate(x.date, shift) })) : s.days,
+    };
+  };
+  return new Proxy(store, {
+    get(target, key) {
+      if (key === "state") return state;
+      const v = Reflect.get(target, key, target);
+      return typeof v === "function" ? v.bind(target) : v;
+    },
+  });
+}
+
 /** The trip as it will be if this turn's proposed route is accepted. */
 function withProposedRoute(state: TripState, proposal: Proposal | null): TripState {
   const route = proposal?.route?.after;
@@ -471,7 +497,8 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
 
 export async function runTool(name: string, rawInput: unknown, ctx: ToolContext): Promise<ToolOutcome> {
   const fail = (msg: string): ToolOutcome => ({ result: msg, isError: true });
-  const { store } = ctx;
+  // Dates proposed earlier this turn: every other tool plans on them.
+  const store = ctx.proposal?.dates ? withProposedDates(ctx.store, ctx.proposal.dates) : ctx.store;
 
   switch (name) {
     case "set_preferences": {
@@ -496,19 +523,57 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const p = SetTripDates.safeParse(rawInput);
       if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
       const i = p.data;
-      const current = (await store.state()).trip;
+      // The trip as stored, not as this turn proposes it: that is what a
+      // proposal is measured against and what accepting checks.
+      const real = await ctx.store.state();
+      const pending = ctx.proposal?.dates?.after;
+      const current = pending ? { ...real.trip, ...pending } : real.trip;
       const start = i.start_date ?? current.startDate;
       const end = i.end_date ?? current.endDate;
       if (start && end && end < start) return fail("end_date is before start_date");
-      // The store refuses a range too short for the accepted route; that
-      // refusal is for the traveller, with its arithmetic, not a crash.
-      let trip;
+      // Filling in a date the trip doesn't have yet disturbs nothing, and the
+      // traveller just gave it. Moving one it has is what needs their OK.
+      const moves =
+        Boolean(pending) ||
+        (real.trip.startDate != null && start !== real.trip.startDate) ||
+        (real.trip.endDate != null && end !== real.trip.endDate);
+
+      // A rename or a party size moves nothing, and a traveller who said so
+      // lets dates change without asking (#6). Otherwise it's a proposal.
+      if (!moves || real.prefs.autoApplyDates) {
+        // The store refuses a range too short for the accepted route; that
+        // refusal is for the traveller, with its arithmetic, not a crash.
+        let trip;
+        try {
+          trip = await ctx.store.setTripDates({ startDate: i.start_date, endDate: i.end_date, partySize: i.party_size, title: i.title });
+        } catch (e) {
+          return fail(e instanceof Error ? e.message : "could not change the dates");
+        }
+        return { result: j({ saved: true, trip, nights: nightsBetween(trip.startDate, trip.endDate) }) };
+      }
+
+      // Days are planned on dates: ones already proposed this turn would sit
+      // on the old calendar.
+      if (ctx.proposal?.days.length) return fail("change the dates before planning days, then plan them on the new dates");
+      let after;
       try {
-        trip = await store.setTripDates({ startDate: i.start_date, endDate: i.end_date, partySize: i.party_size, title: i.title });
+        after = await ctx.store.previewTripDates(
+          { startDate: start, endDate: end, partySize: i.party_size ?? current.partySize, title: i.title !== undefined ? i.title : current.title },
+          ctx.proposal?.route?.after,
+        );
       } catch (e) {
         return fail(e instanceof Error ? e.message : "could not change the dates");
       }
-      return { result: j({ saved: true, trip, nights: nightsBetween(trip.startDate, trip.endDate) }) };
+      const fields = (t: TripMeta) => ({ startDate: t.startDate, endDate: t.endDate, partySize: t.partySize, title: t.title });
+      ctx.proposal = mergeProposals(ctx.proposal, { summary: "", dates: datesDiff(fields(real.trip), fields(after)), days: [] });
+      return {
+        result: j({
+          proposed: true,
+          note: "Not applied yet: the traveller accepts or rejects the new dates in the interface. Anything else proposed this turn is planned on these dates and accepted with them.",
+          trip: after,
+          nights: nightsBetween(after.startDate, after.endDate),
+        }),
+      };
     }
 
     case "assess_route": {

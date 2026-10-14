@@ -13,6 +13,10 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
     (nightsBetween(trip.startDate, trip.endDate) != null ? ` · ${nightsBetween(trip.startDate, trip.endDate)} nights` : "") +
     ` · ${trip.partySize} travelling · status ${trip.status}`);
 
+  lines.push(prefs.autoApplyDates
+    ? "date changes: apply without asking (the traveller allowed it)"
+    : "date changes: proposed for the traveller to accept");
+
   if (!prefs.set) {
     lines.push("preferences: not set yet (onboarding)");
   } else {

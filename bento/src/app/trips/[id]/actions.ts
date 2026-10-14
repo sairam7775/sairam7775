@@ -40,6 +40,34 @@ export async function acceptProposal(formData: FormData) {
     redirect(`/trips/${tripId}?error=${encodeURIComponent(`That didn't apply: ${why}`)}`);
   }
 
+  // "Don't ask me again" on a date change is the traveller's permission
+  // (#6). It's a preference, not part of the trip, so it isn't in the
+  // transaction above: if it fails, the dates still moved, and we say so.
+  if (proposal.dates && formData.get("remember") === "on") {
+    try {
+      await store.setAutoApplyDates(true);
+    } catch {
+      redirect(`/trips/${tripId}?error=${encodeURIComponent("The dates changed, but \"don't ask again\" didn't save. Try it from Edit trip.")}`);
+    }
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+}
+
+/** The traveller's answer to "may Bento Man change dates without asking?".
+ *  Only this, and "don't ask again" on an accepted date change, set it. */
+export async function setDatePermission(formData: FormData) {
+  const parsed = z.object({ tripId: z.string().uuid(), allow: z.enum(["on", "off"]) }).safeParse({ tripId: formData.get("tripId"), allow: formData.get("allow") });
+  if (!parsed.success) redirect("/trips");
+  const { tripId, allow } = parsed.data;
+  const db = await createClient();
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) redirect("/sign-in");
+  try {
+    await new SupabaseStore(db, tripId, user.id).setAutoApplyDates(allow === "on");
+  } catch {
+    redirect(`/trips/${tripId}?error=${encodeURIComponent("That setting didn't save. Try again.")}`);
+  }
   revalidatePath(`/trips/${tripId}`);
 }
 

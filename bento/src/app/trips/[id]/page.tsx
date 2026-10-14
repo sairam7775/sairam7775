@@ -13,6 +13,7 @@ import { buildTripView } from "@/lib/bento-man/trip-view";
 import { loadGaps } from "@/lib/vault/store";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
+import { setDatePermission } from "./actions";
 import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
 import { Chat, type ChatMessage } from "./chat";
@@ -109,6 +110,18 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                   <p className="text-[0.84rem] text-ink-3">Changing dates moves your route and your planned days with it. Day plans still waiting for an answer in the chat are closed, since they were made for the old dates. The new dates need room for every night of the route.</p>
                 )}
                 <SubmitButton pending="Saving…" className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">Save</SubmitButton>
+              </form>
+              <form action={setDatePermission} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.86rem] text-ink-2">
+                <input type="hidden" name="tripId" value={id} />
+                <input type="hidden" name="allow" value={state.prefs.autoApplyDates ? "off" : "on"} />
+                <span>
+                  {state.prefs.autoApplyDates
+                    ? "Bento Man changes your dates without asking."
+                    : "Bento Man asks before changing your dates."}
+                </span>
+                <SubmitButton pending="Saving…" className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk">
+                  {state.prefs.autoApplyDates ? "Ask me first" : "Don't ask"}
+                </SubmitButton>
               </form>
             </details>
             {/* On a phone the conversation sits below the whole plan. */}
