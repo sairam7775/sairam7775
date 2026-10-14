@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Tour } from "@/components/tour/tour";
+import { tourSeen } from "@/components/tour/seen";
 import { AppHeader } from "@/components/app-header";
 import { DateRangeInputs, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
@@ -79,6 +81,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
       {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
       <AppHeader back={{ href: "/trips", label: "Your trips" }}>
+        <Tour id="trip" seen={await tourSeen("trip")} />
         {state.trip.startDate && state.trip.endDate && (
           <span className="mono rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice">
             {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
@@ -97,7 +100,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               {state.trip.partySize > 1 && ` ${state.trip.partySize} travelling.`}
               {state.prefs.set && ` ${state.prefs.pace[0].toUpperCase()}${state.prefs.pace.slice(1)} pace.`}
             </p>
-            <details className="group mt-3 max-w-xl" open={!state.trip.startDate || !state.trip.endDate}>
+            <details data-tour="edit-trip" className="group mt-3 max-w-xl" open={!state.trip.startDate || !state.trip.endDate}>
               <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk [&::-webkit-details-marker]:hidden">
                 {state.trip.startDate && state.trip.endDate ? "Edit trip" : "Add dates"}
                 <span aria-hidden className="transition-transform group-open:rotate-180">▾</span>
@@ -135,6 +138,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           {gaps && (
             <Link
               href={`/trips/${id}/vault`}
+              data-tour="vault"
               className={`up lift mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-tile px-4 py-3 shadow-tile ${gaps.blocking ? "bg-ume-soft" : "bg-surface"}`}
               style={{ animationDelay: ".08s" }}
             >
@@ -226,7 +230,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           )}
         </section>
 
-        <section id="bento-man" aria-label="Bento Man" className="tile up flex scroll-mt-4 h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
+        <section id="bento-man" data-tour="chat" aria-label="Bento Man" className="tile up flex scroll-mt-4 h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
           <Chat tripId={id} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
         </section>
       </div>

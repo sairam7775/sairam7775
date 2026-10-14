@@ -7,6 +7,8 @@ import { canEncrypt } from "@/lib/vault/crypto";
 import { vaultTotal, type VaultTotal } from "@/lib/vault/money";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { BookingForm } from "./booking-form";
+import { Tour } from "@/components/tour/tour";
+import { tourSeen } from "@/components/tour/seen";
 import { CoverageRibbon, DismissedGaps, GapCard } from "./gap-cards";
 import { deleteBooking } from "./actions";
 
@@ -79,6 +81,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
       <AppHeader back={{ href: `/trips/${id}`, label: "Back to the plan" }}>
+        <Tour id="vault" seen={await tourSeen("vault")} />
         {report.blocking > 0 && (
           <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-white">{report.blocking} blocking</span>
         )}
@@ -131,7 +134,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
           </span>
         </div>
 
-        <div id="add-booking" className="mt-4 scroll-mt-6">
+        <div id="add-booking" data-tour="add-booking" className="mt-4 scroll-mt-6">
           <BookingForm
             tripId={id}
             cities={cities}

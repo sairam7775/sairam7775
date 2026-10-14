@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { Tour } from "@/components/tour/tour";
+import { tourSeen } from "@/components/tour/seen";
 import { AppHeader } from "@/components/app-header";
 import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
@@ -41,7 +43,9 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
-      <AppHeader />
+      <AppHeader>
+        <Tour id="trips" seen={await tourSeen("trips")} />
+      </AppHeader>
 
       <h1 className="mt-8 text-3xl font-bold tracking-tight">Your trips</h1>
       <p className="mt-2 text-[0.95rem] text-ink-2">
@@ -87,7 +91,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
         </p>
       )}
 
-      <section className="tile up mt-10 p-6" style={{ animationDelay: ".15s" }}>
+      <section data-tour="new-trip" className="tile up mt-10 p-6" style={{ animationDelay: ".15s" }}>
         <h2 className="text-lg font-bold">Start a trip</h2>
         <p className="mt-1 text-[0.9rem] text-ink-2">Everything here is optional and can be changed later — you can also just tell Bento Man.</p>
         <form action={createTrip} className="mt-5 flex flex-col gap-4">
