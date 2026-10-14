@@ -2,8 +2,9 @@
  *
  *  The spend cap (E2) is only as honest as this table. Prices are per
  *  million tokens; cache writes are 1.25× input and cache reads 0.1×.
- *  Unknown models are charged at Opus rates, so a typo in BENTO_MAN_MODEL
- *  over-counts rather than under-counts. */
+ *  Unknown Claude models are charged at Opus rates. Other unknown models
+ *  must have an explicit price before they can take a spend hold. */
+import { configuredProvider, type ProviderName } from "./provider";
 
 export interface Price {
   input: number;
@@ -17,6 +18,17 @@ export const PRICES: Record<string, Price> = {
   "claude-opus-4-8": { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   "claude-sonnet-5": { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 },
   "claude-haiku-4-5": { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
+  // Paid-tier Standard rates as of 2026-10-14 (they rise on 2027-01-01). On the
+  // free tier the real cost is zero, so the cap only errs on the safe side.
+  // Gemini bills cache storage, not cache writes; a write is charged as input.
+  // https://ai.google.dev/gemini-api/docs/pricing
+  "gemini-3.8-flash": { input: 0.75, output: 3.75, cacheWrite: 0.75, cacheRead: 0.075 },
+  "gemini-3.6-flash": { input: 0.75, output: 3.75, cacheWrite: 0.75, cacheRead: 0.075 },
+  "gemini-3.1-flash-lite": { input: 0.25, output: 1.5, cacheWrite: 0.25, cacheRead: 0.025 },
+  // Free tier only, and closed to new API keys (404 "no longer available to new users").
+  "gemini-2.5-flash": { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
+  "gemini-2.5-flash-lite": { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
+  mock: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
 };
 
 export interface Usage {
@@ -50,7 +62,8 @@ export function totalUsage(byModel: UsageByModel): Usage {
 }
 
 export function costUsd(model: string, u: Usage): number {
-  const p = PRICES[model] ?? PRICES["claude-opus-5"];
+  const p = PRICES[model] ?? (model.startsWith("claude-") ? PRICES["claude-opus-5"] : undefined);
+  if (!p) throw new Error(`No price configured for model: ${model}`);
   const perM = 1_000_000;
   return (
     (u.inputTokens * p.input +
@@ -82,9 +95,28 @@ export function callBoundUsd(model: string, kind: "chat" | "parse"): number {
 
 /** D8: Opus 5 first, Sonnet 5 measured against the eval before switching. */
 export const DEFAULT_MODEL = "claude-opus-5";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 
-export function configuredModel(): string {
-  return process.env.BENTO_MAN_MODEL?.trim() || DEFAULT_MODEL;
+export function configuredModel(provider: ProviderName = configuredProvider()): string {
+  return process.env.BENTO_MAN_MODEL?.trim() || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : DEFAULT_MODEL);
+}
+
+/** Gemini models to try, in order, when the one before is out of quota or
+ *  overloaded. Each free-tier model has its own daily quota. Anthropic has
+ *  none here: its fallback is server-side (`fallbacks: "default"`). Every
+ *  model listed must pass the eval, like the primary. "none" turns it off. */
+export const DEFAULT_GEMINI_FALLBACKS = ["gemini-3.6-flash", "gemini-3.1-flash-lite"];
+
+export function configuredFallbacks(provider: ProviderName = configuredProvider(), primary = configuredModel(provider)): string[] {
+  if (provider !== "gemini") return [];
+  const raw = process.env.BENTO_MAN_FALLBACK_MODELS?.trim();
+  const list = raw === "none" ? [] : raw ? raw.split(",").map((m) => m.trim()).filter(Boolean) : DEFAULT_GEMINI_FALLBACKS;
+  return [...new Set(list)].filter((m) => m !== primary);
+}
+
+/** A hold must cover whichever model in the chain ends up answering. */
+export function chainBoundUsd(models: string[], kind: "chat" | "parse"): number {
+  return Math.max(...models.map((m) => callBoundUsd(m, kind)));
 }
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";

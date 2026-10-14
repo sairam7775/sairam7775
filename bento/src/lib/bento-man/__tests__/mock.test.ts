@@ -3,6 +3,7 @@
  *  still goes through the engine and still costs nothing. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { runBentoMan } from "../chat";
+import { AnthropicProvider } from "../provider.anthropic";
 import { createMockClient, mockModeEnabled, mockParse, pickTool } from "../mock";
 import { MemoryStore } from "../store.memory";
 import { ParsedBookingSchema, parseConfirmation } from "@/lib/vault/parse";
@@ -10,7 +11,7 @@ import { ParsedBookingSchema, parseConfirmation } from "@/lib/vault/parse";
 const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
 
 function turn(store: MemoryStore, message: string) {
-  return runBentoMan({ store, client: createMockClient(), model: "mock", effort: "medium", today: "2026-09-15", message, persist: false });
+  return runBentoMan({ store, provider: new AnthropicProvider(createMockClient(), "mock", "medium"), today: "2026-09-15", message, persist: false });
 }
 
 describe("mockModeEnabled", () => {

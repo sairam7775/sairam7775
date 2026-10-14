@@ -5,7 +5,7 @@
  *  engine's. Anything that changes the plan produces a Proposal on the
  *  turn's context, which the traveller accepts or rejects (§08). Nothing
  *  here writes an itinerary. */
-import type Anthropic from "@anthropic-ai/sdk";
+import type { ModelTool } from "./provider";
 import { z } from "zod";
 import { planDay } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
@@ -110,7 +110,7 @@ const RouteBetween = z.object({ from: z.string().min(1), to: z.string().min(1) }
 // ------------------------------------------------------------ definitions
 
 /** Order is stable on purpose: the tool list is part of the cached prefix. */
-export const TOOLS: Anthropic.Beta.BetaTool[] = [
+export const TOOLS: ModelTool[] = [
   {
     name: "set_preferences",
     description:

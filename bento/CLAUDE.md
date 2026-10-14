@@ -108,9 +108,29 @@ Practically:
   `<trip_state>` block + the message → the model → tools → prose. The
   system prompt (`prompt.ts`) and tool list (`tools.ts`) are the cached
   prefix and must stay byte-stable: no dates, names or state in them.
-- The model calls `claude-opus-5` through the beta client with
+- `provider.ts` is the model-call boundary. `BENTO_MAN_PROVIDER` selects
+  `anthropic` (default) or `gemini`; `BENTO_MAN_MODEL` overrides the
+  provider's default model. The chat loop owns tool execution and spend holds.
+- The Anthropic provider calls `claude-opus-5` through the beta client with
   `fallbacks: "default"`, adaptive thinking, `output_config.effort` from
   `BENTO_MAN_EFFORT`. Streaming always; `finalMessage()` for the result.
+- Gemini uses REST streaming and defaults to `gemini-3.8-flash` (`2.5-flash`
+  is closed to new API keys). Its price in `cost.ts` is the paid-tier rate, so
+  the cap is conservative on the free tier; the rate rises on 2027-01-01.
+  500/503/504 are retried twice before anything has streamed; 429 is not
+  (the free tier allows 20 requests a day per model, and a retry spends one).
+  Instead, a 429 or lasting overload moves to the next model in
+  `BENTO_MAN_FALLBACK_MODELS` (default 3.6 Flash, then 3.1 Flash-Lite; each
+  free-tier model has its own quota). Signatures from one Gemini 3 model are
+  accepted by another, checked live. The spend hold is sized to the dearest
+  model in the chain. Each fallback must pass the eval too; the eval itself
+  never falls back, so it always grades the model it names.
+  Free-tier prompts may be used by Google to improve products: do not send
+  production booking text through it. `src/lib/vault/parse.ts`, the booking
+  reader, stays on Anthropic and is independent of the chat provider.
+- Every new provider must pass `scripts/eval-bento-man.ts` against the real
+  model before use. Set `BENTO_MAN_PROVIDER` and its API key to evaluate it;
+  mocks and unit tests do not satisfy this rule.
 - Every tool validates its input with Zod and returns a JSON string. A
   bad input is an `is_error` result the model can recover from, never a
   throw. Tools that change the plan write to `ctx.proposal`, nothing else.

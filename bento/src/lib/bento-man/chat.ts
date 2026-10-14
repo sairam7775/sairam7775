@@ -5,8 +5,8 @@
  *  Prompt caching (§09): the system prompt and tool list are byte-stable;
  *  everything that changes per turn — today's date, the trip state — rides
  *  in the final user message, after the cache breakpoint. */
-import Anthropic from "@anthropic-ai/sdk";
-import { addUsage, CHAT_MAX_OUTPUT_TOKENS, costUsd, totalUsage, ZERO_USAGE, type Effort, type Usage, type UsageByModel } from "./cost";
+import { addUsage, CHAT_MAX_OUTPUT_TOKENS, costUsd, totalUsage, ZERO_USAGE, type Usage, type UsageByModel } from "./cost";
+import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResult } from "./provider";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
 import { SYSTEM_PROMPT } from "./prompt";
@@ -20,9 +20,7 @@ export interface ChatEvents {
 
 export interface RunOptions {
   store: TripStore;
-  client: Anthropic;
-  model: string;
-  effort: Effort;
+  provider: ChatProvider;
   /** "YYYY-MM-DD" */
   today: string;
   message: string;
@@ -69,7 +67,7 @@ const MAX_TOKENS = CHAT_MAX_OUTPUT_TOKENS;
 const REFUSAL_TEXT = "I can't help with that one. Ask me about the trip and I will.";
 
 export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
-  const { store, client, model, effort, today, message, events } = opts;
+  const { store, provider, today, message, events } = opts;
   const maxIterations = opts.maxIterations ?? 8;
   const persist = opts.persist ?? true;
 
@@ -77,20 +75,29 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   if (persist) await store.append("user", message);
 
   const context = buildContext(state, cities, today);
-  const messages: Anthropic.Beta.BetaMessageParam[] = conversation(history, `${context}\n\n${message}`);
+  const messages = conversation(history, `${context}\n\n${message}`);
 
   const ctx: ToolContext = { store, today, proposal: null };
   const texts: string[] = [];
   const toolCalls: ToolCallRecord[] = [];
   const usageByModel: UsageByModel = {};
   let stopReason: string | null = null;
-  let servedBy = model;
+  let servedBy = provider.model;
 
   // A turn that dies after a model call still cost money. The partial
   // usage rides on the error so the caller can record it (E2).
   const fail = (e: unknown) => {
     if (e instanceof Error) (e as Error & { usageByModel?: UsageByModel }).usageByModel = usageByModel;
     return e;
+  };
+
+  const account = async (model: string, usage: Usage, hold?: CallHold) => {
+    usageByModel[model] = addUsage(usageByModel[model] ?? ZERO_USAGE, usage);
+    await hold?.settle(
+      usage.inputTokens || usage.outputTokens
+        ? { model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cachedTokens: usage.cacheReadTokens, costUsd: costUsd(model, usage) }
+        : null,
+    );
   };
 
   try {
@@ -107,60 +114,39 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
         break;
       }
     }
-    const stream = client.beta.messages.stream({
-      model,
-      max_tokens: MAX_TOKENS,
-      system: [{ type: "text", text: SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
-      tools: TOOLS,
-      messages,
-      output_config: { effort },
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-    });
-    stream.on("text", (delta) => events?.onText?.(delta));
     let msg;
     try {
-      msg = await stream.finalMessage();
+      msg = await provider.call({ system: SYSTEM_PROMPT, messages, tools: TOOLS, maxOutputTokens: MAX_TOKENS, onText: events?.onText });
     } catch (e) {
-      await hold?.settle(null);
+      if (e instanceof ProviderCallError && e.usage) await account(e.model, e.usage, hold);
+      else await hold?.settle(null);
       throw e;
     }
 
     // Price against the model that served this iteration, not the last one.
-    const callUsage = {
-      inputTokens: msg.usage.input_tokens,
-      outputTokens: msg.usage.output_tokens,
-      cacheWriteTokens: msg.usage.cache_creation_input_tokens ?? 0,
-      cacheReadTokens: msg.usage.cache_read_input_tokens ?? 0,
-    };
-    usageByModel[msg.model] = addUsage(usageByModel[msg.model] ?? ZERO_USAGE, callUsage);
-    await hold?.settle(
-      callUsage.inputTokens || callUsage.outputTokens
-        ? { model: msg.model, inputTokens: callUsage.inputTokens, outputTokens: callUsage.outputTokens, cachedTokens: callUsage.cacheReadTokens, costUsd: costUsd(msg.model, callUsage) }
-        : null,
-    );
+    await account(msg.model, msg.usage, hold);
     servedBy = msg.model;
-    stopReason = msg.stop_reason;
+    stopReason = msg.stopReason;
 
-    for (const block of msg.content) if (block.type === "text" && block.text.trim()) texts.push(block.text.trim());
+    if (msg.text.trim()) texts.push(msg.text.trim());
 
-    if (msg.stop_reason === "refusal") {
+    if (msg.stopReason === "refusal") {
       texts.push(REFUSAL_TEXT);
       events?.onText?.(REFUSAL_TEXT);
       break;
     }
-    if (msg.stop_reason === "max_tokens") {
+    if (msg.stopReason === "max_tokens") {
       // A cut-off turn can hold half a tool call. Never run it.
       texts.push("That answer ran long and got cut off. Ask me again, or narrower.");
       break;
     }
-    if (msg.stop_reason !== "tool_use") break;
+    if (msg.stopReason !== "tool_use") break;
 
-    const uses = msg.content.filter((b): b is Anthropic.Beta.BetaToolUseBlock => b.type === "tool_use");
+    const uses = msg.toolCalls;
     if (!uses.length) break;
-    messages.push({ role: "assistant", content: msg.content });
+    messages.push({ role: "assistant", content: msg.text, toolCalls: uses });
 
-    const results: Anthropic.Beta.BetaToolResultBlockParam[] = [];
+    const results: ToolResult[] = [];
     for (const use of uses) {
       events?.onTool?.(use.name, "start", true);
       let outcome;
@@ -171,7 +157,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       }
       toolCalls.push({ name: use.name, input: use.input, ok: !outcome.isError });
       events?.onTool?.(use.name, "end", !outcome.isError);
-      results.push({ type: "tool_result", tool_use_id: use.id, content: outcome.result, is_error: outcome.isError || undefined });
+      results.push({ id: use.id, name: use.name, content: outcome.result, isError: outcome.isError || undefined });
     }
     messages.push({ role: "user", content: results });
   }
@@ -202,14 +188,14 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
  *  no reply, and the history window can start mid-exchange. Leading
  *  assistant turns are dropped and same-role neighbours merged, so one odd
  *  row can't make every later turn on the trip fail. */
-export function conversation(history: { role: "user" | "assistant"; content: string }[], current: string): Anthropic.Beta.BetaMessageParam[] {
-  const out: { role: "user" | "assistant"; content: string }[] = [];
+export function conversation(history: { role: "user" | "assistant"; content: string }[], current: string): ModelMessage[] {
+  const out: Extract<ModelMessage, { content: string }>[] = [];
   for (const h of [...history, { role: "user" as const, content: current }]) {
     if (!h.content.trim()) continue;
     if (!out.length && h.role === "assistant") continue;
     const last = out[out.length - 1];
     if (last && last.role === h.role) last.content = `${last.content}\n\n${h.content}`;
-    else out.push({ ...h });
+    else out.push(h.role === "user" ? { role: "user", content: h.content } : { role: "assistant", content: h.content });
   }
   return out;
 }
