@@ -18,8 +18,14 @@ export const PRICES: Record<string, Price> = {
   "claude-opus-4-8": { input: 5, output: 25, cacheWrite: 6.25, cacheRead: 0.5 },
   "claude-sonnet-5": { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 },
   "claude-haiku-4-5": { input: 1, output: 5, cacheWrite: 1.25, cacheRead: 0.1 },
-  // Gemini Developer API free tier only. Update these before using paid billing.
+  // Paid-tier Standard rates as of 2026-10-14 (they rise on 2027-01-01). On the
+  // free tier the real cost is zero, so the cap only errs on the safe side.
+  // Gemini bills cache storage, not cache writes; a write is charged as input.
   // https://ai.google.dev/gemini-api/docs/pricing
+  "gemini-3.8-flash": { input: 0.75, output: 3.75, cacheWrite: 0.75, cacheRead: 0.075 },
+  "gemini-3.6-flash": { input: 0.75, output: 3.75, cacheWrite: 0.75, cacheRead: 0.075 },
+  "gemini-3.1-flash-lite": { input: 0.25, output: 1.5, cacheWrite: 0.25, cacheRead: 0.025 },
+  // Free tier only, and closed to new API keys (404 "no longer available to new users").
   "gemini-2.5-flash": { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
   "gemini-2.5-flash-lite": { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
   mock: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
@@ -89,7 +95,7 @@ export function callBoundUsd(model: string, kind: "chat" | "parse"): number {
 
 /** D8: Opus 5 first, Sonnet 5 measured against the eval before switching. */
 export const DEFAULT_MODEL = "claude-opus-5";
-export const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
+export const DEFAULT_GEMINI_MODEL = "gemini-3.8-flash";
 
 export function configuredModel(provider: ProviderName = configuredProvider()): string {
   return process.env.BENTO_MAN_MODEL?.trim() || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : DEFAULT_MODEL);

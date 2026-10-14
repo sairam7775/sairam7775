@@ -111,8 +111,11 @@ Practically:
 - The Anthropic provider calls `claude-opus-5` through the beta client with
   `fallbacks: "default"`, adaptive thinking, `output_config.effort` from
   `BENTO_MAN_EFFORT`. Streaming always; `finalMessage()` for the result.
-- Gemini uses REST streaming and defaults to `gemini-2.5-flash`. Its prices
-  in `cost.ts` assume the free tier; update them before enabling paid billing.
+- Gemini uses REST streaming and defaults to `gemini-3.8-flash` (`2.5-flash`
+  is closed to new API keys). Its price in `cost.ts` is the paid-tier rate, so
+  the cap is conservative on the free tier; the rate rises on 2027-01-01.
+  500/503/504 are retried twice before anything has streamed; 429 is not
+  (the free tier allows 20 requests a day per model, and a retry spends one).
   Free-tier prompts may be used by Google to improve products: do not send
   production booking text through it. `src/lib/vault/parse.ts`, the booking
   reader, stays on Anthropic and is independent of the chat provider.

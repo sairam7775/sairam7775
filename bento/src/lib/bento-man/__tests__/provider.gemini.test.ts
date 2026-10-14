@@ -86,12 +86,36 @@ describe("GeminiProvider", () => {
   });
 
   it("reports API errors with status without echoing upstream content", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(new Response('{"error":{"message":"private prompt"}}', { status: 429 }));
-    const error = await new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher).call(request).catch((e) => e);
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response('{"error":{"message":"private prompt"}}', { status: 429 }));
+    const wait = vi.fn(async () => {});
+    const error = await new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher, wait).call(request).catch((e) => e);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(wait).not.toHaveBeenCalled();
     expect(error).toBeInstanceOf(ProviderCallError);
     expect(error.status).toBe(429);
     expect(error.message).toBe("Gemini API error (429)");
     expect(error.usage).toBeUndefined();
+  });
+
+  it("retries overload before anything streams, then succeeds", async () => {
+    const fetcher = vi.fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }))
+      .mockResolvedValueOnce(new Response("{}", { status: 500 }))
+      .mockResolvedValueOnce(sse([{ candidates: [{ content: { parts: [{ text: "Hi." }] }, finishReason: "STOP" }] }]));
+    const wait = vi.fn(async () => {});
+    const result = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, wait).call(request);
+    expect(result.text).toBe("Hi.");
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(wait.mock.calls).toEqual([[1_000], [3_000]]);
+  });
+
+  it("does not retry a request error", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 400 }));
+    const wait = vi.fn(async () => {});
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, wait).call(request).catch((e) => e);
+    expect(error.status).toBe(400);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(wait).not.toHaveBeenCalled();
   });
 
   it("rejects incomplete streams and keeps reported usage", async () => {

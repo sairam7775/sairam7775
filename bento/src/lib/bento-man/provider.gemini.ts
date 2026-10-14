@@ -85,6 +85,11 @@ function usageFromMetadata(metadata: NonNullable<Chunk["usageMetadata"]>): Usage
 
 const REFUSALS = new Set(["SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "ESCALATION", "PUP_LIMITED_DISABLED"]);
 
+// Not 429: on the free tier it is usually the daily quota, and a retry only
+// spends another request from it.
+const RETRYABLE = new Set([500, 503, 504]);
+const RETRY_DELAYS_MS = [1_000, 3_000];
+
 export class GeminiProvider implements ChatProvider {
   private readonly assistantParts = new WeakMap<ToolCall[], Part[]>();
   private sequence = 0;
@@ -95,6 +100,7 @@ export class GeminiProvider implements ChatProvider {
     private readonly apiKey = process.env.GEMINI_API_KEY ?? "",
     model = process.env.BENTO_MAN_MODEL?.trim() || DEFAULT_GEMINI_MODEL,
     private readonly fetcher: typeof fetch = fetch,
+    private readonly wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   ) {
     this.model = model.replace(/^models\//, "");
   }
@@ -128,25 +134,34 @@ export class GeminiProvider implements ChatProvider {
     const toolCalls: ToolCall[] = [];
     let finish: string | undefined;
     try {
-      const response = await this.fetcher(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:streamGenerateContent?alt=sse`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
-          signal: AbortSignal.timeout(110_000),
-          body: JSON.stringify({
-            systemInstruction: { parts: [{ text: request.system }] },
-            contents: request.messages.map((message) => this.content(message)),
-            ...(request.tools.length ? { tools: [{ functionDeclarations: request.tools.map((tool) => ({
-              name: tool.name, description: tool.description, parameters: geminiSchema(tool.input_schema),
-            })) }] } : {}),
-            generationConfig: { maxOutputTokens: request.maxOutputTokens, candidateCount: 1 },
-          }),
-        },
-      );
-      // Don't include upstream bodies in errors: they may echo prompts or keys.
-      if (!response.ok) {
+      const body = JSON.stringify({
+        systemInstruction: { parts: [{ text: request.system }] },
+        contents: request.messages.map((message) => this.content(message)),
+        ...(request.tools.length ? { tools: [{ functionDeclarations: request.tools.map((tool) => ({
+          name: tool.name, description: tool.description, parameters: geminiSchema(tool.input_schema),
+        })) }] } : {}),
+        generationConfig: { maxOutputTokens: request.maxOutputTokens, candidateCount: 1 },
+      });
+      let response: Response;
+      for (let attempt = 0; ; attempt++) {
+        response = await this.fetcher(
+          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:streamGenerateContent?alt=sse`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
+            signal: AbortSignal.timeout(110_000),
+            body,
+          },
+        );
+        if (response.ok) break;
+        // Don't include upstream bodies in errors: they may echo prompts or keys.
         await response.body?.cancel();
+        // Overload is common and short. Nothing has streamed
+        // yet, so a retry can't double-bill or double-emit text.
+        if (attempt < RETRY_DELAYS_MS.length && RETRYABLE.has(response.status)) {
+          await this.wait(RETRY_DELAYS_MS[attempt]);
+          continue;
+        }
         throw new ProviderCallError(`Gemini API error (${response.status})`, model, undefined, response.status);
       }
       if (!response.body) throw new Error("Gemini returned no stream");
