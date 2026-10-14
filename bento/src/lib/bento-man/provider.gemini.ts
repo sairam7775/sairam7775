@@ -1,6 +1,6 @@
 /** Gemini Developer API, streamed with REST/SSE; no SDK dependency.
  *  https://ai.google.dev/api/generate-content#method:-models.streamgeneratecontent */
-import { DEFAULT_GEMINI_MODEL, ZERO_USAGE, type Usage } from "./cost";
+import { configuredFallbacks, DEFAULT_GEMINI_MODEL, ZERO_USAGE, type Usage } from "./cost";
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ModelRequest, type ModelResult, type ToolCall } from "./provider";
 
 type Part = {
@@ -94,15 +94,22 @@ export class GeminiProvider implements ChatProvider {
   private readonly assistantParts = new WeakMap<ToolCall[], Part[]>();
   private sequence = 0;
   private readonly responseIds = new Set<string>();
+  /** Out of quota: skipped for the rest of this turn without spending a request. */
+  private readonly exhausted = new Set<string>();
   readonly model: string;
+  readonly fallbacks: string[];
 
   constructor(
     private readonly apiKey = process.env.GEMINI_API_KEY ?? "",
     model = process.env.BENTO_MAN_MODEL?.trim() || DEFAULT_GEMINI_MODEL,
     private readonly fetcher: typeof fetch = fetch,
     private readonly wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    fallbacks?: string[],
   ) {
     this.model = model.replace(/^models\//, "");
+    this.fallbacks = (fallbacks ?? configuredFallbacks("gemini", this.model))
+      .map((m) => m.replace(/^models\//, ""))
+      .filter((m) => m !== this.model);
   }
 
   private content(message: ModelMessage) {
@@ -142,28 +149,39 @@ export class GeminiProvider implements ChatProvider {
         })) }] } : {}),
         generationConfig: { maxOutputTokens: request.maxOutputTokens, candidateCount: 1 },
       });
-      let response: Response;
-      for (let attempt = 0; ; attempt++) {
-        response = await this.fetcher(
-          `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:streamGenerateContent?alt=sse`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
-            signal: AbortSignal.timeout(110_000),
-            body,
-          },
-        );
-        if (response.ok) break;
-        // Don't include upstream bodies in errors: they may echo prompts or keys.
-        await response.body?.cancel();
-        // Overload is common and short. Nothing has streamed
-        // yet, so a retry can't double-bill or double-emit text.
-        if (attempt < RETRY_DELAYS_MS.length && RETRYABLE.has(response.status)) {
-          await this.wait(RETRY_DELAYS_MS[attempt]);
-          continue;
+      // Nothing has streamed until a response is ok, so a retry or a switch to
+      // the next model can't double-bill or double-emit text.
+      let response: Response | undefined;
+      let status = 429;
+      models: for (const candidate of [this.model, ...this.fallbacks]) {
+        if (this.exhausted.has(candidate)) continue;
+        model = candidate;
+        for (let attempt = 0; ; attempt++) {
+          response = await this.fetcher(
+            `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:streamGenerateContent?alt=sse`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
+              signal: AbortSignal.timeout(110_000),
+              body,
+            },
+          );
+          if (response.ok) break models;
+          // Don't include upstream bodies in errors: they may echo prompts or keys.
+          await response.body?.cancel();
+          status = response.status;
+          // Overload is common and short: retry the same model first.
+          if (attempt < RETRY_DELAYS_MS.length && RETRYABLE.has(status)) {
+            await this.wait(RETRY_DELAYS_MS[attempt]);
+            continue;
+          }
+          // Out of quota, or still overloaded: the next model has its own.
+          if (status === 429) this.exhausted.add(candidate);
+          if (status === 429 || RETRYABLE.has(status)) continue models;
+          throw new ProviderCallError(`Gemini API error (${status})`, model, undefined, status);
         }
-        throw new ProviderCallError(`Gemini API error (${response.status})`, model, undefined, response.status);
       }
+      if (!response?.ok) throw new ProviderCallError(`Gemini API error (${status})`, model, undefined, status);
       if (!response.body) throw new Error("Gemini returned no stream");
       for await (const chunk of events(response.body)) {
         if (chunk.modelVersion) model = chunk.modelVersion;

@@ -88,7 +88,7 @@ describe("GeminiProvider", () => {
   it("reports API errors with status without echoing upstream content", async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response('{"error":{"message":"private prompt"}}', { status: 429 }));
     const wait = vi.fn(async () => {});
-    const error = await new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher, wait).call(request).catch((e) => e);
+    const error = await new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher, wait, []).call(request).catch((e) => e);
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(wait).not.toHaveBeenCalled();
     expect(error).toBeInstanceOf(ProviderCallError);
@@ -107,6 +107,39 @@ describe("GeminiProvider", () => {
     expect(result.text).toBe("Hi.");
     expect(fetcher).toHaveBeenCalledTimes(3);
     expect(wait.mock.calls).toEqual([[1_000], [3_000]]);
+  });
+
+  it("moves to the next model when one is out of quota, and skips it on the next call", async () => {
+    const urls: string[] = [];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      urls.push(String(url).split("/models/")[1].split(":")[0]);
+      return String(url).includes("gemini-3.8-flash")
+        ? new Response("{}", { status: 429 })
+        : sse([{ candidates: [{ content: { parts: [{ text: "Hi." }] }, finishReason: "STOP" }], modelVersion: "gemini-3.6-flash" }]);
+    });
+    const provider = new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), ["gemini-3.6-flash", "gemini-3.1-flash-lite"]);
+    expect((await provider.call(request)).model).toBe("gemini-3.6-flash");
+    await provider.call(request);
+    expect(urls).toEqual(["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.6-flash"]);
+  });
+
+  it("moves on after overload outlasts the retries", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) =>
+      String(url).includes("gemini-3.8-flash")
+        ? new Response("{}", { status: 503 })
+        : sse([{ candidates: [{ content: { parts: [{ text: "Hi." }] }, finishReason: "STOP" }] }]),
+    );
+    const result = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), ["gemini-3.6-flash"]).call(request);
+    expect(result.model).toBe("gemini-3.6-flash");
+    expect(fetcher).toHaveBeenCalledTimes(4);
+  });
+
+  it("reports the last status when every model in the chain is out of quota", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 429 }));
+    const provider = new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), ["gemini-3.6-flash"]);
+    expect((await provider.call(request).catch((e) => e)).status).toBe(429);
+    expect((await provider.call(request).catch((e) => e)).status).toBe(429);
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("does not retry a request error", async () => {

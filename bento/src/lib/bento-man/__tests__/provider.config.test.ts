@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { callBoundUsd, configuredModel, costUsd, ZERO_USAGE } from "../cost";
+import { callBoundUsd, chainBoundUsd, configuredFallbacks, configuredModel, costUsd, ZERO_USAGE } from "../cost";
 import { configuredProvider, providerKeyVariable } from "../provider";
 import { GeminiProvider } from "../provider.gemini";
 
@@ -33,6 +33,19 @@ describe("provider configuration and pricing", () => {
   it("prices the default Gemini model at paid-tier rates so the cap holds on paid billing", () => {
     expect(costUsd("gemini-3.8-flash", { inputTokens: 1_000_000, outputTokens: 1_000_000, cacheWriteTokens: 0, cacheReadTokens: 1_000_000 })).toBeCloseTo(0.75 + 3.75 + 0.075);
     expect(callBoundUsd("gemini-3.8-flash", "chat")).toBeGreaterThan(0);
+  });
+
+  it("lists Gemini fallbacks, honours an override and \"none\", and sizes holds to the dearest model", () => {
+    vi.stubEnv("BENTO_MAN_FALLBACK_MODELS", "");
+    expect(configuredFallbacks("gemini", "gemini-3.8-flash")).toEqual(["gemini-3.6-flash", "gemini-3.1-flash-lite"]);
+    expect(configuredFallbacks("gemini", "gemini-3.6-flash")).toEqual(["gemini-3.1-flash-lite"]);
+    expect(configuredFallbacks("anthropic", "claude-opus-5")).toEqual([]);
+    vi.stubEnv("BENTO_MAN_FALLBACK_MODELS", "gemini-3.1-flash-lite, gemini-3.6-flash");
+    expect(configuredFallbacks("gemini", "gemini-3.8-flash")).toEqual(["gemini-3.1-flash-lite", "gemini-3.6-flash"]);
+    vi.stubEnv("BENTO_MAN_FALLBACK_MODELS", "none");
+    expect(configuredFallbacks("gemini", "gemini-3.8-flash")).toEqual([]);
+    expect(chainBoundUsd(["gemini-3.1-flash-lite", "gemini-3.8-flash"], "chat")).toBe(callBoundUsd("gemini-3.8-flash", "chat"));
+    expect(() => chainBoundUsd(["gemini-3.8-flash", "unpriced-model"], "chat")).toThrow("No price configured");
   });
 
   it("retains the unknown-Claude fallback and requires prices for other unknown models", () => {

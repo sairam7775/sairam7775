@@ -101,6 +101,24 @@ export function configuredModel(provider: ProviderName = configuredProvider()): 
   return process.env.BENTO_MAN_MODEL?.trim() || (provider === "gemini" ? DEFAULT_GEMINI_MODEL : DEFAULT_MODEL);
 }
 
+/** Gemini models to try, in order, when the one before is out of quota or
+ *  overloaded. Each free-tier model has its own daily quota. Anthropic has
+ *  none here: its fallback is server-side (`fallbacks: "default"`). Every
+ *  model listed must pass the eval, like the primary. "none" turns it off. */
+export const DEFAULT_GEMINI_FALLBACKS = ["gemini-3.6-flash", "gemini-3.1-flash-lite"];
+
+export function configuredFallbacks(provider: ProviderName = configuredProvider(), primary = configuredModel(provider)): string[] {
+  if (provider !== "gemini") return [];
+  const raw = process.env.BENTO_MAN_FALLBACK_MODELS?.trim();
+  const list = raw === "none" ? [] : raw ? raw.split(",").map((m) => m.trim()).filter(Boolean) : DEFAULT_GEMINI_FALLBACKS;
+  return [...new Set(list)].filter((m) => m !== primary);
+}
+
+/** A hold must cover whichever model in the chain ends up answering. */
+export function chainBoundUsd(models: string[], kind: "chat" | "parse"): number {
+  return Math.max(...models.map((m) => callBoundUsd(m, kind)));
+}
+
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
 
 /** Bento Man does intent and prose; the reasoning is in the engine. Medium

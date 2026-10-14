@@ -75,7 +75,8 @@ function grade(s: Scenario, text: string, calls: { name: string; ok: boolean }[]
 
 async function main() {
   const provider = providerName === "gemini"
-    ? new GeminiProvider(process.env.GEMINI_API_KEY, model)
+    ? // No fallbacks: the eval grades one model, never whichever had quota.
+      new GeminiProvider(process.env.GEMINI_API_KEY, model, fetch, undefined, [])
     : new AnthropicProvider(new Anthropic(), model, effort);
   const list = only ? SCENARIOS.filter((s) => only.includes(s.id)) : SCENARIOS;
   const results: Result[] = [];

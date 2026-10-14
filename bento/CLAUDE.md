@@ -116,6 +116,12 @@ Practically:
   the cap is conservative on the free tier; the rate rises on 2027-01-01.
   500/503/504 are retried twice before anything has streamed; 429 is not
   (the free tier allows 20 requests a day per model, and a retry spends one).
+  Instead, a 429 or lasting overload moves to the next model in
+  `BENTO_MAN_FALLBACK_MODELS` (default 3.6 Flash, then 3.1 Flash-Lite; each
+  free-tier model has its own quota). Signatures from one Gemini 3 model are
+  accepted by another, checked live. The spend hold is sized to the dearest
+  model in the chain. Each fallback must pass the eval too; the eval itself
+  never falls back, so it always grades the model it names.
   Free-tier prompts may be used by Google to improve products: do not send
   production booking text through it. `src/lib/vault/parse.ts`, the booking
   reader, stays on Anthropic and is independent of the chat provider.

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
 import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
 import { runBentoMan } from "@/lib/bento-man/chat";
-import { callBoundUsd, configuredEffort, configuredModel } from "@/lib/bento-man/cost";
+import { chainBoundUsd, configuredEffort, configuredFallbacks, configuredModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { AnthropicProvider } from "@/lib/bento-man/provider.anthropic";
@@ -49,7 +49,8 @@ export async function POST(req: NextRequest) {
   // cost, so parallel turns see each other's holds. The first hold is taken
   // here, where a refusal can still be a plain 402.
   const model = configuredModel(providerName);
-  const hold = () => reserveSpend(user.id, "chat", callBoundUsd(model, "chat"));
+  const fallbacks = mock ? [] : configuredFallbacks(providerName, model);
+  const hold = () => reserveSpend(user.id, "chat", chainBoundUsd([model, ...fallbacks], "chat"));
   let first: Awaited<ReturnType<typeof hold>> | null;
   try {
     first = await hold();
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
   const provider = mock
     ? new AnthropicProvider(createMockClient(), model, configuredEffort())
     : providerName === "gemini"
-      ? new GeminiProvider(process.env.GEMINI_API_KEY, model)
+      ? new GeminiProvider(process.env.GEMINI_API_KEY, model, fetch, undefined, fallbacks)
       : new AnthropicProvider(new Anthropic(), model, configuredEffort());
   const today = new Date().toISOString().slice(0, 10);
   const encoder = new TextEncoder();
@@ -125,7 +126,9 @@ export async function POST(req: NextRequest) {
 function friendly(e: unknown, keyVariable: string): string {
   if (e instanceof ProviderCallError) {
     if (e.status === 401 || e.status === 403) return `Bento Man's API key was rejected. Check ${keyVariable} on the server.`;
-    if (e.status === 429) return "Bento Man is busy — try again in a minute.";
+    // By now every fallback model is out too, which on a free tier can mean
+    // the daily quota: "a minute" would be a promise we can't keep.
+    if (e.status === 429) return "Bento Man has used up its requests for now. Try again later.";
     if (e.status) return `Bento Man hit an error (${e.status}). Try again.`;
   }
   if (e instanceof Anthropic.AuthenticationError) return "Bento Man's API key was rejected. Check ANTHROPIC_API_KEY on the server.";
