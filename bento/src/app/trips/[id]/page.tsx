@@ -9,9 +9,8 @@ import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
-import { dayStats } from "@/lib/engine/day-stats";
+import { buildTripView } from "@/lib/bento-man/trip-view";
 import { loadGaps } from "@/lib/vault/store";
-import { allocateDates } from "@/lib/engine/route";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
 import { UseSeason } from "@/components/seasonal/background";
@@ -54,23 +53,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     status: (m.diff_status as ChatMessage["status"]) ?? null,
   }));
 
-  // Every date of the trip, from the accepted route, whether or not it has a plan yet.
-  const cityById = new Map(state.cities.map((c) => [c.cityId, c]));
-  const dates = new Map<string, { cityId: string | null; cityName: string; tier: string }>();
-  for (const c of allocateDates(state.trip.startDate, [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder), state.trip.endDate)) {
-    for (const d of c.dates) dates.set(d, { cityId: c.cityId, cityName: cityById.get(c.cityId)?.name ?? c.cityId, tier: cityById.get(c.cityId)?.tier ?? "stub" });
-  }
-  for (const d of state.days) {
-    const c = d.cityId ? cityById.get(d.cityId) : null;
-    dates.set(d.date, { cityId: d.cityId, cityName: c?.name ?? d.cityId ?? "—", tier: c?.tier ?? "stub" });
-  }
-  const dayList = [...dates.entries()].sort(([a], [b]) => a.localeCompare(b));
-  const daysByDate = new Map(state.days.map((d) => [d.date, d]));
   const requested = typeof sp.day === "string" ? sp.day : null;
-  const selected = requested && dates.has(requested) ? requested : dayList[0]?.[0] ?? null;
-  const selectedDay = selected ? daysByDate.get(selected) : undefined;
-  const selectedMeta = selected ? dates.get(selected)! : null;
-  const stats = selectedDay ? dayStats(selectedDay.items, state.prefs.pace) : null;
+  const { dayList, statsByDate, selected, selectedDay, selectedMeta, stats } = buildTripView(state, requested);
 
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
@@ -163,8 +147,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
             <nav aria-label="Days" className="up mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" style={{ animationDelay: ".1s" }}>
               <ol className="flex w-max gap-2 pb-1">
                 {dayList.map(([date, meta], i) => {
-                  const day = daysByDate.get(date);
-                  const s = day ? dayStats(day.items, state.prefs.pace) : null;
+                  const s = statsByDate.get(date) ?? null;
                   const pct = s ? Math.min(100, Math.round((s.activeMin / s.budgetMin) * 100)) : 0;
                   const active = date === selected;
                   return (

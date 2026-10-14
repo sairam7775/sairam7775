@@ -8,6 +8,7 @@ import { retimeDay } from "@/lib/engine/retime";
 import { travelFromGraph } from "@/lib/engine/travel";
 import { replanDay } from "@/lib/bento-man/tools";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
+import { clock } from "@/lib/bento-man/diff";
 import type { DayRow, ItemRow, TripStore } from "@/lib/bento-man/store";
 
 /** The traveller's own edits to a day. They apply at once — drag, pin,
@@ -125,8 +126,6 @@ function done(tripId: string, date: string) {
   revalidatePath(`/trips/${tripId}`);
   redirect(`/trips/${tripId}?day=${date}`);
 }
-
-const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 async function guard(formData: FormData) {
   const db = await createClient();

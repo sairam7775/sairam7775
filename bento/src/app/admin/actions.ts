@@ -102,22 +102,76 @@ export async function createPlace(formData: FormData) {
   redirect(`/admin/places/${id}`);
 }
 
-function splitList(value: FormDataEntryValue | null): string[] {
-  return String(value ?? "")
+const optionalText = z.string().nullable().transform((value) => value || null);
+const list = z.string().nullable().transform((value) => (value ?? "")
     .split(",")
     .map((s) => s.trim())
-    .filter(Boolean);
-}
+    .filter(Boolean));
 
-function numberOrNull(value: FormDataEntryValue | null): number | null {
-  const n = Number(value);
-  return value === null || value === "" || Number.isNaN(n) ? null : n;
-}
+const numberOrNull = z.string().nullable().transform((value) => value === null || value === "" ? null : Number(value));
+const axis = numberOrNull.pipe(z.number().min(0).max(1).nullable());
+const minutes = numberOrNull.pipe(z.number().int().nonnegative().nullable());
+const placeEdit = z.object({
+  id: z.string().min(1).regex(/^[a-z0-9-]+$/, "Ids are lowercase letters, numbers and hyphens."),
+  name: z.string().min(1),
+  name_ja: optionalText,
+  category: z.string().min(1),
+  interest_tags: z.array(z.string()),
+  energy: axis,
+  crowd_level: axis,
+  discovery: axis,
+  signature: axis.transform((value) => value ?? 0.5),
+  physical_demand: axis,
+  duration_taste_min: minutes,
+  duration_typical_min: minutes,
+  duration_full_min: minutes,
+  best_window: list,
+  crowd_note: optionalText,
+  worth_it_if: list,
+  skip_if: list,
+  local_tip: optionalText,
+  cost_jpy: numberOrNull.pipe(z.number().nonnegative().nullable()),
+  booking_lead_days: minutes,
+  conflicts_with: list,
+  pairs_with: list,
+  sources: list,
+  seasons: list,
+});
 
 export async function savePlace(formData: FormData) {
   const { db } = await requireAdmin();
-  const id = String(formData.get("id") ?? "");
-  if (!id) return;
+  const rawId = placeEdit.shape.id.safeParse(formData.get("id"));
+  if (!rawId.success) return;
+  const parsed = placeEdit.safeParse({
+    id: rawId.data,
+    name: formData.get("name"),
+    name_ja: formData.get("nameJa"),
+    category: formData.get("category"),
+    interest_tags: formData.getAll("interestTags"),
+    energy: formData.get("energy"),
+    crowd_level: formData.get("crowdLevel"),
+    discovery: formData.get("discovery"),
+    signature: formData.get("signature"),
+    physical_demand: formData.get("physicalDemand"),
+    duration_taste_min: formData.get("durationTaste"),
+    duration_typical_min: formData.get("durationTypical"),
+    duration_full_min: formData.get("durationFull"),
+    best_window: formData.get("bestWindow"),
+    crowd_note: formData.get("crowdNote"),
+    worth_it_if: formData.get("worthItIf"),
+    skip_if: formData.get("skipIf"),
+    local_tip: formData.get("localTip"),
+    cost_jpy: formData.get("costJpy"),
+    booking_lead_days: formData.get("bookingLeadDays"),
+    conflicts_with: formData.get("conflictsWith"),
+    pairs_with: formData.get("pairsWith"),
+    sources: formData.get("sources"),
+    seasons: formData.get("seasons"),
+  });
+  if (!parsed.success) {
+    redirect(`/admin/places/${rawId.data}?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
+  }
+  const { id, ...fields } = parsed.data;
 
   // Editing a verified record returns it to draft. Judgement fields are a
   // signed-off claim about the world; changing one withdraws the signature
@@ -125,32 +179,7 @@ export async function savePlace(formData: FormData) {
   const { error } = await db
     .from("places")
     .update({
-      name: String(formData.get("name") ?? ""),
-      name_ja: String(formData.get("nameJa") ?? "") || null,
-      category: String(formData.get("category") ?? ""),
-      interest_tags: formData.getAll("interestTags").map(String),
-      energy: numberOrNull(formData.get("energy")),
-      crowd_level: numberOrNull(formData.get("crowdLevel")),
-      discovery: numberOrNull(formData.get("discovery")),
-      signature: numberOrNull(formData.get("signature")) ?? 0.5,
-      physical_demand: numberOrNull(formData.get("physicalDemand")),
-
-      duration_taste_min: numberOrNull(formData.get("durationTaste")),
-      duration_typical_min: numberOrNull(formData.get("durationTypical")),
-      duration_full_min: numberOrNull(formData.get("durationFull")),
-      best_window: splitList(formData.get("bestWindow")),
-      crowd_note: String(formData.get("crowdNote") ?? "") || null,
-      worth_it_if: splitList(formData.get("worthItIf")),
-      skip_if: splitList(formData.get("skipIf")),
-      local_tip: String(formData.get("localTip") ?? "") || null,
-
-      cost_jpy: numberOrNull(formData.get("costJpy")),
-      booking_lead_days: numberOrNull(formData.get("bookingLeadDays")),
-      conflicts_with: splitList(formData.get("conflictsWith")),
-      pairs_with: splitList(formData.get("pairsWith")),
-      sources: splitList(formData.get("sources")),
-      seasons: splitList(formData.get("seasons")),
-
+      ...fields,
       verification_status: "draft",
       verified_by: null,
       last_verified: null,

@@ -26,6 +26,10 @@ function routeMisfit(trip: { startDate: string | null; endDate: string | null },
 }
 
 export class SupabaseStore implements TripStore {
+  // Each request owns its store. Share in-flight reads too; trip writes
+  // discard state so a later tool sees the accepted change.
+  private stateCache: Promise<TripState> | null = null;
+  private citiesCache: Promise<CityFacts[]> | null = null;
   private tierCache: Map<string, CoverageTier> | null = null;
 
   constructor(
@@ -34,7 +38,14 @@ export class SupabaseStore implements TripStore {
     readonly userId: string,
   ) {}
 
-  async state(): Promise<TripState> {
+  state(): Promise<TripState> {
+    return this.stateCache ??= this.loadState().catch((error) => {
+      this.stateCache = null;
+      throw error;
+    });
+  }
+
+  private async loadState(): Promise<TripState> {
     const [trip, prefs, cities, days, pending] = await Promise.all([
       this.db.from("trips").select("id, title, start_date, end_date, party_size, status").eq("id", this.tripId).maybeSingle(),
       this.db.from("user_preferences").select("*").eq("user_id", this.userId).maybeSingle(),
@@ -128,6 +139,7 @@ export class SupabaseStore implements TripStore {
     if (p.displayCurrency !== undefined) row.display_currency = p.displayCurrency;
     const { error } = await this.db.from("user_preferences").upsert(row, { onConflict: "user_id" });
     if (error) throw error;
+    this.stateCache = null;
     return (await this.state()).prefs;
   }
 
@@ -191,10 +203,18 @@ export class SupabaseStore implements TripStore {
       p_reject: reject,
     });
     if (error) throw error;
+    this.stateCache = null;
     return (await this.state()).trip;
   }
 
-  async cities(): Promise<CityFacts[]> {
+  cities(): Promise<CityFacts[]> {
+    return this.citiesCache ??= this.loadCities().catch((error) => {
+      this.citiesCache = null;
+      throw error;
+    });
+  }
+
+  private async loadCities(): Promise<CityFacts[]> {
     const { data, error } = await this.db.from("city_coverage").select("city_id, name, coverage_tier, transit_note, verified_places");
     if (error) throw error;
     const graph = await this.graph();
@@ -256,6 +276,7 @@ export class SupabaseStore implements TripStore {
       .select("id")
       .single();
     if (error) throw error;
+    if (proposal) this.stateCache = null;
     return { id: data.id };
   }
 
@@ -303,6 +324,7 @@ export class SupabaseStore implements TripStore {
       p_expect_end: meta.endDate,
     });
     if (error) throw error;
+    this.stateCache = null;
   }
 
   async saveDay(day: DayRow): Promise<void> {
@@ -324,6 +346,7 @@ export class SupabaseStore implements TripStore {
       p_items: items.map((it, i) => dayItemRow(it, i)),
     });
     if (error) throw error;
+    this.stateCache = null;
   }
 }
 
