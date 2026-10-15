@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
+import { AppHeader } from "@/components/app-header";
 import { verifyPlace } from "../actions";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { INTEREST_TAGS } from "@/lib/types";
@@ -38,13 +39,13 @@ export default async function Review({ searchParams }: PageProps<"/admin/review"
   const label = (tag: string) => INTEREST_TAGS.find((t) => t.id === tag)?.label ?? tag;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-14">
-      <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <Link href="/admin" className="mono text-[0.7rem] uppercase tracking-[0.14em] text-ink-3">← Curation</Link>
+    <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
+      <AppHeader back={{ href: "/admin", label: "Curation" }}>
         <span className="mono text-[0.72rem] text-ink-3">{remaining ?? 0} drafts left{city ? ` · ${city}` : ""}</span>
-      </div>
+        <span className="mono rounded-full bg-sunk px-3 py-1 text-[0.68rem] uppercase tracking-[0.1em] text-ink-2">Admin</span>
+      </AppHeader>
 
-      <h1 className="mt-7 text-3xl font-bold tracking-tight">Review queue</h1>
+      <h1 className="mt-8 text-3xl font-bold tracking-tight">Review queue</h1>
       <p className="mt-2 max-w-xl text-[0.95rem] leading-relaxed text-ink-2">
         Read it as a traveller would. If the durations, the window and the tip are what you&rsquo;d tell a
         friend, sign it. If not, open the editor. Anything you skip comes round again.

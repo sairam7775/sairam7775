@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
+import { AppHeader } from "@/components/app-header";
 import { setCoverageTier, createPlace } from "../../actions";
 import { ErrorNote } from "@/app/(auth)/ui";
 
@@ -32,12 +33,12 @@ export default async function CityDetail({ params, searchParams }: PageProps<"/a
     .order("name");
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-5 py-14">
-      <Link href="/admin" className="mono text-[0.7rem] uppercase tracking-[0.14em] text-ink-3">
-        ← Curation
-      </Link>
+    <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
+      <AppHeader back={{ href: "/admin", label: "Curation" }}>
+        <span className="mono rounded-full bg-sunk px-3 py-1 text-[0.68rem] uppercase tracking-[0.1em] text-ink-2">Admin</span>
+      </AppHeader>
 
-      <h1 className="mt-7 text-3xl font-bold tracking-tight">
+      <h1 className="mt-8 text-3xl font-bold tracking-tight">
         {city.name}{" "}
         <span className="text-xl font-medium text-ink-3">{city.name_ja}</span>
       </h1>
