@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
-import { PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
+import { inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { updatePassword } from "@/app/(auth)/actions";
 import { ErrorNote, Field, Submit } from "@/app/(auth)/ui";
 
@@ -11,7 +11,7 @@ export default async function ChangePassword({ searchParams }: PageProps<"/setti
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/forgot-password?error=" + encodeURIComponent("Your reset link expired. Ask for a new one."));
-  const reset = (await cookies()).get(PASSWORD_RESET_COOKIE)?.value === "1";
+  const reset = inPasswordReset((await cookies()).get(PASSWORD_RESET_COOKIE)?.value, user.id);
   const sp = await searchParams;
 
   return (

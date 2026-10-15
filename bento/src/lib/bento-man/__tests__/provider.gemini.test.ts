@@ -164,6 +164,13 @@ describe("GeminiProvider", () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
+  it("marks a call that hit its time limit as timed out", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call(request).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+  });
+
   it("does not retry a request error", async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 400 }));
     const wait = vi.fn(async () => {});

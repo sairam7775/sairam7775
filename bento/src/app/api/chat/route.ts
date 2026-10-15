@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
 
 function friendly(e: unknown, keyVariable: string): string {
   if (e instanceof ProviderCallError) {
+    if (e.timedOut) return "Bento Man took too long to answer. Try again, or ask for a smaller step.";
     if (e.status === 401 || e.status === 403) return `Bento Man's API key was rejected. Check ${keyVariable} on the server.`;
     // By now every fallback model is out too, which on a free tier can mean
     // the daily quota: "a minute" would be a promise we can't keep.

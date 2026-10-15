@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
 import { authErrorMessage } from "@/lib/friendly-errors";
-import { googleSignInEnabled, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
+import { googleSignInEnabled, inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
 
 const credentials = z.object({
@@ -39,6 +39,8 @@ export async function signInWithPassword(formData: FormData) {
     redirect(backTo("/sign-in", parsed.error.issues[0].message, next));
   }
 
+  // A new sign-in is never a password reset, whatever was left in this browser.
+  (await cookies()).delete(PASSWORD_RESET_COOKIE);
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
@@ -155,12 +157,12 @@ const newPassword = z
  *  of a reset link (which signs them in first, via /auth/callback). */
 export async function updatePassword(formData: FormData) {
   const jar = await cookies();
-  const reset = jar.get(PASSWORD_RESET_COOKIE)?.value === "1";
   const back = (message: string) => redirect(`/settings/password?${new URLSearchParams({ error: message })}`);
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(backTo("/sign-in", "Your reset link expired. Ask for a new one.", "/settings/password"));
+  const reset = inPasswordReset(jar.get(PASSWORD_RESET_COOKIE)?.value, user.id);
 
   const parsed = newPassword.safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
   if (!parsed.success) back(parsed.error.issues[0].message);
@@ -180,6 +182,7 @@ export async function updatePassword(formData: FormData) {
 }
 
 export async function signOut() {
+  (await cookies()).delete(PASSWORD_RESET_COOKIE);
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");

@@ -226,7 +226,8 @@ export class GeminiProvider implements ChatProvider {
     } catch (e) {
       if (e instanceof ProviderCallError) throw e;
       // Stream/callback errors retain any usage reported before the failure.
-      throw new ProviderCallError("Gemini stream failed", model, usage);
+      const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      throw new ProviderCallError(timedOut ? "Gemini call timed out" : "Gemini stream failed", model, usage, undefined, timedOut);
     }
   }
 }

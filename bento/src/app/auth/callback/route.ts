@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
     const message = next.startsWith(PASSWORD_RESET_PATH)
@@ -27,10 +27,11 @@ export async function GET(request: NextRequest) {
   // Only ever redirect within this app — an open redirect here would be a
   // credible phishing vector off the back of a real sign-in.
   const response = NextResponse.redirect(`${origin}${next}`);
-  if (next.startsWith(PASSWORD_RESET_PATH)) {
-    response.cookies.set(PASSWORD_RESET_COOKIE, "1", {
+  if (next.startsWith(PASSWORD_RESET_PATH) && data.user) {
+    response.cookies.set(PASSWORD_RESET_COOKIE, data.user.id, {
       httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 15 * 60,
     });
   }
+  else response.cookies.delete(PASSWORD_RESET_COOKIE);
   return response;
 }
