@@ -4,12 +4,28 @@ import { inPasswordReset, PASSWORD_RESET_TTL_S, signResetMarker } from "./auth-c
 const NOW = Date.UTC(2026, 9, 15, 12);
 
 describe("password-reset marker", () => {
-  const saved = process.env.BENTO_BOOKING_REF_KEY;
+  const saved = { auth: process.env.BENTO_AUTH_SECRET, service: process.env.SUPABASE_SERVICE_ROLE_KEY, booking: process.env.BENTO_BOOKING_REF_KEY };
   beforeEach(() => {
-    process.env.BENTO_BOOKING_REF_KEY = "test-key-material";
+    delete process.env.BENTO_AUTH_SECRET;
+    process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role";
   });
   afterEach(() => {
-    process.env.BENTO_BOOKING_REF_KEY = saved;
+    for (const [k, v] of [["BENTO_AUTH_SECRET", saved.auth], ["SUPABASE_SERVICE_ROLE_KEY", saved.service], ["BENTO_BOOKING_REF_KEY", saved.booking]] as const) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  });
+
+  it("works without the booking-reference key", () => {
+    delete process.env.BENTO_BOOKING_REF_KEY;
+    expect(inPasswordReset(signResetMarker("user-a", NOW)!, "user-a", NOW)).toBe(true);
+  });
+
+  it("prefers BENTO_AUTH_SECRET when set", () => {
+    const fromService = signResetMarker("user-a", NOW)!;
+    process.env.BENTO_AUTH_SECRET = "dedicated";
+    expect(inPasswordReset(fromService, "user-a", NOW)).toBe(false);
+    expect(inPasswordReset(signResetMarker("user-a", NOW)!, "user-a", NOW)).toBe(true);
   });
 
   it("counts only for the user the reset link signed in", () => {
@@ -34,7 +50,7 @@ describe("password-reset marker", () => {
 
   it("is off without a server key", () => {
     const marker = signResetMarker("user-a", NOW)!;
-    delete process.env.BENTO_BOOKING_REF_KEY;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
     expect(signResetMarker("user-a", NOW)).toBeNull();
     expect(inPasswordReset(marker, "user-a", NOW)).toBe(false);
   });
