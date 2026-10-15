@@ -166,6 +166,10 @@ a second of latency per turn for no reason. Move both together or neither.
 | `ANTHROPIC_API_KEY` | Bento Man, and reading pasted confirmations |
 | `BENTO_BOOKING_REF_KEY` | `openssl rand -base64 32`. Booking references |
 
+`BENTO_GOOGLE_SIGN_IN=1` shows "Continue with Google". Set it only after
+creating a Google OAuth client and enabling the Google provider in Supabase
+(Authentication → Providers); without both the button ends on an error page.
+
 `BENTO_MONTHLY_SPEND_CAP_USD` defaults to 20 and `BENTO_MAN_MODEL` to
 `claude-opus-5`; set them only to change those.
 

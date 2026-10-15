@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { dbErrorMessage } from "@/lib/friendly-errors";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 
 const newTrip = z.object({
@@ -39,20 +40,21 @@ export async function createTrip(formData: FormData) {
 
   // user_id is set explicitly, and the RLS policy checks it matches the
   // caller — so a forged id fails at the database rather than here.
-  const { error } = await supabase.from("trips").insert({
+  const { data: trip, error } = await supabase.from("trips").insert({
     user_id: user.id,
     title: title ?? null,
     start_date: startDate ?? null,
     end_date: endDate ?? null,
     party_size: partySize,
-  });
+  }).select("id").single();
 
-  if (error) {
-    redirect(`/trips?error=${encodeURIComponent(error.message)}`);
+  if (error || !trip) {
+    redirect(`/trips?error=${encodeURIComponent(dbErrorMessage(error, "create the trip"))}`);
   }
 
+  // Straight into the new trip: that's where the planning starts.
   revalidatePath("/trips");
-  redirect("/trips");
+  redirect(`/trips/${trip.id}`);
 }
 
 const tripEdit = newTrip.extend({ id: z.string().uuid() });

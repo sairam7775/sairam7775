@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { dbErrorMessage } from "@/lib/friendly-errors";
 import { canEncrypt, encryptRef } from "@/lib/vault/crypto";
 import { isWallTime, stamp } from "@/lib/vault/wall-time";
 import type { BookingKind } from "@/lib/types";
@@ -75,7 +76,7 @@ export async function saveBooking(formData: FormData) {
   const res = data.id
     ? await db.from("bookings").update(row).eq("id", data.id).eq("trip_id", tripId)
     : await db.from("bookings").insert(row);
-  if (res.error) back(tripId, res.error.message);
+  if (res.error) back(tripId, dbErrorMessage(res.error, "save the booking"));
 
   revalidatePath(`/trips/${tripId}/vault`);
   revalidatePath(`/trips/${tripId}`);
@@ -85,7 +86,7 @@ export async function saveBooking(formData: FormData) {
 export async function deleteBooking(formData: FormData) {
   const { db, tripId, data } = await guard(formData, z.object({ tripId: z.string().uuid(), id: z.string().uuid() }));
   const { error } = await db.from("bookings").delete().eq("id", data.id).eq("trip_id", tripId);
-  if (error) back(tripId, error.message);
+  if (error) back(tripId, dbErrorMessage(error, "delete the booking"));
   revalidatePath(`/trips/${tripId}/vault`);
   revalidatePath(`/trips/${tripId}`);
   redirect(`/trips/${tripId}/vault`);
@@ -96,7 +97,7 @@ export async function deleteBooking(formData: FormData) {
 export async function dismissGap(formData: FormData) {
   const { db, tripId, data } = await guard(formData, z.object({ tripId: z.string().uuid(), gapKey: z.string().min(1).max(200), note: z.string().trim().max(200).optional() }));
   const { error } = await db.from("gap_dismissals").upsert({ trip_id: tripId, gap_key: data.gapKey, note: data.note || null }, { onConflict: "trip_id,gap_key" });
-  if (error) back(tripId, error.message);
+  if (error) back(tripId, dbErrorMessage(error, "update the list"));
   revalidatePath(`/trips/${tripId}/vault`);
   revalidatePath(`/trips/${tripId}`);
   redirect(`/trips/${tripId}/vault`);

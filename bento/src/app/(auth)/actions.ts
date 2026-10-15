@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
+import { authErrorMessage } from "@/lib/friendly-errors";
+import { googleSignInEnabled, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
 
 const credentials = z.object({
@@ -41,6 +43,9 @@ export async function signInWithPassword(formData: FormData) {
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
+    // Only reachable with the right password, so it gives nothing away.
+    if (error.code === "email_not_confirmed") redirect(backTo("/sign-in", authErrorMessage(error), next));
+    if (error.status === 429) redirect(backTo("/sign-in", authErrorMessage(error), next));
     // Deliberately vague: saying which half was wrong tells an attacker
     // whether an address has an account here.
     redirect(backTo("/sign-in", "That email and password don't match.", next));
@@ -93,7 +98,7 @@ export async function signUpWithPassword(formData: FormData) {
   });
 
   if (error) {
-    redirect(backTo("/sign-up", error.message));
+    redirect(backTo("/sign-up", authErrorMessage(error)));
   }
 
   redirect("/sign-up?sent=1");
@@ -101,11 +106,14 @@ export async function signUpWithPassword(formData: FormData) {
 
 export async function signInWithGoogle(formData: FormData) {
   const next = safeNext(formData.get("next"));
+  if (!googleSignInEnabled()) redirect(backTo("/sign-in", "Google sign-in isn't available yet. Use your email and password.", next));
   // Google sign-in creates an account for a new address, so it passes the
   // same age screen as email sign-up.
   const age = ageStatus(await cookies());
   if (age === "blocked") redirect(backTo("/sign-in", "Sorry, you can't use Bento.", next));
-  if (age === "unknown") redirect(backTo("/sign-up", "One quick thing before you continue.", next));
+  if (age === "unknown") {
+    redirect(backTo("/sign-up", "Before continuing with Google, confirm your date of birth — it's asked once, and not kept.", next));
+  }
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.signInWithOAuth({
@@ -120,6 +128,55 @@ export async function signInWithGoogle(formData: FormData) {
   }
 
   redirect(data.url);
+}
+
+/** "Forgot password?": always the same answer, whether or not the address
+ *  has an account, so the form can't be used to find out who's signed up. */
+export async function requestPasswordReset(formData: FormData) {
+  const parsed = z.email("That doesn't look like an email address.").safeParse(formData.get("email"));
+  if (!parsed.success) redirect(backTo("/forgot-password", parsed.error.issues[0].message));
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
+    redirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/settings/password")}`,
+  });
+  if (error && error.status === 429) redirect(backTo("/forgot-password", authErrorMessage(error)));
+  redirect("/forgot-password?sent=1");
+}
+
+const newPassword = z
+  .object({
+    password: z.string().min(8, "Passwords need at least 8 characters.").max(72, "Passwords can be at most 72 characters."),
+    confirm: z.string(),
+  })
+  .refine((v) => v.password === v.confirm, { message: "The two passwords don't match.", path: ["confirm"] });
+
+/** Sets a new password for the signed-in user: from Settings, or at the end
+ *  of a reset link (which signs them in first, via /auth/callback). */
+export async function updatePassword(formData: FormData) {
+  const jar = await cookies();
+  const reset = jar.get(PASSWORD_RESET_COOKIE)?.value === "1";
+  const back = (message: string) => redirect(`/settings/password?${new URLSearchParams({ error: message })}`);
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect(backTo("/sign-in", "Your reset link expired. Ask for a new one.", "/settings/password"));
+
+  const parsed = newPassword.safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
+  if (!parsed.success) back(parsed.error.issues[0].message);
+
+  // Changing it from Settings asks for the current one, so a session left
+  // open on a shared computer can't be used to take the account over.
+  if (!reset) {
+    const current = String(formData.get("current") ?? "");
+    const check = await supabase.auth.signInWithPassword({ email: user.email ?? "", password: current });
+    if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : "Your current password isn't right.");
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data!.password });
+  if (error) back(authErrorMessage(error));
+  jar.delete(PASSWORD_RESET_COOKIE);
+  redirect("/settings?updated=password");
 }
 
 export async function signOut() {

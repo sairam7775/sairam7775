@@ -130,7 +130,14 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      // fetch() rejects with a TypeError when the network itself failed.
+      setError(
+        err instanceof TypeError
+          ? "Couldn't reach Bento Man. Check your connection and try again."
+          : err instanceof Error
+            ? err.message
+            : "Something went wrong.",
+      );
       setMessages((m) => m.filter((x) => x.id !== draftId || x.content));
       // A refusal before the turn started (throttle, spend cap) never stored
       // the message; give the words back rather than lose them.

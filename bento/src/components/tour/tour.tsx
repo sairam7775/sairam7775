@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { markTourSeen } from "./actions";
 import { TOURS, type TourId } from "./steps";
 import { PAD, placeCard, type Box } from "./place";
 
 const CARD_W = 360;
+const noSubscribe = () => () => {};
 
 /** A spotlight tour. It starts by itself the first time a page is opened
  *  (`seen` comes from a cookie, read on the server) and can be replayed from
@@ -20,6 +22,8 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
   const [, start] = useTransition();
   const card = useRef<HTMLDivElement>(null);
   const step = steps[i];
+  // The overlay is portalled to <body>, which exists only in the browser.
+  const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);
 
   const close = useCallback(() => {
     setOpen(false);
@@ -51,13 +55,13 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule, true);
     };
-  }, [open, step]);
+  }, [open, step, mounted]);
 
   // Move focus to the card on each step, so a keyboard or screen-reader
   // user lands on what changed.
   useEffect(() => {
     if (open) card.current?.focus();
-  }, [open, i]);
+  }, [open, i, mounted]);
 
   const last = i === steps.length - 1;
   const next = () => (last ? close() : setI(i + 1));
@@ -75,21 +79,26 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
       Tour
     </button>
   );
-  if (!open) return button;
+  if (!open || !mounted) return button;
 
-  const vw = typeof window === "undefined" ? 1024 : window.innerWidth;
-  const vh = typeof window === "undefined" ? 768 : window.innerHeight;
+  // clientWidth, not innerWidth: a desktop scrollbar isn't room for the card.
+  const vw = document.documentElement.clientWidth;
+  const vh = window.innerHeight;
   const width = Math.min(CARD_W, vw - 24);
   let style: CSSProperties;
   if (box) {
     style = { ...placeCard(box, cardH, width, vw, vh), width };
   } else {
-    style = { top: "50%", left: "50%", width, transform: "translate(-50%, -50%)" };
+    // Centred with coordinates, not a translate: the card's pop animation
+    // owns `transform` and would undo it.
+    style = { top: Math.max(12, (vh - cardH) / 2), left: (vw - width) / 2, width };
   }
 
-  return (
+  // Portalled: the header the button sits in animates in with a transform,
+  // and a transformed ancestor makes `position: fixed` relative to it —
+  // the card landed off-screen on phones, under the page's own tiles.
+  const overlay = (
     <>
-      {button}
       <div className="fixed inset-0 z-50" onClick={close} aria-hidden>
         {box ? (
           <div
@@ -141,6 +150,13 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
           </button>
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <>
+      {button}
+      {createPortal(overlay, document.body)}
     </>
   );
 }

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ageStatus } from "@/lib/age-gate";
 import { safeNext } from "@/lib/safe-next";
+import { googleSignInEnabled } from "@/lib/auth-config";
 import { confirmAge, signUpWithPassword, signInWithGoogle } from "../actions";
 import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
 
@@ -63,12 +64,16 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
         <>
           {sent && <Notice>Check your email for a confirmation link, then come back and sign in.</Notice>}
 
-          <form action={signInWithGoogle}>
-            <input type="hidden" name="next" value={next} />
-            <GoogleButton label="Continue with Google" />
-          </form>
+          {googleSignInEnabled() && (
+            <>
+              <form action={signInWithGoogle}>
+                <input type="hidden" name="next" value={next} />
+                <GoogleButton label="Continue with Google" />
+              </form>
 
-          <Divider label="or with your email" />
+              <Divider label="or with your email" />
+            </>
+          )}
 
           <form action={signUpWithPassword} className="flex flex-col gap-4">
             <Field id="email" name="email" type="email" label="Email" autoComplete="email" placeholder="you@example.com" />
