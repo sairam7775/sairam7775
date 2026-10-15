@@ -134,12 +134,41 @@ describe("GeminiProvider", () => {
     expect(fetcher).toHaveBeenCalledTimes(4);
   });
 
+  it("tries a model that stayed overloaded last on the turn's later calls", async () => {
+    const urls: string[] = [];
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async (url) => {
+      urls.push(String(url).split("/models/")[1].split(":")[0]);
+      return String(url).includes("gemini-3.8-flash")
+        ? new Response("{}", { status: 503 })
+        : sse([{ candidates: [{ content: { parts: [{ text: "Hi." }] }, finishReason: "STOP" }] }]);
+    });
+    const provider = new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), ["gemini-3.6-flash"]);
+    await provider.call(request);
+    await provider.call(request);
+    expect(urls).toEqual(["gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.6-flash"]);
+  });
+
+  it("still tries overloaded models when every model has been overloaded", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 503 }));
+    const provider = new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), ["gemini-3.6-flash"]);
+    expect((await provider.call(request).catch((e) => e)).status).toBe(503);
+    expect((await provider.call(request).catch((e) => e)).status).toBe(503);
+    expect(fetcher).toHaveBeenCalledTimes(12);
+  });
+
   it("reports the last status when every model in the chain is out of quota", async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 429 }));
     const provider = new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), ["gemini-3.6-flash"]);
     expect((await provider.call(request).catch((e) => e)).status).toBe(429);
     expect((await provider.call(request).catch((e) => e)).status).toBe(429);
     expect(fetcher).toHaveBeenCalledTimes(2);
+  });
+
+  it("marks a call that hit its time limit as timed out", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call(request).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
   });
 
   it("does not retry a request error", async () => {

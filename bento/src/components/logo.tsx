@@ -30,15 +30,18 @@ export function BentoMark({
 export function BentoLogo({
   size = 26,
   tone = "dark",
+  wordClassName = "",
 }: {
   size?: number;
   tone?: "dark" | "light";
+  /** Classes for the "Bento" word, e.g. to hide it on narrow screens. */
+  wordClassName?: string;
 }) {
   return (
     <span className="inline-flex items-center gap-2.5">
       <BentoMark size={size} tone={tone} />
       <span
-        className="font-bold tracking-tight"
+        className={`font-bold tracking-tight ${wordClassName}`}
         style={{ fontSize: size * 0.72, lineHeight: 1 }}
       >
         Bento

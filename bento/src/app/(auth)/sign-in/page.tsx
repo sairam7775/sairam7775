@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { googleSignInEnabled } from "@/lib/auth-config";
 import { signInWithPassword, signInWithGoogle } from "../actions";
 import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Submit } from "../ui";
 
@@ -41,17 +42,24 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
     >
       <ErrorNote message={error} />
 
-      <form action={signInWithGoogle}>
-        <input type="hidden" name="next" value={next} />
-        <GoogleButton label="Continue with Google" />
-      </form>
+      {googleSignInEnabled() && (
+        <>
+          <form action={signInWithGoogle}>
+            <input type="hidden" name="next" value={next} />
+            <GoogleButton label="Continue with Google" />
+          </form>
 
-      <Divider label="or with your email" />
+          <Divider label="or with your email" />
+        </>
+      )}
 
       <form action={signInWithPassword} className="flex flex-col gap-4">
         <input type="hidden" name="next" value={next} />
         <Field id="email" name="email" type="email" label="Email" autoComplete="email" placeholder="you@example.com" />
         <Field id="password" name="password" type="password" label="Password" autoComplete="current-password" />
+        <Link href="/forgot-password" className="-mt-1 self-start text-[0.88rem] text-ink-2 underline underline-offset-2 hover:text-ink">
+          Forgot password?
+        </Link>
         <Submit label="Sign in" pending="Signing in…" />
       </form>
 

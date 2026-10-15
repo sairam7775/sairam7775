@@ -262,7 +262,7 @@ h1, h2, h3, h4 {
 
 /* Fewer particles on a phone. */
 @media (max-width: 640px) {
-  .season-fall:nth-child(n + 11), .season-snow:nth-child(n + 36), .season-firefly:nth-child(n + 10) { display: none; }
+  .season-fall:nth-child(n + 7), .season-snow:nth-child(n + 21), .season-firefly:nth-child(n + 7) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

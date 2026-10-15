@@ -125,11 +125,17 @@ export async function POST(req: NextRequest) {
 
 function friendly(e: unknown, keyVariable: string): string {
   if (e instanceof ProviderCallError) {
+    if (e.timedOut) return "Bento Man took too long to answer. Try again, or ask for a smaller step.";
     if (e.status === 401 || e.status === 403) return `Bento Man's API key was rejected. Check ${keyVariable} on the server.`;
     // By now every fallback model is out too, which on a free tier can mean
     // the daily quota: "a minute" would be a promise we can't keep.
     if (e.status === 429) return "Bento Man has used up its requests for now. Try again later.";
+    if (e.status && e.status >= 500) return "Bento Man's model is overloaded right now. Try again in a minute.";
     if (e.status) return `Bento Man hit an error (${e.status}). Try again.`;
+  }
+  // AbortSignal.timeout on a model call that never finished.
+  if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
+    return "Bento Man took too long to answer. Try again, or ask for a smaller step.";
   }
   if (e instanceof Anthropic.AuthenticationError) return "Bento Man's API key was rejected. Check ANTHROPIC_API_KEY on the server.";
   if (e instanceof Anthropic.RateLimitError) return "Bento Man is busy — try again in a minute.";

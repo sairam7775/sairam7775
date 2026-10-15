@@ -68,7 +68,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
       <AppHeader back={{ href: "/trips", label: "Your trips" }}>
         <Tour id="trip" seen={await tourSeen("trip")} />
         {state.trip.startDate && state.trip.endDate && (
-          <span className="mono rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice">
+          <span className="mono hidden rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice sm:inline">
             {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
           </span>
         )}
@@ -78,6 +78,12 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         <section aria-label="The plan" className="min-w-0">
           <header className="up" style={{ animationDelay: ".05s" }}>
             <h1 className="text-[2.4rem] font-extrabold leading-none sm:text-[3rem]">{state.trip.title ?? "Untitled trip"}</h1>
+            {/* On a phone the dates leave the header, which has no room for them. */}
+            {state.trip.startDate && state.trip.endDate && (
+              <p className="mono mt-2 text-[0.8rem] text-ink-3 sm:hidden">
+                {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
+              </p>
+            )}
             <p className="mt-2.5 max-w-[60ch] text-[0.98rem] leading-relaxed text-ink-2">
               {state.cities.length
                 ? `${state.cities.map((c) => (c.nights ? `${c.name} ${c.nights}n` : `${c.name} day trip`)).join(" → ")}.`
@@ -226,7 +232,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           )}
         </section>
 
-        <section id="bento-man" data-tour="chat" aria-label="Bento Man" className="tile up flex scroll-mt-4 h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
+        <section id="bento-man" data-tour="chat" aria-label="Bento Man" className="tile up flex scroll-mt-4 bg-surface! h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
           <Chat tripId={id} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
         </section>
       </div>

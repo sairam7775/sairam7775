@@ -89,6 +89,9 @@ const REFUSALS = new Set(["SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTE
 // spends another request from it.
 const RETRYABLE = new Set([500, 503, 504]);
 const RETRY_DELAYS_MS = [1_000, 3_000];
+// A turn can make several calls inside the route's 120 s; one stalled call
+// must not use all of it.
+const CALL_TIMEOUT_MS = 60_000;
 
 export class GeminiProvider implements ChatProvider {
   private readonly assistantParts = new WeakMap<ToolCall[], Part[]>();
@@ -96,6 +99,9 @@ export class GeminiProvider implements ChatProvider {
   private readonly responseIds = new Set<string>();
   /** Out of quota: skipped for the rest of this turn without spending a request. */
   private readonly exhausted = new Set<string>();
+  /** Still overloaded after its retries: tried last for the rest of this turn,
+   *  so one busy model doesn't cost every tool round its full retry wait. */
+  private readonly overloaded = new Set<string>();
   readonly model: string;
   readonly fallbacks: string[];
 
@@ -153,7 +159,9 @@ export class GeminiProvider implements ChatProvider {
       // the next model can't double-bill or double-emit text.
       let response: Response | undefined;
       let status = 429;
-      models: for (const candidate of [this.model, ...this.fallbacks]) {
+      const all = [this.model, ...this.fallbacks];
+      const order = [...all.filter((m) => !this.overloaded.has(m)), ...all.filter((m) => this.overloaded.has(m))];
+      models: for (const candidate of order) {
         if (this.exhausted.has(candidate)) continue;
         model = candidate;
         for (let attempt = 0; ; attempt++) {
@@ -162,7 +170,7 @@ export class GeminiProvider implements ChatProvider {
             {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
-              signal: AbortSignal.timeout(110_000),
+              signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
               body,
             },
           );
@@ -177,6 +185,7 @@ export class GeminiProvider implements ChatProvider {
           }
           // Out of quota, or still overloaded: the next model has its own.
           if (status === 429) this.exhausted.add(candidate);
+          else if (RETRYABLE.has(status)) this.overloaded.add(candidate);
           if (status === 429 || RETRYABLE.has(status)) continue models;
           throw new ProviderCallError(`Gemini API error (${status})`, model, undefined, status);
         }
@@ -217,7 +226,8 @@ export class GeminiProvider implements ChatProvider {
     } catch (e) {
       if (e instanceof ProviderCallError) throw e;
       // Stream/callback errors retain any usage reported before the failure.
-      throw new ProviderCallError("Gemini stream failed", model, usage);
+      const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+      throw new ProviderCallError(timedOut ? "Gemini call timed out" : "Gemini stream failed", model, usage, undefined, timedOut);
     }
   }
 }
