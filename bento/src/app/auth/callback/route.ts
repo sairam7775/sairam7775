@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
-import { PASSWORD_RESET_COOKIE, PASSWORD_RESET_PATH } from "@/lib/auth-config";
+import { PASSWORD_RESET_COOKIE, PASSWORD_RESET_PATH, PASSWORD_RESET_TTL_S, signResetMarker } from "@/lib/auth-config";
 
 /** Exchanges an OAuth or email-confirmation code for a session. */
 export async function GET(request: NextRequest) {
@@ -27,9 +27,10 @@ export async function GET(request: NextRequest) {
   // Only ever redirect within this app — an open redirect here would be a
   // credible phishing vector off the back of a real sign-in.
   const response = NextResponse.redirect(`${origin}${next}`);
-  if (next.startsWith(PASSWORD_RESET_PATH) && data.user) {
-    response.cookies.set(PASSWORD_RESET_COOKIE, data.user.id, {
-      httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: 15 * 60,
+  const marker = next.startsWith(PASSWORD_RESET_PATH) && data.user ? signResetMarker(data.user.id) : null;
+  if (marker) {
+    response.cookies.set(PASSWORD_RESET_COOKIE, marker, {
+      httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", maxAge: PASSWORD_RESET_TTL_S,
     });
   }
   else response.cookies.delete(PASSWORD_RESET_COOKIE);

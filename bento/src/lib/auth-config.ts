@@ -1,17 +1,48 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+/** Set by /auth/callback when a password-reset link is used: proof, for a
+ *  few minutes, that this browser came through the emailed link — so the
+ *  new password can be set without the forgotten one. The value is
+ *  `userId.expiry.signature`, signed with a server-only key, so it can't be
+ *  forged from a user id; it only counts for that user, and sign-in and
+ *  sign-out clear it. */
+export const PASSWORD_RESET_COOKIE = "bento_pw_reset";
+export const PASSWORD_RESET_PATH = "/settings/password";
+export const PASSWORD_RESET_TTL_S = 15 * 60;
+
+// Derived from the booking key with its own label, so the two uses can't
+// stand in for each other and no new secret has to be deployed.
+function resetKey(): Buffer | null {
+  const raw = process.env.BENTO_BOOKING_REF_KEY;
+  if (!raw) return null;
+  return createHmac("sha256", raw).update("bento password-reset marker v1").digest();
+}
+
+function sign(payload: string, key: Buffer): string {
+  return createHmac("sha256", key).update(payload).digest("base64url");
+}
+
+export function signResetMarker(userId: string, now = Date.now()): string | null {
+  const key = resetKey();
+  if (!key) return null;
+  const payload = `${userId}.${Math.floor(now / 1000) + PASSWORD_RESET_TTL_S}`;
+  return `${payload}.${sign(payload, key)}`;
+}
+
+export function inPasswordReset(cookieValue: string | undefined, userId: string | undefined, now = Date.now()): boolean {
+  const key = resetKey();
+  if (!key || !cookieValue || !userId) return false;
+  const [id, exp, mac, ...rest] = cookieValue.split(".");
+  if (rest.length || !id || !exp || !mac || id !== userId) return false;
+  if (!/^\d+$/.test(exp) || Number(exp) * 1000 < now) return false;
+  const want = Buffer.from(sign(`${id}.${exp}`, key));
+  const got = Buffer.from(mac);
+  return want.length === got.length && timingSafeEqual(want, got);
+}
+
 /** Google sign-in needs a Google OAuth client and the provider switched on
  *  in Supabase. Until both are done the button would lead to a raw error
  *  page, so it stays hidden unless BENTO_GOOGLE_SIGN_IN=1. */
-/** Set by /auth/callback when a password-reset link is used: proof, for a
- *  few minutes, that this session came from the emailed link — so the new
- *  password can be set without the forgotten one. It holds the recovered
- *  user's id and only counts for that user; sign-in and sign-out clear it. */
-export const PASSWORD_RESET_COOKIE = "bento_pw_reset";
-export const PASSWORD_RESET_PATH = "/settings/password";
-
-export function inPasswordReset(cookieValue: string | undefined, userId: string | undefined): boolean {
-  return !!cookieValue && !!userId && cookieValue === userId;
-}
-
 export function googleSignInEnabled(): boolean {
   return process.env.BENTO_GOOGLE_SIGN_IN === "1";
 }

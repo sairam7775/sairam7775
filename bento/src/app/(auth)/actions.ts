@@ -142,7 +142,11 @@ export async function requestPasswordReset(formData: FormData) {
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
     redirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/settings/password")}`,
   });
-  if (error && error.status === 429) redirect(backTo("/forgot-password", authErrorMessage(error)));
+  // An unknown address isn't an error (Supabase answers the same either
+  // way), so a real failure can be reported without revealing anything.
+  if (error) {
+    redirect(backTo("/forgot-password", error.status === 429 ? authErrorMessage(error) : "We couldn't send the reset email just now. Try again in a few minutes."));
+  }
   redirect("/forgot-password?sent=1");
 }
 
