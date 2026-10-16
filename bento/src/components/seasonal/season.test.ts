@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { isSeason, noise, seasonOf } from "./season";
+import { isSeason, noise, parseBackground, seasonOf } from "./season";
+
+describe("parseBackground", () => {
+  it("keeps a chosen season", () => {
+    expect(parseBackground("spring")).toBe("spring");
+    expect(parseBackground("winter")).toBe("winter");
+  });
+
+  it("is automatic for anything else", () => {
+    expect(parseBackground(undefined)).toBe("auto");
+    expect(parseBackground("auto")).toBe("auto");
+    expect(parseBackground("monsoon")).toBe("auto");
+  });
+});
 
 describe("seasonOf", () => {
   it("follows Japan's seasons by month", () => {

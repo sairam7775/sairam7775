@@ -9,6 +9,7 @@ import "@fontsource/dm-mono/500.css";
 import { cookies } from "next/headers";
 import "./globals.css";
 import { SeasonalBackground } from "@/components/seasonal/background";
+import { BACKGROUND_COOKIE, parseBackground } from "@/components/seasonal/season";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 
 /* Fonts are self-hosted (fontsource) rather than fetched at build time, so
@@ -43,11 +44,13 @@ export async function generateViewport(): Promise<Viewport> {
 }
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const jar = await cookies();
+  const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
+  const background = parseBackground(jar.get(BACKGROUND_COOKIE)?.value);
   return (
     <html lang="en" className="h-full antialiased" data-theme={theme === "system" ? undefined : theme}>
       <body className="min-h-full flex flex-col">
-        <SeasonalBackground>{children}</SeasonalBackground>
+        <SeasonalBackground chosen={background === "auto" ? null : background}>{children}</SeasonalBackground>
       </body>
     </html>
   );

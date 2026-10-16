@@ -6,16 +6,23 @@ import { createClient } from "@/lib/supabase/server";
 import { Notice } from "@/app/(auth)/ui";
 import { replayTours } from "@/components/tour/actions";
 import { THEME_COOKIE, parseTheme, type Theme } from "@/lib/theme";
-import { setTheme } from "./actions";
+import { setBackground, setTheme } from "./actions";
+import { ChoiceButton, SubmitButton } from "@/components/form-controls";
+import { BACKGROUND_COOKIE, parseBackground, type BackgroundChoice } from "@/components/seasonal/season";
 
 const THEME_LABELS: [Theme, string][] = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
+const BACKGROUND_LABELS: [BackgroundChoice, string][] = [
+  ["auto", "Automatic"], ["spring", "Spring"], ["summer", "Summer"], ["autumn", "Autumn"], ["winter", "Winter"],
+];
 
 export default async function Settings({ searchParams }: PageProps<"/settings">) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/settings");
   const sp = await searchParams;
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const jar = await cookies();
+  const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
+  const background = parseBackground(jar.get(BACKGROUND_COOKIE)?.value);
   const viaGoogle = user.app_metadata?.provider === "google" && !(user.identities ?? []).some((i) => i.provider === "email");
 
   return (
@@ -51,15 +58,35 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
         </p>
         <form action={setTheme} role="group" aria-labelledby="theme-heading" className="mt-4 inline-flex rounded-full border border-rule p-1">
           {THEME_LABELS.map(([value, label]) => (
-            <button
+            <ChoiceButton
               key={value}
               name="theme"
               value={value}
-              aria-pressed={theme === value}
+              pressed={theme === value}
               className={`min-h-10 rounded-full px-4 text-[0.92rem] ${theme === value ? "bg-lacquer text-rice" : "text-ink-2 hover:bg-sunk hover:text-ink"}`}
             >
               {label}
-            </button>
+            </ChoiceButton>
+          ))}
+        </form>
+      </section>
+
+      <section className="tile up mt-4 p-6">
+        <h2 id="background-heading" className="text-[1.1rem] font-bold">Background</h2>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+          The scene behind every page. Automatic follows today&rsquo;s date, and a trip&rsquo;s own dates on its page. Kept on this device.
+        </p>
+        <form action={setBackground} role="group" aria-labelledby="background-heading" className="mt-4 flex flex-wrap gap-2">
+          {BACKGROUND_LABELS.map(([value, label]) => (
+            <ChoiceButton
+              key={value}
+              name="background"
+              value={value}
+              pressed={background === value}
+              className={`min-h-10 rounded-full border px-4 text-[0.92rem] ${background === value ? "border-lacquer bg-lacquer text-rice" : "border-rule text-ink-2 hover:bg-sunk hover:text-ink"}`}
+            >
+              {label}
+            </ChoiceButton>
           ))}
         </form>
       </section>
@@ -70,9 +97,9 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
           The short walkthrough of your trips, a trip and its vault. It starts again on the trips list, then on each page as you open it.
         </p>
         <form action={replayTours}>
-          <button className="mt-4 inline-flex min-h-11 items-center rounded-full border border-rule px-5 text-[0.95rem] hover:bg-sunk">
+          <SubmitButton pending="Opening…" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-rule px-5 text-[0.95rem] hover:bg-sunk">
             Show the tour again
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </main>
