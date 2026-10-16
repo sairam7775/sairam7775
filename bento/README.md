@@ -183,6 +183,20 @@ Without it Google sign-in bounces, and the failure looks like a broken
 login rather than a missing setting. Preview deployments get their own
 URLs, so add the wildcard too if you want sign-in to work on them.
 
+**And point the email links at `/auth/confirm`.** Supabase's default links
+use a PKCE code, which only works in the browser that asked for the email —
+a reset requested on a laptop and opened from a phone's mail app fails with
+`bad_code_verifier`. Under Authentication → Emails → Templates, set the link
+(the `href`) in two templates:
+
+- Reset password:
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/settings/password`
+- Confirm sign up:
+  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/trips`
+
+`{{ .SiteURL }}` is the Site URL under URL Configuration, so set that to the
+deployed URL. `/auth/callback` stays for Google sign-in.
+
 ### Before anyone else uses it
 
 - **`maxDuration` is 120 seconds** on `/api/chat`. Check that against your
@@ -462,7 +476,8 @@ someone.
 src/
   app/
     (auth)/           sign-in, sign-up, shared form UI, auth actions
-    auth/callback/    OAuth and email confirmation exchange
+    auth/callback/    OAuth code exchange (PKCE)
+    auth/confirm/     email links: reset password, confirm sign-up
     trips/            trip list and creation; trips/[id] is the day view and the chat
     trips/[id]/vault/ bookings and the gap detector
     api/chat/         one streamed turn with Bento Man
