@@ -78,6 +78,11 @@ describe("a time given as a date alone", () => {
     expect(bookingSlot(busNoEnd, "2027-04-09")).toEqual({ startMin: null, endMin: null, part: "ends", busy: null });
   });
 
+  it("shows a known end when only the start is unknown", () => {
+    const tour = { type: "activity", startsAt: "2027-04-07T00:00:00.000Z", endsAt: "2027-04-07T17:00:00.000Z", startTimeKnown: false, endTimeKnown: true };
+    expect(bookingSlot(tour, "2027-04-07")).toEqual({ startMin: 17 * 60, endMin: null, part: "ends", busy: null });
+  });
+
   it("still sits only on its own dates", () => {
     expect(canPlanOn(ticket, "2027-04-07")).toBe(true);
     expect(canPlanOn(ticket, "2027-04-06")).toBe(false);

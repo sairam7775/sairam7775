@@ -70,7 +70,11 @@ export function bookingSlot(b: PlannableBooking, date: string): {
   const endMin = b.endsAt && b.endTimeKnown !== false ? minuteOf(b.endsAt) : null;
   const overnight = range.first !== range.last;
   if (date === range.first) {
-    if (startMin == null) return { startMin: null, endMin: null, part: "starts", busy: null };
+    if (startMin == null) {
+      // No start time, but a known end that same day: show it ending then.
+      if (!overnight && endMin != null) return { startMin: endMin, endMin: null, part: "ends", busy: null };
+      return { startMin: null, endMin: null, part: "starts", busy: null };
+    }
     if (!overnight) {
       const end = endMin != null && endMin > startMin ? endMin : null;
       return { startMin, endMin: end, part: "starts", busy: end != null && !stay ? { from: startMin, to: end } : null };
