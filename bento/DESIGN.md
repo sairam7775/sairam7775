@@ -187,7 +187,7 @@ The page is warm rice white (`{colors.paper}`), never pure white; tiles are whit
 - Soft geometry throughout: 20px tiles, 30px boxes, pill buttons and chips. No hard corners on anything you can touch.
 - One elevation tier (`{elevation.tile}`). Depth comes from the lacquer frame, not stacked shadows.
 - Proposals, never silent edits: anything Bento Man suggests arrives as a card with Accept / Reject.
-- Light and dark follow the system. Dark mode is a palette swap on the same variables, not a separate design.
+- Light and dark follow the system unless the traveller picks one in Settings → Theme. Dark mode is a palette swap on the same variables, not a separate design.
 
 ## Colors
 

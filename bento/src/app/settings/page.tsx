@@ -1,15 +1,21 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
 import { Notice } from "@/app/(auth)/ui";
 import { replayTours } from "@/components/tour/actions";
+import { THEME_COOKIE, parseTheme, type Theme } from "@/lib/theme";
+import { setTheme } from "./actions";
+
+const THEME_LABELS: [Theme, string][] = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
 
 export default async function Settings({ searchParams }: PageProps<"/settings">) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/settings");
   const sp = await searchParams;
+  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
   const viaGoogle = user.app_metadata?.provider === "google" && !(user.identities ?? []).some((i) => i.provider === "email");
 
   return (
@@ -36,6 +42,26 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
             </Link>
           </>
         )}
+      </section>
+
+      <section className="tile up mt-4 p-6">
+        <h2 id="theme-heading" className="text-[1.1rem] font-bold">Theme</h2>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+          System follows your device. The choice is kept on this device.
+        </p>
+        <form action={setTheme} role="group" aria-labelledby="theme-heading" className="mt-4 inline-flex rounded-full border border-rule p-1">
+          {THEME_LABELS.map(([value, label]) => (
+            <button
+              key={value}
+              name="theme"
+              value={value}
+              aria-pressed={theme === value}
+              className={`min-h-10 rounded-full px-4 text-[0.92rem] ${theme === value ? "bg-lacquer text-rice" : "text-ink-2 hover:bg-sunk hover:text-ink"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </form>
       </section>
 
       <section className="tile up mt-4 p-6">
