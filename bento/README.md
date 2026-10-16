@@ -190,12 +190,16 @@ a reset requested on a laptop and opened from a phone's mail app fails with
 (the `href`) in two templates:
 
 - Reset password:
-  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/settings/password`
+  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/settings/password`
 - Confirm sign up:
-  `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/trips`
+  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/trips`
 
-`{{ .SiteURL }}` is the Site URL under URL Configuration, so set that to the
-deployed URL. `/auth/callback` stays for Google sign-in.
+The app passes its own origin (no path) as the redirect, so a link requested
+from localhost or a preview returns there. Supabase only honours an origin
+on the Redirect URLs list (add `http://localhost:3000/**` and the preview
+wildcard); anything else falls back to the Site URL, which is also a bare
+origin, so the link still works, on production. `/auth/callback` stays for
+Google sign-in.
 
 ### Before anyone else uses it
 

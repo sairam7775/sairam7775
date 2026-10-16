@@ -25,7 +25,7 @@ async function origin() {
   return (
     process.env.NEXT_PUBLIC_SITE_URL ??
     `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`
-  );
+  ).replace(/\/+$/, "");
 }
 
 export async function signInWithPassword(formData: FormData) {
@@ -96,7 +96,9 @@ export async function signUpWithPassword(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     ...parsed.data,
-    options: { emailRedirectTo: `${await origin()}/auth/callback` },
+    // The email template appends /auth/confirm to this (README), so the link
+    // returns to the deployment that sent it rather than the Site URL.
+    options: { emailRedirectTo: await origin() },
   });
 
   if (error) {
@@ -140,7 +142,7 @@ export async function requestPasswordReset(formData: FormData) {
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/settings/password")}`,
+    redirectTo: await origin(), // the template adds /auth/confirm (README)
   });
   // An unknown address isn't an error (Supabase answers the same either
   // way), so a real failure can be reported without revealing anything.
