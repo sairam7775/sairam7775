@@ -65,10 +65,11 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   // the vault page.
   const { data: bookingRows } = await db
     .from("bookings")
-    .select("id, type, title, starts_at, ends_at, planned_on")
+    .select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on")
     .eq("trip_id", id);
   const bookings: PlanBooking[] = (bookingRows ?? []).map((b) => ({
     id: b.id, type: b.type, title: b.title, startsAt: b.starts_at, endsAt: b.ends_at, plannedOn: b.planned_on,
+    startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
   const worst = gaps?.gaps[0] ?? null;
 

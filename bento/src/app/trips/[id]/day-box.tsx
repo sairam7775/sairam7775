@@ -365,6 +365,8 @@ function BookingBlock({ b, startMin, endMin, part, busy, onRemove }: {
 }) {
   const length = startMin != null && endMin != null ? endMin - startMin : null;
   const note = part === "ends" ? (b.type === "accommodation" ? "Check-out" : "Ends") : part === "all-day" ? (b.type === "accommodation" ? "Staying" : "All day") : b.type === "accommodation" ? "Check-in" : null;
+  // A start or end given as a date alone has no clock to show.
+  const untimed = part !== "all-day" && startMin == null;
   return (
     <div
       className="tile up relative flex gap-4 border-2 border-dashed border-accent/70 bg-surface px-4 py-3 sm:px-5"
@@ -374,6 +376,7 @@ function BookingBlock({ b, startMin, endMin, part, busy, onRemove }: {
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
           <span className="mono rounded-full bg-accent px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-white">Booked</span>
+          {untimed && <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">Time not given</span>}
           <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{KIND_LABEL[b.type] ?? "Booking"}{note ? ` · ${note}` : ""}</span>
           {length != null && <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(length)}</span>}
         </div>

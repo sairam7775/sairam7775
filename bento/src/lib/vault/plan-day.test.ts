@@ -58,6 +58,37 @@ describe("where it sits in the box", () => {
   });
 });
 
+describe("a time given as a date alone", () => {
+  const ticket = { type: "activity", startsAt: "2027-04-07T00:00:00.000Z", endsAt: null, startTimeKnown: false, endTimeKnown: true };
+  const stayNoTimes = { type: "accommodation", startsAt: "2027-04-05T00:00:00.000Z", endsAt: "2027-04-09T00:00:00.000Z", startTimeKnown: false, endTimeKnown: false };
+  const busNoEnd = { type: "transport", startsAt: "2027-04-08T23:00:00.000Z", endsAt: "2027-04-09T00:00:00.000Z", startTimeKnown: true, endTimeKnown: false };
+
+  it("is untimed on its day, never midnight", () => {
+    expect(bookingSlot(ticket, "2027-04-07")).toEqual({ startMin: null, endMin: null, part: "starts", busy: null });
+    expect(clashes({ startMin: 0, durationMin: 60 }, bookingSlot(ticket, "2027-04-07"))).toBe(false);
+  });
+
+  it("keeps check-in and check-out days, with no clock", () => {
+    expect(bookingSlot(stayNoTimes, "2027-04-05")).toEqual({ startMin: null, endMin: null, part: "starts", busy: null });
+    expect(bookingSlot(stayNoTimes, "2027-04-09")).toEqual({ startMin: null, endMin: null, part: "ends", busy: null });
+  });
+
+  it("keeps the known end of a booking whose other end is unknown", () => {
+    expect(bookingSlot(busNoEnd, "2027-04-08")).toEqual({ startMin: 23 * 60, endMin: null, part: "starts", busy: { from: 23 * 60, to: 24 * 60 } });
+    expect(bookingSlot(busNoEnd, "2027-04-09")).toEqual({ startMin: null, endMin: null, part: "ends", busy: null });
+  });
+
+  it("shows a known end when only the start is unknown", () => {
+    const tour = { type: "activity", startsAt: "2027-04-07T00:00:00.000Z", endsAt: "2027-04-07T17:00:00.000Z", startTimeKnown: false, endTimeKnown: true };
+    expect(bookingSlot(tour, "2027-04-07")).toEqual({ startMin: 17 * 60, endMin: null, part: "ends", busy: null });
+  });
+
+  it("still sits only on its own dates", () => {
+    expect(canPlanOn(ticket, "2027-04-07")).toBe(true);
+    expect(canPlanOn(ticket, "2027-04-06")).toBe(false);
+  });
+});
+
 describe("a long journey", () => {
   const ferry = { type: "transport", startsAt: "2027-04-06T18:00:00.000Z", endsAt: "2027-04-08T09:00:00.000Z" };
   const pass = { type: "other", startsAt: "2027-04-05T09:00:00.000Z", endsAt: "2027-04-11T09:00:00.000Z" };

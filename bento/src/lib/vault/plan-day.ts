@@ -15,6 +15,10 @@ export interface PlannableBooking {
   /** ISO timestamp, wall time stored as UTC. */
   startsAt: string | null;
   endsAt: string | null;
+  /** False when only a date was given (0018): that end has no time, so it
+   *  is untimed on its day, never 00:00. Missing means known. */
+  startTimeKnown?: boolean;
+  endTimeKnown?: boolean;
 }
 
 const dateOf = (iso: string) => new Date(iso).toISOString().slice(0, 10);
@@ -49,7 +53,9 @@ export function canPlanOn(b: PlannableBooking, date: string): boolean {
  *  transport) is busy all of any day in between, on a two-night ferry, say.
  *  A stay is never busy: check-in and check-out are moments, and the nights
  *  between are free. Nor is a multi-day pass or ticket between its ends.
- *  Every time is real, 00:00 included: the booking form always sends one. */
+ *  A time marked unknown (a date with no time) is untimed on its day: shown
+ *  without a clock, and busy for nothing, since we don't know when. 00:00
+ *  with a known time is a real midnight. */
 export function bookingSlot(b: PlannableBooking, date: string): {
   startMin: number | null;
   endMin: number | null;
@@ -60,17 +66,23 @@ export function bookingSlot(b: PlannableBooking, date: string): {
   const none = { startMin: null, endMin: null, part: "all-day" as const, busy: null };
   if (!range || !canPlanOn(b, date)) return none;
   const stay = b.type === "accommodation";
-  const startMin = minuteOf(b.startsAt!);
-  const endMin = b.endsAt ? minuteOf(b.endsAt) : null;
+  const startMin = b.startTimeKnown === false ? null : minuteOf(b.startsAt!);
+  const endMin = b.endsAt && b.endTimeKnown !== false ? minuteOf(b.endsAt) : null;
   const overnight = range.first !== range.last;
   if (date === range.first) {
+    if (startMin == null) {
+      // No start time, but a known end that same day: show it ending then.
+      if (!overnight && endMin != null) return { startMin: endMin, endMin: null, part: "ends", busy: null };
+      return { startMin: null, endMin: null, part: "starts", busy: null };
+    }
     if (!overnight) {
       const end = endMin != null && endMin > startMin ? endMin : null;
       return { startMin, endMin: end, part: "starts", busy: end != null && !stay ? { from: startMin, to: end } : null };
     }
     return { startMin, endMin: null, part: "starts", busy: stay ? null : { from: startMin, to: 24 * 60 } };
   }
-  if (date === range.last && endMin != null) {
+  if (date === range.last && b.endsAt) {
+    if (endMin == null) return { startMin: null, endMin: null, part: "ends", busy: null };
     return { startMin: endMin, endMin: null, part: "ends", busy: stay || endMin === 0 ? null : { from: 0, to: endMin } };
   }
   const journey = b.type === "flight" || b.type === "transport";

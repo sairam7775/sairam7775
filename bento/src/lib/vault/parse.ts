@@ -156,7 +156,10 @@ export function toFormValues(p: ParsedBooking): {
   costCurrency: string;
   notes: string;
 } {
-  const stamp = (d: string | null, t: string | null) => (d ? `${d}T${t ?? "00:00"}` : "");
+  // A date with no time stays a date: inventing 00:00 showed a ticket as a
+  // midnight start. The form shows the time as not given, and it is saved
+  // with its time marked unknown.
+  const stamp = (d: string | null, t: string | null) => (d ? (t ? `${d}T${t}` : d) : "");
   const route = [p.from_place, p.to_place].filter(Boolean).join(" → ");
   return {
     type: p.type,

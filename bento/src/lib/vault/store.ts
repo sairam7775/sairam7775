@@ -22,6 +22,9 @@ export interface VaultBooking {
   referenceError: string | null;
   startsAt: string | null;
   endsAt: string | null;
+  /** False when only a date was given: show the date, not 00:00. */
+  startTimeKnown: boolean;
+  endTimeKnown: boolean;
   cityId: string | null;
   toCityId: string | null;
   placeId: string | null;
@@ -37,7 +40,7 @@ const dayOf = (ts: string | null): string | null => (ts ? ts.slice(0, 10) : null
 export async function loadBookings(db: SupabaseClient, tripId: string, revealId?: string): Promise<VaultBooking[]> {
   const { data, error } = await db
     .from("bookings")
-    .select("id, type, title, provider, reference_encrypted, starts_at, ends_at, city_id, to_city_id, place_id, cost_jpy, cost_amount, cost_currency, file_path, notes")
+    .select("id, type, title, provider, reference_encrypted, starts_at, ends_at, starts_time_known, ends_time_known, city_id, to_city_id, place_id, cost_jpy, cost_amount, cost_currency, file_path, notes")
     .eq("trip_id", tripId)
     .order("starts_at", { nullsFirst: false });
   if (error) throw error;
@@ -65,6 +68,8 @@ export async function loadBookings(db: SupabaseClient, tripId: string, revealId?
       referenceError: refError,
       startsAt: b.starts_at,
       endsAt: b.ends_at,
+      startTimeKnown: b.starts_time_known !== false,
+      endTimeKnown: b.ends_time_known !== false,
       cityId: b.city_id,
       toCityId: b.to_city_id,
       placeId: b.place_id,

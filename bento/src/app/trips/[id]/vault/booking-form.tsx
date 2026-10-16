@@ -25,6 +25,41 @@ const Label = ({ children, htmlFor }: { children: React.ReactNode; htmlFor: stri
 
 const field = "rounded-xl border border-rule bg-paper px-3 py-2.5 text-[0.92rem]";
 
+/** A date, and a time if there is one. The value is "YYYY-MM-DD" or
+ *  "YYYY-MM-DDTHH:MM", sent as one field (`name`); a date with no time is
+ *  saved as a date alone and never shown as midnight. A pasted confirmation
+ *  that gave no time leaves the time empty and says so. */
+function WhenField({ name, label, value, onChange, minDate, timeHint }: {
+  name: string;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  minDate?: string;
+  timeHint?: string;
+}) {
+  const [date, time = ""] = value.split("T");
+  const join = (d: string, t: string) => (d ? (t ? `${d}T${t}` : d) : "");
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={`${name}-date`}>{label}</Label>
+      <div className="flex gap-2">
+        <DateInput id={`${name}-date`} type="date" min={minDate || undefined} value={date ?? ""} onChange={(e) => onChange(join(e.target.value, time))} className={`${field} min-w-0 flex-1`} />
+        <input
+          id={`${name}-time`}
+          type="time"
+          aria-label={`${label} time (optional)`}
+          value={time}
+          disabled={!date}
+          onChange={(e) => onChange(join(date, e.target.value))}
+          className={`${field} w-[7.5rem] shrink-0 disabled:opacity-50`}
+        />
+      </div>
+      {date && !time && <span className="text-[0.76rem] text-ink-3">{timeHint ?? "No time — it shows as the date alone. Add one if you know it."}</span>}
+      <input type="hidden" name={name} value={value} />
+    </div>
+  );
+}
+
 /** Add a booking by typing it, or paste the confirmation and let it fill
  *  the form in. The paste never saves anything: every field is reviewed. */
 /** `defaultPlaceId` / `defaultTitle` come from a ticket gap's "Add a booking":
@@ -36,6 +71,8 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
   const [paste, setPaste] = useState("");
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
+  // Set when a pasted confirmation gave a date but no time, to say so.
+  const [noTimeFromPaste, setNoTimeFromPaste] = useState({ startsAt: false, endsAt: false });
   const [values, setValues] = useState({
     title: defaultTitle ?? "", provider: "", reference: "",
     startsAt: defaultDate ? `${defaultDate}T15:00` : "", endsAt: "",
@@ -57,6 +94,10 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Couldn't read that.");
       setType(body.values.type);
+      setNoTimeFromPaste({
+        startsAt: Boolean(body.values.startsAt) && !body.values.startsAt.includes("T"),
+        endsAt: Boolean(body.values.endsAt) && !body.values.endsAt.includes("T"),
+      });
       setValues({
         title: body.values.title, provider: body.values.provider, reference: body.values.reference,
         startsAt: body.values.startsAt, endsAt: body.values.endsAt,
@@ -140,14 +181,21 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="startsAt">{type === "accommodation" ? "Check in" : "Starts"}</Label>
-            <DateInput id="startsAt" name="startsAt" type="datetime-local" value={values.startsAt} onChange={(e) => set("startsAt", e.target.value)} className={field} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="endsAt">{type === "accommodation" ? "Check out" : "Ends"}</Label>
-            <DateInput id="endsAt" name="endsAt" type="datetime-local" min={values.startsAt || undefined} value={values.endsAt} onChange={(e) => set("endsAt", e.target.value)} className={field} />
-          </div>
+          <WhenField
+            name="startsAt"
+            label={type === "accommodation" ? "Check in" : "Starts"}
+            value={values.startsAt}
+            onChange={(v) => set("startsAt", v)}
+            timeHint={noTimeFromPaste.startsAt ? "The confirmation gave no time. Add one if you know it." : undefined}
+          />
+          <WhenField
+            name="endsAt"
+            label={type === "accommodation" ? "Check out" : "Ends"}
+            value={values.endsAt}
+            onChange={(v) => set("endsAt", v)}
+            minDate={values.startsAt.slice(0, 10)}
+            timeHint={noTimeFromPaste.endsAt ? "The confirmation gave no time. Add one if you know it." : undefined}
+          />
         </div>
 
         {cities.length > 0 && (

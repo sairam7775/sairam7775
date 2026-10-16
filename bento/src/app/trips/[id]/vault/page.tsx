@@ -22,9 +22,11 @@ const GROUPS: { id: VaultBooking["type"]; label: string }[] = [
 ];
 
 const when = (b: VaultBooking) => {
-  const f = (ts: string) => new Date(ts).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
+  // A date given without a time shows as the date alone, never as 00:00.
+  const f = (ts: string, timed: boolean) =>
+    new Date(ts).toLocaleString("en-GB", { day: "numeric", month: "short", ...(timed ? { hour: "2-digit", minute: "2-digit" } : {}), timeZone: "UTC" });
   if (!b.startsAt) return null;
-  return b.endsAt ? `${f(b.startsAt)} → ${f(b.endsAt)}` : f(b.startsAt);
+  return b.endsAt ? `${f(b.startsAt, b.startTimeKnown)} → ${f(b.endsAt, b.endTimeKnown)}` : f(b.startsAt, b.startTimeKnown);
 };
 
 const money = (b: VaultBooking) =>

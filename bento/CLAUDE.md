@@ -235,6 +235,11 @@ Practically:
   stop overlapping its busy time is flagged. It may only be added on a date it covers (`vault/plan-day.ts` `canPlanOn`) — the box, the
   action and a check constraint all refuse any other. `planned_on` is a
   date, not a day id, because accepting a proposal rewrites days.
+- A booking time can be unknown (`starts_time_known` / `ends_time_known`,
+  0018): a date given alone is stored at 00:00 with its flag false, and
+  every reader shows the date alone — never midnight. Form values are
+  "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM" (`hasTime`); the parser keeps a date
+  with no time as a date. A known 00:00 is a real midnight.
 - Booking times are wall-clock at the place stored as if UTC
   (`vault/actions.ts` `stamp`); every reader slices or formats in UTC.
 - `crypto.ts` is AES-256-GCM with a random nonce per record and a version
