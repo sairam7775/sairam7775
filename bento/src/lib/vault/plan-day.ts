@@ -45,8 +45,10 @@ export function canPlanOn(b: PlannableBooking, date: string): boolean {
  *
  *  Busy (for clashes): the booked interval on a same-day booking. One that
  *  runs past midnight — a 23:00 flight landing at 01:00 — is busy for the
- *  rest of its first day and the start of its last. A stay is never busy:
- *  check-in and check-out are moments, and the nights between are free.
+ *  rest of its first day and the start of its last; a journey (a flight or
+ *  transport) is busy all of any day in between, on a two-night ferry, say.
+ *  A stay is never busy: check-in and check-out are moments, and the nights
+ *  between are free. Nor is a multi-day pass or ticket between its ends.
  *  Every time is real, 00:00 included: the booking form always sends one. */
 export function bookingSlot(b: PlannableBooking, date: string): {
   startMin: number | null;
@@ -71,7 +73,8 @@ export function bookingSlot(b: PlannableBooking, date: string): {
   if (date === range.last && endMin != null) {
     return { startMin: endMin, endMin: null, part: "ends", busy: stay || endMin === 0 ? null : { from: 0, to: endMin } };
   }
-  return none;
+  const journey = b.type === "flight" || b.type === "transport";
+  return journey ? { ...none, busy: { from: 0, to: 24 * 60 } } : none;
 }
 
 /** Does a planned stop (start + duration, minutes from midnight) clash with

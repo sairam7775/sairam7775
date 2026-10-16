@@ -58,6 +58,19 @@ describe("where it sits in the box", () => {
   });
 });
 
+describe("a long journey", () => {
+  const ferry = { type: "transport", startsAt: "2027-04-06T18:00:00.000Z", endsAt: "2027-04-08T09:00:00.000Z" };
+  const pass = { type: "other", startsAt: "2027-04-05T09:00:00.000Z", endsAt: "2027-04-11T09:00:00.000Z" };
+  it("is busy all of a day in between", () => {
+    expect(bookingSlot(ferry, "2027-04-07")).toEqual({ startMin: null, endMin: null, part: "all-day", busy: { from: 0, to: 24 * 60 } });
+    expect(clashes({ startMin: 10 * 60, durationMin: 60 }, bookingSlot(ferry, "2027-04-07"))).toBe(true);
+  });
+
+  it("but a pass between its ends blocks nothing", () => {
+    expect(clashes({ startMin: 10 * 60, durationMin: 60 }, bookingSlot(pass, "2027-04-07"))).toBe(false);
+  });
+});
+
 describe("clashes", () => {
   const slot = { startMin: 12 * 60, busy: { from: 12 * 60, to: 13 * 60 } };
   it("flags a stop that overlaps the booking", () => {
