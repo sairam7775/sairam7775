@@ -7,7 +7,9 @@
  *
  *  The season follows today's date, unless a page says otherwise: a trip
  *  page sets its trip's season with <UseSeason>, so a November trip looks
- *  like November whenever you plan it. `?season=winter` previews any of them.
+ *  like November whenever you plan it. A season picked in Settings →
+ *  Background (`chosen`, from a cookie) wins over both, everywhere.
+ *  `?season=winter` previews any of them.
  *
  *  It is decoration only: fixed behind the content, aria-hidden, never
  *  interactive, and still under prefers-reduced-motion (globals.css). */
@@ -17,9 +19,11 @@ import { isSeason, noise, seasonOf, type Season } from "./season";
 
 const SetSeason = createContext<(s: Season | null) => void>(() => {});
 
-// Client-only: the root layout is static, so a server-computed season would
-// be frozen at build time. On the server (and during hydration) there is no
-// season, so the backdrop renders after hydration and fades in.
+// Browser-only. Today's season is worked out in the traveller's own time
+// zone, and the particles' positions are floats the server and the browser
+// print differently — rendering them on the server is a hydration mismatch.
+// So on the server (and during hydration) there is no backdrop; it renders
+// after hydration and fades in, even when the season is already `chosen`.
 const noSubscribe = () => () => {};
 function browserSeason(): Season {
   const q = new URLSearchParams(window.location.search).get("season");
@@ -29,12 +33,12 @@ function hasPreview(): boolean {
   return isSeason(new URLSearchParams(window.location.search).get("season"));
 }
 
-export function SeasonalBackground({ children }: { children: ReactNode }) {
+export function SeasonalBackground({ chosen = null, children }: { chosen?: Season | null; children: ReactNode }) {
   const [override, setOverride] = useState<Season | null>(null);
   const today = useSyncExternalStore(noSubscribe, browserSeason, () => null);
   const preview = useSyncExternalStore(noSubscribe, hasPreview, () => false);
 
-  const season = preview ? today : (override ?? today);
+  const season = today && (preview ? today : (chosen ?? override ?? today));
 
   return (
     <SetSeason.Provider value={setOverride}>

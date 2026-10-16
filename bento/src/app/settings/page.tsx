@@ -6,16 +6,22 @@ import { createClient } from "@/lib/supabase/server";
 import { Notice } from "@/app/(auth)/ui";
 import { replayTours } from "@/components/tour/actions";
 import { THEME_COOKIE, parseTheme, type Theme } from "@/lib/theme";
-import { setTheme } from "./actions";
+import { setBackground, setTheme } from "./actions";
+import { BACKGROUND_COOKIE, parseBackground, type BackgroundChoice } from "@/components/seasonal/season";
 
 const THEME_LABELS: [Theme, string][] = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
+const BACKGROUND_LABELS: [BackgroundChoice, string][] = [
+  ["auto", "Automatic"], ["spring", "Spring"], ["summer", "Summer"], ["autumn", "Autumn"], ["winter", "Winter"],
+];
 
 export default async function Settings({ searchParams }: PageProps<"/settings">) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/settings");
   const sp = await searchParams;
-  const theme = parseTheme((await cookies()).get(THEME_COOKIE)?.value);
+  const jar = await cookies();
+  const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
+  const background = parseBackground(jar.get(BACKGROUND_COOKIE)?.value);
   const viaGoogle = user.app_metadata?.provider === "google" && !(user.identities ?? []).some((i) => i.provider === "email");
 
   return (
@@ -57,6 +63,26 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
               value={value}
               aria-pressed={theme === value}
               className={`min-h-10 rounded-full px-4 text-[0.92rem] ${theme === value ? "bg-lacquer text-rice" : "text-ink-2 hover:bg-sunk hover:text-ink"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </form>
+      </section>
+
+      <section className="tile up mt-4 p-6">
+        <h2 id="background-heading" className="text-[1.1rem] font-bold">Background</h2>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+          The scene behind every page. Automatic follows today&rsquo;s date, and a trip&rsquo;s own dates on its page. Kept on this device.
+        </p>
+        <form action={setBackground} role="group" aria-labelledby="background-heading" className="mt-4 flex flex-wrap gap-2">
+          {BACKGROUND_LABELS.map(([value, label]) => (
+            <button
+              key={value}
+              name="background"
+              value={value}
+              aria-pressed={background === value}
+              className={`min-h-10 rounded-full border px-4 text-[0.92rem] ${background === value ? "border-lacquer bg-lacquer text-rice" : "border-rule text-ink-2 hover:bg-sunk hover:text-ink"}`}
             >
               {label}
             </button>

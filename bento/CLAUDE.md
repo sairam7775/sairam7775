@@ -193,6 +193,9 @@ Practically:
   exception to "tokens, not hex": they are illustration with their own
   palette, like the logo. Keep them behind the veil, `aria-hidden`, and
   out of anything a traveller reads.
+- Which season shows: `?season=` preview, then Settings → Background (the
+  `bento_season` cookie, passed from the root layout as `chosen`), then a
+  trip page's `<UseSeason>`, then today's date in the browser.
 - No `backdrop-filter` or `filter` on anything that animates or sits over
   animation — it re-rasterises every frame. Blur only static layers.
 - `DESIGN.md` is the design system in prose and tokens: read it before UI

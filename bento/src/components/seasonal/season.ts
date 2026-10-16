@@ -16,6 +16,17 @@ export function isSeason(x: unknown): x is Season {
   return typeof x === "string" && (SEASONS as string[]).includes(x);
 }
 
+/** Settings → Background: "auto" follows the date (or a trip's own season
+ *  on its page); a season shows that one everywhere. A cookie, per device,
+ *  read by the root layout. */
+export const BACKGROUNDS = ["auto", ...SEASONS] as const;
+export type BackgroundChoice = (typeof BACKGROUNDS)[number];
+export const BACKGROUND_COOKIE = "bento_season";
+
+export function parseBackground(value: string | undefined): BackgroundChoice {
+  return isSeason(value) ? value : "auto";
+}
+
 /** Deterministic 0–1 noise, so particle layouts are stable across renders. */
 export function noise(i: number, k: number): number {
   const x = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453;
