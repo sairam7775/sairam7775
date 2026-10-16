@@ -96,9 +96,9 @@ export async function signUpWithPassword(formData: FormData) {
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     ...parsed.data,
-    // The email template appends /auth/confirm to this (README), so the link
-    // returns to the deployment that sent it rather than the Site URL.
-    options: { emailRedirectTo: await origin() },
+    // A custom email template appends &token_hash=… to this (README), so it
+    // always carries a query string.
+    options: { emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/trips")}` },
   });
 
   if (error) {
@@ -142,7 +142,7 @@ export async function requestPasswordReset(formData: FormData) {
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
-    redirectTo: await origin(), // the template adds /auth/confirm (README)
+    redirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/settings/password")}`,
   });
   // An unknown address isn't an error (Supabase answers the same either
   // way), so a real failure can be reported without revealing anything.
