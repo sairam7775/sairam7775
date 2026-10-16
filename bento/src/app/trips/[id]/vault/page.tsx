@@ -80,8 +80,8 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
-      <AppHeader back={{ href: `/trips/${id}`, label: "Back to the plan" }}>
-        <Tour id="vault" seen={await tourSeen("vault")} />
+      <Tour id="vault" seen={await tourSeen("vault")} />
+      <AppHeader back={{ href: `/trips/${id}`, label: "Plan" }}>
         {report.blocking > 0 && (
           <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-white">{report.blocking} blocking</span>
         )}

@@ -10,8 +10,8 @@ const CARD_W = 360;
 const noSubscribe = () => () => {};
 
 /** A spotlight tour. It starts by itself the first time a page is opened
- *  (`seen` comes from a cookie, read on the server) and can be replayed from
- *  its button. Esc skips; arrow keys step. It dims with a plain box-shadow,
+ *  (`seen` comes from a cookie, read on the server); Settings → "Show the
+ *  tour again" clears the cookie to replay it. Esc skips; arrow keys step. It dims with a plain box-shadow,
  *  not a filter, so nothing re-rasterises behind it. */
 export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
   const steps = TOURS[id];
@@ -67,19 +67,7 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
   const next = () => (last ? close() : setI(i + 1));
   const back = () => setI(Math.max(0, i - 1));
 
-  const button = (
-    <button
-      type="button"
-      onClick={() => {
-        setI(0);
-        setOpen(true);
-      }}
-      className="min-h-10 rounded-full px-3 text-[0.85rem] text-ink-2 hover:bg-sunk hover:text-ink"
-    >
-      Tour
-    </button>
-  );
-  if (!open || !mounted) return button;
+  if (!open || !mounted) return null;
 
   // clientWidth, not innerWidth: a desktop scrollbar isn't room for the card.
   const vw = document.documentElement.clientWidth;
@@ -94,8 +82,8 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
     style = { top: Math.max(12, (vh - cardH) / 2), left: (vw - width) / 2, width };
   }
 
-  // Portalled: the header the button sits in animates in with a transform,
-  // and a transformed ancestor makes `position: fixed` relative to it —
+  // Portalled: the page tiles animate in with a transform, and a
+  // transformed ancestor makes `position: fixed` relative to it —
   // the card landed off-screen on phones, under the page's own tiles.
   const overlay = (
     <>
@@ -153,10 +141,5 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
     </>
   );
 
-  return (
-    <>
-      {button}
-      {createPortal(overlay, document.body)}
-    </>
-  );
+  return createPortal(overlay, document.body);
 }

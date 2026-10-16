@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { parseSeen, TOUR_COOKIE } from "./seen";
 import { TOUR_IDS, type TourId } from "./steps";
 
@@ -17,4 +18,11 @@ export async function markTourSeen(id: TourId) {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   });
+}
+
+/** Settings → "Show the tour again": forget every tour, then open the trips
+ *  list, where the first one starts. The others start as each page is opened. */
+export async function replayTours() {
+  (await cookies()).delete(TOUR_COOKIE);
+  redirect("/trips");
 }

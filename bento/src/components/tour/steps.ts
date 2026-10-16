@@ -16,7 +16,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
   trips: [
     {
       title: "Welcome to Bento",
-      body: "A one-minute tour: where trips live, how Bento Man works, and what each page is for. It changes nothing, and you can replay it any time from the Tour button.",
+      body: "A one-minute tour: where trips live, how Bento Man works, and what each page is for. It changes nothing, and you can replay it any time from Settings.",
     },
     {
       target: "new-trip",
@@ -51,7 +51,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
     },
     {
       title: "That’s the tour",
-      body: "Replay it any time from the Tour button at the top of the page.",
+      body: "Replay it any time from Settings, at the top of the page.",
     },
   ],
   vault: [
