@@ -42,7 +42,7 @@ export const TOURS: Record<TourId, TourStep[]> = {
     {
       target: "day-box",
       title: "Each day is a box",
-      body: "Stops are sized to the time they take. Drag to reorder, pin a stop to keep it, remove one, or re-plan the day around your pins.",
+      body: "Stops are sized to the time they take. Drag to reorder, pin a stop to keep it, or re-plan the day around your pins. Drag a booking in from the Bookings column — only to its own date.",
     },
     {
       target: "vault",

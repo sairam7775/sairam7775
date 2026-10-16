@@ -18,6 +18,7 @@ import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
 import { Chat, type ChatMessage } from "./chat";
 import { DayBox } from "./day-box";
+import type { PlanBooking } from "./bookings-column";
 
 const fmt = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { ...opts, timeZone: "UTC" });
 const dur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m}m`);
@@ -60,6 +61,15 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
   const gaps = await loadGaps(db, id, new Date().toISOString().slice(0, 10)).catch(() => null);
+  // For the Bookings column. Never the reference: it is decrypted only on
+  // the vault page.
+  const { data: bookingRows } = await db
+    .from("bookings")
+    .select("id, type, title, starts_at, ends_at, planned_on")
+    .eq("trip_id", id);
+  const bookings: PlanBooking[] = (bookingRows ?? []).map((b) => ({
+    id: b.id, type: b.type, title: b.title, startsAt: b.starts_at, endsAt: b.ends_at, plannedOn: b.planned_on,
+  }));
   const worst = gaps?.gaps[0] ?? null;
 
   return (
@@ -218,6 +228,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 overFromIndex={stats?.overFromIndex ?? null}
                 lunch={stats?.lunch ?? null}
                 editable={Boolean(selectedMeta.cityId) && selectedMeta.tier !== "stub"}
+                bookings={bookings}
+                tripDays={dayList.map(([d]) => d)}
               />
             </div>
           ) : (

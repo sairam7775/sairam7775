@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/friendly-errors";
 import { canEncrypt, encryptRef } from "@/lib/vault/crypto";
 import { isWallTime, stamp } from "@/lib/vault/wall-time";
+import { canPlanOn } from "@/lib/vault/plan-day";
 import type { BookingKind } from "@/lib/types";
 
 /** The vault's writes. Nothing here is fetched from an airline or a hotel:
@@ -73,8 +74,17 @@ export async function saveBooking(formData: FormData) {
     ...(referenceEncrypted ? { reference_encrypted: referenceEncrypted } : {}),
   };
 
+  // A booking sits in a day's box only on a date it covers (0017). New
+  // dates that no longer cover that day take it out of the box, rather than
+  // failing the save.
+  let unplan = false;
+  if (data.id) {
+    const { data: was } = await db.from("bookings").select("planned_on").eq("id", data.id).eq("trip_id", tripId).maybeSingle();
+    unplan = Boolean(was?.planned_on) && !canPlanOn({ startsAt: row.starts_at, endsAt: row.ends_at }, was!.planned_on!);
+  }
+
   const res = data.id
-    ? await db.from("bookings").update(row).eq("id", data.id).eq("trip_id", tripId)
+    ? await db.from("bookings").update(unplan ? { ...row, planned_on: null } : row).eq("id", data.id).eq("trip_id", tripId)
     : await db.from("bookings").insert(row);
   if (res.error) back(tripId, dbErrorMessage(res.error, "save the booking"));
 

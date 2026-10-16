@@ -1,8 +1,11 @@
 "use client";
 
-import { useOptimistic, useState, useTransition, type DragEvent } from "react";
+import { useOptimistic, useRef, useState, useTransition, type DragEvent } from "react";
 import { moveItem, removeItem, reorderDay, replanDayAction, togglePin } from "./day-actions";
+import { planBooking, unplanBooking } from "./booking-actions";
+import { BOOKING_DRAG, BookingsColumn, KIND_LABEL, shortDate, whenText, type PlanBooking } from "./bookings-column";
 import { ConfirmButton } from "@/components/form-controls";
+import { bookingSlot, canPlanOn, clashes } from "@/lib/vault/plan-day";
 
 export interface DayBoxItem {
   placeId: string;
@@ -30,6 +33,11 @@ export interface DayBoxProps {
   overFromIndex: number | null;
   lunch: { startMin: number; endMin: number } | null;
   editable: boolean;
+  /** Every booking in the trip, for the Bookings column; the ones planned
+   *  on this date also sit in the box. */
+  bookings: PlanBooking[];
+  /** The plan's dates, so a booking for another day can link to it. */
+  tripDays: string[];
 }
 
 const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -59,7 +67,12 @@ const TERM_LABEL: Record<string, string> = {
 /** A day is a bento box. Compartments are sized to the time each stop
  *  takes, so an over-packed day looks over-packed before you read a word.
  *  Drag reorders; pin and remove apply at once and the engine re-times
- *  the day. Re-plan asks the engine to choose again around the pins. */
+ *  the day. Re-plan asks the engine to choose again around the pins.
+ *
+ *  Bookings dragged in from the Bookings column sit in the box as fixed
+ *  blocks at their booked time. The engine never moves them; a stop that
+ *  overlaps one is flagged. Only a booking for this date can go in — the
+ *  box refuses any other, and so do the action and the database. */
 export function DayBox(p: DayBoxProps) {
   // The order is the server's. A drag shows its own order only while the
   // reorder is in flight, then falls back to what the server sent — so a
@@ -69,6 +82,10 @@ export function DayBox(p: DayBoxProps) {
   const [dragging, setDragging] = useState<string | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [draggingBooking, setDraggingBooking] = useState<PlanBooking | null>(null);
+  const draggedRef = useRef<PlanBooking | null>(null);
+  const [dropFits, setDropFits] = useState<boolean | null>(null);
+  const [message, setMessage] = useState<{ tone: "error" | "ok"; text: string } | null>(null);
   const byId = new Map(p.items.map((i) => [i.placeId, i]));
   // The optimistic order, plus anything the server added since (an accepted
   // proposal, say) so a stop never silently disappears from the box.
@@ -78,6 +95,47 @@ export function DayBox(p: DayBoxProps) {
   ];
   const fillPct = Math.min(100, Math.round((p.activeMin / p.budgetMin) * 100));
   const lunchBeforeIndex = p.lunch ? items.findIndex((it) => it.startMin != null && it.startMin >= p.lunch!.endMin) : -1;
+
+  // Bookings in this day's box. canPlanOn again: a stale planned_on (the
+  // trip moved, say) never shows a booking on a date it doesn't cover.
+  const blocks = p.bookings
+    .filter((b) => b.plannedOn === p.date && canPlanOn(b, p.date))
+    .map((b) => ({ b, slot: bookingSlot(b, p.date) }))
+    .sort((x, y) => (x.slot.startMin ?? -1) - (y.slot.startMin ?? -1));
+  const allDay = blocks.filter((x) => x.slot.startMin == null);
+  const timed = blocks.filter((x) => x.slot.startMin != null);
+  // Each timed booking goes before the first stop that starts at or after it.
+  const blockAt = (i: number) =>
+    timed.filter((x) => {
+      const at = items.findIndex((it) => it.startMin != null && it.startMin >= x.slot.startMin!);
+      return (at === -1 ? items.length : at) === i;
+    });
+
+  function addBooking(b: PlanBooking) {
+    if (!canPlanOn(b, p.date)) {
+      setMessage({ tone: "error", text: `“${b.title}” is for ${whenText(b)}, so it can't go in ${shortDate(p.date)}.` });
+      return;
+    }
+    setMessage(null);
+    start(async () => {
+      const r = await planBooking({ tripId: p.tripId, bookingId: b.id, date: p.date });
+      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is in ${shortDate(p.date)}.` });
+    });
+  }
+
+  function removeBooking(b: PlanBooking) {
+    setMessage(null);
+    start(async () => {
+      const r = await unplanBooking({ tripId: p.tripId, bookingId: b.id });
+      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is out of this day. It's still in Bookings.` });
+    });
+  }
+
+  function endBookingDrag() {
+    draggedRef.current = null;
+    setDraggingBooking(null);
+    setDropFits(null);
+  }
 
   function onDrop(e: DragEvent, targetId: string) {
     e.preventDefault();
@@ -106,10 +164,44 @@ export function DayBox(p: DayBoxProps) {
   return (
     <div data-tour="day-box" className={`box up p-3 sm:p-3.5 ${pending ? "opacity-70" : ""}`} aria-busy={pending}>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_236px]">
-        <div className="flex flex-col gap-2.5">
+        <div
+          className={`relative flex flex-col gap-2.5 rounded-2xl ${dropFits === true ? "ring-2 ring-accent ring-offset-2 ring-offset-lacquer" : ""} ${dropFits === false ? "ring-2 ring-ume ring-offset-2 ring-offset-lacquer" : ""}`}
+          onDragOver={(e) => {
+            const dragged = draggingBooking ?? (e.dataTransfer.types.includes(BOOKING_DRAG) ? draggedRef.current : null);
+            if (!dragged) return;
+            // Accept the drop either way, so a wrong date gets a reason
+            // rather than a silent no (dropEffect "none" cancels the drop,
+            // and with it the message). The red ring says no while hovering.
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            const fits = canPlanOn(dragged, p.date);
+            if (dropFits !== fits) setDropFits(fits);
+          }}
+          onDragLeave={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropFits(null);
+          }}
+          onDrop={(e) => {
+            // Read the booking from the drag itself: a quick drag can land
+            // before React has re-rendered with `draggingBooking` set.
+            const id = e.dataTransfer.getData(BOOKING_DRAG);
+            const b = (id && p.bookings.find((x) => x.id === id)) || draggedRef.current;
+            if (!b) return;
+            e.preventDefault();
+            endBookingDrag();
+            addBooking(b);
+          }}
+        >
+          {draggingBooking && dropFits === false && (
+            <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-xl bg-ume px-4 py-3 text-center text-[0.86rem] font-medium text-white shadow-tile">
+              Not this day. “{draggingBooking.title}” is for {whenText(draggingBooking)}.
+            </div>
+          )}
+          {allDay.map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
           {items.length === 0 && (
             <div className="tile px-5 py-8 text-center text-[0.92rem] text-ink-2">
-              Nothing in this box yet. Ask Bento Man to plan {p.cityName}, or re-plan the day.
+              {blocks.length
+                ? <>No planned stops yet. Ask Bento Man to plan {p.cityName} around your bookings.</>
+                : <>Nothing in this box yet. Ask Bento Man to plan {p.cityName}, or re-plan the day.</>}
             </div>
           )}
 
@@ -117,8 +209,10 @@ export function DayBox(p: DayBoxProps) {
             const isOver = p.overFromIndex != null && i >= p.overFromIndex;
             const showLunchBefore = i === lunchBeforeIndex;
             const height = Math.max(MIN_TILE, (it.durationMin ?? 60) * PX_PER_MIN);
+            const clash = timed.filter((x) => clashes(it, x.slot)).map((x) => x.b.title);
             return (
               <div key={it.placeId} className="contents">
+                {blockAt(i).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
                 {i > 0 && it.arriveDetail && (
                   <div className="up flex justify-center px-2" style={{ animationDelay: `${0.06 * i}s` }}>
                     <span className="mono inline-flex items-center gap-2 text-[0.68rem] text-rice/85">
@@ -168,6 +262,7 @@ export function DayBox(p: DayBoxProps) {
                         </span>
                       )}
                       {isOver && <span className="mono rounded-full bg-ume-soft px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ume">over</span>}
+                      {clash.length > 0 && <span className="mono rounded-full bg-ume-soft px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ume">clashes with {clash.join(", ")}</span>}
                       {it.durationMin != null && <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(it.durationMin)}</span>}
                     </div>
                     {it.reason && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{it.reason}</p>}
@@ -199,9 +294,28 @@ export function DayBox(p: DayBoxProps) {
               </div>
             );
           })}
+          {blockAt(items.length).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
         </div>
 
         <aside className="flex flex-col gap-2.5">
+          <BookingsColumn
+            tripId={p.tripId}
+            date={p.date}
+            bookings={p.bookings}
+            tripDays={p.tripDays}
+            busy={pending}
+            message={message}
+            onAdd={addBooking}
+            onRemove={removeBooking}
+            onDragStart={(b, e) => {
+              e.dataTransfer.setData(BOOKING_DRAG, b.id);
+              e.dataTransfer.effectAllowed = "copy";
+              setMessage(null);
+              draggedRef.current = b;
+              setDraggingBooking(b);
+            }}
+            onDragEnd={endBookingDrag}
+          />
           <div className="tile up px-4 py-4" style={{ animationDelay: ".2s" }}>
             <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">Day budget</span>
             <div className="mt-3 flex items-center gap-4">
@@ -233,6 +347,41 @@ export function DayBox(p: DayBoxProps) {
             )}
           </div>
         </aside>
+      </div>
+    </div>
+  );
+}
+
+/** A booking in the box: fixed at its booked time, never moved by the
+ *  engine. Its height is its length when it has one. */
+function BookingBlock({ b, startMin, endMin, part, busy, onRemove }: {
+  b: PlanBooking;
+  startMin: number | null;
+  endMin: number | null;
+  part: "starts" | "ends" | "all-day";
+  busy: boolean;
+  onRemove: (b: PlanBooking) => void;
+}) {
+  const length = startMin != null && endMin != null ? endMin - startMin : null;
+  const note = part === "ends" ? (b.type === "accommodation" ? "Check-out" : "Ends") : part === "all-day" ? (b.type === "accommodation" ? "Staying" : "All day") : b.type === "accommodation" ? "Check-in" : null;
+  return (
+    <div
+      className="tile up relative flex gap-4 border-2 border-dashed border-accent/70 bg-surface px-4 py-3 sm:px-5"
+      style={{ minHeight: length ? Math.max(64, length * PX_PER_MIN) : undefined }}
+    >
+      <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{startMin != null ? clock(startMin) : "—"}</span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="mono rounded-full bg-accent px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-white">Booked</span>
+          <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{KIND_LABEL[b.type] ?? "Booking"}{note ? ` · ${note}` : ""}</span>
+          {length != null && <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(length)}</span>}
+        </div>
+        <p className="disp mt-1 text-[1.05rem] font-bold leading-tight">{b.title}</p>
+        <div className="mt-2 flex">
+          <button type="button" disabled={busy} onClick={() => onRemove(b)} className="ml-auto min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume disabled:opacity-50" aria-label={`Take ${b.title} out of this day`}>
+            Take out
+          </button>
+        </div>
       </div>
     </div>
   );
