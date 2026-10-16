@@ -257,7 +257,7 @@ Behind every page sits a blurred Japanese scene for the season (`src/components/
 | Autumn (Sep–Nov) | Maple tree, Kyoto pagoda on the hills | Momiji leaves falling and spinning |
 | Winter (Dec–Feb) | Snowy Alps, cedars, the Jigokudani onsen with a snow monkey (Nagano) | Snowfall, onsen steam, the monkey bobs and blinks |
 
-- The season is today's, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`). `?season=winter` previews any season on any page.
+- Settings → Background chooses the season: **Automatic** (the default) or one season everywhere (the `bento_season` cookie). Automatic is today's season, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`). A chosen season wins over both, trip pages included. `?season=winter` previews any season on any page and wins over everything.
 - Layers: far scene blurred 10px (static, so it rasterises once), near scene unfiltered (it animates), then a **veil** of paper — densest over the centre column where content sits, lighter at the edges where the tree / onsen / bamboo are — then particles. Tiles are 90% surface, so the scene only tints them and text contrast is unchanged. No `backdrop-filter`: over a moving scene it re-blurs every frame.
 - The scenes use their own illustration palette (hex), the one exception to tokens-only colour.
 - Drawn in SVG and CSS — no image downloads. Particle positions are deterministic (`noise()`), so renders are stable; fewer particles on phones.
