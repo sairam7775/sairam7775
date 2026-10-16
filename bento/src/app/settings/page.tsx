@@ -7,6 +7,7 @@ import { Notice } from "@/app/(auth)/ui";
 import { replayTours } from "@/components/tour/actions";
 import { THEME_COOKIE, parseTheme, type Theme } from "@/lib/theme";
 import { setBackground, setTheme } from "./actions";
+import { ChoiceButton, SubmitButton } from "@/components/form-controls";
 import { BACKGROUND_COOKIE, parseBackground, type BackgroundChoice } from "@/components/seasonal/season";
 
 const THEME_LABELS: [Theme, string][] = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
@@ -57,15 +58,15 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
         </p>
         <form action={setTheme} role="group" aria-labelledby="theme-heading" className="mt-4 inline-flex rounded-full border border-rule p-1">
           {THEME_LABELS.map(([value, label]) => (
-            <button
+            <ChoiceButton
               key={value}
               name="theme"
               value={value}
-              aria-pressed={theme === value}
+              pressed={theme === value}
               className={`min-h-10 rounded-full px-4 text-[0.92rem] ${theme === value ? "bg-lacquer text-rice" : "text-ink-2 hover:bg-sunk hover:text-ink"}`}
             >
               {label}
-            </button>
+            </ChoiceButton>
           ))}
         </form>
       </section>
@@ -77,15 +78,15 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
         </p>
         <form action={setBackground} role="group" aria-labelledby="background-heading" className="mt-4 flex flex-wrap gap-2">
           {BACKGROUND_LABELS.map(([value, label]) => (
-            <button
+            <ChoiceButton
               key={value}
               name="background"
               value={value}
-              aria-pressed={background === value}
+              pressed={background === value}
               className={`min-h-10 rounded-full border px-4 text-[0.92rem] ${background === value ? "border-lacquer bg-lacquer text-rice" : "border-rule text-ink-2 hover:bg-sunk hover:text-ink"}`}
             >
               {label}
-            </button>
+            </ChoiceButton>
           ))}
         </form>
       </section>
@@ -96,9 +97,9 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
           The short walkthrough of your trips, a trip and its vault. It starts again on the trips list, then on each page as you open it.
         </p>
         <form action={replayTours}>
-          <button className="mt-4 inline-flex min-h-11 items-center rounded-full border border-rule px-5 text-[0.95rem] hover:bg-sunk">
+          <SubmitButton pending="Opening…" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-rule px-5 text-[0.95rem] hover:bg-sunk">
             Show the tour again
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </main>

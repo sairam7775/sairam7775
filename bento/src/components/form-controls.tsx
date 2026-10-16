@@ -93,6 +93,19 @@ export function SubmitButton({ children, pending: pendingLabel, className }: { c
   );
 }
 
+/** One option in a group of submit buttons that share a `name` (Settings →
+ *  Theme, Background). While the form saves, every option is disabled and the
+ *  one pressed says "Saving…". */
+export function ChoiceButton({ name, value, pressed, className, children }: { name: string; value: string; pressed: boolean; className?: string; children: ReactNode }) {
+  const { pending, data } = useFormStatus();
+  const saving = pending && data?.get(name) === value;
+  return (
+    <button type="submit" name={name} value={value} aria-pressed={pressed} disabled={pending} aria-busy={saving} className={`${className ?? ""} disabled:cursor-wait`}>
+      {saving ? "Saving…" : children}
+    </button>
+  );
+}
+
 /** A submit button that asks first. For things that can't be undone. */
 export function ConfirmButton({ children, message, className, ...rest }: ComponentProps<"button"> & { message: string }) {
   const { pending } = useFormStatus();
