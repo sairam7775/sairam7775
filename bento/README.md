@@ -183,23 +183,21 @@ Without it Google sign-in bounces, and the failure looks like a broken
 login rather than a missing setting. Preview deployments get their own
 URLs, so add the wildcard too if you want sign-in to work on them.
 
-**And point the email links at `/auth/confirm`.** Supabase's default links
+**Then make the email links work in any browser.** Supabase's default links
 use a PKCE code, which only works in the browser that asked for the email —
 a reset requested on a laptop and opened from a phone's mail app fails with
-`bad_code_verifier`. Under Authentication → Emails → Templates, set the link
-(the `href`) in two templates:
+`bad_code_verifier`, and the app says so. A custom template sends a token
+hash instead. Supabase only lets you edit templates once a custom SMTP
+provider is set (Authentication → Emails → SMTP Settings). Then, under
+Templates, set the link (the `href`) in two templates:
 
-- Reset password:
-  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/settings/password`
-- Confirm sign up:
-  `{{ .RedirectTo }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/trips`
+- Reset password: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=recovery`
+- Confirm sign up: `{{ .RedirectTo }}&token_hash={{ .TokenHash }}&type=email`
 
-The app passes its own origin (no path) as the redirect, so a link requested
-from localhost or a preview returns there. Supabase only honours an origin
-on the Redirect URLs list (add `http://localhost:3000/**` and the preview
-wildcard); anything else falls back to the Site URL, which is also a bare
-origin, so the link still works, on production. `/auth/callback` stays for
-Google sign-in.
+`{{ .RedirectTo }}` is the `/auth/callback?next=…` URL the app asked for, so
+a link requested from localhost or a preview returns there. It must be on
+the Redirect URLs list (add `http://localhost:3000/**` and the preview
+wildcard), or Supabase substitutes the Site URL and the link breaks.
 
 ### Before anyone else uses it
 
@@ -480,8 +478,7 @@ someone.
 src/
   app/
     (auth)/           sign-in, sign-up, shared form UI, auth actions
-    auth/callback/    OAuth code exchange (PKCE)
-    auth/confirm/     email links: reset password, confirm sign-up
+    auth/callback/    where Google and email links land (PKCE code or token hash)
     trips/            trip list and creation; trips/[id] is the day view and the chat
     trips/[id]/vault/ bookings and the gap detector
     api/chat/         one streamed turn with Bento Man
