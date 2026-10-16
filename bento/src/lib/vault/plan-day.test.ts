@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { bookingDates, bookingSlot, canPlanOn, clashes } from "./plan-day";
 
 const dinner = { startsAt: "2027-04-06T19:00:00.000Z", endsAt: "2027-04-06T21:00:00.000Z" };
-const hotel = { startsAt: "2027-04-05T15:00:00.000Z", endsAt: "2027-04-09T11:00:00.000Z" };
-const dateOnly = { startsAt: "2027-04-07T00:00:00.000Z", endsAt: null };
+const hotel = { type: "accommodation", startsAt: "2027-04-05T15:00:00.000Z", endsAt: "2027-04-09T11:00:00.000Z" };
+const midnight = { type: "transport", startsAt: "2027-04-07T00:00:00.000Z", endsAt: null };
+const redEye = { type: "flight", startsAt: "2027-04-06T23:00:00.000Z", endsAt: "2027-04-07T01:00:00.000Z" };
 
 describe("which day a booking may sit on", () => {
   it("allows only the dates a booking covers", () => {
@@ -37,23 +38,28 @@ describe("which day a booking may sit on", () => {
 });
 
 describe("where it sits in the box", () => {
-  it("starts and ends on a same-day booking", () => {
-    expect(bookingSlot(dinner, "2027-04-06")).toEqual({ startMin: 19 * 60, endMin: 21 * 60, part: "starts" });
+  it("starts and ends on a same-day booking, busy between", () => {
+    expect(bookingSlot(dinner, "2027-04-06")).toEqual({ startMin: 19 * 60, endMin: 21 * 60, part: "starts", busy: { from: 19 * 60, to: 21 * 60 } });
   });
 
-  it("check-in on the first day, check-out on the last, all day between", () => {
-    expect(bookingSlot(hotel, "2027-04-05")).toEqual({ startMin: 15 * 60, endMin: null, part: "starts" });
-    expect(bookingSlot(hotel, "2027-04-09")).toEqual({ startMin: 11 * 60, endMin: null, part: "ends" });
-    expect(bookingSlot(hotel, "2027-04-07")).toEqual({ startMin: null, endMin: null, part: "all-day" });
+  it("check-in on the first day, check-out on the last, all day between — never busy", () => {
+    expect(bookingSlot(hotel, "2027-04-05")).toEqual({ startMin: 15 * 60, endMin: null, part: "starts", busy: null });
+    expect(bookingSlot(hotel, "2027-04-09")).toEqual({ startMin: 11 * 60, endMin: null, part: "ends", busy: null });
+    expect(bookingSlot(hotel, "2027-04-07")).toEqual({ startMin: null, endMin: null, part: "all-day", busy: null });
   });
 
-  it("treats a date with no time as all day", () => {
-    expect(bookingSlot(dateOnly, "2027-04-07")).toEqual({ startMin: null, endMin: null, part: "all-day" });
+  it("keeps a real midnight time", () => {
+    expect(bookingSlot(midnight, "2027-04-07")).toEqual({ startMin: 0, endMin: null, part: "starts", busy: null });
+  });
+
+  it("an overnight flight is busy to midnight, then from midnight to landing", () => {
+    expect(bookingSlot(redEye, "2027-04-06")).toEqual({ startMin: 23 * 60, endMin: null, part: "starts", busy: { from: 23 * 60, to: 24 * 60 } });
+    expect(bookingSlot(redEye, "2027-04-07")).toEqual({ startMin: 60, endMin: null, part: "ends", busy: { from: 0, to: 60 } });
   });
 });
 
 describe("clashes", () => {
-  const slot = { startMin: 12 * 60, endMin: 13 * 60 };
+  const slot = { startMin: 12 * 60, busy: { from: 12 * 60, to: 13 * 60 } };
   it("flags a stop that overlaps the booking", () => {
     expect(clashes({ startMin: 11 * 60 + 30, durationMin: 60 }, slot)).toBe(true);
     expect(clashes({ startMin: 12 * 60 + 30, durationMin: 15 }, slot)).toBe(true);
@@ -65,13 +71,20 @@ describe("clashes", () => {
   });
 
   it("treats a booking with no end as a moment", () => {
-    expect(clashes({ startMin: 14 * 60, durationMin: 90 }, { startMin: 15 * 60, endMin: null })).toBe(true);
-    expect(clashes({ startMin: 15 * 60, durationMin: 30 }, { startMin: 15 * 60, endMin: null })).toBe(true);
-    expect(clashes({ startMin: 13 * 60, durationMin: 60 }, { startMin: 15 * 60, endMin: null })).toBe(false);
+    expect(clashes({ startMin: 14 * 60, durationMin: 90 }, { startMin: 15 * 60, busy: null })).toBe(true);
+    expect(clashes({ startMin: 15 * 60, durationMin: 30 }, { startMin: 15 * 60, busy: null })).toBe(true);
+    expect(clashes({ startMin: 13 * 60, durationMin: 60 }, { startMin: 15 * 60, busy: null })).toBe(false);
   });
 
-  it("never flags an untimed stop or an all-day booking", () => {
+  it("flags stops either side of midnight on an overnight flight", () => {
+    expect(clashes({ startMin: 23 * 60 + 30, durationMin: 20 }, bookingSlot(redEye, "2027-04-06"))).toBe(true);
+    expect(clashes({ startMin: 30, durationMin: 20 }, bookingSlot(redEye, "2027-04-07"))).toBe(true);
+    expect(clashes({ startMin: 9 * 60, durationMin: 60 }, bookingSlot(redEye, "2027-04-07"))).toBe(false);
+  });
+
+  it("never flags an untimed stop, an all-day slot, or a stay", () => {
     expect(clashes({ startMin: null, durationMin: 60 }, slot)).toBe(false);
-    expect(clashes({ startMin: 12 * 60, durationMin: 60 }, { startMin: null, endMin: null })).toBe(false);
+    expect(clashes({ startMin: 12 * 60, durationMin: 60 }, { startMin: null, busy: null })).toBe(false);
+    expect(clashes({ startMin: 10 * 60, durationMin: 600 }, bookingSlot(hotel, "2027-04-07"))).toBe(false);
   });
 });

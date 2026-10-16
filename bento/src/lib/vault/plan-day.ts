@@ -10,6 +10,8 @@
  *  every date and clock here is read in UTC. */
 
 export interface PlannableBooking {
+  /** "accommodation" is a stay: its check-in and check-out are moments. */
+  type?: string;
   /** ISO timestamp, wall time stored as UTC. */
   startsAt: string | null;
   endsAt: string | null;
@@ -35,33 +37,54 @@ export function canPlanOn(b: PlannableBooking, date: string): boolean {
   return range != null && date >= range.first && date <= range.last;
 }
 
-/** Where a booking sits in the box for `date`: from its start time on the
- *  day it starts, at its end time on the day it ends (a check-out, a
- *  landing), and all day on a day in between. A time of exactly 00:00 is a
- *  booking entered with a date and no time, so it is all day too.
- *  `endMin` is only set when the booking starts and ends that same day. */
-export function bookingSlot(b: PlannableBooking, date: string): { startMin: number | null; endMin: number | null; part: "starts" | "ends" | "all-day" } {
+/** Where a booking sits in the box for `date`, and the time it takes up.
+ *
+ *  Shown: from its start time on the day it starts; at its end time on the
+ *  day it ends (a check-out, a landing); all day on a day in between.
+ *  `endMin` is only set when it starts and ends that same day.
+ *
+ *  Busy (for clashes): the booked interval on a same-day booking. One that
+ *  runs past midnight — a 23:00 flight landing at 01:00 — is busy for the
+ *  rest of its first day and the start of its last. A stay is never busy:
+ *  check-in and check-out are moments, and the nights between are free.
+ *  Every time is real, 00:00 included: the booking form always sends one. */
+export function bookingSlot(b: PlannableBooking, date: string): {
+  startMin: number | null;
+  endMin: number | null;
+  part: "starts" | "ends" | "all-day";
+  busy: { from: number; to: number } | null;
+} {
   const range = bookingDates(b);
-  if (!range || !canPlanOn(b, date)) return { startMin: null, endMin: null, part: "all-day" };
-  const timed = (iso: string) => (minuteOf(iso) === 0 ? null : minuteOf(iso));
+  const none = { startMin: null, endMin: null, part: "all-day" as const, busy: null };
+  if (!range || !canPlanOn(b, date)) return none;
+  const stay = b.type === "accommodation";
+  const startMin = minuteOf(b.startsAt!);
+  const endMin = b.endsAt ? minuteOf(b.endsAt) : null;
+  const overnight = range.first !== range.last;
   if (date === range.first) {
-    const startMin = timed(b.startsAt!);
-    const end = startMin != null && b.endsAt && dateOf(b.endsAt) === date ? timed(b.endsAt) : null;
-    return { startMin, endMin: end != null && startMin != null && end > startMin ? end : null, part: startMin == null ? "all-day" : "starts" };
+    if (!overnight) {
+      const end = endMin != null && endMin > startMin ? endMin : null;
+      return { startMin, endMin: end, part: "starts", busy: end != null && !stay ? { from: startMin, to: end } : null };
+    }
+    return { startMin, endMin: null, part: "starts", busy: stay ? null : { from: startMin, to: 24 * 60 } };
   }
-  if (date === range.last && b.endsAt) {
-    const endMin = timed(b.endsAt);
-    return { startMin: endMin, endMin: null, part: endMin == null ? "all-day" : "ends" };
+  if (date === range.last && endMin != null) {
+    return { startMin: endMin, endMin: null, part: "ends", busy: stay || endMin === 0 ? null : { from: 0, to: endMin } };
   }
-  return { startMin: null, endMin: null, part: "all-day" };
+  return none;
 }
 
 /** Does a planned stop (start + duration, minutes from midnight) clash with
- *  a booking's slot? A booking with no end is a moment: a stop clashes if
- *  it is still going on then. An all-day booking clashes with nothing. */
-export function clashes(stop: { startMin: number | null; durationMin: number | null }, slot: { startMin: number | null; endMin: number | null }): boolean {
-  if (stop.startMin == null || slot.startMin == null) return false;
+ *  a booking? With a busy interval, any overlap. Without one (a check-in, a
+ *  booking with no end) it is a moment, and a stop clashes if it is still
+ *  going on then. An all-day slot clashes with nothing. */
+export function clashes(
+  stop: { startMin: number | null; durationMin: number | null },
+  slot: { startMin: number | null; busy?: { from: number; to: number } | null },
+): boolean {
+  if (stop.startMin == null) return false;
   const stopEnd = stop.startMin + (stop.durationMin ?? 60);
-  if (slot.endMin == null) return stop.startMin <= slot.startMin && slot.startMin < stopEnd;
-  return stop.startMin < slot.endMin && slot.startMin < stopEnd;
+  if (slot.busy) return stop.startMin < slot.busy.to && slot.busy.from < stopEnd;
+  if (slot.startMin == null) return false;
+  return stop.startMin <= slot.startMin && slot.startMin < stopEnd;
 }

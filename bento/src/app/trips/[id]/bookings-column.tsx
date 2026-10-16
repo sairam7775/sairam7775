@@ -78,8 +78,11 @@ export function BookingsColumn({
         <ul className="mt-3 flex flex-col gap-2">
           {sorted.map((b) => {
             const fits = canPlanOn(b, date);
-            const here = b.plannedOn === date;
-            const elsewhere = b.plannedOn != null && !here;
+            // A day the trip no longer has (its dates moved) counts as no day:
+            // the booking is offered again rather than linking nowhere.
+            const planned = b.plannedOn && tripDays.includes(b.plannedOn) ? b.plannedOn : null;
+            const here = planned === date;
+            const elsewhere = planned != null && !here;
             const range = bookingDates(b);
             const firstDayInPlan = range ? tripDays.find((d) => d >= range.first && d <= range.last) ?? null : null;
             return (
@@ -105,13 +108,13 @@ export function BookingsColumn({
                     <Link href={`/trips/${tripId}/vault`} className="inline-flex min-h-10 items-center text-accent underline underline-offset-2">Add a date to plan it</Link>
                   ) : fits ? (
                     <>
-                      {elsewhere && <Link href={`/trips/${tripId}?day=${b.plannedOn}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">On {shortDate(b.plannedOn!)}</Link>}
+                      {elsewhere && <Link href={`/trips/${tripId}?day=${planned}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">On {shortDate(planned!)}</Link>}
                       <button type="button" disabled={busy} onClick={() => onAdd(b)} className="ml-auto min-h-10 rounded-full border border-rule px-3 font-medium text-ink hover:bg-sunk disabled:opacity-50">
                         {elsewhere ? "Move to this day" : "Add to this day"}
                       </button>
                     </>
-                  ) : b.plannedOn ? (
-                    <Link href={`/trips/${tripId}?day=${b.plannedOn}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">On {shortDate(b.plannedOn)}</Link>
+                  ) : planned ? (
+                    <Link href={`/trips/${tripId}?day=${planned}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">On {shortDate(planned)}</Link>
                   ) : firstDayInPlan ? (
                     <Link href={`/trips/${tripId}?day=${firstDayInPlan}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">Not this day · open {shortDate(firstDayInPlan)}</Link>
                   ) : (
