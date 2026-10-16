@@ -77,6 +77,17 @@ export function bookingSlot(b: PlannableBooking, date: string): {
   return journey ? { ...none, busy: { from: 0, to: 24 * 60 } } : none;
 }
 
+/** The planned bookings a stop clashes with on `date`: every booking in
+ *  the plan that covers the date, whether it has a time there or is busy all
+ *  day (the middle of a journey). What the day box flags. */
+export function clashingBookings<B extends PlannableBooking & { plannedOn: string | null }>(
+  stop: { startMin: number | null; durationMin: number | null },
+  bookings: B[],
+  date: string,
+): B[] {
+  return bookings.filter((b) => b.plannedOn != null && canPlanOn(b, date) && clashes(stop, bookingSlot(b, date)));
+}
+
 /** Does a planned stop (start + duration, minutes from midnight) clash with
  *  a booking? With a busy interval, any overlap. Without one (a check-in, a
  *  booking with no end) it is a moment, and a stop clashes if it is still

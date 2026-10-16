@@ -5,7 +5,7 @@ import { moveItem, removeItem, reorderDay, replanDayAction, togglePin } from "./
 import { planBooking, unplanBooking } from "./booking-actions";
 import { BOOKING_DRAG, BookingsColumn, KIND_LABEL, shortDate, whenText, type PlanBooking } from "./bookings-column";
 import { ConfirmButton } from "@/components/form-controls";
-import { bookingSlot, canPlanOn, clashes } from "@/lib/vault/plan-day";
+import { bookingSlot, canPlanOn, clashingBookings } from "@/lib/vault/plan-day";
 
 export interface DayBoxItem {
   placeId: string;
@@ -210,7 +210,7 @@ export function DayBox(p: DayBoxProps) {
             const isOver = p.overFromIndex != null && i >= p.overFromIndex;
             const showLunchBefore = i === lunchBeforeIndex;
             const height = Math.max(MIN_TILE, (it.durationMin ?? 60) * PX_PER_MIN);
-            const clash = timed.filter((x) => clashes(it, x.slot)).map((x) => x.b.title);
+            const clash = clashingBookings(it, p.bookings, p.date).map((b) => b.title);
             return (
               <div key={it.placeId} className="contents">
                 {blockAt(i).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}

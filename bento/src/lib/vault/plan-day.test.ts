@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingDates, bookingSlot, canPlanOn, clashes } from "./plan-day";
+import { bookingDates, bookingSlot, canPlanOn, clashes, clashingBookings } from "./plan-day";
 
 const dinner = { startsAt: "2027-04-06T19:00:00.000Z", endsAt: "2027-04-06T21:00:00.000Z" };
 const hotel = { type: "accommodation", startsAt: "2027-04-05T15:00:00.000Z", endsAt: "2027-04-09T11:00:00.000Z" };
@@ -68,6 +68,27 @@ describe("a long journey", () => {
 
   it("but a pass between its ends blocks nothing", () => {
     expect(clashes({ startMin: 10 * 60, durationMin: 60 }, bookingSlot(pass, "2027-04-07"))).toBe(false);
+  });
+});
+
+describe("what the day box flags", () => {
+  const ferry = { title: "Ferry", type: "transport", startsAt: "2027-04-06T18:00:00.000Z", endsAt: "2027-04-08T09:00:00.000Z", plannedOn: "2027-04-06" };
+  const dinnerPlanned = { ...dinner, title: "Dinner", type: "restaurant", plannedOn: "2027-04-06" };
+  const dinnerNot = { ...dinnerPlanned, plannedOn: null };
+  const stay = { ...hotel, title: "Hotel", plannedOn: "2027-04-05" };
+  const all = [ferry, dinnerPlanned, stay];
+
+  it("flags a stop on the middle day of a journey", () => {
+    expect(clashingBookings({ startMin: 10 * 60, durationMin: 60 }, all, "2027-04-07").map((b) => b.title)).toEqual(["Ferry"]);
+  });
+
+  it("flags against every booking the stop overlaps, and only those", () => {
+    expect(clashingBookings({ startMin: 18 * 60 + 30, durationMin: 60 }, all, "2027-04-06").map((b) => b.title)).toEqual(["Ferry", "Dinner"]);
+    expect(clashingBookings({ startMin: 9 * 60, durationMin: 60 }, all, "2027-04-06")).toEqual([]);
+  });
+
+  it("ignores a booking that isn't in the plan", () => {
+    expect(clashingBookings({ startMin: 19 * 60, durationMin: 60 }, [dinnerNot], "2027-04-06")).toEqual([]);
   });
 });
 
