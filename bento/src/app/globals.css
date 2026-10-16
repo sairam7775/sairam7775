@@ -45,9 +45,13 @@
 /* Dark palette. Overrides the theme variables on :root rather than sitting
    in a nested @theme: Tailwind v4 hoists @theme out of the media query, so
    the dark values used to apply always, in light mode too. Utilities read
-   var(--color-*), so overriding the variables is enough. */
+   var(--color-*), so overriding the variables is enough.
+
+   It applies when the device is dark and the traveller hasn't chosen light in
+   Settings, or when they have chosen dark (data-theme on <html>, set by the
+   root layout from the bento_theme cookie). The two blocks must match. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --color-paper: #171213;
     --color-surface: #221c1e;
     --color-sunk: #2a2325;
@@ -72,6 +76,41 @@
 
     --shadow-tile: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 36px -20px rgba(0, 0, 0, 0.6);
   }
+}
+
+:root[data-theme="dark"] {
+  --color-paper: #171213;
+  --color-surface: #221c1e;
+  --color-sunk: #2a2325;
+  --color-lacquer: #0f0c0d;
+  --color-rice: #fbf8f3;
+  --color-ink: #fbf8f3;
+  --color-ink-2: #d5cdc9;
+  --color-ink-3: #9a9095;
+  --color-rule: #3a3235;
+
+  --color-accent: #ff8a6e;
+  --color-accent-deep: #ff7757;
+  --color-accent-soft: #3a231d;
+  --color-ume: #f26b6f;
+  --color-ume-soft: #3a1f21;
+  --color-edamame: #6fcb8e;
+  --color-edamame-soft: #1e3327;
+  --color-tamago: #ffd066;
+  --color-tamago-bright: #ffc94a;
+  --color-tamago-soft: #3a2f14;
+  --color-lavender-soft: #262a3f;
+
+  --shadow-tile: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 36px -20px rgba(0, 0, 0, 0.6);
+}
+
+/* A chosen theme also fixes the browser's own controls to match. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {

@@ -200,6 +200,11 @@ Practically:
 - The dark palette overrides variables on `:root` inside the media query.
   Never nest `@theme` in `@media`: Tailwind v4 hoists it and the dark
   values apply in light mode too.
+- Settings → Theme (System / Light / Dark) is the `bento_theme` cookie
+  (`lib/theme.ts`). The root layout puts `data-theme` on `<html>` and picks
+  the browser-bar colour; `globals.css` has the dark values twice — under
+  the media query for `:root:not([data-theme="light"])` and under
+  `:root[data-theme="dark"]`. Change one, change both.
 
 ## The vault (P8)
 
