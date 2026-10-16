@@ -2,15 +2,18 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { THEME_COOKIE, parseTheme } from "@/lib/theme";
+import { z } from "zod";
+import { THEME_COOKIE, THEMES } from "@/lib/theme";
 
-/** Settings → Theme. "system" clears the cookie rather than storing it. */
+/** Settings → Theme. "system" clears the cookie rather than storing it; an
+ *  unknown value changes nothing. */
 export async function setTheme(formData: FormData) {
-  const theme = parseTheme(String(formData.get("theme") ?? ""));
+  const parsed = z.enum(THEMES).safeParse(formData.get("theme"));
+  if (!parsed.success) redirect("/settings");
   const jar = await cookies();
-  if (theme === "system") jar.delete(THEME_COOKIE);
+  if (parsed.data === "system") jar.delete(THEME_COOKIE);
   else {
-    jar.set(THEME_COOKIE, theme, {
+    jar.set(THEME_COOKIE, parsed.data, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
