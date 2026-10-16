@@ -6,7 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/friendly-errors";
 import { canEncrypt, encryptRef } from "@/lib/vault/crypto";
-import { isWallTime, stamp } from "@/lib/vault/wall-time";
+import { endsBeforeStarts, hasTime, isWallTime, stamp } from "@/lib/vault/wall-time";
 import { canPlanOn } from "@/lib/vault/plan-day";
 import type { BookingKind } from "@/lib/types";
 
@@ -41,7 +41,7 @@ const BookingForm = z.object({
 export async function saveBooking(formData: FormData) {
   const { db, tripId, data } = await guard(formData, BookingForm);
 
-  if (data.startsAt && data.endsAt && stamp(data.endsAt)! < stamp(data.startsAt)!) {
+  if (endsBeforeStarts(data.startsAt, data.endsAt)) {
     back(tripId, "That booking ends before it starts.");
   }
 
@@ -62,6 +62,10 @@ export async function saveBooking(formData: FormData) {
     provider: data.provider || null,
     starts_at: stamp(data.startsAt),
     ends_at: stamp(data.endsAt),
+    // A date with no time is stored at 00:00 and marked unknown (0018), so
+    // it is shown as the date alone, never as midnight.
+    starts_time_known: !data.startsAt || hasTime(data.startsAt),
+    ends_time_known: !data.endsAt || hasTime(data.endsAt),
     city_id: data.cityId || null,
     to_city_id: data.toCityId || null,
     place_id: data.placeId || null,

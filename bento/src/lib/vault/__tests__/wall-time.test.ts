@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isWallTime, stamp } from "../wall-time";
+import { endsBeforeStarts, hasTime, isWallTime, stamp } from "../wall-time";
 
 describe("isWallTime", () => {
   it("accepts a date and a date with a time", () => {
@@ -21,5 +21,30 @@ describe("stamp", () => {
     expect(stamp("2026-11-21")).toBe("2026-11-21T00:00:00.000Z");
     expect(stamp("")).toBeNull();
     expect(stamp(undefined)).toBeNull();
+  });
+});
+
+describe("hasTime", () => {
+  it("is true only when a time was given", () => {
+    expect(hasTime("2026-11-20T00:00")).toBe(true);
+    expect(hasTime("2026-11-20")).toBe(false);
+    expect(hasTime("")).toBe(false);
+    expect(hasTime(undefined)).toBe(false);
+  });
+});
+
+describe("endsBeforeStarts", () => {
+  it("compares to the minute when both have a time", () => {
+    expect(endsBeforeStarts("2026-11-20T19:00", "2026-11-20T18:00")).toBe(true);
+    expect(endsBeforeStarts("2026-11-20T19:00", "2026-11-20T21:00")).toBe(false);
+  });
+  it("compares dates when a time is missing, so a date-only end isn't midnight", () => {
+    expect(endsBeforeStarts("2026-11-20T19:00", "2026-11-20")).toBe(false);
+    expect(endsBeforeStarts("2026-11-20", "2026-11-20T09:00")).toBe(false);
+    expect(endsBeforeStarts("2026-11-20T19:00", "2026-11-19")).toBe(true);
+  });
+  it("is false when either is missing", () => {
+    expect(endsBeforeStarts(undefined, "2026-11-20")).toBe(false);
+    expect(endsBeforeStarts("2026-11-20", "")).toBe(false);
   });
 });

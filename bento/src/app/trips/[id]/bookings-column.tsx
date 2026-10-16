@@ -12,6 +12,9 @@ export interface PlanBooking {
   title: string;
   startsAt: string | null;
   endsAt: string | null;
+  /** False when only a date was given. */
+  startTimeKnown: boolean;
+  endTimeKnown: boolean;
   plannedOn: string | null;
 }
 

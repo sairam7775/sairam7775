@@ -24,3 +24,19 @@ export function stamp(s: string | undefined): string | null {
   const [date, time = "00:00"] = s.split("T");
   return new Date(`${date}T${time.length === 5 ? `${time}:00` : time}Z`).toISOString();
 }
+
+/** Did the traveller give a time, or only a date? A form value is
+ *  "YYYY-MM-DD" or "YYYY-MM-DDTHH:MM"; a date alone is stored at 00:00 with
+ *  its `*_time_known` flag false, so it is never shown as midnight. */
+export function hasTime(v: string | undefined | null): boolean {
+  return Boolean(v && v.includes("T"));
+}
+
+/** Does `end` come before `start`? Compared to the minute when both have a
+ *  time; by date when either doesn't, so a dinner on the 6th with no end
+ *  time doesn't "end before it starts" at 00:00. */
+export function endsBeforeStarts(start: string | undefined, end: string | undefined): boolean {
+  if (!start || !end) return false;
+  if (hasTime(start) && hasTime(end)) return stamp(end)! < stamp(start)!;
+  return end.slice(0, 10) < start.slice(0, 10);
+}
