@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
 import { Notice } from "@/app/(auth)/ui";
+import { replayTours } from "@/components/tour/actions";
 
 export default async function Settings({ searchParams }: PageProps<"/settings">) {
   const supabase = await createClient();
@@ -35,6 +36,18 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
             </Link>
           </>
         )}
+      </section>
+
+      <section className="tile up mt-4 p-6">
+        <h2 className="text-[1.1rem] font-bold">Tour</h2>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+          The short walkthrough of your trips, a trip and its vault. It starts again on the trips list, then on each page as you open it.
+        </p>
+        <form action={replayTours}>
+          <button className="mt-4 inline-flex min-h-11 items-center rounded-full border border-rule px-5 text-[0.95rem] hover:bg-sunk">
+            Show the tour again
+          </button>
+        </form>
       </section>
     </main>
   );

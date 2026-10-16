@@ -43,15 +43,12 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
-      <AppHeader>
-        <Tour id="trips" seen={await tourSeen("trips")} />
-      </AppHeader>
+      <AppHeader />
+      <Tour id="trips" seen={await tourSeen("trips")} />
 
       <h1 className="mt-8 text-3xl font-bold tracking-tight">Your trips</h1>
       <p className="mt-2 text-[0.95rem] text-ink-2">
         Signed in as <span className="mono break-all text-[0.85rem]">{user?.email}</span>
-        {" · "}
-        <Link href="/settings" className="underline underline-offset-2 hover:text-ink">Settings</Link>
       </p>
 
       <div className="mt-8">

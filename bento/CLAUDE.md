@@ -252,7 +252,8 @@ Practically:
 ## Walkthrough
 
 - `src/components/tour/`: one short tour per page (`steps.ts`), started on first
-  visit and replayable from the Tour button in the header. A step points at
+  visit. Settings → "Show the tour again" (`replayTours`) clears the cookie
+  so each tour starts again; there is no Tour button in the header. A step points at
   `data-tour="<name>"` on the page, or is a centred card if that element
   isn't there. If you rename or remove one of those anchors, update the step.
 - Seen state is a cookie (`bento_tour`, read on the server so nothing flashes

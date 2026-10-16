@@ -65,8 +65,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
       {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
+      <Tour id="trip" seen={await tourSeen("trip")} />
       <AppHeader back={{ href: "/trips", label: "Your trips" }}>
-        <Tour id="trip" seen={await tourSeen("trip")} />
         {state.trip.startDate && state.trip.endDate && (
           <span className="mono hidden rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice sm:inline">
             {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
