@@ -96,10 +96,11 @@ export function DayBox(p: DayBoxProps) {
   const fillPct = Math.min(100, Math.round((p.activeMin / p.budgetMin) * 100));
   const lunchBeforeIndex = p.lunch ? items.findIndex((it) => it.startMin != null && it.startMin >= p.lunch!.endMin) : -1;
 
-  // Bookings in this day's box. canPlanOn again: a stale planned_on (the
-  // trip moved, say) never shows a booking on a date it doesn't cover.
+  // A booking in the plan sits in every day it covers — a stay from
+  // check-in to check-out, an overnight flight on both its days — so each of
+  // those days shows it and checks its stops against it.
   const blocks = p.bookings
-    .filter((b) => b.plannedOn === p.date && canPlanOn(b, p.date))
+    .filter((b) => b.plannedOn != null && canPlanOn(b, p.date))
     .map((b) => ({ b, slot: bookingSlot(b, p.date) }))
     .sort((x, y) => (x.slot.startMin ?? -1) - (y.slot.startMin ?? -1));
   const allDay = blocks.filter((x) => x.slot.startMin == null);
@@ -119,7 +120,7 @@ export function DayBox(p: DayBoxProps) {
     setMessage(null);
     start(async () => {
       const r = await planBooking({ tripId: p.tripId, bookingId: b.id, date: p.date });
-      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is in ${shortDate(p.date)}.` });
+      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is in your plan for ${whenText(b)}.` });
     });
   }
 
@@ -127,7 +128,7 @@ export function DayBox(p: DayBoxProps) {
     setMessage(null);
     start(async () => {
       const r = await unplanBooking({ tripId: p.tripId, bookingId: b.id });
-      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is out of this day. It's still in Bookings.` });
+      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is out of your plan. It's still in Bookings.` });
     });
   }
 

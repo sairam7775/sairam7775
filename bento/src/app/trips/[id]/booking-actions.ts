@@ -8,8 +8,10 @@ import { buildTripView } from "@/lib/bento-man/trip-view";
 import { bookingDates, canPlanOn } from "@/lib/vault/plan-day";
 import { dbErrorMessage } from "@/lib/friendly-errors";
 
-/** Putting a booking in a day's box, and taking it out. The booking itself
- *  stays in the vault either way; only `planned_on` changes. Called from the
+/** Putting a booking in the plan, and taking it out. It is added from one of
+ *  its own days (`planned_on` is that day, which the database checks), and
+ *  then sits in every day it covers. The booking itself stays in the vault
+ *  either way; only `planned_on` changes. Called from the
  *  Bookings column (a drop, or "Add to this day"), so they return a message
  *  instead of redirecting. */
 

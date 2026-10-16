@@ -228,10 +228,11 @@ Practically:
   gap detector and the planner (`store.bookings()` → `bookedPlaceIds`) so
   they never disagree: linked `place_id`, or an activity that day whose
   title contains the place's name. Never "any ticket that day".
-- A booking sits in a day's box when the traveller drags it there
-  (`bookings.planned_on`, 0017): a fixed block at its booked time, never moved
-  or planned by the engine; a stop overlapping it is flagged. It may only go
-  on a date it covers (`vault/plan-day.ts` `canPlanOn`) — the box, the
+- A booking joins the plan when the traveller drags it into one of its
+  days (`bookings.planned_on`, 0017), and then sits in every day it covers
+  (a stay: check-in, staying, check-out; an overnight flight: both days): a
+  fixed block at its booked time, never moved or planned by the engine; a
+  stop overlapping its busy time is flagged. It may only be added on a date it covers (`vault/plan-day.ts` `canPlanOn`) — the box, the
   action and a check constraint all refuse any other. `planned_on` is a
   date, not a day id, because accepting a proposal rewrites days.
 - Booking times are wall-clock at the place stored as if UTC
