@@ -47,12 +47,20 @@ export function Analytics({ consent }: { consent: Consent | null }) {
 }
 
 /** Records one event when it renders: for outcomes only the server knows,
- *  such as a booking that really saved (the page after the redirect). */
-export function TrackOnce({ event, props }: { event: string; props?: Record<string, string | number | boolean | null> }) {
+ *  such as a booking that really saved (the page after the redirect).
+ *  `consume` names the address parameters that marked the outcome; they are
+ *  removed once counted, so going back to that page doesn't count it again. */
+export function TrackOnce({ event, props, consume }: { event: string; props?: Record<string, string | number | boolean | null>; consume: string[] }) {
   const key = JSON.stringify(props ?? {});
+  const marks = consume.join(",");
   useEffect(() => {
+    const url = new URL(window.location.href);
+    const names = marks.split(",");
+    if (!names.some((n) => url.searchParams.has(n))) return;
     track(event, JSON.parse(key));
-  }, [event, key]);
+    for (const n of names) url.searchParams.delete(n);
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [event, key, marks]);
   return null;
 }
 

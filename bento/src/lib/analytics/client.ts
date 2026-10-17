@@ -68,10 +68,23 @@ export function start() {
   if (pendingUser) posthog.identify(pendingUser);
 }
 
+// Withdrawing consent in one tab stops every open Bento tab: the answer is
+// an httpOnly cookie other tabs can't watch, so this tab tells them.
+const channel = typeof window !== "undefined" && "BroadcastChannel" in window ? new BroadcastChannel("bento-analytics") : null;
+channel?.addEventListener("message", (e) => {
+  if (e.data === "stop") halt();
+});
+
 /** The answer is "no" (or changed to it): stop sending, and remove what
  *  PostHog left in this browser, so a "no" leaves nothing of ours behind
  *  but the answer itself. Safe to call when it never started. */
 export function stop() {
+  const wasOn = started;
+  halt();
+  if (wasOn) channel?.postMessage("stop");
+}
+
+function halt() {
   if (started) {
     posthog.opt_out_capturing();
     posthog.reset();
