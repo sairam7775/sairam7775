@@ -194,11 +194,12 @@ export const en = {
     how: {
       eyebrow: "How it works",
       title: "Three steps, one box",
-      steps: [
-        { title: "Tell Bento Man the trip", body: "Your dates, who’s going, what you love and what you’d never do. A few questions in a chat, not a long form." },
-        { title: "Get a route that adds up", body: "Cities and nights in order, with the train time between them. If it’s too much, it says so — with the arithmetic." },
-        { title: "Open each day like a box", body: "Every stop sized to the time it takes, the train written between them. Pin, reorder, or ask for a re-plan." },
-      ],
+      // Shown in this order. Named, not a list, so a language can't drop one.
+      steps: {
+        tell: { title: "Tell Bento Man the trip", body: "Your dates, who’s going, what you love and what you’d never do. A few questions in a chat, not a long form." },
+        route: { title: "Get a route that adds up", body: "Cities and nights in order, with the train time between them. If it’s too much, it says so — with the arithmetic." },
+        days: { title: "Open each day like a box", body: "Every stop sized to the time it takes, the train written between them. Pin, reorder, or ask for a re-plan." },
+      },
     },
     different: {
       eyebrow: "What it does differently",
@@ -211,7 +212,15 @@ export const en = {
       eyebrow: "Where it knows best today",
       title: "The Kansai–Sanyo corridor",
       body: "The trains between these cities, with real times and fares, and place-by-place detail for the cities most first trips are built on. The rest of Japan is on the map too — and each city tells you how much Bento really knows about it.",
-      cities: [["Kyoto", "京都"], ["Osaka", "大阪"], ["Nara", "奈良"], ["Himeji", "姫路"], ["Hiroshima", "広島"], ["Miyajima", "宮島"]] as [string, string][],
+      // Each city: its name, then its name in Japanese.
+      cities: {
+        kyoto: { name: "Kyoto", ja: "京都" },
+        osaka: { name: "Osaka", ja: "大阪" },
+        nara: { name: "Nara", ja: "奈良" },
+        himeji: { name: "Himeji", ja: "姫路" },
+        hiroshima: { name: "Hiroshima", ja: "広島" },
+        miyajima: { name: "Miyajima", ja: "宮島" },
+      },
     },
     closing: {
       title: "Your first trip, without the guesswork.",
@@ -224,12 +233,12 @@ export const en = {
       caption: "An example day in Kyoto, planned by Bento: four stops from 7:30, with the reason for each.",
       date: "Sunday 22 November",
       summary: "Kyoto · 6h 40m",
-      stops: [
-        { time: "07:30", name: "Fushimi Inari Taisha", why: "Before the tour groups — the lower gates are quiet until about 8." },
-        { time: "10:20", name: "Tofuku-ji", why: "Two stops south. The bridge view is the point." },
-        { time: "12:30", name: "Lunch near Kyoto Station" },
-        { time: "14:00", name: "Sanjusangen-do", why: "1,001 statues in one hall. Shoes off; allow an hour." },
-      ],
+      stops: {
+        inari: { time: "07:30", name: "Fushimi Inari Taisha", why: "Before the tour groups — the lower gates are quiet until about 8." },
+        tofukuji: { time: "10:20", name: "Tofuku-ji", why: "Two stops south. The bridge view is the point." },
+        lunch: { time: "12:30", name: "Lunch near Kyoto Station", why: null as string | null },
+        sanjusangendo: { time: "14:00", name: "Sanjusangen-do", why: "1,001 statues in one hall. Shoes off; allow an hour." },
+      },
       bentoMan: "Arashiyama is the other side of the city — fifty minutes each way. I’ve left it for Tuesday, when you’re already west.",
     },
   },

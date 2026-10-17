@@ -62,7 +62,7 @@ export default async function Home() {
       <section id="how" className="mt-24 scroll-mt-8">
         <SectionHead eyebrow={t.how.eyebrow} title={t.how.title} />
         <ol className="mt-8 grid gap-4 md:grid-cols-3">
-          {t.how.steps.map((s, i) => (
+          {Object.values(t.how.steps).map((s, i) => (
             <Step key={s.title} n={i + 1} title={s.title}>{s.body}</Step>
           ))}
         </ol>
@@ -87,7 +87,7 @@ export default async function Home() {
             <p className="mt-3 text-[0.98rem] leading-relaxed text-ink-2">{t.coverage.body}</p>
           </div>
           <ul className="flex flex-wrap gap-2">
-            {t.coverage.cities.map(([en, ja]) => (
+            {Object.values(t.coverage.cities).map(({ name: en, ja }) => (
               <li key={en} className="flex items-baseline gap-2 rounded-full border border-rule bg-paper px-4 py-2">
                 <span className="font-medium">{en}</span>
                 <span lang="ja" className="text-[0.85rem] text-ink-3">{ja}</span>
@@ -157,8 +157,10 @@ function Card({ tone, title, children }: { tone: string; title: string; children
  *  sentence it illustrates. */
 function DayPreview() {
   const p = t.preview;
-  // Height and colour per stop, in the order of copy.home.preview.stops.
-  const looks: [number, string][] = [[92, "bg-accent-soft"], [64, "bg-edamame-soft"], [40, "bg-tamago-soft"], [72, "bg-lavender-soft"]];
+  // Height and colour per stop.
+  const looks: Record<keyof typeof p.stops, [number, string]> = {
+    inari: [92, "bg-accent-soft"], tofukuji: [64, "bg-edamame-soft"], lunch: [40, "bg-tamago-soft"], sanjusangendo: [72, "bg-lavender-soft"],
+  };
   return (
     <figure className="up relative" style={{ animationDelay: ".15s" }}>
       <figcaption className="sr-only">{p.caption}</figcaption>
@@ -169,8 +171,9 @@ function DayPreview() {
         </div>
         <div className="box p-2.5">
           <div className="flex flex-col gap-2">
-            {p.stops.map(({ time, name, why }, i) => {
-              const [h, tint] = looks[i % looks.length];
+            {(Object.keys(p.stops) as (keyof typeof p.stops)[]).map((key, i) => {
+              const { time, name, why } = p.stops[key];
+              const [h, tint] = looks[key];
               return (
               <div key={name} className={`up rounded-tile px-4 py-3 ${tint}`} style={{ minHeight: h, animationDelay: `${0.25 + i * 0.08}s` }}>
                 <div className="flex items-baseline gap-3">

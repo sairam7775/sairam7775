@@ -4,6 +4,7 @@ import { copy, type Copy } from ".";
 /** Every line, with sample values filled in for the functions. */
 function lines(node: unknown, path: string[] = []): [string, string][] {
   if (typeof node === "string") return [[path.join("."), node]];
+  if (node === null) return []; // a deliberately absent line, e.g. a stop with no note
   if (typeof node === "function") {
     const args = Array.from({ length: node.length }, (_, i) => (i === 0 ? "X" : 2));
     return [[path.join("."), String((node as (...a: unknown[]) => unknown)(...args))]];
@@ -28,7 +29,9 @@ describe("copy", () => {
   it("makes another language list every line (a type check)", () => {
     // @ts-expect-error: a language missing the Supabase messages must not compile.
     const partial: Copy = { ...copy, auth: { ...copy.auth, supabase: {} } };
-    expect(partial).toBeDefined();
+    // @ts-expect-error: nor one that leaves out a home-page step.
+    const fewer: Copy = { ...copy, home: { ...copy.home, how: { ...copy.home.how, steps: { tell: copy.home.how.steps.tell } } } };
+    expect(partial && fewer).toBeDefined();
   });
 
   it("fills in what it's given", () => {
