@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { randomBytes } from "node:crypto";
 import { BookingRefError, canEncrypt, decryptRef, encryptRef, maskRef } from "../crypto";
+import { copy } from "@/copy";
 
 const KEY = randomBytes(32).toString("base64");
 let saved: string | undefined;
@@ -43,7 +44,7 @@ describe("booking references", () => {
   it("says plainly when the key has changed", () => {
     const stored = encryptRef("ABC123");
     process.env.BENTO_BOOKING_REF_KEY = randomBytes(32).toString("base64");
-    expect(() => decryptRef(stored)).toThrow(/encryption key has changed/);
+    expect(() => decryptRef(stored)).toThrow(copy.vault.referenceUnreadable);
   });
 
   it("refuses a missing or wrong-sized key instead of storing in the clear", () => {

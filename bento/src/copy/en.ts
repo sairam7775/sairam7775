@@ -538,6 +538,7 @@ export const en = {
       other: "Other",
     },
     noDates: "no dates recorded",
+    referenceUnreadable: "This reference can't be shown: it was saved with an older key. Add it again from the confirmation.",
     remove: "Remove",
     empty: "Nothing recorded yet. Add what you book as you book it, and the ribbon above fills in.",
     // The running total: "~¥48,200 at rates from 10 Oct, plus GBP 120 with no rate on record".
@@ -630,6 +631,19 @@ export const en = {
     ordinals: { 1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth" },
     ordinal: (n: number) => `${n}th`,
     seasons: { sakura: "cherry blossom", koyo: "autumn colour" },
+    // What a traveller can say they like. The label also finishes "matches …" under a stop, in lower case.
+    interests: {
+      shrines: { label: "Shrines & temples", hint: "Fushimi Inari, Todai-ji, Koyasan" },
+      history: { label: "History & castles", hint: "Himeji, Matsumoto, Hiroshima" },
+      nature: { label: "Nature & landscape", hint: "Gardens, gorges, mountains" },
+      food: { label: "Food & drink", hint: "Markets, izakaya, ramen, sake" },
+      onsen: { label: "Onsen", hint: "Hot springs and ryokan" },
+      art: { label: "Art & museums", hint: "Naoshima, teamLab, craft" },
+      popculture: { label: "Anime & pop culture", hint: "Akihabara, Ghibli, game centres" },
+      shopping: { label: "Shopping", hint: "Depachika, vintage, stationery" },
+      nightlife: { label: "Nightlife", hint: "Bars, live houses, late izakaya" },
+      offbeat: { label: "Off the beaten path", hint: "Places most visitors miss" },
+    },
     // Joins the clauses below into one sentence: "Matches food; quiet if you're there early."
     clauseJoin: "; ",
     clauseEnd: ".",
@@ -758,11 +772,14 @@ export const en = {
       noTicket: (name: string, day: string) => `${name} needs a ticket, and none is recorded for ${day}`,
       breaks: (conflicts: string, more: number) => `Moving the dates would break your day plans: ${conflicts}${more ? `; and ${more} more` : ""}. Re-plan or clear those days first, then change the dates.`,
       conflictJoin: "; ",
+      routeLonger: (route: number, trip: number) => `the route is ${route} nights and the trip is now ${trip}`,
+      changedWhileOpen: "the trip dates changed while this was open. Ask again.",
     },
     // Trains and walks.
     transit: {
       yen: (amount: string, estimate: boolean) => `${estimate ? "~" : ""}¥${amount}`,
       walk: (from: string, to: string, min: number) => `Walk · ${from} → ${to} · ${min} min`,
+      walkOnly: (min: number) => `Walk · ${min} min`,
       nonstop: "nonstop",
       stops: (n: number) => `${n} stops`,
       ride: (line: string, from: string, to: string, stops: string, min: number, fare: string, notes: string) =>
@@ -832,6 +849,12 @@ export const en = {
     readerOff: "Reading confirmations isn't available on this site. Fill the form in by hand.",
     readFailed: "Couldn't read that one. Fill the form in by hand.",
     readError: "Something went wrong reading that. Fill the form in by hand.",
+    readTooShort: "There is not enough here to read.",
+    readRefused: "That text could not be read.",
+    readEmpty: "Nothing came back. Enter the booking by hand.",
+    readNotBooking: "That did not come back as a booking. Enter it by hand.",
+    readNotBookingShape: "That did not look like a booking. Enter it by hand.",
+    fromTo: "Pick where you're starting and where you're going.",
     noRoute: (from: string, to: string) => `No route from ${from} to ${to}.`,
   },
 

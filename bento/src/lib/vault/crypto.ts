@@ -10,6 +10,7 @@
  *  record and stored with it — reusing a nonce under one key is the way
  *  GCM breaks, so it is never derived from anything. */
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { copy } from "@/copy";
 
 const ALGO = "aes-256-gcm";
 const NONCE_BYTES = 12;
@@ -73,7 +74,7 @@ export function decryptRef(stored: string): string {
   try {
     return Buffer.concat([decipher.update(cipher), decipher.final()]).toString("utf8");
   } catch {
-    throw new BookingRefError("this reference could not be decrypted — the encryption key has changed since it was saved");
+    throw new BookingRefError(copy.vault.referenceUnreadable);
   }
 }
 

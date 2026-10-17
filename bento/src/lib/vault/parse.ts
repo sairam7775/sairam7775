@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { BookingKind } from "@/lib/types";
 import { addUsage, ZERO_USAGE, type Usage } from "@/lib/bento-man/cost";
+import { copy } from "@/copy";
 
 export const PARSE_MODEL = "claude-haiku-4-5";
 
@@ -96,7 +97,7 @@ export class ParseFailed extends Error {
 /** The pasted text, as JSON. No tools, no trip state, no history. */
 export async function parseConfirmation(client: Anthropic, text: string): Promise<ParseResult> {
   const trimmed = text.trim().slice(0, 12_000);
-  if (trimmed.length < 8) throw new ParseFailed("There is not enough here to read.");
+  if (trimmed.length < 8) throw new ParseFailed(copy.server.readTooShort);
 
   const response = await client.messages.create({
     model: PARSE_MODEL,
@@ -120,20 +121,20 @@ export async function parseConfirmation(client: Anthropic, text: string): Promis
   });
   const fail = (message: string) => new ParseFailed(message, usage, response.model);
 
-  if (response.stop_reason === "refusal") throw fail("That text could not be read.");
+  if (response.stop_reason === "refusal") throw fail(copy.server.readRefused);
 
   const block = response.content.find((b) => b.type === "text");
-  if (!block || block.type !== "text") throw fail("Nothing came back. Enter the booking by hand.");
+  if (!block || block.type !== "text") throw fail(copy.server.readEmpty);
 
   let raw: unknown;
   try {
     raw = JSON.parse(block.text);
   } catch {
-    throw fail("That did not come back as a booking. Enter it by hand.");
+    throw fail(copy.server.readNotBooking);
   }
 
   const parsed = ParsedBookingSchema.safeParse(raw);
-  if (!parsed.success) throw fail(`That did not look like a booking: ${parsed.error.issues[0].message}`);
+  if (!parsed.success) throw fail(copy.server.readNotBookingShape);
 
   return {
     booking: parsed.data,

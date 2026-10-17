@@ -17,7 +17,7 @@ export function travelFromGraph(graph: Graph): TravelFn {
       const wb = b.stationWalkMin ?? 10;
       if (a.nearestStation === b.nearestStation) {
         const minutes = Math.max(3, Math.round((wa + wb) * 0.8));
-        leg = { mode: "walk", minutes, fareJpy: 0, fareKind: "exact", detail: `Walk · ${minutes} min`, lines: [] };
+        leg = { mode: "walk", minutes, fareJpy: 0, fareKind: "exact", detail: copy.plan.transit.walkOnly(minutes), lines: [] };
       } else {
         const r = placeRoute(graph, { stationId: a.nearestStation, walkMin: wa }, { stationId: b.nearestStation, walkMin: wb });
         if (r) {
