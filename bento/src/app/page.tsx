@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { BentoLogo, BentoMark } from "@/components/logo";
 import { copy } from "@/copy";
+import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 
 const t = copy.home;
 
@@ -26,6 +27,7 @@ export default async function Home() {
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8">
+      {!user && <AnalyticsSignedOut />}
       <header className="up flex items-center justify-between gap-3">
         <Link href="/" aria-label={copy.common.homeLabel} className="inline-flex"><BentoLogo /></Link>
         <nav className="flex items-center gap-1">

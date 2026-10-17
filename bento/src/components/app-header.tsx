@@ -2,7 +2,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BentoLogo } from "@/components/logo";
 import { signOut } from "@/app/(auth)/actions";
-import { SignOutButton } from "@/components/sign-out-button";
 import { copy } from "@/copy";
 
 /** The signed-in header, one row: the logo goes home to the trips list,
@@ -35,7 +34,7 @@ export function AppHeader({ back, children }: { back?: { href: string; label: st
           <span className="sr-only sm:not-sr-only">{copy.common.settings}</span>
         </Link>
         <form action={signOut}>
-          <SignOutButton />
+          <button className="min-h-10 whitespace-nowrap rounded-full px-2.5 text-[0.85rem] text-ink-2 hover:bg-sunk hover:text-ink sm:px-3">{copy.common.signOut}</button>
         </form>
       </div>
     </header>

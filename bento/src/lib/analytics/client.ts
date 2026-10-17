@@ -17,6 +17,8 @@ import { pathOnly } from "./url";
 let initialized = false;
 let started = false;
 let pendingUser: string | null = null;
+// A signed-out page asked to unlink before PostHog had started.
+let forgetPending = false;
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
@@ -35,7 +37,7 @@ export function start() {
     posthog.opt_in_capturing();
     posthog.startSessionRecording();
     started = true;
-    if (pendingUser) posthog.identify(pendingUser);
+    afterStart();
     return;
   }
   posthog.init(KEY, {
@@ -72,6 +74,14 @@ export function start() {
   posthog.opt_in_capturing();
   initialized = true;
   started = true;
+  afterStart();
+}
+
+function afterStart() {
+  if (forgetPending) {
+    forgetPending = false;
+    forgetUser();
+  }
   if (pendingUser) posthog.identify(pendingUser);
 }
 
@@ -117,13 +127,20 @@ function halt() {
 /** Link events to the signed-in account by its internal id only. */
 export function identify(userId: string) {
   pendingUser = userId;
+  forgetPending = false;
   if (started && posthog.get_distinct_id() !== userId) posthog.identify(userId);
 }
 
-/** Signing out: the next person on this browser is someone new. */
+/** On a signed-out page: if this browser was still linked to an account
+ *  (someone signed out), the next person here is someone new. Done here,
+ *  after sign-out really happened, rather than on the button. */
 export function forgetUser() {
   pendingUser = null;
-  if (!started) return;
+  if (!started) {
+    forgetPending = true;
+    return;
+  }
+  if (posthog.get_property("$user_state") !== "identified") return;
   // reset() clears consent; the traveller's "yes" still stands, so opt back in.
   posthog.reset();
   posthog.opt_in_capturing();

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { googleSignInEnabled } from "@/lib/auth-config";
 import { copy } from "@/copy";
+import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { signInWithPassword, signInWithGoogle } from "../actions";
 import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Submit } from "../ui";
 
@@ -36,6 +37,7 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
         </>
       }
     >
+      <AnalyticsSignedOut />
       <ErrorNote message={error} />
 
       {googleSignInEnabled() && (

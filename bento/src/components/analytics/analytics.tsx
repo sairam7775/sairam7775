@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { setAnalytics } from "@/app/settings/actions";
 import { ChoiceButton } from "@/components/form-controls";
-import { analyticsConfigured, identify, start, stop, track } from "@/lib/analytics/client";
+import { analyticsConfigured, forgetUser, identify, start, stop, track } from "@/lib/analytics/client";
 import type { Consent } from "@/lib/analytics/consent";
 import { copy } from "@/copy";
 
@@ -70,5 +70,14 @@ export function AnalyticsUser({ id }: { id: string }) {
   useEffect(() => {
     identify(id);
   }, [id]);
+  return null;
+}
+
+/** Put on pages a signed-out visitor sees (home, sign-in): unlinks the
+ *  account if this browser just signed out. */
+export function AnalyticsSignedOut() {
+  useEffect(() => {
+    forgetUser();
+  }, []);
   return null;
 }
