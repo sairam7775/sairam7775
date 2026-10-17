@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
-import { MAX_BULK_VERIFY, missingForVerify } from "@/lib/places/verify";
+import { MAX_BULK_VERIFY, READY, missingForVerify } from "@/lib/places/verify";
 
 const TIERS = ["deep", "outline", "stub"] as const;
 
@@ -217,14 +217,25 @@ export async function verifyPlace(formData: FormData) {
     redirect(`${base}${base.includes("?") ? "&" : "?"}error=` + encodeURIComponent(`Can't verify ${id} without ${missing.join(", ")}.`));
   }
 
-  await db
+  // The rule again, in the update itself: an edit that landed after the
+  // check above is signed only if it still passes.
+  const { data: signed } = await db
     .from("places")
     .update({
       verification_status: "verified",
       verified_by: user.email ?? user.id,
       last_verified: new Date().toISOString().slice(0, 10),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .gt(...READY.durationAbove)
+    .neq(...READY.tagsNot)
+    .neq(...READY.sourcesNot)
+    .select("id");
+  if (!signed?.length) {
+    const back = String(formData.get("back") ?? "");
+    const base = back.startsWith("/admin/") ? back : `/admin/places/${id}`;
+    redirect(`${base}${base.includes("?") ? "&" : "?"}error=` + encodeURIComponent(`${id} changed while you were reviewing it and wasn't verified. Check it again.`));
+  }
 
   revalidatePath(`/admin/places/${id}`);
   revalidatePath("/admin/review");
@@ -238,9 +249,9 @@ const bulk = z.object({
 });
 
 /** Bulk sign-off from /admin/review/bulk. The same rule as verifyPlace,
- *  checked here again for every record (the page's checkboxes are only a
- *  convenience): records that pass are signed in one update, by this admin,
- *  and only while they are still drafts; the rest are named back. */
+ *  applied by the database in the one update that signs (the page's
+ *  checkboxes are only a convenience): every ticked record still in draft
+ *  that passes is signed by this admin; drafts that don't are named back. */
 export async function verifyPlaces(formData: FormData) {
   const { user, db } = await requireAdmin();
   const rawBack = String(formData.get("back") ?? "");
@@ -250,28 +261,27 @@ export async function verifyPlaces(formData: FormData) {
   const parsed = bulk.safeParse({ ids: [...new Set(formData.getAll("ids").map(String))], back });
   if (!parsed.success) redirect(to({ error: "Tick at least one place to verify." }));
 
-  const { data: rows, error: readError } = await db
+  // Check and sign in one statement, so a record edited meanwhile is
+  // judged on what it holds now.
+  const { data: signed, error } = await db
     .from("places")
-    .select("id, duration_typical_min, interest_tags, sources")
+    .update({
+      verification_status: "verified",
+      verified_by: user.email ?? user.id,
+      last_verified: new Date().toISOString().slice(0, 10),
+    })
     .in("id", parsed.data.ids)
-    .eq("verification_status", "draft");
-  if (readError) redirect(to({ error: `Couldn't read those places: ${readError.message}` }));
+    .eq("verification_status", "draft")
+    .gt(...READY.durationAbove)
+    .neq(...READY.tagsNot)
+    .neq(...READY.sourcesNot)
+    .select("id");
+  if (error) redirect(to({ error: `Couldn't verify those places: ${error.message}` }));
 
-  const ready = (rows ?? []).filter((r) => missingForVerify(r).length === 0).map((r) => r.id);
-  const notReady = (rows ?? []).filter((r) => missingForVerify(r).length > 0).map((r) => r.id);
-
-  if (ready.length) {
-    const { error } = await db
-      .from("places")
-      .update({
-        verification_status: "verified",
-        verified_by: user.email ?? user.id,
-        last_verified: new Date().toISOString().slice(0, 10),
-      })
-      .in("id", ready)
-      .eq("verification_status", "draft");
-    if (error) redirect(to({ error: `Couldn't verify those places: ${error.message}` }));
-  }
+  // Whatever is still a draft wasn't ready.
+  const { data: left } = await db.from("places").select("id").in("id", parsed.data.ids).eq("verification_status", "draft");
+  const ready = signed ?? [];
+  const notReady = (left ?? []).map((r) => r.id);
 
   revalidatePath("/admin");
   revalidatePath("/admin/review");

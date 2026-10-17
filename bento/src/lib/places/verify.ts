@@ -16,5 +16,15 @@ export function missingForVerify(p: VerifiableFields | null | undefined): string
   return missing;
 }
 
+/** The same rule as database filters, for the UPDATE that signs a record:
+ *  checking and signing in one statement means a record edited in between
+ *  is signed only if it still passes. Keep in step with missingForVerify.
+ *  (A NULL array fails "<> '{}'" too, so sources may be null.) */
+export const READY = {
+  durationAbove: ["duration_typical_min", 0],
+  tagsNot: ["interest_tags", "{}"],
+  sourcesNot: ["sources", "{}"],
+} as const;
+
 /** The most one bulk verify may sign at once — the whole draft set today. */
 export const MAX_BULK_VERIFY = 500;
