@@ -195,6 +195,13 @@ Practically:
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
+- An overpacked route is a conversation before it is a proposal:
+  `propose_route` refuses it unless `traveller_insists`, and after a refusal
+  it stays refused for the rest of that turn, so the traveller hears the
+  arithmetic before they can overrule it. `assess_route` doesn't block (the
+  turn they insist, the model assesses again). The model can't be checked
+  for honesty about "insists", so the proposal card says it is overpacked
+  and its button reads "Accept anyway" — the traveller is warned by code.
 
 ## Day view (P7)
 
