@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { copy } from "@/copy";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { parseProposal } from "@/lib/bento-man/diff";
@@ -24,20 +25,20 @@ export async function acceptProposal(formData: FormData) {
     .eq("trip_id", tripId)
     .eq("diff_status", "proposed")
     .maybeSingle();
-  if (!msg) redirect(`/trips/${tripId}?error=${encodeURIComponent("That proposal has already been answered.")}`);
+  if (!msg) redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.answered)}`);
 
   const proposal = parseProposal(msg.proposed_diff);
   if (!proposal) {
     await db.from("chat_messages").update({ diff_status: "rejected", resolved_at: new Date().toISOString() }).eq("id", messageId).eq("diff_status", "proposed");
-    redirect(`/trips/${tripId}?error=${encodeURIComponent("That proposal can't be read any more. Ask Bento Man again.")}`);
+    redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.unreadable)}`);
   }
 
   const store = new SupabaseStore(db, tripId, user.id);
   try {
     await store.applyProposal(proposal, messageId);
   } catch (e) {
-    const why = e instanceof Error ? e.message : "the database refused the change";
-    redirect(`/trips/${tripId}?error=${encodeURIComponent(`That didn't apply: ${why}`)}`);
+    const why = e instanceof Error ? e.message : copy.trip.proposals.notAppliedUnknown;
+    redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.notApplied(why))}`);
   }
 
   // "Don't ask me again" on a date change is the traveller's permission
@@ -47,7 +48,7 @@ export async function acceptProposal(formData: FormData) {
     try {
       await store.setAutoApplyDates(true);
     } catch {
-      redirect(`/trips/${tripId}?error=${encodeURIComponent("The dates changed, but \"don't ask again\" didn't save. Try it from Edit trip.")}`);
+      redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.rememberFailed)}`);
     }
   }
 
@@ -66,7 +67,7 @@ export async function setDatePermission(formData: FormData) {
   try {
     await new SupabaseStore(db, tripId, user.id).setAutoApplyDates(allow === "on");
   } catch {
-    redirect(`/trips/${tripId}?error=${encodeURIComponent("That setting didn't save. Try again.")}`);
+    redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.edit.settingFailed)}`);
   }
   revalidatePath(`/trips/${tripId}`);
 }
