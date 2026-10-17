@@ -6,12 +6,15 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/friendly-errors";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
+import { copy } from "@/copy";
+
+const e = copy.trips.errors;
 
 const newTrip = z.object({
-  title: z.string().trim().max(120, "Keep the trip name under 120 characters.").optional(),
+  title: z.string().trim().max(120, e.longTitle).optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-  partySize: z.coerce.number().int("People travelling should be a whole number.").min(1, "At least one person is travelling.").max(20, "Bento plans for up to 20 people."),
+  partySize: z.coerce.number().int(e.wholePeople).min(1, e.minPeople).max(20, e.maxPeople),
 });
 
 export async function createTrip(formData: FormData) {
@@ -35,7 +38,7 @@ export async function createTrip(formData: FormData) {
   const { title, startDate, endDate, partySize } = parsed.data;
 
   if (startDate && endDate && endDate < startDate) {
-    redirect("/trips?error=" + encodeURIComponent("The end date is before the start date."));
+    redirect("/trips?error=" + encodeURIComponent(e.endBeforeStart));
   }
 
   // user_id is set explicitly, and the RLS policy checks it matches the
@@ -49,7 +52,7 @@ export async function createTrip(formData: FormData) {
   }).select("id").single();
 
   if (error || !trip) {
-    redirect(`/trips?error=${encodeURIComponent(dbErrorMessage(error, "create the trip"))}`);
+    redirect(`/trips?error=${encodeURIComponent(dbErrorMessage(error, e.create))}`);
   }
 
   // Straight into the new trip: that's where the planning starts.
@@ -91,8 +94,8 @@ export async function updateTrip(formData: FormData) {
   const store = new SupabaseStore(supabase, id, user.id);
   try {
     await store.setTripDates({ title: title ?? null, startDate: startDate ?? null, endDate: endDate ?? null, partySize });
-  } catch (e) {
-    redirect(`${back}?error=${encodeURIComponent(e instanceof Error ? e.message : "Couldn't save the trip.")}`);
+  } catch (err) {
+    redirect(`${back}?error=${encodeURIComponent(err instanceof Error ? err.message : e.saveFailed)}`);
   }
 
   revalidatePath(back);

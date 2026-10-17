@@ -180,6 +180,93 @@ export const en = {
     failed: (doing: string) => `Couldn't ${doing}. Try again in a moment.`,
   },
 
+  home: {
+    howItWorksLink: "How it works",
+    yourTripsCta: "Your trips →",
+    startPlanning: "Start planning",
+    hero: {
+      kicker: "For your first trip to Japan",
+      kickerJa: "弁当",
+      title: "Plan Japan like you’ve been before.",
+      body: "Bento is a trip planner that tells you the honest version — how long each place really takes, which trains to catch, and what’s still missing from your plan — the way a friend who lives there would.",
+      note: "Bento suggests; you decide. Nothing changes in your plan until you say yes.",
+    },
+    how: {
+      eyebrow: "How it works",
+      title: "Three steps, one box",
+      steps: [
+        { title: "Tell Bento Man the trip", body: "Your dates, who’s going, what you love and what you’d never do. A few questions in a chat, not a long form." },
+        { title: "Get a route that adds up", body: "Cities and nights in order, with the train time between them. If it’s too much, it says so — with the arithmetic." },
+        { title: "Open each day like a box", body: "Every stop sized to the time it takes, the train written between them. Pin, reorder, or ask for a re-plan." },
+      ],
+    },
+    different: {
+      eyebrow: "What it does differently",
+      title: "Honest, not exhaustive",
+      durations: { title: "Real durations, not listings", body: "Fushimi Inari is 45 minutes to the gates and three hours to the summit. Which one you have time for changes the day." },
+      honest: { title: "It admits what it doesn’t know", body: "Every city says how well it’s covered. A thin guess dressed up as a plan is the one thing this won’t do." },
+      gaps: { title: "It finds the gaps", body: "The night you have no hotel, the leg with no train, the ticket whose booking window closes next week." },
+    },
+    coverage: {
+      eyebrow: "Where it knows best today",
+      title: "The Kansai–Sanyo corridor",
+      body: "The trains between these cities, with real times and fares, and place-by-place detail for the cities most first trips are built on. The rest of Japan is on the map too — and each city tells you how much Bento really knows about it.",
+      cities: [["Kyoto", "京都"], ["Osaka", "大阪"], ["Nara", "奈良"], ["Himeji", "姫路"], ["Hiroshima", "広島"], ["Miyajima", "宮島"]] as [string, string][],
+    },
+    closing: {
+      title: "Your first trip, without the guesswork.",
+      body: "Start with your dates. Bento Man takes it from there.",
+    },
+    footer: "Bento — Japan, planned properly",
+    footerJa: "いってらっしゃい",
+    // The sample day beside the headline: an illustration, not real data.
+    preview: {
+      caption: "An example day in Kyoto, planned by Bento: four stops from 7:30, with the reason for each.",
+      date: "Sunday 22 November",
+      summary: "Kyoto · 6h 40m",
+      stops: [
+        { time: "07:30", name: "Fushimi Inari Taisha", why: "Before the tour groups — the lower gates are quiet until about 8." },
+        { time: "10:20", name: "Tofuku-ji", why: "Two stops south. The bridge view is the point." },
+        { time: "12:30", name: "Lunch near Kyoto Station" },
+        { time: "14:00", name: "Sanjusangen-do", why: "1,001 statues in one hall. Shoes off; allow an hour." },
+      ],
+      bentoMan: "Arashiyama is the other side of the city — fifty minutes each way. I’ve left it for Tuesday, when you’re already west.",
+    },
+  },
+
+  trips: {
+    title: "Your trips",
+    signedInAs: "Signed in as",
+    untitled: "Untitled trip",
+    noDates: "No dates yet",
+    nights: (n: number) => `${n} night${n === 1 ? "" : "s"}`,
+    people: (n: number) => `${n} people`,
+    delete: "Delete",
+    deleteLabel: (title: string) => `Delete ${title}`,
+    deleteConfirm: (title: string) => `Delete “${title}”? Its route, days, chat and bookings go with it. This can’t be undone.`,
+    empty: "No trips yet. Start one below — dates can come later.",
+    new: {
+      title: "Start a trip",
+      body: "Everything here is optional and can be changed later — you can also just tell Bento Man.",
+      name: "Name it",
+      namePlaceholder: "Kansai, autumn",
+      arrive: "Arrive in Japan",
+      leave: "Leave Japan",
+      people: "People travelling",
+      submit: "Create trip",
+      pending: "Creating…",
+    },
+    errors: {
+      longTitle: "Keep the trip name under 120 characters.",
+      wholePeople: "People travelling should be a whole number.",
+      minPeople: "At least one person is travelling.",
+      maxPeople: "Bento plans for up to 20 people.",
+      endBeforeStart: "The end date is before the start date.",
+      saveFailed: "Couldn't save the trip.",
+      create: "create the trip",
+    },
+  },
+
   settings: {
     title: "Settings",
     passwordChanged: "Your password was changed.",

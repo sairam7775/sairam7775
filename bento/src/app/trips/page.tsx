@@ -7,9 +7,12 @@ import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { createTrip, deleteTrip } from "./actions";
 import { ErrorNote } from "../(auth)/ui";
+import { copy } from "@/copy";
+
+const t = copy.trips;
 
 function formatRange(start: string | null, end: string | null) {
-  if (!start && !end) return "No dates yet";
+  if (!start && !end) return t.noDates;
   const fmt = (d: string) =>
     new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", {
       day: "numeric",
@@ -21,7 +24,7 @@ function formatRange(start: string | null, end: string | null) {
     const nights = Math.round(
       (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000,
     );
-    return `${fmt(start)} – ${fmt(end)} · ${nights} night${nights === 1 ? "" : "s"}`;
+    return `${fmt(start)} – ${fmt(end)} · ${t.nights(nights)}`;
   }
   return fmt((start ?? end)!);
 }
@@ -46,9 +49,9 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
       <AppHeader />
       <Tour id="trips" seen={await tourSeen("trips")} />
 
-      <h1 className="mt-8 text-3xl font-bold tracking-tight">Your trips</h1>
+      <h1 className="mt-8 text-3xl font-bold tracking-tight">{t.title}</h1>
       <p className="mt-2 text-[0.95rem] text-ink-2">
-        Signed in as <span className="mono break-all text-[0.85rem]">{user?.email}</span>
+        {t.signedInAs} <span className="mono break-all text-[0.85rem]">{user?.email}</span>
       </p>
 
       <div className="mt-8">
@@ -64,21 +67,21 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
             >
               <div>
                 <h2 className="text-base font-bold">
-                  <Link href={`/trips/${trip.id}`} className="underline-offset-4 hover:underline">{trip.title ?? "Untitled trip"}</Link>
+                  <Link href={`/trips/${trip.id}`} className="underline-offset-4 hover:underline">{trip.title ?? t.untitled}</Link>
                 </h2>
                 <p className="mono mt-1 text-[0.78rem] text-ink-3">
                   {formatRange(trip.start_date, trip.end_date)}
-                  {trip.party_size > 1 && ` · ${trip.party_size} people`}
+                  {trip.party_size > 1 && ` · ${t.people(trip.party_size)}`}
                 </p>
               </div>
               <form action={deleteTrip}>
                 <input type="hidden" name="id" value={trip.id} />
                 <ConfirmButton
-                  message={`Delete “${trip.title ?? "Untitled trip"}”? Its route, days, chat and bookings go with it. This can’t be undone.`}
-                  aria-label={`Delete ${trip.title ?? "Untitled trip"}`}
+                  message={t.deleteConfirm(trip.title ?? t.untitled)}
+                  aria-label={t.deleteLabel(trip.title ?? t.untitled)}
                   className="min-h-9 rounded-full px-3 text-[0.8rem] text-ink-3 hover:bg-ume-soft hover:text-ume"
                 >
-                  Delete
+                  {t.delete}
                 </ConfirmButton>
               </form>
             </li>
@@ -86,38 +89,38 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
         </ul>
       ) : (
         <p className="tile up px-5 py-8 text-center text-[0.95rem] text-ink-2">
-          No trips yet. Start one below — dates can come later.
+          {t.empty}
         </p>
       )}
 
       <section data-tour="new-trip" className="tile up mt-10 p-6" style={{ animationDelay: ".15s" }}>
-        <h2 className="text-lg font-bold">Start a trip</h2>
-        <p className="mt-1 text-[0.9rem] text-ink-2">Everything here is optional and can be changed later — you can also just tell Bento Man.</p>
+        <h2 className="text-lg font-bold">{t.new.title}</h2>
+        <p className="mt-1 text-[0.9rem] text-ink-2">{t.new.body}</p>
         <form action={createTrip} className="mt-5 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label
               htmlFor="title"
               className={fieldLabel}
             >
-              Name it
+              {t.new.name}
             </label>
             <input
               id="title"
               name="title"
               type="text"
-              placeholder="Kansai, autumn"
+              placeholder={t.new.namePlaceholder}
               className={fieldInput}
             />
           </div>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <DateRangeInputs startLabel="Arrive in Japan" endLabel="Leave Japan" labelClass={fieldLabel} inputClass={fieldInput} />
+            <DateRangeInputs startLabel={t.new.arrive} endLabel={t.new.leave} labelClass={fieldLabel} inputClass={fieldInput} />
             <div className="flex flex-col gap-1.5">
               <label
                 htmlFor="partySize"
                 className={fieldLabel}
               >
-                People travelling
+                {t.new.people}
               </label>
               <input
                 id="partySize"
@@ -132,10 +135,10 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
           </div>
 
           <SubmitButton
-            pending="Creating…"
+            pending={t.new.pending}
             className="mt-1 self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep"
           >
-            Create trip
+            {t.new.submit}
           </SubmitButton>
         </form>
       </section>
