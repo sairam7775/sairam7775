@@ -6,6 +6,7 @@ import { ageStatus } from "@/lib/age-gate";
 import { safeNext } from "@/lib/safe-next";
 import { googleSignInEnabled } from "@/lib/auth-config";
 import { copy } from "@/copy";
+import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { confirmAge, signUpWithPassword, signInWithGoogle } from "../actions";
 import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
 
@@ -42,6 +43,7 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
         </>
       }
     >
+      <AnalyticsSignedOut />
       <ErrorNote message={error} />
 
       {age === "blocked" && <Notice>{t.blocked}</Notice>}

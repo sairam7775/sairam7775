@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { copy } from "@/copy";
+import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { requestPasswordReset } from "../actions";
 import { AsidePoint, AuthShell, ErrorNote, Field, Notice, Submit } from "../ui";
 
@@ -20,6 +21,7 @@ export default async function ForgotPassword({ searchParams }: PageProps<"/forgo
         </ul>
       }
     >
+      <AnalyticsSignedOut />
       <ErrorNote message={error} />
       {sent ? <Notice>{t.sent}</Notice> : null}
 
