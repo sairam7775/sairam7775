@@ -11,37 +11,34 @@ import { Tour } from "@/components/tour/tour";
 import { tourSeen } from "@/components/tour/seen";
 import { CoverageRibbon, DismissedGaps, GapCard } from "./gap-cards";
 import { deleteBooking } from "./actions";
+import { copy } from "@/copy";
 
-const GROUPS: { id: VaultBooking["type"]; label: string }[] = [
-  { id: "flight", label: "Flights" },
-  { id: "transport", label: "Between cities" },
-  { id: "accommodation", label: "Where you sleep" },
-  { id: "activity", label: "Tickets" },
-  { id: "restaurant", label: "Tables" },
-  { id: "other", label: "Other" },
-];
+const t = copy.vault;
+
+// Shown in this order.
+const GROUPS: VaultBooking["type"][] = ["flight", "transport", "accommodation", "activity", "restaurant", "other"];
 
 const when = (b: VaultBooking) => {
   // A date given without a time shows as the date alone, never as 00:00.
   const f = (ts: string, timed: boolean) =>
-    new Date(ts).toLocaleString("en-GB", { day: "numeric", month: "short", ...(timed ? { hour: "2-digit", minute: "2-digit" } : {}), timeZone: "UTC" });
+    new Date(ts).toLocaleString(copy.locale, { day: "numeric", month: "short", ...(timed ? { hour: "2-digit", minute: "2-digit" } : {}), timeZone: "UTC" });
   if (!b.startsAt) return null;
   return b.endsAt ? `${f(b.startsAt, b.startTimeKnown)} → ${f(b.endsAt, b.endTimeKnown)}` : f(b.startsAt, b.startTimeKnown);
 };
 
 const money = (b: VaultBooking) =>
-  b.costAmount == null ? null : `${b.costCurrency ?? "JPY"} ${b.costAmount.toLocaleString("en")}`;
+  b.costAmount == null ? null : `${b.costCurrency ?? "JPY"} ${b.costAmount.toLocaleString(copy.locale)}`;
 
 /** "~¥48,200 at rates from 10 Oct, plus GBP 120 with no rate on record".
  *  A converted sum is an estimate and says so with the tilde. */
-const totalLine = (t: VaultTotal) => {
-  const day = (ts: string) => new Date(ts).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const totalLine = (v: VaultTotal) => {
+  const day = (ts: string) => new Date(ts).toLocaleDateString(copy.locale, { day: "numeric", month: "short", timeZone: "UTC" });
   const parts: string[] = [];
-  if (t.jpy > 0) {
-    parts.push(`${t.converted ? "~" : ""}¥${t.jpy.toLocaleString("en")}${t.oldestRateAt ? ` at rates from ${day(t.oldestRateAt)}` : ""}`);
+  if (v.jpy > 0) {
+    parts.push(t.total.jpy(v.jpy.toLocaleString(copy.locale), v.converted) + (v.oldestRateAt ? t.total.ratesFrom(day(v.oldestRateAt)) : ""));
   }
-  for (const m of t.missing) parts.push(`${parts.length ? "plus " : ""}${m.currency} ${m.amount.toLocaleString("en")} with no rate on record`);
-  return parts.join(", ");
+  for (const m of v.missing) parts.push(t.total.noRate(m.currency, m.amount.toLocaleString(copy.locale), parts.length === 0));
+  return parts.join(t.total.join);
 };
 
 /** The vault: everything the traveller has booked, and what is still
@@ -83,56 +80,53 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
       <Tour id="vault" seen={await tourSeen("vault")} />
-      <AppHeader back={{ href: `/trips/${id}`, label: "Plan" }}>
+      <AppHeader back={{ href: `/trips/${id}`, label: t.back }}>
         {report.blocking > 0 && (
-          <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-white">{report.blocking} blocking</span>
+          <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-white">{t.blocking(report.blocking)}</span>
         )}
       </AppHeader>
 
       <header className="up mt-7" style={{ animationDelay: ".05s" }}>
-        <h1 className="text-[2.2rem] font-extrabold leading-none sm:text-[2.8rem]">What&rsquo;s still missing</h1>
+        <h1 className="text-[2.2rem] font-extrabold leading-none sm:text-[2.8rem]">{t.title}</h1>
         <p className="mt-2.5 max-w-[62ch] text-[0.98rem] leading-relaxed text-ink-2">
-          Every night needs a bed, every move between cities needs a way to get there, and anything with a timed ticket needs the ticket.
-          Nothing is fetched from airlines or hotels. This only knows what you put here, which is also why it can hold your reference numbers safely.
+          {t.intro}
         </p>
       </header>
 
       <div className="mt-5 flex flex-col gap-2">
         <ErrorNote message={error} />
         {warning && <Notice>{warning}</Notice>}
-        {saved && <Notice>Saved.</Notice>}
+        {saved && <Notice>{t.saved}</Notice>}
         {!canEncrypt() && (
-          <Notice>
-            This server has no <span className="mono text-[0.85em]">BENTO_BOOKING_REF_KEY</span>, so booking references cannot be stored. Everything
-            else saves normally. Generate one with <span className="mono text-[0.85em]">openssl rand -base64 32</span>.
-          </Notice>
+          // The server has no BENTO_BOOKING_REF_KEY (openssl rand -base64 32).
+          <Notice>{t.noReferences}</Notice>
         )}
       </div>
 
-      <section aria-label="Coverage" className="mt-5">
+      <section aria-label={t.coverageLabel} className="mt-5">
         <CoverageRibbon nights={report.nights} covered={report.coveredNights} />
       </section>
 
       {report.gaps.length > 0 ? (
-        <section aria-label="Gaps" className="mt-3 grid gap-3 sm:grid-cols-2">
+        <section aria-label={t.gapsLabel} className="mt-3 grid gap-3 sm:grid-cols-2">
           {report.gaps.map((g) => <GapCard key={g.key} tripId={id} gap={g} />)}
         </section>
       ) : (
         <section className="tile up mt-3 px-5 py-8 text-center">
-          <p className="disp text-[1.15rem] font-bold">Nothing is missing.</p>
+          <p className="disp text-[1.15rem] font-bold">{t.nothingMissing.title}</p>
           <p className="mx-auto mt-2 max-w-[42ch] text-[0.9rem] text-ink-2">
-            Every night has a bed, every move has a way, and nothing on the plan needs a ticket you do not have.
+            {t.nothingMissing.body}
           </p>
         </section>
       )}
 
       <DismissedGaps tripId={id} gaps={report.dismissed} />
 
-      <section aria-label="Bookings" className="mt-10">
+      <section aria-label={t.bookingsLabel} className="mt-10">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-[1.5rem] font-bold">Everything you&rsquo;ve booked</h2>
+          <h2 className="text-[1.5rem] font-bold">{t.everything}</h2>
           <span className="mono text-[0.72rem] text-ink-3">
-            {bookings.length} recorded{spent && ` · ${spent}`}
+            {t.recorded(bookings.length)}{spent && ` · ${spent}`}
           </span>
         </div>
 
@@ -149,16 +143,16 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
 
         {bookings.length > 0 ? (
           <div className="box up mt-4 grid gap-2.5 p-3 sm:grid-cols-2">
-            {GROUPS.filter((g) => bookings.some((b) => b.type === g.id)).map((g) => (
-              <div key={g.id} className="tile up p-5">
-                <span className="mono text-[0.6rem] uppercase tracking-[0.1em] text-ink-3">{g.label}</span>
+            {GROUPS.filter((g) => bookings.some((b) => b.type === g)).map((g) => (
+              <div key={g} className="tile up p-5">
+                <span className="mono text-[0.6rem] uppercase tracking-[0.1em] text-ink-3">{t.groups[g]}</span>
                 <ul className="mt-3 flex flex-col gap-3">
-                  {bookings.filter((b) => b.type === g.id).map((b) => (
+                  {bookings.filter((b) => b.type === g).map((b) => (
                     <li key={b.id} className="flex flex-wrap items-start justify-between gap-2 border-b border-rule pb-3 last:border-b-0 last:pb-0">
                       <div className="min-w-0">
                         <span className="disp block text-[1rem] font-bold leading-snug">{b.title}</span>
                         <span className="mono mt-0.5 block text-[0.68rem] text-ink-3">
-                          {[b.provider, when(b), money(b)].filter(Boolean).join(" · ") || "no dates recorded"}
+                          {[b.provider, when(b), money(b)].filter(Boolean).join(" · ") || t.noDates}
                         </span>
                         {b.notes && <p className="mt-1 text-[0.82rem] text-ink-2">{b.notes}</p>}
                         {b.referenceError && <p className="mt-1 text-[0.78rem] text-ume">{b.referenceError}</p>}
@@ -174,7 +168,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
                         <form action={deleteBooking}>
                           <input type="hidden" name="tripId" value={id} />
                           <input type="hidden" name="id" value={b.id} />
-                          <button className="mono text-[0.62rem] uppercase tracking-[0.08em] text-ink-3 hover:text-ume">Remove</button>
+                          <button className="mono text-[0.62rem] uppercase tracking-[0.08em] text-ink-3 hover:text-ume">{t.remove}</button>
                         </form>
                       </div>
                     </li>
@@ -185,7 +179,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
           </div>
         ) : (
           <p className="tile up mt-4 px-5 py-8 text-center text-[0.92rem] text-ink-2">
-            Nothing recorded yet. Add what you book as you book it, and the ribbon above fills in.
+            {t.empty}
           </p>
         )}
       </section>
