@@ -20,6 +20,7 @@ import { Chat, type ChatMessage } from "./chat";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
+import { AnalyticsUser } from "@/components/analytics/analytics";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.trip;
@@ -94,6 +95,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
       {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
       <Tour id="trip" seen={await tourSeen("trip")} />
+      <AnalyticsUser id={user.id} />
       <AppHeader back={{ href: "/trips", label: copy.common.yourTrips }}>
         {state.trip.startDate && state.trip.endDate && (
           <span className="mono hidden rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice sm:inline">

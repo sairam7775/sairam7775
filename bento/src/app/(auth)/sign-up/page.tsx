@@ -73,6 +73,9 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
             <Field id="email" name="email" type="email" label={copy.auth.email} autoComplete="email" placeholder={copy.auth.emailPlaceholder} />
             <Field id="password" name="password" type="password" label={copy.auth.password} autoComplete="new-password" hint={copy.auth.passwordHint} />
             <Submit label={t.submit} pending={t.pending} />
+            <p className="text-[0.8rem] text-ink-3">
+              {t.privacyNote} <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">{t.privacyLink}</Link>.
+            </p>
           </form>
         </>
       )}

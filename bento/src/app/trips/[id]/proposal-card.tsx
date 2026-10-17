@@ -4,6 +4,7 @@ import { clock, describeDates, type DayDiff, type Proposal } from "@/lib/bento-m
 import { SubmitButton } from "@/components/form-controls";
 import { acceptProposal, rejectProposal } from "./actions";
 import { copy } from "@/copy";
+import { track } from "@/lib/analytics/client";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.proposal;
@@ -26,6 +27,8 @@ const fmtDate = (d: string) =>
 /** `cityNames` names every city the chat's proposals mention (from the
  *  catalogue, not just today's route), for days a proposal knows by id. */
 export function ProposalCard({ tripId, messageId, proposal, status, cityNames }: { tripId: string; messageId: string; proposal: Proposal; status: ProposalStatus; cityNames: Record<string, string> }) {
+  const answered = (answer: "accepted" | "rejected") =>
+    track("proposal_answered", { answer, route: Boolean(proposal.route), dates: Boolean(proposal.dates), days: proposal.days.length, verdict: proposal.route?.verdict ?? null });
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
   return (
     <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">
@@ -123,7 +126,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
 
       {status === "proposed" && (
         <div className="flex flex-wrap items-center gap-2 bg-sunk px-4 py-3">
-          <form action={acceptProposal} className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <form action={acceptProposal} onSubmit={() => answered("accepted")} className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
             <SubmitButton className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep" pending={t.accepting}>{t.accept}</SubmitButton>
@@ -134,7 +137,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
               </label>
             )}
           </form>
-          <form action={rejectProposal}>
+          <form action={rejectProposal} onSubmit={() => answered("rejected")}>
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
             <SubmitButton className="min-h-10 rounded-full border border-rule bg-surface px-5 text-[0.9rem] font-medium" pending={t.rejecting}>{t.reject}</SubmitButton>

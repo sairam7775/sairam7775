@@ -7,6 +7,7 @@ import { BOOKING_DRAG, BookingsColumn, KIND_LABEL, shortDate, whenText, type Pla
 import { ConfirmButton } from "@/components/form-controls";
 import { bookingSlot, canPlanOn, clashingBookings } from "@/lib/vault/plan-day";
 import { copy } from "@/copy";
+import { track } from "@/lib/analytics/client";
 
 const t = copy.day;
 const bk = copy.bookings;
@@ -108,12 +109,14 @@ export function DayBox(p: DayBoxProps) {
   function addBooking(b: PlanBooking) {
     if (!canPlanOn(b, p.date)) {
       setMessage({ tone: "error", text: bk.wrongDay(b.title, whenText(b), shortDate(p.date)) });
+      track("booking_planned", { result: "wrong_day", type: b.type });
       return;
     }
     setMessage(null);
     start(async () => {
       const r = await planBooking({ tripId: p.tripId, bookingId: b.id, date: p.date });
       setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: bk.added(b.title, whenText(b)) });
+      track("booking_planned", { result: r.error ? "failed" : "added", type: b.type });
     });
   }
 
@@ -122,6 +125,7 @@ export function DayBox(p: DayBoxProps) {
     start(async () => {
       const r = await unplanBooking({ tripId: p.tripId, bookingId: b.id });
       setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: bk.removed(b.title) });
+      track("booking_planned", { result: r.error ? "failed" : "removed", type: b.type });
     });
   }
 

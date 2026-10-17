@@ -12,6 +12,7 @@ import { tourSeen } from "@/components/tour/seen";
 import { CoverageRibbon, DismissedGaps, GapCard } from "./gap-cards";
 import { deleteBooking } from "./actions";
 import { copy } from "@/copy";
+import { AnalyticsUser } from "@/components/analytics/analytics";
 
 const t = copy.vault;
 
@@ -80,6 +81,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
       <Tour id="vault" seen={await tourSeen("vault")} />
+      <AnalyticsUser id={user.id} />
       <AppHeader back={{ href: `/trips/${id}`, label: t.back }}>
         {report.blocking > 0 && (
           <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-white">{t.blocking(report.blocking)}</span>

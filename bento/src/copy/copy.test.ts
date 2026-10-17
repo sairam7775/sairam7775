@@ -23,7 +23,11 @@ describe("copy", () => {
   it("keeps internal words off the page", () => {
     // Words from the code and the database that mean nothing to a traveller.
     const jargon = /\b(stub|tier|null|undefined|supabase|RLS|proposal_id|draft|engine|graph)\b|\b\d+n\b/i;
-    for (const [path, text] of all) expect(text, path).not.toMatch(jargon);
+    for (const [path, text] of all) {
+      // The privacy page must name the companies that handle data, Supabase among them.
+      const checked = path.startsWith("privacy.") ? text.replace(/\bSupabase\b/g, "") : text;
+      expect(checked, path).not.toMatch(jargon);
+    }
   });
 
   it("makes another language list every line (a type check)", () => {

@@ -5,6 +5,7 @@ import type { BookingKind } from "@/lib/types";
 import { saveBooking } from "./actions";
 import { DateInput } from "@/components/form-controls";
 import { copy } from "@/copy";
+import { reasonOf, track } from "@/lib/analytics/client";
 
 const t = copy.vault.form;
 
@@ -72,6 +73,8 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
   const [readError, setReadError] = useState<string | null>(null);
   // Set when a pasted confirmation gave a date but no time, to say so.
   const [noTimeFromPaste, setNoTimeFromPaste] = useState({ startsAt: false, endsAt: false });
+  // Whether the form was filled from a pasted confirmation, for analytics.
+  const [fromPaste, setFromPaste] = useState(false);
   const [values, setValues] = useState({
     title: defaultTitle ?? "", provider: "", reference: "",
     startsAt: defaultDate ? `${defaultDate}T15:00` : "", endsAt: "",
@@ -103,8 +106,11 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
         costAmount: body.values.costAmount, costCurrency: body.values.costCurrency, notes: body.values.notes,
       });
       setPaste("");
+      setFromPaste(true);
+      track("confirmation_read", { ok: true, type: body.values.type, has_time: Boolean(body.values.startsAt?.includes("T")) });
     } catch (err) {
       setReadError(err instanceof Error ? err.message : t.readFailed);
+      track("confirmation_read", { ok: false, reason: err instanceof Error ? reasonOf(err.message, copy.server) : "other" });
     } finally {
       setReading(false);
     }
@@ -146,7 +152,7 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
         {readError && <p className="mt-2 border-l-[3px] border-ume bg-ume-soft px-3 py-2 text-[0.82rem] text-ink-2">{readError}</p>}
       </div>
 
-      <form action={saveBooking} className="mt-5 flex flex-col gap-4">
+      <form action={saveBooking} onSubmit={() => track("booking_saved", { type, from_paste: fromPaste })} className="mt-5 flex flex-col gap-4">
         <input type="hidden" name="tripId" value={tripId} />
         {defaultPlaceId && <input type="hidden" name="placeId" value={defaultPlaceId} />}
 

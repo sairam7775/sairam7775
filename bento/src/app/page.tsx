@@ -116,6 +116,7 @@ export default async function Home() {
 
       <footer className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-rule py-6 text-[0.85rem] text-ink-3">
         <span className="inline-flex items-center gap-2"><BentoMark size={18} /> {t.footer}</span>
+        <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">{t.privacy}</Link>
         <span lang="ja">{t.footerJa}</span>
       </footer>
     </main>

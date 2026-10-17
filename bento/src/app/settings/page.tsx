@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { Notice } from "@/app/(auth)/ui";
 import { replayTours } from "@/components/tour/actions";
 import { THEMES, THEME_COOKIE, parseTheme } from "@/lib/theme";
-import { setBackground, setTheme } from "./actions";
+import { setAnalytics, setBackground, setTheme } from "./actions";
+import { ANALYTICS_COOKIE, parseConsent } from "@/lib/analytics/consent";
+import { AnalyticsUser } from "@/components/analytics/analytics";
 import { ChoiceButton, SubmitButton } from "@/components/form-controls";
 import { BACKGROUNDS, BACKGROUND_COOKIE, parseBackground } from "@/components/seasonal/season";
 import { copy } from "@/copy";
@@ -19,12 +21,14 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
   const jar = await cookies();
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
   const background = parseBackground(jar.get(BACKGROUND_COOKIE)?.value);
+  const analytics = parseConsent(jar.get(ANALYTICS_COOKIE)?.value) === "yes";
   const viaGoogle = user.app_metadata?.provider === "google" && !(user.identities ?? []).some((i) => i.provider === "email");
   const t = copy.settings;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
       <AppHeader back={{ href: "/trips", label: copy.common.yourTrips }} />
+      <AnalyticsUser id={user.id} />
       <h1 className="up mt-8 text-3xl font-bold tracking-tight">{t.title}</h1>
 
       <div className="mt-6">{sp.updated === "password" && <Notice>{t.passwordChanged}</Notice>}</div>
@@ -91,6 +95,30 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
           <SubmitButton pending={t.tour.pending} className="mt-4 inline-flex min-h-11 items-center rounded-full border border-rule px-5 text-[0.95rem] hover:bg-sunk">
             {t.tour.replay}
           </SubmitButton>
+        </form>
+      </section>
+
+      <section className="tile up mt-4 p-6">
+        <h2 id="analytics-heading" className="text-[1.1rem] font-bold">{t.analytics.heading}</h2>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+          {t.analytics.body}{" "}
+          <Link href="/privacy" className="text-accent underline underline-offset-2">{t.analytics.more}</Link>
+        </p>
+        <form action={setAnalytics} role="group" aria-labelledby="analytics-heading" className="mt-4 inline-flex rounded-full border border-rule p-1">
+          {([["yes", t.analytics.on], ["no", t.analytics.off]] as const).map(([value, label]) => {
+            const pressed = (value === "yes") === analytics;
+            return (
+              <ChoiceButton
+                key={value}
+                name="analytics"
+                value={value}
+                pressed={pressed}
+                className={`min-h-10 rounded-full px-4 text-[0.92rem] ${pressed ? "bg-lacquer text-rice" : "text-ink-2 hover:bg-sunk hover:text-ink"}`}
+              >
+                {label}
+              </ChoiceButton>
+            );
+          })}
         </form>
       </section>
     </main>
