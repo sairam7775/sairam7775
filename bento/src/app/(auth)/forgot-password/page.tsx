@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { copy } from "@/copy";
-import { AnalyticsSignedOut } from "@/components/analytics/analytics";
+import { AnalyticsSignedOut, AnalyticsUser } from "@/components/analytics/analytics";
+import { createClient } from "@/lib/supabase/server";
 import { requestPasswordReset } from "../actions";
 import { AsidePoint, AuthShell, ErrorNote, Field, Notice, Submit } from "../ui";
 
 export default async function ForgotPassword({ searchParams }: PageProps<"/forgot-password">) {
   const params = await searchParams;
+  // Reachable signed in too (Settings → "Forgot your current one?").
+  const { data: { user } } = await (await createClient()).auth.getUser();
   const error = typeof params.error === "string" ? params.error : null;
   const sent = params.sent === "1";
   const t = copy.auth.forgot;
@@ -21,7 +24,7 @@ export default async function ForgotPassword({ searchParams }: PageProps<"/forgo
         </ul>
       }
     >
-      <AnalyticsSignedOut />
+      {user ? <AnalyticsUser id={user.id} /> : <AnalyticsSignedOut />}
       <ErrorNote message={error} />
       {sent ? <Notice>{t.sent}</Notice> : null}
 
