@@ -93,6 +93,7 @@ export function start() {
     if (!wanted || started) return;
     const first = ph === null;
     if (first) init(posthog, key);
+    else posthog.set_config({ disable_persistence: false });
     ph = posthog;
     posthog.opt_in_capturing();
     if (!first) posthog.startSessionRecording();
@@ -131,7 +132,10 @@ function halt() {
   refused = true;
   queue = [];
   if (started && ph) {
-    // reset() first: it clears consent, and the default is opted out anyway.
+    // Storage off first: PostHog saves on a short delay and would otherwise
+    // write a fresh identity back after the cleanup below. Then reset()
+    // (it clears consent; the default is opted out anyway).
+    ph.set_config({ disable_persistence: true });
     ph.reset();
     ph.opt_out_capturing();
     ph.stopSessionRecording();

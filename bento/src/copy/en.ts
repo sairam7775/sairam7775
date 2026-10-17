@@ -945,9 +945,13 @@ export const en = {
       },
       who: {
         heading: "Who else handles your data",
-        body: (chat: "gemini" | "anthropic") => chat === "gemini"
-          ? "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU). Each handles data only to provide its service to Bento."
-          : "Supabase (database and sign-in), Vercel (hosting), Anthropic (Bento Man and reading pasted confirmations) and, only with your consent, PostHog (analytics, EU). Each handles data only to provide its service to Bento.",
+        // `googleSignIn`: whether "Continue with Google" is switched on (BENTO_GOOGLE_SIGN_IN).
+        body: (chat: "gemini" | "anthropic", googleSignIn: boolean) =>
+          (chat === "gemini"
+            ? "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU)."
+            : "Supabase (database and sign-in), Vercel (hosting), Anthropic (Bento Man and reading pasted confirmations) and, only with your consent, PostHog (analytics, EU).") +
+          (googleSignIn ? " If you continue with Google, Google also confirms who you are and shares your email address with Bento." : "") +
+          " Each handles data only to provide its service to Bento.",
       },
       keep: {
         heading: "How long it's kept",

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { BentoLogo } from "@/components/logo";
 import { copy } from "@/copy";
 import { configuredProvider } from "@/lib/bento-man/provider";
+import { googleSignInEnabled } from "@/lib/auth-config";
 
 const t = copy.privacy;
 
@@ -17,6 +18,7 @@ export const dynamic = "force-dynamic";
 export default function Privacy() {
   // Name the provider this deployment really sends Bento Man's chat to.
   const chat = configuredProvider();
+  const google = googleSignInEnabled();
   return (
     <main className="mx-auto w-full max-w-2xl px-5 py-8 sm:py-12">
       <header className="flex items-center justify-between">
@@ -32,7 +34,7 @@ export default function Privacy() {
         {Object.entries(t.sections).map(([id, s]) => (
           <section key={id} id={id} className="mt-7 scroll-mt-6">
             <h2 className="text-[1.15rem] font-bold">{s.heading}</h2>
-            {(typeof s.body === "function" ? s.body(chat) : s.body).split("\n\n").map((para) => (
+            {(typeof s.body === "function" ? s.body(chat, google) : s.body).split("\n\n").map((para) => (
               <p key={para.slice(0, 40)} className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">{para}</p>
             ))}
           </section>
