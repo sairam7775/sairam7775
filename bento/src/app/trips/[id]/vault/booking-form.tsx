@@ -4,15 +4,14 @@ import { useState, type FormEvent } from "react";
 import type { BookingKind } from "@/lib/types";
 import { saveBooking } from "./actions";
 import { DateInput } from "@/components/form-controls";
+import { copy } from "@/copy";
 
-const KINDS: { id: BookingKind; label: string; hint: string }[] = [
-  { id: "accommodation", label: "Somewhere to sleep", hint: "Hotel, ryokan, hostel, apartment" },
-  { id: "flight", label: "Flight", hint: "Getting in and out of Japan" },
-  { id: "transport", label: "Between cities", hint: "Shinkansen, bus, ferry" },
-  { id: "activity", label: "Ticket", hint: "Timed entry, tour, museum" },
-  { id: "restaurant", label: "Table", hint: "A reservation" },
-  { id: "other", label: "Other", hint: "Anything else" },
-];
+const t = copy.vault.form;
+
+// Shown in this order; the words are in copy.vault.form.kinds.
+const KINDS: { id: BookingKind; label: string; hint: string }[] = (
+  ["accommodation", "flight", "transport", "activity", "restaurant", "other"] as const
+).map((id) => ({ id, ...t.kinds[id] }));
 
 export interface CityOption {
   id: string;
@@ -38,7 +37,7 @@ function WhenField({ name, label, value, onChange, minDate, timeHint }: {
   timeHint?: string;
 }) {
   const [date, time = ""] = value.split("T");
-  const join = (d: string, t: string) => (d ? (t ? `${d}T${t}` : d) : "");
+  const join = (d: string, tm: string) => (d ? (tm ? `${d}T${tm}` : d) : "");
   return (
     <div className="flex flex-col gap-1.5">
       <Label htmlFor={`${name}-date`}>{label}</Label>
@@ -47,14 +46,14 @@ function WhenField({ name, label, value, onChange, minDate, timeHint }: {
         <input
           id={`${name}-time`}
           type="time"
-          aria-label={`${label} time (optional)`}
+          aria-label={t.timeLabel(label)}
           value={time}
           disabled={!date}
           onChange={(e) => onChange(join(date, e.target.value))}
           className={`${field} w-[7.5rem] shrink-0 disabled:opacity-50`}
         />
       </div>
-      {date && !time && <span className="text-[0.76rem] text-ink-3">{timeHint ?? "No time — it shows as the date alone. Add one if you know it."}</span>}
+      {date && !time && <span className="text-[0.76rem] text-ink-3">{timeHint ?? t.noTime}</span>}
       <input type="hidden" name={name} value={value} />
     </div>
   );
@@ -92,7 +91,7 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
         body: JSON.stringify({ text: paste }),
       });
       const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? "Couldn't read that.");
+      if (!res.ok) throw new Error(body.error ?? t.readFailed);
       setType(body.values.type);
       setNoTimeFromPaste({
         startsAt: Boolean(body.values.startsAt) && !body.values.startsAt.includes("T"),
@@ -105,7 +104,7 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
       });
       setPaste("");
     } catch (err) {
-      setReadError(err instanceof Error ? err.message : "Couldn't read that.");
+      setReadError(err instanceof Error ? err.message : t.readFailed);
     } finally {
       setReading(false);
     }
@@ -114,7 +113,7 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} className="rounded-full bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-white hover:bg-accent-deep">
-        Add a booking
+        {t.open}
       </button>
     );
   }
@@ -124,25 +123,25 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
   return (
     <div className="tile up w-full p-5">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="disp text-[1.15rem] font-bold">Add a booking</h2>
-        <button onClick={() => setOpen(false)} className="mono text-[0.64rem] uppercase tracking-[0.08em] text-ink-3 underline underline-offset-2">Close</button>
+        <h2 className="disp text-[1.15rem] font-bold">{t.title}</h2>
+        <button onClick={() => setOpen(false)} className="mono text-[0.64rem] uppercase tracking-[0.08em] text-ink-3 underline underline-offset-2">{t.close}</button>
       </div>
 
       <div className="mt-4 rounded-xl bg-sunk p-3.5">
-        <Label htmlFor="paste">Paste the confirmation</Label>
+        <Label htmlFor="paste">{t.paste}</Label>
         <textarea
           id="paste"
           rows={3}
           value={paste}
           onChange={(e) => setPaste(e.target.value)}
-          placeholder="Paste the whole email. It fills the form in below; nothing is saved until you press Save."
+          placeholder={t.pastePlaceholder}
           className={`${field} mt-1.5 w-full resize-y`}
         />
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <button onClick={read} disabled={reading || !paste.trim()} className="rounded-full bg-lacquer px-4 py-1.5 text-[0.82rem] font-medium text-rice disabled:opacity-50">
-            {reading ? "Reading…" : "Read it"}
+            {reading ? t.reading : t.read}
           </button>
-          <span className="mono text-[0.62rem] leading-snug text-ink-3">Read in a separate call with no access to your trip. Check every field before saving.</span>
+          <span className="mono text-[0.62rem] leading-snug text-ink-3">{t.readNote}</span>
         </div>
         {readError && <p className="mt-2 border-l-[3px] border-ume bg-ume-soft px-3 py-2 text-[0.82rem] text-ink-2">{readError}</p>}
       </div>
@@ -152,7 +151,7 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
         {defaultPlaceId && <input type="hidden" name="placeId" value={defaultPlaceId} />}
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="type">What is it</Label>
+          <Label htmlFor="type">{t.kind}</Label>
           <div className="flex flex-wrap gap-1.5">
             {KINDS.map((k) => (
               <button
@@ -171,47 +170,47 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="title">Name it</Label>
-            <input id="title" name="title" required value={values.title} onChange={(e) => set("title", e.target.value)} placeholder="Hotel Kanra Kyoto" className={field} />
+            <Label htmlFor="title">{t.name}</Label>
+            <input id="title" name="title" required value={values.title} onChange={(e) => set("title", e.target.value)} placeholder={t.namePlaceholder} className={field} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="provider">Who with</Label>
-            <input id="provider" name="provider" value={values.provider} onChange={(e) => set("provider", e.target.value)} placeholder="Booking.com, ANA, JR West" className={field} />
+            <Label htmlFor="provider">{t.provider}</Label>
+            <input id="provider" name="provider" value={values.provider} onChange={(e) => set("provider", e.target.value)} placeholder={t.providerPlaceholder} className={field} />
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <WhenField
             name="startsAt"
-            label={type === "accommodation" ? "Check in" : "Starts"}
+            label={type === "accommodation" ? t.checkIn : t.starts}
             value={values.startsAt}
             onChange={(v) => set("startsAt", v)}
-            timeHint={noTimeFromPaste.startsAt ? "The confirmation gave no time. Add one if you know it." : undefined}
+            timeHint={noTimeFromPaste.startsAt ? t.noTimeFromPaste : undefined}
           />
           <WhenField
             name="endsAt"
-            label={type === "accommodation" ? "Check out" : "Ends"}
+            label={type === "accommodation" ? t.checkOut : t.ends}
             value={values.endsAt}
             onChange={(v) => set("endsAt", v)}
             minDate={values.startsAt.slice(0, 10)}
-            timeHint={noTimeFromPaste.endsAt ? "The confirmation gave no time. Add one if you know it." : undefined}
+            timeHint={noTimeFromPaste.endsAt ? t.noTimeFromPaste : undefined}
           />
         </div>
 
         {cities.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="cityId">{needsRoute ? "From" : "Where"}</Label>
+              <Label htmlFor="cityId">{needsRoute ? t.from : t.where}</Label>
               <select id="cityId" name="cityId" defaultValue="" className={field}>
-                <option value="">Not tied to a city</option>
+                <option value="">{t.noCity}</option>
                 {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             {needsRoute && (
               <div className="flex flex-col gap-1.5">
-                <Label htmlFor="toCityId">To</Label>
+                <Label htmlFor="toCityId">{t.to}</Label>
                 <select id="toCityId" name="toCityId" defaultValue="" className={field}>
-                  <option value="">—</option>
+                  <option value="">{copy.time.none}</option>
                   {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
@@ -221,27 +220,27 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
 
         <div className="grid gap-3 sm:grid-cols-[2fr_1fr_1fr]">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="reference">Booking reference</Label>
-            <input id="reference" name="reference" value={values.reference} onChange={(e) => set("reference", e.target.value)} placeholder="ABC123" autoComplete="off" className={field} />
-            <span className="mono text-[0.6rem] leading-snug text-ink-3">Encrypted before it is stored. Never logged, never sent to Bento Man.</span>
+            <Label htmlFor="reference">{t.reference}</Label>
+            <input id="reference" name="reference" value={values.reference} onChange={(e) => set("reference", e.target.value)} placeholder={t.referencePlaceholder} autoComplete="off" className={field} />
+            <span className="mono text-[0.6rem] leading-snug text-ink-3">{t.referenceNote}</span>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="costAmount">Cost</Label>
+            <Label htmlFor="costAmount">{t.cost}</Label>
             <input id="costAmount" name="costAmount" inputMode="decimal" value={values.costAmount} onChange={(e) => set("costAmount", e.target.value)} className={field} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="costCurrency">Currency</Label>
-            <input id="costCurrency" name="costCurrency" maxLength={3} value={values.costCurrency} onChange={(e) => set("costCurrency", e.target.value.toUpperCase())} placeholder="JPY" className={`${field} uppercase`} />
+            <Label htmlFor="costCurrency">{t.currency}</Label>
+            <input id="costCurrency" name="costCurrency" maxLength={3} value={values.costCurrency} onChange={(e) => set("costCurrency", e.target.value.toUpperCase())} placeholder={t.currencyPlaceholder} className={`${field} uppercase`} />
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="notes">Anything else</Label>
-          <input id="notes" name="notes" value={values.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Non-refundable after 14 Nov" className={field} />
+          <Label htmlFor="notes">{t.notes}</Label>
+          <input id="notes" name="notes" value={values.notes} onChange={(e) => set("notes", e.target.value)} placeholder={t.notesPlaceholder} className={field} />
         </div>
 
         <button type="submit" className="mt-1 self-start rounded-full bg-accent px-5 py-2.5 text-[0.88rem] font-medium text-white hover:bg-accent-deep">
-          Save it
+          {t.save}
         </button>
       </form>
     </div>

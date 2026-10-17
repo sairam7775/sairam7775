@@ -3,6 +3,9 @@
 import Link from "next/link";
 import type { DragEvent } from "react";
 import { bookingDates, canPlanOn } from "@/lib/vault/plan-day";
+import { copy } from "@/copy";
+
+const t = copy.bookings;
 
 /** A booking as the trip page shows it. Never the reference: that is
  *  decrypted only on the vault page, for its owner. */
@@ -20,21 +23,14 @@ export interface PlanBooking {
 
 export const BOOKING_DRAG = "application/x-bento-booking";
 
-export const KIND_LABEL: Record<string, string> = {
-  flight: "Flight",
-  accommodation: "Stay",
-  transport: "Transport",
-  activity: "Ticket",
-  restaurant: "Restaurant",
-  other: "Booking",
-};
+export const KIND_LABEL: Record<string, string> = t.kinds;
 
-export const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+export const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 export function whenText(b: PlanBooking): string {
   const r = bookingDates(b);
-  if (!r) return "No date yet";
-  return r.first === r.last ? shortDate(r.first) : `${shortDate(r.first)} – ${shortDate(r.last)}`;
+  if (!r) return t.noDate;
+  return r.first === r.last ? shortDate(r.first) : t.range(shortDate(r.first), shortDate(r.last));
 }
 
 /** The Bookings column beside a day's box. Each booking says where it
@@ -60,11 +56,11 @@ export function BookingsColumn({
   return (
     <div className="tile up px-4 py-4" style={{ animationDelay: ".24s" }} aria-busy={busy}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">Bookings</span>
-        <Link href={`/trips/${tripId}/vault`} className="text-[0.78rem] font-medium text-accent hover:underline">All bookings →</Link>
+        <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.heading}</span>
+        <Link href={`/trips/${tripId}/vault`} className="text-[0.78rem] font-medium text-accent hover:underline">{t.all}</Link>
       </div>
       <p className="mt-1.5 text-[0.8rem] leading-snug text-ink-3">
-        Drag one into the day, or tap Add. Only bookings for {shortDate(date)} fit in this day.
+        {t.howTo(shortDate(date))}
       </p>
 
       {message && (
@@ -75,7 +71,7 @@ export function BookingsColumn({
 
       {sorted.length === 0 ? (
         <p className="mt-3 text-[0.84rem] leading-snug text-ink-2">
-          No bookings yet. Add flights, hotels and tickets in <Link href={`/trips/${tripId}/vault`} className="text-accent underline underline-offset-2">Bookings</Link>, then put them in their day.
+          {t.emptyBefore} <Link href={`/trips/${tripId}/vault`} className="text-accent underline underline-offset-2">{t.emptyLink}</Link>{t.emptyAfter}
         </p>
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
@@ -96,28 +92,28 @@ export function BookingsColumn({
                 className={`rounded-xl border px-3 py-2.5 ${here ? "border-accent/60 bg-accent-soft" : "border-rule bg-surface"} ${range && !planned ? "cursor-grab active:cursor-grabbing" : ""}`}
               >
                 <div className="flex items-baseline gap-2">
-                  <span className="mono text-[0.6rem] uppercase tracking-[0.1em] text-ink-3">{KIND_LABEL[b.type] ?? "Booking"}</span>
+                  <span className="mono text-[0.6rem] uppercase tracking-[0.1em] text-ink-3">{KIND_LABEL[b.type] ?? t.kinds.other}</span>
                   <span className={`mono ml-auto text-[0.66rem] ${fits || !range ? "text-ink-3" : "text-ume"}`}>{whenText(b)}</span>
                 </div>
                 <p className="mt-0.5 text-[0.88rem] font-medium leading-snug">{b.title}</p>
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[0.76rem]">
                   {here ? (
                     <>
-                      <span className="inline-flex min-h-10 items-center text-ink-2">In this day</span>
-                      <button type="button" disabled={busy} onClick={() => onRemove(b)} className="ml-auto min-h-10 rounded-full px-2.5 text-ink-3 hover:bg-ume-soft hover:text-ume disabled:opacity-50">Take out</button>
+                      <span className="inline-flex min-h-10 items-center text-ink-2">{t.inThisDay}</span>
+                      <button type="button" disabled={busy} onClick={() => onRemove(b)} className="ml-auto min-h-10 rounded-full px-2.5 text-ink-3 hover:bg-ume-soft hover:text-ume disabled:opacity-50">{t.takeOut}</button>
                     </>
                   ) : !range ? (
-                    <Link href={`/trips/${tripId}/vault`} className="inline-flex min-h-10 items-center text-accent underline underline-offset-2">Add a date to plan it</Link>
+                    <Link href={`/trips/${tripId}/vault`} className="inline-flex min-h-10 items-center text-accent underline underline-offset-2">{t.addDate}</Link>
                   ) : fits ? (
                     <button type="button" disabled={busy} onClick={() => onAdd(b)} className="ml-auto min-h-10 rounded-full border border-rule px-3 font-medium text-ink hover:bg-sunk disabled:opacity-50">
-                      Add to this day
+                      {t.add}
                     </button>
                   ) : planned && firstDayInPlan ? (
-                    <Link href={`/trips/${tripId}?day=${firstDayInPlan}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">In the plan · open {shortDate(firstDayInPlan)}</Link>
+                    <Link href={`/trips/${tripId}?day=${firstDayInPlan}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">{t.inPlan(shortDate(firstDayInPlan))}</Link>
                   ) : firstDayInPlan ? (
-                    <Link href={`/trips/${tripId}?day=${firstDayInPlan}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">Not this day · open {shortDate(firstDayInPlan)}</Link>
+                    <Link href={`/trips/${tripId}?day=${firstDayInPlan}`} className="inline-flex min-h-10 items-center text-ink-3 underline underline-offset-2">{t.notThisDay(shortDate(firstDayInPlan))}</Link>
                   ) : (
-                    <span className="inline-flex min-h-10 items-center text-ink-3">Outside this trip&rsquo;s days</span>
+                    <span className="inline-flex min-h-10 items-center text-ink-3">{t.outsideTrip}</span>
                   )}
                 </div>
               </li>

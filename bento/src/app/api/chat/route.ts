@@ -11,6 +11,7 @@ import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { AnthropicProvider } from "@/lib/bento-man/provider.anthropic";
 import { GeminiProvider } from "@/lib/bento-man/provider.gemini";
 import { configuredProvider, providerKeyVariable, ProviderCallError } from "@/lib/bento-man/provider";
+import { copy } from "@/copy";
 
 /** POST /api/chat — one turn with Bento Man, streamed as server-sent events.
  *
@@ -27,22 +28,23 @@ export const maxDuration = 120;
 export async function POST(req: NextRequest) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  if (!user) return NextResponse.json({ error: copy.server.signInFirst }, { status: 401 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Say something, up to 2000 characters." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: copy.server.chatEmpty }, { status: 400 });
   const { tripId, message } = parsed.data;
 
   const limit = await rateLimit(db, "chat");
   if (!limit.allowed) {
-    return NextResponse.json({ error: "Slow down a little — try again in a moment." }, { status: 429, headers: { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } });
+    return NextResponse.json({ error: copy.server.slowDown }, { status: 429, headers: { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } });
   }
 
   const mock = mockModeEnabled();
   const providerName = configuredProvider();
   const keyVariable = providerKeyVariable(providerName);
   if (!mock && !process.env[keyVariable]) {
-    return NextResponse.json({ error: `Bento Man isn't configured on this server yet (${keyVariable}).` }, { status: 503 });
+    console.error(`Bento Man is off: ${keyVariable} is not set.`);
+    return NextResponse.json({ error: copy.server.chatOff }, { status: 503 });
   }
 
   // Hold budget for one model call at a time, sized to the most a call can
@@ -125,21 +127,27 @@ export async function POST(req: NextRequest) {
 
 function friendly(e: unknown, keyVariable: string): string {
   if (e instanceof ProviderCallError) {
-    if (e.timedOut) return "Bento Man took too long to answer. Try again, or ask for a smaller step.";
-    if (e.status === 401 || e.status === 403) return `Bento Man's API key was rejected. Check ${keyVariable} on the server.`;
+    if (e.timedOut) return copy.server.tooSlow;
+    if (e.status === 401 || e.status === 403) {
+      console.error(`Bento Man's key was rejected: check ${keyVariable}.`);
+      return copy.server.keyRejected;
+    }
     // By now every fallback model is out too, which on a free tier can mean
     // the daily quota: "a minute" would be a promise we can't keep.
-    if (e.status === 429) return "Bento Man has used up its requests for now. Try again later.";
-    if (e.status && e.status >= 500) return "Bento Man's model is overloaded right now. Try again in a minute.";
-    if (e.status) return `Bento Man hit an error (${e.status}). Try again.`;
+    if (e.status === 429) return copy.server.outOfRequests;
+    if (e.status && e.status >= 500) return copy.server.overloaded;
+    if (e.status) return copy.server.failedWith(e.status);
   }
   // AbortSignal.timeout on a model call that never finished.
   if (e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError")) {
-    return "Bento Man took too long to answer. Try again, or ask for a smaller step.";
+    return copy.server.tooSlow;
   }
-  if (e instanceof Anthropic.AuthenticationError) return "Bento Man's API key was rejected. Check ANTHROPIC_API_KEY on the server.";
-  if (e instanceof Anthropic.RateLimitError) return "Bento Man is busy — try again in a minute.";
-  if (e instanceof Anthropic.APIError) return `Bento Man hit an error (${e.status}). Try again.`;
-  if (e instanceof Error && e.message === "trip not found") return "That trip isn't yours, or doesn't exist.";
-  return "Something went wrong on the way to Bento Man. Try again.";
+  if (e instanceof Anthropic.AuthenticationError) {
+    console.error("Bento Man's key was rejected: check ANTHROPIC_API_KEY.");
+    return copy.server.keyRejected;
+  }
+  if (e instanceof Anthropic.RateLimitError) return copy.server.busy;
+  if (e instanceof Anthropic.APIError) return copy.server.failedWith(e.status);
+  if (e instanceof Error && e.message === "trip not found") return copy.server.notYourTrip;
+  return copy.server.failed;
 }

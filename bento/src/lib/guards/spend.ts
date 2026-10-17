@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { copy } from "@/copy";
 
 /** Risk E2 — an uncapped model bill on a personal card is the fastest way
  *  this project hurts its owner, and it is trivially preventable.
@@ -43,9 +44,8 @@ export class SpendCapExceeded extends Error {
   constructor(readonly scope: "user" | "global", readonly status: SpendStatus) {
     super(
       scope === "user"
-        ? `Monthly spend cap reached: $${status.spentUsd.toFixed(2)} of ` +
-            `$${status.capUsd.toFixed(2)}. Planning still works — only Bento Man is paused.`
-        : "Bento Man is resting for the rest of the month — the shared budget is used up. Planning still works.",
+        ? copy.server.capUser(status.spentUsd.toFixed(2), status.capUsd.toFixed(2))
+        : copy.server.capGlobal,
     );
     this.name = "SpendCapExceeded";
   }

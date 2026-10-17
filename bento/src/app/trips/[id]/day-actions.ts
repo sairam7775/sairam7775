@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { copy } from "@/copy";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { retimeDay } from "@/lib/engine/retime";
@@ -20,7 +21,7 @@ import type { DayRow, ItemRow, TripStore } from "@/lib/bento-man/store";
 const Base = z.object({ tripId: z.string().uuid(), date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) });
 const WithPlace = Base.extend({ placeId: z.string().min(1) });
 
-const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 
 export async function reorderDay(formData: FormData) {
   const { store, tripId, date } = await guard(formData);
@@ -75,8 +76,7 @@ export async function replanDayAction(formData: FormData) {
     : [{ op: "start_at" as const, time: clock(day?.items[0]?.startMin ?? (state.prefs.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60)) }];
   const r = await replanDay(store, date, ops);
   if ("error" in r) redirect(`/trips/${tripId}?day=${date}&error=${encodeURIComponent(r.error)}`);
-  const kept = pinned.length ? ` around the ${pinned.length} stop${pinned.length === 1 ? "" : "s"} you pinned` : "";
-  await store.append("assistant", `Re-planned ${fmt(date)}${kept}. ${r.diff.summary}. Accept it to replace the day, or reject it and keep what you have.`, { summary: `${date} re-planned`, days: [r.diff] });
+  await store.append("assistant", copy.trip.replan.message(fmt(date), pinned.length, r.diff.summary), { summary: copy.trip.replan.summary(fmt(date)), days: [r.diff] });
   done(tripId, date);
 }
 

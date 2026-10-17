@@ -6,6 +6,10 @@ import { planBooking, unplanBooking } from "./booking-actions";
 import { BOOKING_DRAG, BookingsColumn, KIND_LABEL, shortDate, whenText, type PlanBooking } from "./bookings-column";
 import { ConfirmButton } from "@/components/form-controls";
 import { bookingSlot, canPlanOn, clashingBookings } from "@/lib/vault/plan-day";
+import { copy } from "@/copy";
+
+const t = copy.day;
+const bk = copy.bookings;
 
 export interface DayBoxItem {
   placeId: string;
@@ -25,6 +29,7 @@ export interface DayBoxProps {
   date: string;
   cityId: string;
   cityName: string;
+  /** How well the city is covered, in words. */
   tier: string;
   items: DayBoxItem[];
   budgetMin: number;
@@ -41,7 +46,7 @@ export interface DayBoxProps {
 }
 
 const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-const dur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m}m`);
+const dur = copy.time.duration;
 
 /** Compartment colours cycle through the box: salmon, edamame, lavender,
  *  tamago, plain. Enough to tell stops apart at a glance, never a code. */
@@ -50,19 +55,7 @@ const FILLS = ["bg-accent-soft", "bg-edamame-soft", "bg-lavender-soft", "bg-tama
 const PX_PER_MIN = 1.05;
 const MIN_TILE = 88;
 
-const TERM_LABEL: Record<string, string> = {
-  interest_match: "your interests",
-  signature: "signature",
-  season_fit: "in season",
-  discovery_fit: "off the list",
-  crowd: "quiet hours",
-  redundancy: "variety",
-  energy: "easy going",
-  budget_strain: "budget",
-  pace_strain: "pace",
-  confidence: "verified",
-  skip_if: "flagged",
-};
+const TERM_LABEL: Record<string, string> = t.reasons;
 
 /** A day is a bento box. Compartments are sized to the time each stop
  *  takes, so an over-packed day looks over-packed before you read a word.
@@ -114,13 +107,13 @@ export function DayBox(p: DayBoxProps) {
 
   function addBooking(b: PlanBooking) {
     if (!canPlanOn(b, p.date)) {
-      setMessage({ tone: "error", text: `“${b.title}” is for ${whenText(b)}, so it can't go in ${shortDate(p.date)}.` });
+      setMessage({ tone: "error", text: bk.wrongDay(b.title, whenText(b), shortDate(p.date)) });
       return;
     }
     setMessage(null);
     start(async () => {
       const r = await planBooking({ tripId: p.tripId, bookingId: b.id, date: p.date });
-      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is in your plan for ${whenText(b)}.` });
+      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: bk.added(b.title, whenText(b)) });
     });
   }
 
@@ -128,7 +121,7 @@ export function DayBox(p: DayBoxProps) {
     setMessage(null);
     start(async () => {
       const r = await unplanBooking({ tripId: p.tripId, bookingId: b.id });
-      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: `“${b.title}” is out of your plan. It's still in Bookings.` });
+      setMessage(r.error ? { tone: "error", text: r.error } : { tone: "ok", text: bk.removed(b.title) });
     });
   }
 
@@ -194,15 +187,15 @@ export function DayBox(p: DayBoxProps) {
         >
           {draggingBooking && dropFits === false && (
             <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-xl bg-ume px-4 py-3 text-center text-[0.86rem] font-medium text-white shadow-tile">
-              Not this day. “{draggingBooking.title}” is for {whenText(draggingBooking)}.
+              {bk.wrongDayHover(draggingBooking.title, whenText(draggingBooking))}
             </div>
           )}
           {allDay.map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
           {items.length === 0 && (
             <div className="tile px-5 py-8 text-center text-[0.92rem] text-ink-2">
               {blocks.length
-                ? <>No planned stops yet. Ask Bento Man to plan {p.cityName} around your bookings.</>
-                : <>Nothing in this box yet. Ask Bento Man to plan {p.cityName}, or re-plan the day.</>}
+                ? t.emptyWithBookings(p.cityName)
+                : t.empty(p.cityName)}
             </div>
           )}
 
@@ -219,7 +212,7 @@ export function DayBox(p: DayBoxProps) {
                     <span className="mono inline-flex items-center gap-2 text-[0.68rem] text-rice/85">
                       <span aria-hidden className="inline-block h-[1px] w-4 bg-rice/40" />
                       {it.arriveDetail}
-                      {it.arriveMinutes != null && <span className="text-rice/60">· {it.arriveMinutes} min</span>}
+                      {it.arriveMinutes != null && <span className="text-rice/60">· {copy.time.minutes(it.arriveMinutes)}</span>}
                     </span>
                   </div>
                 )}
@@ -228,17 +221,17 @@ export function DayBox(p: DayBoxProps) {
                     <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{clock(p.lunch.startMin)}</span>
                     <div className="flex-1">
                       <div className="flex items-baseline gap-2">
-                        <span className="disp text-[1.05rem] font-bold">Lunch</span>
+                        <span className="disp text-[1.05rem] font-bold">{t.lunch}</span>
                         <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(p.lunch.endMin - p.lunch.startMin)}</span>
                       </div>
-                      <p className="mt-0.5 text-[0.85rem] text-ink-2">Nothing booked, and nothing needs to be. Bring cash.</p>
+                      <p className="mt-0.5 text-[0.85rem] text-ink-2">{t.lunchNote}</p>
                     </div>
                   </div>
                 )}
                 {p.overFromIndex === i && (
-                  <div className="flex items-center gap-3 px-2" role="separator" aria-label="Day budget ends here">
+                  <div className="flex items-center gap-3 px-2" role="separator" aria-label={t.budgetEndsLabel}>
                     <span className="h-[2px] flex-1 bg-accent/80" style={{ backgroundImage: "repeating-linear-gradient(90deg, transparent 0 6px, var(--color-lacquer) 6px 12px)" }} />
-                    <span className="mono pop rounded-full bg-accent px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.1em] text-white">{dur(p.budgetMin)} day ends here</span>
+                    <span className="mono pop rounded-full bg-accent px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.1em] text-white">{t.budgetEnds(dur(p.budgetMin))}</span>
                     <span className="h-[2px] flex-1 bg-accent/80" style={{ backgroundImage: "repeating-linear-gradient(90deg, transparent 0 6px, var(--color-lacquer) 6px 12px)" }} />
                   </div>
                 )}
@@ -252,18 +245,18 @@ export function DayBox(p: DayBoxProps) {
                   style={{ minHeight: height, animationDelay: `${0.08 * i + 0.1}s` }}
                   className={`tile up lift relative flex gap-4 px-4 py-3.5 sm:px-5 ${FILLS[i % FILLS.length]} ${isOver ? "ring-2 ring-ume/70" : ""} ${dragging === it.placeId ? "opacity-40" : ""} ${over === it.placeId && dragging && dragging !== it.placeId ? "ring-2 ring-accent" : ""} ${p.editable ? "cursor-grab active:cursor-grabbing" : ""}`}
                 >
-                  <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{it.startMin != null ? clock(it.startMin) : "--:--"}</span>
+                  <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{it.startMin != null ? clock(it.startMin) : copy.time.noTime}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
                       <span className="disp text-[1.15rem] font-bold leading-tight">{it.name}</span>
                       {it.locked && (
                         <span className="mono pop inline-flex items-center gap-1.5 rounded-full bg-lacquer px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-rice" style={{ animationDelay: ".5s" }}>
                           <svg width="9" height="9" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><rect x="2.5" y="6" width="9" height="6.5" rx="1.5" /><path d="M4.5 6V4.5a2.5 2.5 0 0 1 5 0V6" /></svg>
-                          pinned
+                          {t.pinned}
                         </span>
                       )}
-                      {isOver && <span className="mono rounded-full bg-ume-soft px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ume">over</span>}
-                      {clash.length > 0 && <span className="mono rounded-full bg-ume-soft px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ume">clashes with {clash.join(", ")}</span>}
+                      {isOver && <span className="mono rounded-full bg-ume-soft px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ume">{t.over}</span>}
+                      {clash.length > 0 && <span className="mono rounded-full bg-ume-soft px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ume">{t.clashesWith(clash.join(", "))}</span>}
                       {it.durationMin != null && <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(it.durationMin)}</span>}
                     </div>
                     {it.reason && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{it.reason}</p>}
@@ -277,16 +270,16 @@ export function DayBox(p: DayBoxProps) {
                     {p.editable && (
                       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                         <form action={togglePin}>{hidden}<input type="hidden" name="placeId" value={it.placeId} />
-                          <button className="min-h-9 rounded-full border border-ink/15 px-3 text-[0.78rem] text-ink-2 hover:border-ink/40" title={it.locked ? "Let the engine move this" : "Keep this exactly here"}>{it.locked ? "Unpin" : "Pin"}</button>
+                          <button className="min-h-9 rounded-full border border-ink/15 px-3 text-[0.78rem] text-ink-2 hover:border-ink/40" title={it.locked ? t.unpinHint : t.pinHint}>{it.locked ? t.unpin : t.pin}</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="up" />
-                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === 0} aria-label="Move earlier">↑</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === 0} aria-label={t.moveEarlier}>↑</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="down" />
-                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === items.length - 1} aria-label="Move later">↓</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === items.length - 1} aria-label={t.moveLater}>↓</button>
                         </form>
                         <form action={removeItem} className="ml-auto">{hidden}<input type="hidden" name="placeId" value={it.placeId} />
-                          <ConfirmButton message={`Remove ${it.name} from this day?`} aria-label={`Remove ${it.name}`} className="min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume">Remove</ConfirmButton>
+                          <ConfirmButton message={t.removeConfirm(it.name)} aria-label={t.removeLabel(it.name)} className="min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume">{t.remove}</ConfirmButton>
                         </form>
                       </div>
                     )}
@@ -318,16 +311,16 @@ export function DayBox(p: DayBoxProps) {
             onDragEnd={endBookingDrag}
           />
           <div className="tile up px-4 py-4" style={{ animationDelay: ".2s" }}>
-            <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">Day budget</span>
+            <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.budget}</span>
             <div className="mt-3 flex items-center gap-4">
               <Ring pct={fillPct} over={p.overBy > 0} />
               <div>
                 <span className="disp block text-[1.35rem] font-extrabold leading-none">{dur(p.activeMin)}</span>
-                <span className="mono mt-1 block text-[0.7rem] text-ink-3">of {dur(p.budgetMin)}</span>
+                <span className="mono mt-1 block text-[0.7rem] text-ink-3">{t.of(dur(p.budgetMin))}</span>
                 {p.overBy > 0 ? (
-                  <span className="mono mt-1.5 block text-[0.7rem] text-ume">{dur(p.overBy)} over</span>
+                  <span className="mono mt-1.5 block text-[0.7rem] text-ume">{t.overBy(dur(p.overBy))}</span>
                 ) : (
-                  <span className="mono mt-1.5 block text-[0.7rem] text-edamame">{dur(p.budgetMin - p.activeMin)} slack</span>
+                  <span className="mono mt-1.5 block text-[0.7rem] text-edamame">{t.slack(dur(p.budgetMin - p.activeMin))}</span>
                 )}
               </div>
             </div>
@@ -336,14 +329,14 @@ export function DayBox(p: DayBoxProps) {
           <div className="tile up px-4 py-4" style={{ animationDelay: ".28s" }}>
             <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{p.cityName} · {p.tier}</span>
             <p className="mt-2 text-[0.85rem] leading-snug text-ink-2">
-              {items.filter((i) => i.locked).length ? `${items.filter((i) => i.locked).length} pinned. ` : ""}
-              Drag to reorder, pin what must stay, remove what you don&rsquo;t want. Times follow.
+              {items.filter((i) => i.locked).length ? t.pinnedCount(items.filter((i) => i.locked).length) : ""}
+              {t.howTo}
             </p>
             {p.editable && (
               <form action={replanDayAction} className="mt-3">
                 {hidden}
-                <button className="w-full rounded-full bg-lacquer px-4 py-2 text-[0.85rem] font-medium text-rice hover:bg-ink-2">Re-plan this day</button>
-                <p className="mono mt-2 text-[0.64rem] leading-snug text-ink-3">The engine chooses again around your pins. Comes back as a proposal you can reject.</p>
+                <button className="w-full rounded-full bg-lacquer px-4 py-2 text-[0.85rem] font-medium text-rice hover:bg-ink-2">{t.replan}</button>
+                <p className="mono mt-2 text-[0.64rem] leading-snug text-ink-3">{t.replanNote}</p>
               </form>
             )}
           </div>
@@ -364,7 +357,7 @@ function BookingBlock({ b, startMin, endMin, part, busy, onRemove }: {
   onRemove: (b: PlanBooking) => void;
 }) {
   const length = startMin != null && endMin != null ? endMin - startMin : null;
-  const note = part === "ends" ? (b.type === "accommodation" ? "Check-out" : "Ends") : part === "all-day" ? (b.type === "accommodation" ? "Staying" : "All day") : b.type === "accommodation" ? "Check-in" : null;
+  const note = part === "ends" ? (b.type === "accommodation" ? bk.checkOut : bk.ends) : part === "all-day" ? (b.type === "accommodation" ? bk.staying : bk.allDay) : b.type === "accommodation" ? bk.checkIn : null;
   // A start or end given as a date alone has no clock to show.
   const untimed = part !== "all-day" && startMin == null;
   return (
@@ -372,18 +365,18 @@ function BookingBlock({ b, startMin, endMin, part, busy, onRemove }: {
       className="tile up relative flex gap-4 border-2 border-dashed border-accent/70 bg-surface px-4 py-3 sm:px-5"
       style={{ minHeight: length ? Math.max(64, length * PX_PER_MIN) : undefined }}
     >
-      <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{startMin != null ? clock(startMin) : "—"}</span>
+      <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{startMin != null ? clock(startMin) : copy.time.none}</span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <span className="mono rounded-full bg-accent px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-white">Booked</span>
-          {untimed && <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">Time not given</span>}
-          <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{KIND_LABEL[b.type] ?? "Booking"}{note ? ` · ${note}` : ""}</span>
+          <span className="mono rounded-full bg-accent px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-white">{bk.booked}</span>
+          {untimed && <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{bk.timeNotGiven}</span>}
+          <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{KIND_LABEL[b.type] ?? bk.kinds.other}{note ? ` · ${note}` : ""}</span>
           {length != null && <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(length)}</span>}
         </div>
         <p className="disp mt-1 text-[1.05rem] font-bold leading-tight">{b.title}</p>
         <div className="mt-2 flex">
-          <button type="button" disabled={busy} onClick={() => onRemove(b)} className="ml-auto min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume disabled:opacity-50" aria-label={`Take ${b.title} out of this day`}>
-            Take out
+          <button type="button" disabled={busy} onClick={() => onRemove(b)} className="ml-auto min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume disabled:opacity-50" aria-label={bk.takeOutLabel(b.title)}>
+            {bk.takeOut}
           </button>
         </div>
       </div>
@@ -396,7 +389,7 @@ function Ring({ pct, over }: { pct: number; over: boolean }) {
   const c = 2 * Math.PI * r;
   const filled = c * (pct / 100);
   return (
-    <svg width="76" height="76" viewBox="0 0 76 76" aria-label={`${pct}% of the day`}>
+    <svg width="76" height="76" viewBox="0 0 76 76" aria-label={t.ringLabel(pct)}>
       <circle cx="38" cy="38" r={r} fill="none" stroke="var(--color-rule)" strokeWidth="8" />
       <circle
         cx="38" cy="38" r={r} fill="none"

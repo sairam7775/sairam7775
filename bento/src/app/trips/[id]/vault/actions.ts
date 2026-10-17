@@ -9,40 +9,43 @@ import { canEncrypt, encryptRef } from "@/lib/vault/crypto";
 import { endsBeforeStarts, hasTime, isWallTime, stamp } from "@/lib/vault/wall-time";
 import { canPlanOn } from "@/lib/vault/plan-day";
 import type { BookingKind } from "@/lib/types";
+import { copy } from "@/copy";
 
 /** The vault's writes. Nothing here is fetched from an airline or a hotel:
  *  every field is the traveller's own, typed or pasted. */
 
 const KINDS = ["flight", "accommodation", "transport", "activity", "restaurant", "other"] as const;
 
-const wallTime = (which: string) =>
+const e = copy.vault.errors;
+
+const wallTime = (which: "start" | "end") =>
   z
     .string()
     .trim()
-    .refine((v) => v === "" || isWallTime(v), `That ${which} date does not look right. Use the date picker.`);
+    .refine((v) => v === "" || isWallTime(v), e.badDate(which));
 
 const BookingForm = z.object({
   tripId: z.string().uuid(),
   id: z.string().uuid().optional(),
   type: z.enum(KINDS),
-  title: z.string().trim().min(1).max(160),
-  provider: z.string().trim().max(120).optional(),
-  reference: z.string().trim().max(60).optional(),
+  title: z.string().trim().min(1, e.noTitle).max(160, e.tooLong),
+  provider: z.string().trim().max(120, e.tooLong).optional(),
+  reference: z.string().trim().max(60, e.tooLong).optional(),
   startsAt: wallTime("start").optional(),
   endsAt: wallTime("end").optional(),
   cityId: z.string().trim().max(60).optional(),
   toCityId: z.string().trim().max(60).optional(),
   placeId: z.string().trim().max(80).optional(),
-  costAmount: z.string().trim().max(20).optional(),
-  costCurrency: z.string().trim().max(3).optional(),
-  notes: z.string().trim().max(600).optional(),
+  costAmount: z.string().trim().max(20, e.tooLong).optional(),
+  costCurrency: z.string().trim().max(3, e.tooLong).optional(),
+  notes: z.string().trim().max(600, e.tooLong).optional(),
 });
 
 export async function saveBooking(formData: FormData) {
   const { db, tripId, data } = await guard(formData, BookingForm);
 
   if (endsBeforeStarts(data.startsAt, data.endsAt)) {
-    back(tripId, "That booking ends before it starts.");
+    back(tripId, e.endsBeforeStarts);
   }
 
   // A missing key must not lose the booking: everything else is saved and
@@ -51,7 +54,11 @@ export async function saveBooking(formData: FormData) {
   let warning: string | null = null;
   if (data.reference) {
     if (canEncrypt()) referenceEncrypted = encryptRef(data.reference);
-    else warning = "Saved, but not the reference: this server has no BENTO_BOOKING_REF_KEY, and a reference is never stored unencrypted.";
+    else {
+      // Never log the reference itself.
+      console.error("Booking reference not saved: BENTO_BOOKING_REF_KEY is missing or invalid.");
+      warning = e.savedWithoutReference;
+    }
   }
 
   const amount = data.costAmount ? Number(data.costAmount) : null;
@@ -90,7 +97,7 @@ export async function saveBooking(formData: FormData) {
   const res = data.id
     ? await db.from("bookings").update(unplan ? { ...row, planned_on: null } : row).eq("id", data.id).eq("trip_id", tripId)
     : await db.from("bookings").insert(row);
-  if (res.error) back(tripId, dbErrorMessage(res.error, "save the booking"));
+  if (res.error) back(tripId, dbErrorMessage(res.error, e.doingSave));
 
   revalidatePath(`/trips/${tripId}/vault`);
   revalidatePath(`/trips/${tripId}`);
@@ -100,7 +107,7 @@ export async function saveBooking(formData: FormData) {
 export async function deleteBooking(formData: FormData) {
   const { db, tripId, data } = await guard(formData, z.object({ tripId: z.string().uuid(), id: z.string().uuid() }));
   const { error } = await db.from("bookings").delete().eq("id", data.id).eq("trip_id", tripId);
-  if (error) back(tripId, dbErrorMessage(error, "delete the booking"));
+  if (error) back(tripId, dbErrorMessage(error, e.doingDelete));
   revalidatePath(`/trips/${tripId}/vault`);
   revalidatePath(`/trips/${tripId}`);
   redirect(`/trips/${tripId}/vault`);
@@ -111,7 +118,7 @@ export async function deleteBooking(formData: FormData) {
 export async function dismissGap(formData: FormData) {
   const { db, tripId, data } = await guard(formData, z.object({ tripId: z.string().uuid(), gapKey: z.string().min(1).max(200), note: z.string().trim().max(200).optional() }));
   const { error } = await db.from("gap_dismissals").upsert({ trip_id: tripId, gap_key: data.gapKey, note: data.note || null }, { onConflict: "trip_id,gap_key" });
-  if (error) back(tripId, dbErrorMessage(error, "update the list"));
+  if (error) back(tripId, dbErrorMessage(error, e.doingList));
   revalidatePath(`/trips/${tripId}/vault`);
   revalidatePath(`/trips/${tripId}`);
   redirect(`/trips/${tripId}/vault`);

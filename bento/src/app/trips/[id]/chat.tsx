@@ -6,6 +6,9 @@ import { BentoMark } from "@/components/logo";
 import { BentoLoader } from "@/components/loading";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
+import { copy } from "@/copy";
+
+const t = copy.chat;
 
 export interface ChatMessage {
   id: string;
@@ -15,17 +18,7 @@ export interface ChatMessage {
   status: ProposalStatus | null;
 }
 
-const TOOL_LABEL: Record<string, string> = {
-  set_preferences: "noting that down",
-  set_trip_dates: "setting the dates",
-  assess_route: "checking the route",
-  propose_route: "laying out the route",
-  suggest_route: "thinking about the route",
-  plan_days: "planning the days",
-  replan_day: "re-planning the day",
-  get_place: "looking that up",
-  route_between: "checking the trains",
-};
+const TOOL_LABEL: Record<string, string> = t.tools;
 
 type Event =
   | { type: "text"; delta: string }
@@ -35,7 +28,7 @@ type Event =
 
 /** `ask` arrives from a gap card's "Ask Bento Man": it starts in the box,
  *  ready to send or edit — never sent on the traveller's behalf. */
-export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMessage[]; ask?: string }) {
+export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; cityNames: Record<string, string>; initial: ChatMessage[]; ask?: string }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   // The server is the truth for a proposal's status. After Accept or
@@ -100,7 +93,7 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
       });
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? `Bento Man didn't answer (${res.status}).`);
+        throw new Error(body.error ?? t.noAnswer(res.status));
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -120,7 +113,7 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
             content += ev.delta;
             patch({ content });
           } else if (ev.type === "tool") {
-            setActivity(ev.phase === "start" ? (TOOL_LABEL[ev.name] ?? "working") : null);
+            setActivity(ev.phase === "start" ? (TOOL_LABEL[ev.name] ?? t.working) : null);
             if (ev.phase === "end" && content) content += "\n\n";
           } else if (ev.type === "done") {
             patch({ id: ev.messageId ?? draftId, content: ev.text, proposal: ev.proposal, status: ev.proposal ? "proposed" : null });
@@ -133,10 +126,10 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
       // fetch() rejects with a TypeError when the network itself failed.
       setError(
         err instanceof TypeError
-          ? "Couldn't reach Bento Man. Check your connection and try again."
+          ? t.offline
           : err instanceof Error
             ? err.message
-            : "Something went wrong.",
+            : t.failed,
       );
       setMessages((m) => m.filter((x) => x.id !== draftId || x.content));
       // A refusal before the turn started (throttle, spend cap) never stored
@@ -162,19 +155,15 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
     else if (sentOnce.current) field.current?.focus();
   }, [busy]);
 
-  const examples = [
-    "Ten nights in November, first time, we like temples and food, no hiking.",
-    "Suggest a route",
-    "Plan my days",
-  ];
+  const examples = Object.values(t.examples);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-rule px-4 py-3">
         <BentoMark size={28} />
         <div className="min-w-0">
-          <h2 className="text-[1rem] font-bold leading-tight">Bento Man</h2>
-          <p className="truncate text-[0.8rem] text-ink-3">Plans the trip with you. Nothing changes until you accept it.</p>
+          <h2 className="text-[1rem] font-bold leading-tight">{t.name}</h2>
+          <p className="truncate text-[0.8rem] text-ink-3">{t.tagline}</p>
         </div>
       </div>
 
@@ -189,8 +178,8 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
       >
         {messages.length === 0 && (
           <div className="up rounded-tile bg-sunk px-5 py-5 text-[0.95rem] leading-relaxed text-ink-2">
-            <p>Tell Bento Man what kind of trip this is. Dates and how many nights are the useful first thing; the rest can come as you go.</p>
-            <p className="mt-4 text-[0.8rem] font-medium text-ink-3">Try one of these</p>
+            <p>{t.intro}</p>
+            <p className="mt-4 text-[0.8rem] font-medium text-ink-3">{t.tryThese}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {examples.map((x) => (
                 <button
@@ -220,10 +209,10 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
                 {m.content ? (
                   <p className="whitespace-pre-wrap break-words text-[0.95rem] leading-relaxed">{m.content}</p>
                 ) : (
-                  <Working label={activity ?? "Thinking"} />
+                  <Working label={activity ?? t.thinking} />
                 )}
                 {m.content && activity && busy && m.id.startsWith("a-") && <Working label={activity} className="mt-2" />}
-                {m.proposal && m.status && <ProposalCard tripId={tripId} messageId={m.id} proposal={m.proposal} status={m.status} />}
+                {m.proposal && m.status && <ProposalCard tripId={tripId} messageId={m.id} proposal={m.proposal} status={m.status} cityNames={cityNames} />}
               </div>
             </div>
           ),
@@ -237,7 +226,7 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
 
       <form onSubmit={send} className="border-t border-rule bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="flex items-end gap-2">
-          <label htmlFor="chat-input" className="sr-only">Message Bento Man</label>
+          <label htmlFor="chat-input" className="sr-only">{t.inputLabel}</label>
           <textarea
             id="chat-input"
             ref={field}
@@ -250,15 +239,15 @@ export function Chat({ tripId, initial, ask }: { tripId: string; initial: ChatMe
               }
             }}
             rows={1}
-            placeholder={busy ? "Bento Man is answering…" : "Ask Bento Man…"}
+            placeholder={busy ? t.answering : t.placeholder}
             readOnly={busy}
             className="min-h-11 flex-1 resize-none rounded-tile border border-rule bg-paper px-4 py-2.5 text-[0.95rem] leading-snug read-only:opacity-60"
           />
           <button type="submit" disabled={busy || !input.trim()} className="h-11 shrink-0 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep disabled:opacity-50">
-            Send
+            {t.send}
           </button>
         </div>
-        <p className="mt-1.5 hidden text-[0.75rem] text-ink-3 sm:block">Enter to send · Shift + Enter for a new line</p>
+        <p className="mt-1.5 hidden text-[0.75rem] text-ink-3 sm:block">{t.keys}</p>
       </form>
     </div>
   );
@@ -269,7 +258,7 @@ function Working({ label, className = "" }: { label: string; className?: string 
   return (
     <p className={`flex items-center gap-2 text-[0.85rem] text-ink-3 ${className}`}>
       <BentoLoader size={18} label={label} />
-      {label[0].toUpperCase() + label.slice(1)}…
+      {label}…
     </p>
   );
 }

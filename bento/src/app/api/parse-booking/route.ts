@@ -7,6 +7,7 @@ import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
 import { callBoundUsd, costUsd, type Usage } from "@/lib/bento-man/cost";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { PARSE_MODEL, ParseFailed, parseConfirmation, toFormValues } from "@/lib/vault/parse";
+import { copy } from "@/copy";
 
 /** POST /api/parse-booking — read a pasted confirmation into form fields.
  *
@@ -20,19 +21,20 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  if (!user) return NextResponse.json({ error: copy.server.signInFirst }, { status: 401 });
 
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: "Paste the confirmation text first." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: copy.server.pasteFirst }, { status: 400 });
 
   const limit = await rateLimit(db, "parse");
   if (!limit.allowed) {
-    return NextResponse.json({ error: "That's a lot of confirmations at once. Try again in a moment." }, { status: 429 });
+    return NextResponse.json({ error: copy.server.tooManyPastes }, { status: 429 });
   }
 
   const mock = mockModeEnabled();
   if (!mock && !process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "Reading confirmations isn't configured on this server. Fill the form in by hand." }, { status: 503 });
+    console.error("The confirmation reader is off: ANTHROPIC_API_KEY is not set.");
+    return NextResponse.json({ error: copy.server.readerOff }, { status: 503 });
   }
 
   let reservation;
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: e.message }, { status: 422 });
     }
     await reservation.settle(null);
-    if (e instanceof Anthropic.APIError) return NextResponse.json({ error: "Couldn't read that one. Fill the form in by hand." }, { status: 502 });
-    return NextResponse.json({ error: "Something went wrong reading that. Fill the form in by hand." }, { status: 500 });
+    if (e instanceof Anthropic.APIError) return NextResponse.json({ error: copy.server.readFailed }, { status: 502 });
+    return NextResponse.json({ error: copy.server.readError }, { status: 500 });
   }
 }

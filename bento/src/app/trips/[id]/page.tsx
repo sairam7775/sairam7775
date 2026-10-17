@@ -19,9 +19,15 @@ import { seasonOf } from "@/components/seasonal/season";
 import { Chat, type ChatMessage } from "./chat";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
+import { copy } from "@/copy";
+import type { CoverageTier } from "@/lib/types";
 
-const fmt = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { ...opts, timeZone: "UTC" });
-const dur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? ` ${m % 60}m` : ""}` : `${m}m`);
+const t = copy.trip;
+
+const fmt = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { ...opts, timeZone: "UTC" });
+const dur = copy.time.duration;
+/** A coverage tier in words; anything unknown reads as not covered. */
+const coverage = (tier: string) => copy.coverage[(tier in copy.coverage ? tier : "stub") as CoverageTier];
 
 /** The trip. Every date is a box; the selected one is open. Bento Man sits
  *  beside it. The boxes show accepted state only — proposals live in the
@@ -55,6 +61,17 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     status: (m.diff_status as ChatMessage["status"]) ?? null,
   }));
 
+  // Names for every city a proposal in the chat mentions, so an old day
+  // proposal keeps its city after the route changes.
+  const proposalCityIds = [...new Set(messages.flatMap((m) => m.proposal?.days.map((d) => d.cityId) ?? []))];
+  const { data: cityRows } = proposalCityIds.length
+    ? await db.from("cities").select("id, name").in("id", proposalCityIds)
+    : { data: [] as { id: string; name: string }[] };
+  const cityNames = Object.fromEntries([
+    ...(cityRows ?? []).map((c) => [c.id, c.name] as const),
+    ...state.cities.map((c) => [c.cityId, c.name] as const),
+  ]);
+
   const requested = typeof sp.day === "string" ? sp.day : null;
   const { dayList, statsByDate, selected, selectedDay, selectedMeta, stats } = buildTripView(state, requested);
 
@@ -77,34 +94,34 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
       {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
       <Tour id="trip" seen={await tourSeen("trip")} />
-      <AppHeader back={{ href: "/trips", label: "Your trips" }}>
+      <AppHeader back={{ href: "/trips", label: copy.common.yourTrips }}>
         {state.trip.startDate && state.trip.endDate && (
           <span className="mono hidden rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice sm:inline">
-            {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
+            {t.dateRange(fmt(state.trip.startDate, { day: "numeric", month: "short" }), fmt(state.trip.endDate, { day: "numeric", month: "short" }), nights ?? 0)}
           </span>
         )}
       </AppHeader>
 
       <div className="mt-6 grid lg:items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,34%)]">
-        <section aria-label="The plan" className="min-w-0">
+        <section aria-label={t.planLabel} className="min-w-0">
           <header className="up" style={{ animationDelay: ".05s" }}>
-            <h1 className="text-[2.4rem] font-extrabold leading-none sm:text-[3rem]">{state.trip.title ?? "Untitled trip"}</h1>
+            <h1 className="text-[2.4rem] font-extrabold leading-none sm:text-[3rem]">{state.trip.title ?? copy.trips.untitled}</h1>
             {/* On a phone the dates leave the header, which has no room for them. */}
             {state.trip.startDate && state.trip.endDate && (
               <p className="mono mt-2 text-[0.8rem] text-ink-3 sm:hidden">
-                {fmt(state.trip.startDate, { day: "numeric", month: "short" })} – {fmt(state.trip.endDate, { day: "numeric", month: "short" })} · {nights} night{nights === 1 ? "" : "s"}
+                {t.dateRange(fmt(state.trip.startDate, { day: "numeric", month: "short" }), fmt(state.trip.endDate, { day: "numeric", month: "short" }), nights ?? 0)}
               </p>
             )}
             <p className="mt-2.5 max-w-[60ch] text-[0.98rem] leading-relaxed text-ink-2">
               {state.cities.length
-                ? `${state.cities.map((c) => (c.nights ? `${c.name} ${c.nights}n` : `${c.name} day trip`)).join(" → ")}.`
-                : "No route yet. Tell Bento Man the dates and what kind of trip this is."}
-              {state.trip.partySize > 1 && ` ${state.trip.partySize} travelling.`}
-              {state.prefs.set && ` ${state.prefs.pace[0].toUpperCase()}${state.prefs.pace.slice(1)} pace.`}
+                ? t.route(state.cities.map((c) => (c.nights ? t.cityNights(c.name, c.nights) : t.cityDayTrip(c.name))).join(t.routeJoin))
+                : t.noRoute}
+              {state.trip.partySize > 1 && ` ${t.travelling(state.trip.partySize)}`}
+              {state.prefs.set && ` ${t.pace[state.prefs.pace]}`}
             </p>
             <details data-tour="edit-trip" className="group mt-3 max-w-xl" open={!state.trip.startDate || !state.trip.endDate}>
               <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk [&::-webkit-details-marker]:hidden">
-                {state.trip.startDate && state.trip.endDate ? "Edit trip" : "Add dates"}
+                {state.trip.startDate && state.trip.endDate ? t.edit.open : t.edit.addDates}
                 <span aria-hidden className="transition-transform group-open:rotate-180">▾</span>
               </summary>
               <form
@@ -113,37 +130,35 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 className="tile mt-3 flex flex-col gap-4 p-5">
                 <input type="hidden" name="id" value={id} />
                 <div className="flex flex-col gap-1.5">
-                  <label htmlFor="title" className={fieldLabel}>Trip name</label>
-                  <input id="title" name="title" defaultValue={state.trip.title ?? ""} placeholder="Kansai, autumn" className={fieldInput} />
+                  <label htmlFor="title" className={fieldLabel}>{t.edit.name}</label>
+                  <input id="title" name="title" defaultValue={state.trip.title ?? ""} placeholder={copy.trips.new.namePlaceholder} className={fieldInput} />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <DateRangeInputs startLabel="Arrive in Japan" endLabel="Leave Japan" defaultStart={state.trip.startDate} defaultEnd={state.trip.endDate} labelClass={fieldLabel} inputClass={fieldInput} />
+                  <DateRangeInputs startLabel={copy.trips.new.arrive} endLabel={copy.trips.new.leave} defaultStart={state.trip.startDate} defaultEnd={state.trip.endDate} labelClass={fieldLabel} inputClass={fieldInput} />
                   <div className="flex flex-col gap-1.5">
-                    <label htmlFor="partySize" className={fieldLabel}>People travelling</label>
+                    <label htmlFor="partySize" className={fieldLabel}>{copy.trips.new.people}</label>
                     <input id="partySize" name="partySize" type="number" min={1} max={20} defaultValue={state.trip.partySize} className={fieldInput} />
                   </div>
                 </div>
                 {state.cities.length > 0 && (
-                  <p className="text-[0.84rem] text-ink-3">Changing dates moves your route and your planned days with it. Day plans still waiting for an answer in the chat are closed, since they were made for the old dates. The new dates need room for every night of the route.</p>
+                  <p className="text-[0.84rem] text-ink-3">{t.edit.moveNote}</p>
                 )}
-                <SubmitButton pending="Saving…" className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">Save</SubmitButton>
+                <SubmitButton pending={copy.common.saving} className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">{t.edit.save}</SubmitButton>
               </form>
               <form action={setDatePermission} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.86rem] text-ink-2">
                 <input type="hidden" name="tripId" value={id} />
                 <input type="hidden" name="allow" value={state.prefs.autoApplyDates ? "off" : "on"} />
                 <span>
-                  {state.prefs.autoApplyDates
-                    ? "Bento Man changes your dates without asking."
-                    : "Bento Man asks before changing your dates."}
+                  {state.prefs.autoApplyDates ? t.edit.datesAuto : t.edit.datesAsk}
                 </span>
-                <SubmitButton pending="Saving…" className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk">
-                  {state.prefs.autoApplyDates ? "Ask me first" : "Don't ask"}
+                <SubmitButton pending={copy.common.saving} className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk">
+                  {state.prefs.autoApplyDates ? t.edit.askFirst : t.edit.dontAsk}
                 </SubmitButton>
               </form>
             </details>
             {/* On a phone the conversation sits below the whole plan. */}
             <a href="#bento-man" className="mt-2 flex w-fit min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-white hover:bg-accent-deep lg:hidden">
-              Ask Bento Man ↓
+              {t.askBentoMan}
             </a>
           </header>
 
@@ -157,10 +172,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               style={{ animationDelay: ".08s" }}
             >
               <span className={`mono text-[0.62rem] uppercase tracking-[0.1em] ${gaps.blocking ? "text-ume" : "text-ink-3"}`}>
-                {gaps.blocking ? `${gaps.blocking} blocking` : "Bookings"}
+                {gaps.blocking ? t.bookingsBar.blocking(gaps.blocking) : t.bookingsBar.label}
               </span>
               <span className="order-last min-w-0 basis-full text-[0.9rem] leading-snug sm:order-none sm:basis-auto sm:flex-1">
-                {worst ? worst.title : gaps.totalNights > 0 ? `Every night has a bed. ${gaps.coveredNights} of ${gaps.totalNights} covered.` : "Flights, hotels and tickets — keep them here, and see what’s still missing once the trip has dates."}
+                {worst ? worst.title : gaps.totalNights > 0 ? t.bookingsBar.allBeds(gaps.coveredNights, gaps.totalNights) : t.bookingsBar.noDates}
               </span>
               {gaps.totalNights > 0 && (
                 <span aria-hidden className="flex shrink-0 gap-[3px]">
@@ -169,12 +184,12 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                   ))}
                 </span>
               )}
-              <span className="ml-auto text-[0.85rem] font-medium text-accent sm:ml-0">Bookings →</span>
+              <span className="ml-auto text-[0.85rem] font-medium text-accent sm:ml-0">{t.bookingsBar.open}</span>
             </Link>
           )}
 
           {dayList.length > 0 && (
-            <nav aria-label="Days" className="up mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" style={{ animationDelay: ".1s" }}>
+            <nav aria-label={t.daysLabel} className="up mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" style={{ animationDelay: ".1s" }}>
               <ol className="flex w-max gap-2 pb-1">
                 {dayList.map(([date, meta], i) => {
                   const s = statsByDate.get(date) ?? null;
@@ -187,7 +202,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                         aria-current={active ? "page" : undefined}
                         className={`lift flex w-[7.2rem] flex-col gap-1.5 rounded-tile px-3 py-2.5 shadow-tile ${active ? "bg-lacquer text-rice" : "bg-surface text-ink"}`}
                       >
-                        <span className="mono text-[0.62rem] uppercase tracking-[0.1em] opacity-70">Day {i + 1} · {fmt(date, { weekday: "short" })}</span>
+                        <span className="mono text-[0.62rem] uppercase tracking-[0.1em] opacity-70">{t.dayTab(i + 1, fmt(date, { weekday: "short" }))}</span>
                         <span className="disp text-[0.95rem] font-bold leading-tight">{meta.cityName}</span>
                         <span className={`mono text-[0.62rem] ${active ? "text-rice/70" : "text-ink-3"}`}>{fmt(date, { day: "numeric", month: "short" })}</span>
                         <span className={`mt-0.5 h-1.5 w-full overflow-hidden rounded-full ${active ? "bg-rice/20" : "bg-rule"}`} aria-hidden>
@@ -206,10 +221,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 px-1">
                 <h2 className="text-[1.5rem] font-bold">
                   {fmt(selected, { weekday: "long", day: "numeric", month: "long" })}
-                  <span className="mono ml-3 text-[0.72rem] font-normal text-ink-3">{selectedMeta.cityName} · {selectedMeta.tier}</span>
+                  <span className="mono ml-3 text-[0.72rem] font-normal text-ink-3">{selectedMeta.cityName} · {coverage(selectedMeta.tier)}</span>
                 </h2>
                 {stats && selectedDay && selectedDay.items.length > 0 && (
-                  <span className="mono text-[0.72rem] text-ink-3">{selectedDay.items.length} stops · {dur(stats.activeMin)} active</span>
+                  <span className="mono text-[0.72rem] text-ink-3">{t.dayStats(selectedDay.items.length, dur(stats.activeMin))}</span>
                 )}
               </div>
               <DayBox
@@ -218,7 +233,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 date={selected}
                 cityId={selectedMeta.cityId ?? ""}
                 cityName={selectedMeta.cityName}
-                tier={selectedMeta.tier}
+                tier={coverage(selectedMeta.tier)}
                 items={(selectedDay?.items ?? []).map((it) => ({
                   placeId: it.placeId, name: it.name, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked,
                   reason: it.reason, reasonTerms: it.reasonTerms, arriveMode: it.arriveMode, arriveMinutes: it.arriveMinutes, arriveDetail: it.arriveDetail,
@@ -236,17 +251,17 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           ) : (
             <div className="box up mt-4 p-3">
               <div className="tile px-6 py-10 text-center">
-                <p className="disp text-[1.2rem] font-bold">An empty box.</p>
+                <p className="disp text-[1.2rem] font-bold">{t.emptyBox.title}</p>
                 <p className="mx-auto mt-2 max-w-[38ch] text-[0.92rem] text-ink-2">
-                  Give Bento Man the dates and a route and each day gets a compartment here, sized to the time it takes.
+                  {t.emptyBox.body}
                 </p>
               </div>
             </div>
           )}
         </section>
 
-        <section id="bento-man" data-tour="chat" aria-label="Bento Man" className="tile up flex scroll-mt-4 bg-surface! h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
-          <Chat tripId={id} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
+        <section id="bento-man" data-tour="chat" aria-label={copy.chat.name} className="tile up flex scroll-mt-4 bg-surface! h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
+          <Chat tripId={id} cityNames={cityNames} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
         </section>
       </div>
     </main>

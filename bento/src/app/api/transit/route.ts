@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { loadGraph } from "@/lib/transit/load";
 import { route } from "@/lib/transit/graph";
 import { describeRoute } from "@/lib/transit/describe";
+import { copy } from "@/copy";
 
 /** GET /api/transit?from=kyoto&to=inari
  *  Door-to-door between two stations, as the engine sees it. Signed-in
@@ -10,7 +11,7 @@ import { describeRoute } from "@/lib/transit/describe";
 export async function GET(req: NextRequest) {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Sign in first." }, { status: 401 });
+  if (!user) return NextResponse.json({ error: copy.server.signInFirst }, { status: 401 });
 
   const from = req.nextUrl.searchParams.get("from");
   const to = req.nextUrl.searchParams.get("to");
@@ -18,7 +19,7 @@ export async function GET(req: NextRequest) {
 
   const graph = await loadGraph();
   const r = route(graph, from, to);
-  if (!r) return NextResponse.json({ error: `No route from ${from} to ${to}.` }, { status: 404 });
+  if (!r) return NextResponse.json({ error: copy.server.noRoute(from, to) }, { status: 404 });
 
   return NextResponse.json({ ...describeRoute(r), route: r });
 }
