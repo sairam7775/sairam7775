@@ -61,6 +61,11 @@ export default async function AdminHome() {
           Review {totals.drafts} draft{totals.drafts === 1 ? "" : "s"}
         </Link>
       )}
+      {totals.drafts > 0 && (
+        <Link href="/admin/review/bulk" className="ml-3 mt-6 inline-block border border-rule bg-surface px-5 py-2.5 text-sm font-medium hover:bg-sunk">
+          Verify several at once
+        </Link>
+      )}
 
       <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-3 border-y border-rule py-4">
         {[

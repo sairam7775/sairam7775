@@ -101,6 +101,11 @@ Practically:
 - `/admin/review` is the sign-off queue. `verifyPlace` redirects to the
   `back` field so the next draft loads without a round trip to the list;
   `back` must start with `/admin/`.
+- `/admin/review/bulk` verifies many drafts at once (`verifyPlaces`). It uses
+  the same rule as the single Verify (`lib/places/verify.ts`
+  `missingForVerify`: a typical duration, a tag, a source), re-checked on the
+  server for every id, and only flips rows still in draft. Verifying never
+  changes a city's coverage tier; that stays a separate step on the city page.
 
 ## Bento Man (P6)
 

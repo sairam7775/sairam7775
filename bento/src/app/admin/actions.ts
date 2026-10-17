@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
+import { MAX_BULK_VERIFY, READY, missingForVerify } from "@/lib/places/verify";
 
 const TIERS = ["deep", "outline", "stub"] as const;
 
@@ -208,12 +209,7 @@ export async function verifyPlace(formData: FormData) {
     .eq("id", id)
     .maybeSingle();
 
-  // A record with no duration and no tags cannot be planned with, so
-  // verifying it would publish an empty promise.
-  const missing: string[] = [];
-  if (!place?.duration_typical_min) missing.push("a typical duration");
-  if (!place?.interest_tags?.length) missing.push("at least one interest tag");
-  if (!place?.sources?.length) missing.push("at least one source");
+  const missing = missingForVerify(place);
 
   if (missing.length) {
     const back = String(formData.get("back") ?? "");
@@ -221,17 +217,74 @@ export async function verifyPlace(formData: FormData) {
     redirect(`${base}${base.includes("?") ? "&" : "?"}error=` + encodeURIComponent(`Can't verify ${id} without ${missing.join(", ")}.`));
   }
 
-  await db
+  // The rule again, in the update itself: an edit that landed after the
+  // check above is signed only if it still passes.
+  const { data: signed } = await db
     .from("places")
     .update({
       verification_status: "verified",
       verified_by: user.email ?? user.id,
       last_verified: new Date().toISOString().slice(0, 10),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .gt(...READY.durationAbove)
+    .neq(...READY.tagsNot)
+    .neq(...READY.sourcesNot)
+    .select("id");
+  if (!signed?.length) {
+    const back = String(formData.get("back") ?? "");
+    const base = back.startsWith("/admin/") ? back : `/admin/places/${id}`;
+    redirect(`${base}${base.includes("?") ? "&" : "?"}error=` + encodeURIComponent(`${id} changed while you were reviewing it and wasn't verified. Check it again.`));
+  }
 
   revalidatePath(`/admin/places/${id}`);
   revalidatePath("/admin/review");
   const back = String(formData.get("back") ?? "");
   redirect(back.startsWith("/admin/") ? `${back}${back.includes("?") ? "&" : "?"}verified=1` : `/admin/places/${id}?verified=1`);
+}
+
+const bulk = z.object({
+  ids: z.array(z.string().regex(/^[a-z0-9-]+$/)).min(1).max(MAX_BULK_VERIFY),
+  back: z.string(),
+});
+
+/** Bulk sign-off from /admin/review/bulk. The same rule as verifyPlace,
+ *  applied by the database in the one update that signs (the page's
+ *  checkboxes are only a convenience): every ticked record still in draft
+ *  that passes is signed by this admin; drafts that don't are named back. */
+export async function verifyPlaces(formData: FormData) {
+  const { user, db } = await requireAdmin();
+  const rawBack = String(formData.get("back") ?? "");
+  const back = rawBack.startsWith("/admin/") ? rawBack : "/admin/review/bulk";
+  const to = (params: Record<string, string>) => `${back}${back.includes("?") ? "&" : "?"}${new URLSearchParams(params)}`;
+
+  const parsed = bulk.safeParse({ ids: [...new Set(formData.getAll("ids").map(String))], back });
+  if (!parsed.success) redirect(to({ error: "Tick at least one place to verify." }));
+
+  // Check and sign in one statement, so a record edited meanwhile is
+  // judged on what it holds now.
+  const { data: signed, error } = await db
+    .from("places")
+    .update({
+      verification_status: "verified",
+      verified_by: user.email ?? user.id,
+      last_verified: new Date().toISOString().slice(0, 10),
+    })
+    .in("id", parsed.data.ids)
+    .eq("verification_status", "draft")
+    .gt(...READY.durationAbove)
+    .neq(...READY.tagsNot)
+    .neq(...READY.sourcesNot)
+    .select("id");
+  if (error) redirect(to({ error: `Couldn't verify those places: ${error.message}` }));
+
+  // Whatever is still a draft wasn't ready.
+  const { data: left } = await db.from("places").select("id").in("id", parsed.data.ids).eq("verification_status", "draft");
+  const ready = signed ?? [];
+  const notReady = (left ?? []).map((r) => r.id);
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/review");
+  revalidatePath("/admin/review/bulk");
+  redirect(to({ bulkVerified: String(ready.length), ...(notReady.length ? { notReady: notReady.join(",") } : {}) }));
 }
