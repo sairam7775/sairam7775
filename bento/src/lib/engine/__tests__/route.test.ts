@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed/kansai-sanyo";
 import { allocateDates, assessRoute, suggestRoute, type CityFacts } from "../route";
+import { copy } from "@/copy";
 
 const graph = buildGraph(stations, edges);
 const facts = new Map<string, CityFacts>(
@@ -53,7 +54,7 @@ describe("assessRoute", () => {
   it("says a stub city cannot be planned and flags a nights mismatch", () => {
     const a = assessRoute([{ cityId: "kyoto-city", nights: 3 }, { cityId: "takayama", nights: 2 }], facts, graph, 7);
     expect(a.cities[1].planning).toMatch(/doesn't know/);
-    expect(a.reasons.some((r) => /Takayama is at stub tier/.test(r))).toBe(true);
+    expect(a.reasons).toContain(copy.plan.route.notCovered("Takayama"));
     expect(a.nightsMismatch).toMatch(/7 nights.*uses 5/);
     expect(a.legs[0].minutes).toBeNull();
   });

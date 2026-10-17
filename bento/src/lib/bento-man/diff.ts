@@ -9,6 +9,7 @@
 import { z } from "zod";
 import type { DayPlan } from "@/lib/engine/types";
 import type { RouteAssessment } from "@/lib/engine/route";
+import { copy } from "@/copy";
 
 export const DiffItemSchema = z.object({
   placeId: z.string(),
@@ -149,16 +150,14 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan): DayDiff
   const added = after.filter((a) => a.change === "added").length;
   const moved = after.filter((a) => a.change === "moved").length;
   const parts: string[] = [];
-  if (!existing.length) parts.push(`${after.length} stop${after.length === 1 ? "" : "s"}`);
+  if (!existing.length) parts.push(copy.plan.day.stops(after.length));
   else {
-    if (added) parts.push(`${added} added`);
-    if (removed.length) parts.push(`${removed.length} removed`);
-    if (moved) parts.push(`${moved} moved`);
-    if (!parts.length) parts.push("no change");
+    if (added) parts.push(copy.plan.day.added(added));
+    if (removed.length) parts.push(copy.plan.day.removed(removed.length));
+    if (moved) parts.push(copy.plan.day.moved(moved));
+    if (!parts.length) parts.push(copy.plan.day.noChange);
   }
-  const h = Math.floor(plan.activeMin / 60);
-  const m = plan.activeMin % 60;
-  const summary = `${parts.join(", ")} · ${h}h${m ? ` ${m}m` : ""} active · ${plan.fareKind === "exact" ? "" : "~"}¥${plan.costJpy.toLocaleString("en")}`;
+  const summary = copy.plan.day.summary(parts.join(", "), copy.time.duration(plan.activeMin), plan.costJpy.toLocaleString(copy.locale), plan.fareKind !== "exact");
 
   return {
     kind: "day",
@@ -178,12 +177,12 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan): DayDiff
 }
 
 export function routeDiffFrom(before: RouteCity[], after: RouteCity[], a: RouteAssessment): RouteDiff {
-  const names = after.map((c) => (c.nights ? `${c.name} ${c.nights}n` : `${c.name} (day)`)).join(" → ");
+  const names = after.map((c) => (c.nights ? copy.plan.route.summaryCity(c.name, c.nights) : copy.plan.route.summaryDayTrip(c.name))).join(copy.trip.routeJoin);
   return {
     kind: "route",
     before,
     after,
-    summary: `${names} · ${a.verdict}`,
+    summary: copy.plan.route.summary(names, copy.plan.route.verdict[a.verdict]),
     verdict: a.verdict,
     arithmetic: a.arithmetic,
   };
@@ -199,22 +198,22 @@ export function mergeProposals(a: Proposal | null, b: Proposal): Proposal {
   // keeps the trip it was first measured against.
   const dates = b.dates ? (a.dates ? { ...b.dates, before: a.dates.before } : b.dates) : a.dates;
   const dayList = [...days.values()].sort((x, y) => x.date.localeCompare(y.date));
-  const summaryParts = [dates ? dates.summary : null, route ? route.summary : null, dayList.length ? `${dayList.length} day${dayList.length === 1 ? "" : "s"}` : null].filter(Boolean);
-  return { summary: summaryParts.join(" · "), ...(dates ? { dates } : {}), route, days: dayList };
+  const summaryParts = [dates ? dates.summary : null, route ? route.summary : null, dayList.length ? copy.plan.day.days(dayList.length) : null].filter(Boolean);
+  return { summary: summaryParts.join(copy.plan.day.join), ...(dates ? { dates } : {}), route, days: dayList };
 }
 
-const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { day: "numeric", month: "short", timeZone: "UTC" });
 
 /** "1 Oct – 10 Oct (9 nights)", or "no dates". */
 export function describeDates(t: Pick<TripFields, "startDate" | "endDate">): string {
-  if (!t.startDate && !t.endDate) return "no dates";
+  if (!t.startDate && !t.endDate) return copy.plan.dates.none;
   const nights = t.startDate && t.endDate ? Math.round((Date.parse(`${t.endDate}T00:00:00Z`) - Date.parse(`${t.startDate}T00:00:00Z`)) / 86_400_000) : null;
-  const range = `${t.startDate ? shortDate(t.startDate) : "?"} – ${t.endDate ? shortDate(t.endDate) : "?"}`;
-  return nights == null ? range : `${range} (${nights} night${nights === 1 ? "" : "s"})`;
+  const range = copy.plan.dates.range(t.startDate ? shortDate(t.startDate) : copy.plan.dates.unknown, t.endDate ? shortDate(t.endDate) : copy.plan.dates.unknown);
+  return nights == null ? range : copy.plan.dates.rangeNights(range, nights);
 }
 
 export function datesDiff(before: TripFields, after: TripFields): DatesDiff {
-  return { kind: "dates", before, after, summary: `Dates → ${describeDates(after)}` };
+  return { kind: "dates", before, after, summary: copy.plan.dates.summary(describeDates(after)) };
 }
 
 export const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;

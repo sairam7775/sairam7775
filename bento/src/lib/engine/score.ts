@@ -1,5 +1,6 @@
 import { INTEREST_TAGS } from "@/lib/types";
 import type { PlaceInput, ScoreBreakdown, ScoreTerm, TravellerInput, Weights } from "./types";
+import { copy } from "@/copy";
 
 export const DEFAULT_WEIGHTS: Weights = {
   interestMatch: 2.5,
@@ -18,10 +19,10 @@ export const DEFAULT_WEIGHTS: Weights = {
 
 /** Month (1–12) → what is in season. */
 const SEASON_BY_MONTH: Record<number, { key: string; label: string } | undefined> = {
-  3: { key: "sakura", label: "cherry blossom" },
-  4: { key: "sakura", label: "cherry blossom" },
-  11: { key: "koyo", label: "autumn colour" },
-  12: { key: "koyo", label: "autumn colour" },
+  3: { key: "sakura", label: copy.plan.seasons.sakura },
+  4: { key: "sakura", label: copy.plan.seasons.sakura },
+  11: { key: "koyo", label: copy.plan.seasons.koyo },
+  12: { key: "koyo", label: copy.plan.seasons.koyo },
 };
 
 /** Spend that starts to sting, by band. Seed values. */
@@ -49,7 +50,7 @@ export function chooseDuration(p: PlaceInput, pace: TravellerInput["pace"]): num
 }
 
 const label = (tag: string) => INTEREST_TAGS.find((t) => t.id === tag)?.label.toLowerCase() ?? tag;
-const ordinal = (n: number) => ["", "first", "second", "third", "fourth", "fifth", "sixth"][n] ?? `${n}th`;
+const ordinal = (n: number) => (copy.plan.ordinals as Record<number, string>)[n] ?? copy.plan.ordinal(n);
 
 /** Fig. 1. Every term contributes a clause to the shown reason, so the
  *  reason is true by construction rather than written after the fact. */
@@ -71,50 +72,50 @@ export function scorePlace(
     ? (2 * matched.length) / (p.interestTags.length + t.interestTags.length)
     : 0;
   add("interest_match", dice, w.interestMatch, 1,
-    matched.length ? `matches ${matched.map(label).join(" and ")}` : undefined);
+    matched.length ? copy.plan.reasons.matches(matched.map(label).join(copy.plan.and)) : undefined);
 
   add("signature", p.signature, w.signature, 1,
-    p.signature >= 0.8 ? "the one first-timers regret missing" : undefined);
+    p.signature >= 0.8 ? copy.plan.reasons.signature : undefined);
 
   add("confidence", p.verificationStatus === "verified" ? 1 : 0.4, w.confidence, 1);
 
   const season = SEASON_BY_MONTH[ctx.month];
   const seasonValue = !p.seasons?.length ? 0.5 : season && p.seasons.includes(season.key) ? 1 : 0.3;
   add("season_fit", seasonValue, w.seasonFit, 1,
-    seasonValue === 1 && season ? `at its best now — ${season.label}` : undefined);
+    seasonValue === 1 && season ? copy.plan.reasons.inSeason(season.label) : undefined);
 
   const discovery = p.discovery ?? 0.5;
   add("discovery_fit", 1 - Math.abs(discovery - t.discovery), w.discoveryFit, 1,
-    discovery >= 0.7 && t.discovery >= 0.6 ? "most visitors miss it" : undefined);
+    discovery >= 0.7 && t.discovery >= 0.6 ? copy.plan.reasons.hidden : undefined);
 
   // ---- penalties
   const n = ctx.categoryCounts.get(p.category) ?? 0;
   add("redundancy", n > 0 ? 1 - 1 / (n + 1) : 0, w.redundancy, -1,
-    n >= 2 ? `your ${ordinal(n + 1)} ${p.category} today` : undefined);
+    n >= 2 ? copy.plan.reasons.repeat(ordinal(n + 1), p.category) : undefined);
 
   const hasMorningWindow = p.bestWindow.some((b) => /^before/i.test(b));
   const beatable = hasMorningWindow && ctx.earlyStart;
   const crowd = (p.crowdLevel ?? 0.5) * (1 - t.crowdTolerance) * (beatable ? 0.35 : 1);
   add("crowd", crowd, w.crowd, -1,
-    beatable && (p.crowdLevel ?? 0) >= 0.7 ? "quiet if you're there early"
-      : crowd > 0.5 ? (hasMorningWindow ? "busy — go early" : "busy at any hour")
+    beatable && (p.crowdLevel ?? 0) >= 0.7 ? copy.plan.reasons.quietEarly
+      : crowd > 0.5 ? (hasMorningWindow ? copy.plan.reasons.busyEarly : copy.plan.reasons.busyAllDay)
       : undefined);
 
   add("energy", Math.max(0, (p.energy ?? 0.5) - t.energy), w.energy, -1,
-    (p.energy ?? 0.5) - t.energy > 0.4 ? "more effort than you said you wanted" : undefined);
+    (p.energy ?? 0.5) - t.energy > 0.4 ? copy.plan.reasons.effort : undefined);
 
   const softFlags = new Set<string>([
     ...(t.pace === "packed" ? ["packed_schedule"] : []),
     ...t.mobility.filter((m) => !HARD_MOBILITY.has(m)),
   ]);
   const skipHit = p.skipIf.find((s) => softFlags.has(s));
-  add("skip_if", skipHit ? 1 : 0, w.skipIf, -1, skipHit ? `you might skip it: ${skipHit.replace(/_/g, " ")}` : undefined);
+  add("skip_if", skipHit ? 1 : 0, w.skipIf, -1, skipHit ? copy.plan.reasons.mightSkip(skipHit.replace(/_/g, " ")) : undefined);
 
   const threshold = BUDGET_THRESHOLD_JPY[t.budgetBand ?? "mid"];
   const cost = p.costJpy ?? 0;
   const strain = cost > threshold ? Math.min(1, (cost - threshold) / threshold) : 0;
   add("budget_strain", strain, w.budgetStrain, -1,
-    strain > 0 ? `pricey for your budget here (¥${cost.toLocaleString("en")})` : undefined);
+    strain > 0 ? copy.plan.reasons.pricey(cost.toLocaleString(copy.locale)) : undefined);
 
   const d = chooseDuration(p, t.pace) ?? 0;
   const pace = d > ctx.remainingMin ? 1 : 0.5 * (d / Math.max(1, ctx.remainingMin));
@@ -131,6 +132,6 @@ export function buildReason(b: ScoreBreakdown, extra: string[] = []): { reason: 
   const negative = ranked.find((x) => x.contribution < 0 && Math.abs(x.contribution) >= 0.5);
   const clauses = [...positives, ...(negative ? [negative] : [])];
   const text = [...clauses.map((c) => c.clause!), ...extra].filter(Boolean);
-  const sentence = text.length ? text.join("; ").replace(/^./, (c) => c.toUpperCase()) + "." : "";
+  const sentence = text.length ? text.join(copy.plan.clauseJoin).replace(/^./, (c) => c.toUpperCase()) + copy.plan.clauseEnd : "";
   return { reason: sentence, terms: clauses.map((c) => c.term) };
 }

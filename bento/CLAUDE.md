@@ -297,9 +297,11 @@ usefulness, not tone.
   data (the database). A second language is a file satisfying `Copy`.
   Dates are written with `copy.locale`. Server set-up problems (a missing
   key) are logged with the variable name; the traveller gets plain words.
-  Moving in progress: admin and the sentences built in `lib/` (engine
-  reasons, gap cards, proposal summaries, date-change refusals)
-  still have their own text.
+  The planner's sentences (reasons, left-out details, warnings, gap cards,
+  route arithmetic, date refusals) are in `copy.plan`; the engine imports
+  only that plain module, so it stays framework-free. Not in it: Bento
+  Man's instructions and trip state (`prompt.ts`, `context.ts`, tool
+  descriptions — changing those needs the eval) and the admin pages.
 - Server Components by default; `"use client"` only where interaction needs it.
 - Server actions for mutations, with Zod validation at the boundary.
 - Tailwind v4 theme tokens in `globals.css` — use `text-ink-2`, `bg-surface`,

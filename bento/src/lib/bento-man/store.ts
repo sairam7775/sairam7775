@@ -10,6 +10,7 @@ import type { Graph } from "@/lib/transit/graph";
 import type { BudgetBand, CoverageTier, InterestTag, TravelPace, TripStatus } from "@/lib/types";
 import type { Proposal } from "./diff";
 import type { TicketLike } from "@/lib/vault/match";
+import { copy } from "@/copy";
 
 export interface Prefs {
   pace: TravelPace;
@@ -175,14 +176,14 @@ export function planDateChange(
   if (!changed) return { changed, error: null, shift: 0, startDate, endDate };
 
   if (startDate && endDate && endDate < startDate) {
-    return { changed, error: "The end date is before the start date.", shift: 0, startDate, endDate };
+    return { changed, error: copy.plan.dates.endBeforeStart, shift: 0, startDate, endDate };
   }
   const tripNights = nightsBetween(startDate, endDate);
   const routeNights = route.reduce((s, c) => s + c.nights, 0);
   if (route.length && tripNights != null && routeNights > tripNights) {
     return {
       changed,
-      error: `Your route is ${routeNights} nights, and those dates are only ${tripNights}. Shorten the route first, or pick dates with at least ${routeNights} nights.`,
+      error: copy.plan.dates.tooShort(routeNights, tripNights),
       shift: 0,
       startDate,
       endDate,
@@ -194,10 +195,10 @@ export function planDateChange(
     .filter((d) => (startDate != null && d < startDate) || (endDate != null && d > endDate))
     .sort();
   if (outside.length) {
-    const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { day: "numeric", month: "short", timeZone: "UTC" });
     return {
       changed,
-      error: `You have day plans that would fall outside the new dates (${outside.map(fmt).join(", ")}). Clear those days first, or keep the trip longer.`,
+      error: copy.plan.dates.daysOutside(outside.map(fmt).join(", ")),
       shift: 0,
       startDate,
       endDate,

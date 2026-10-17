@@ -17,6 +17,7 @@ import { INTEREST_TAGS, type BudgetBand } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
 import { nightsBetween, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import { bookedPlaceIds } from "@/lib/vault/match";
+import { copy } from "@/copy";
 
 export interface ToolContext {
   store: TripStore;
@@ -433,7 +434,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   const cityId = existing?.cityId ?? plannedDates(state).get(date);
   if (!cityId) return { error: `${date} is not a day of this trip` };
   const f = factsMap(cities).get(cityId);
-  if (!f || f.tier === "stub") return { error: `${f?.name ?? cityId} is at stub tier — Bento can't plan days there yet` };
+  if (!f || f.tier === "stub") return { error: copy.plan.route.notCovered(f?.name ?? cityId) };
 
   const all = await store.places(cityId);
   const byId = new Map(all.map((x) => [x.id, x]));
@@ -671,7 +672,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       for (const t of targets) {
         const f = facts.get(t.cityId)!;
         if (f.tier === "stub") {
-          skipped.push(`${t.date}: ${f.name} is at stub tier — Bento doesn't know it well enough yet to plan a day there`);
+          skipped.push(`${t.date}: ${copy.plan.route.notCovered(f.name)}`);
           continue;
         }
         if (!placesCache.has(t.cityId)) placesCache.set(t.cityId, await store.places(t.cityId));

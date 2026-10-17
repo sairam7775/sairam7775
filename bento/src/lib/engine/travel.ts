@@ -1,6 +1,7 @@
 import { placeRoute, type Graph } from "@/lib/transit/graph";
 import { describeLeg } from "@/lib/transit/describe";
 import type { PlaceInput, TravelFn, TravelLeg } from "./types";
+import { copy } from "@/copy";
 
 /** Door to door over the P3 graph. Returns null when either place has no
  *  station or the graph has no path — the scheduler then falls back to an
@@ -28,7 +29,7 @@ export function travelFromGraph(graph: Graph): TravelFn {
             fareJpy: r.fareJpy,
             fareKind: r.fareKind,
             unpricedRides: r.unpricedRides,
-            detail: `Walk ${wa} min to ${r.from.name}, ${lines.join(", then ")}, walk ${wb} min`,
+            detail: copy.plan.transit.door(wa, r.from.name, lines.join(copy.plan.transit.legJoin), wb),
             lines,
           };
         }

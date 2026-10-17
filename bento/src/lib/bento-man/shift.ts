@@ -2,9 +2,10 @@ import { bookingHoldsPlace } from "@/lib/vault/match";
 import type { TicketLike } from "@/lib/vault/match";
 import type { PlaceInput } from "@/lib/engine/types";
 import { shiftDate, type DayRow, type TripCityRow } from "./store";
+import { copy } from "@/copy";
 
-const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const WEEKDAY = copy.plan.weekdays as Record<number, string>;
+const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
 /** What moving the trip's dates would break in the days already planned.
  *
@@ -27,10 +28,10 @@ export function shiftConflicts(
     for (const it of d.items) {
       const p = placesById.get(it.placeId);
       if (!p) continue;
-      if (p.closedWeekdays.includes(weekday)) out.push(`${p.name} is closed on ${WEEKDAY[weekday]}s, and would land on ${fmt(to)}`);
-      else if (p.closedDates.includes(to)) out.push(`${p.name} is closed on ${fmt(to)}`);
+      if (p.closedWeekdays.includes(weekday)) out.push(copy.plan.dates.closedOn(p.name, WEEKDAY[weekday], fmt(to)));
+      else if (p.closedDates.includes(to)) out.push(copy.plan.dates.closedDate(p.name, fmt(to)));
       else if (p.bookingReq === "required" && !bookings.some((b) => bookingHoldsPlace(b, p, to))) {
-        out.push(`${p.name} needs a ticket, and none is recorded for ${fmt(to)}`);
+        out.push(copy.plan.dates.noTicket(p.name, fmt(to)));
       }
     }
   }
@@ -38,9 +39,7 @@ export function shiftConflicts(
 }
 
 export function shiftRefusal(conflicts: string[]): string {
-  const shown = conflicts.slice(0, 4).join("; ");
-  const more = conflicts.length > 4 ? `; and ${conflicts.length - 4} more` : "";
-  return `Moving the dates would break your day plans: ${shown}${more}. Re-plan or clear those days first, then change the dates.`;
+  return copy.plan.dates.breaks(conflicts.slice(0, 4).join(copy.plan.dates.conflictJoin), Math.max(0, conflicts.length - 4));
 }
 
 /** Dates of planned days that no longer belong to the route laid on the
