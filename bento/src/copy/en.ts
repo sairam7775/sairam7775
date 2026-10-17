@@ -929,7 +929,11 @@ export const en = {
       },
       bentoMan: {
         heading: "Bento Man and the confirmation reader",
-        body: "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Google (Gemini). On the plan Bento currently uses, Google may use this text to improve its products, so don't write anything to Bento Man you wouldn't want stored by Google.\n\nWhen you paste a confirmation email into the booking form, its text, including any booking reference in it, goes to Anthropic (Claude) only to fill in the form. Nothing is saved until you press Save. Booking references are never sent to Bento Man.",
+        // `chat` is the provider this deployment uses for Bento Man (BENTO_MAN_PROVIDER).
+        body: (chat: "gemini" | "anthropic") => (chat === "gemini"
+          ? "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Google (Gemini). On the plan Bento currently uses, Google may use this text to improve its products, so don't write anything to Bento Man you wouldn't want stored by Google."
+          : "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Anthropic (Claude), which does not use it to train its models.") +
+          "\n\nWhen you paste a confirmation email into the booking form, its text, including any booking reference in it, goes to Anthropic (Claude) only to fill in the form. Nothing is saved until you press Save. Booking references are never sent to Bento Man.",
       },
       analytics: {
         heading: "Usage analytics (only if you say yes)",
@@ -941,7 +945,9 @@ export const en = {
       },
       who: {
         heading: "Who else handles your data",
-        body: "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU). Each handles data only to provide its service to Bento.",
+        body: (chat: "gemini" | "anthropic") => chat === "gemini"
+          ? "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU). Each handles data only to provide its service to Bento."
+          : "Supabase (database and sign-in), Vercel (hosting), Anthropic (Bento Man and reading pasted confirmations) and, only with your consent, PostHog (analytics, EU). Each handles data only to provide its service to Bento.",
       },
       keep: {
         heading: "How long it's kept",
