@@ -256,8 +256,8 @@ export function suggestRoute(totalNights: number, interests: InterestTag[] = [])
   const likesHistory = interests.includes("history") || interests.includes("shrines");
   const kyoto = (n: number) => ({ cityId: "kyoto-city", nights: n, reason: copy.plan.route.suggestions.kyoto });
   const osaka = (n: number) => ({ cityId: "osaka-city", nights: n, reason: copy.plan.route.suggestions.osaka });
-  const nara = { cityId: "nara-city", nights: 0, reason: "A day trip from Kyoto: the deer and Todai-ji, back for dinner. Bento Man can give the train." };
-  const hiroshima = (n: number) => ({ cityId: "hiroshima-city", nights: n, reason: "The Peace Park in the morning, Miyajima in the afternoon. Worth the Shinkansen." });
+  const nara = { cityId: "nara-city", nights: 0, reason: copy.plan.route.suggestions.nara };
+  const hiroshima = (n: number) => ({ cityId: "hiroshima-city", nights: n, reason: copy.plan.route.suggestions.hiroshima });
   const himeji = { cityId: "himeji", nights: 0, reason: copy.plan.route.suggestions.himeji };
 
   if (totalNights <= 2) return { cities: [kyoto(totalNights)], note: copy.plan.route.suggestions.tooShort };

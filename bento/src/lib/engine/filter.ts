@@ -37,13 +37,13 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
   const reject = (term: string, detail: string): Rejected => ({ placeId: p.id, name: p.name, stage: "filter", term, detail });
 
   if (p.coverageTier === "stub") {
-    return reject("coverage", "I don't know this place well enough yet to plan around it");
+    return reject("coverage", copy.plan.leftOut.notCovered);
   }
   if (p.verificationStatus !== "verified") {
-    return reject("unverified", "nobody has checked this record yet, so I won't plan on it");
+    return reject("unverified", copy.plan.leftOut.unchecked);
   }
   if (chooseDuration(p, t.pace) == null) {
-    return reject("no_duration", "no verified duration on record");
+    return reject("no_duration", copy.plan.leftOut.noDuration);
   }
 
   // Excludes match the category, the tags, and what the place demands —
@@ -72,7 +72,7 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
   }
 
   if (ctx.usedPlaceIds.has(p.id)) {
-    return reject("already_planned", "already in the trip on another day");
+    return reject("already_planned", copy.plan.leftOut.alreadyPlanned);
   }
 
   return null;

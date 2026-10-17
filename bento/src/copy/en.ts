@@ -655,6 +655,10 @@ export const en = {
     },
     // Why a place was left out of a day.
     leftOut: {
+      notCovered: "I don't know this place well enough yet to plan around it",
+      unchecked: "nobody has checked this record yet, so I won't plan on it",
+      noDuration: "no verified duration on record",
+      alreadyPlanned: "already in the trip on another day",
       excluded: (what: string) => `you said never: ${what}`,
       notSuitable: (need: string) => `marked as one to skip for ${need}`,
       closed: (weekday: string) => `closed on ${weekday}s`,
@@ -717,6 +721,8 @@ export const en = {
       suggestions: {
         kyoto: "The reason most people come. Temples, gardens, and the two mornings that make the trip.",
         osaka: "Where the airport is, and the food. Two nights is enough; it is a base, not a sight.",
+        nara: "A day trip from Kyoto: the deer and Todai-ji, back for dinner. Bento Man can give the train.",
+        hiroshima: "The Peace Park in the morning, Miyajima in the afternoon. Worth the Shinkansen.",
         himeji: "On the line to Hiroshima. Get off, see the castle, get back on.",
         tooShort: "Too short to move. One city, done properly.",
         kyotoNara: "Kyoto with a day in Nara. Osaka is close enough for an evening if you want one.",
