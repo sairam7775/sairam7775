@@ -900,6 +900,19 @@ export const en = {
       off: "Off",
       more: "How Bento uses data",
     },
+    deleteAccount: {
+      heading: "Delete account",
+      body: "Deletes your account and everything in it: trips, day plans, bookings and your conversations with Bento Man. This can't be undone.",
+      password: "Your password, to confirm",
+      email: "Type your email address to confirm",
+      submit: "Delete my account",
+      pending: "Deleting…",
+      confirm: "Delete your account and everything in it? This can't be undone.",
+      admin: "This account has admin access. Remove the admin access first, so nobody is locked out of curation.",
+      emailMismatch: "That isn't the email address this account uses.",
+      failed: "Your account wasn't deleted. Try again, or write to bentoman.me@gmail.com.",
+      done: "Your account and everything in it has been deleted.",
+    },
   },
 
   // The consent banner. Shown once, until you choose.
@@ -959,7 +972,13 @@ export const en = {
       },
       rights: {
         heading: "Your rights",
-        body: "You can ask for a copy of your data, ask us to correct or delete it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nBento is not for children under 13.",
+        // `analyticsDeletion`: whether deleting an account also deletes its analytics in PostHog here.
+        body: (chat: "gemini" | "anthropic", googleSignIn: boolean, analyticsDeletion: boolean) =>
+          "You can delete your account at any time in Settings. Your trips, day plans, bookings, conversations with Bento Man and preferences are removed straight away. " +
+          (analyticsDeletion
+            ? "Analytics linked to your account are deleted from PostHog at the same time. "
+            : "To have analytics linked to your account deleted too, write to the address below. ") +
+          "Records of what Bento's AI calls cost (Bento Man and the confirmation reader) are kept without any link to you, because they enforce the spending limit.\n\nYou can also ask for a copy of your data, ask us to correct it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nBento is not for children under 13.",
       },
     },
   },

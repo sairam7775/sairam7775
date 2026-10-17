@@ -44,6 +44,14 @@ Practically:
   dates. Autocapture keeps no element text; replays mask all text and
   inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
+- **Deleting an account removes everything of theirs** (Settings →
+  `deleteAccount` → `lib/account/delete.ts`): every user table cascades
+  from `auth.users` or from `trips`, so a new user table needs
+  `on delete cascade` too. `api_usage` is the exception: it is unlinked
+  (user_id = null) first, because the global spending cap sums it. PostHog
+  data is deleted too when `POSTHOG_PERSONAL_API_KEY` and
+  `POSTHOG_PROJECT_ID` are set; the privacy page says which. Admins can't
+  delete themselves from the UI.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
 - **Costs are stored in JPY.** Conversion happens on read, so a stale rate can

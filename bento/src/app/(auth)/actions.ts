@@ -9,6 +9,9 @@ import { authErrorMessage } from "@/lib/friendly-errors";
 import { googleSignInEnabled, inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
 import { copy } from "@/copy";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { deleteAccountData, postHogDeleter } from "@/lib/account/delete";
+import { googleOnly } from "@/lib/account/identity";
 
 const credentials = z.object({
   email: z.email(copy.auth.errors.badEmail),
@@ -193,4 +196,40 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/");
+}
+
+/** Settings → Delete account. Confirmed with the password (or, for a
+ *  Google-only account, the email address typed out), so a session left
+ *  open on someone else's computer can't erase an account. Admins are
+ *  refused, so curation is never left without one by accident. */
+export async function deleteAccount(formData: FormData) {
+  const t = copy.settings.deleteAccount;
+  const back = (message: string) => redirect(`/settings?${new URLSearchParams({ error: message })}#delete-account`);
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in?next=/settings");
+
+  const { data: isAdmin } = await supabase.from("app_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+  if (isAdmin) back(t.admin);
+
+  if (googleOnly(user)) {
+    const typed = String(formData.get("email") ?? "").trim().toLowerCase();
+    if (!typed || typed !== (user.email ?? "").toLowerCase()) back(t.emailMismatch);
+  } else {
+    const check = await supabase.auth.signInWithPassword({ email: user.email ?? "", password: String(formData.get("password") ?? "") });
+    if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : copy.auth.errors.wrongCurrent);
+  }
+
+  try {
+    await deleteAccountData(createAdminClient(), user.id, postHogDeleter());
+  } catch (e) {
+    console.error("Account deletion failed:", e instanceof Error ? e.message : e);
+    back(t.failed);
+  }
+
+  // The user is gone; clear this browser's session cookies too.
+  (await cookies()).delete(PASSWORD_RESET_COOKIE);
+  await supabase.auth.signOut().catch(() => undefined);
+  redirect("/?deleted=1");
 }

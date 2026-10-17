@@ -3,7 +3,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
-import { Notice } from "@/app/(auth)/ui";
+import { ErrorNote, Field, Notice } from "@/app/(auth)/ui";
+import { deleteAccount } from "@/app/(auth)/actions";
+import { googleOnly } from "@/lib/account/identity";
+import { ConfirmButton } from "@/components/form-controls";
+import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { replayTours } from "@/components/tour/actions";
 import { THEMES, THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { setAnalytics, setBackground, setTheme } from "./actions";
@@ -22,7 +26,7 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
   const background = parseBackground(jar.get(BACKGROUND_COOKIE)?.value);
   const analytics = parseConsent(jar.get(ANALYTICS_COOKIE)?.value) === "yes";
-  const viaGoogle = user.app_metadata?.provider === "google" && !(user.identities ?? []).some((i) => i.provider === "email");
+  const viaGoogle = googleOnly(user);
   const t = copy.settings;
 
   return (
@@ -124,6 +128,27 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
         </form>
       </section>
       )}
+
+      <section id="delete-account" className="tile up mt-4 scroll-mt-6 p-6">
+        <h2 className="text-[1.1rem] font-bold">{t.deleteAccount.heading}</h2>
+        <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">{t.deleteAccount.body}</p>
+        <div className="mt-4">
+          <ErrorNote message={typeof sp.error === "string" ? sp.error : null} />
+          <form action={deleteAccount} className="flex max-w-sm flex-col gap-4">
+            {viaGoogle ? (
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="delete-email" className={fieldLabel}>{t.deleteAccount.email}</label>
+                <input id="delete-email" name="email" type="email" required autoComplete="off" placeholder={user.email ?? ""} className={fieldInput} />
+              </div>
+            ) : (
+              <Field id="delete-password" name="password" type="password" label={t.deleteAccount.password} autoComplete="current-password" />
+            )}
+            <ConfirmButton message={t.deleteAccount.confirm} className="self-start min-h-11 rounded-full border border-ume px-5 text-[0.95rem] font-medium text-ume hover:bg-ume-soft">
+              {t.deleteAccount.submit}
+            </ConfirmButton>
+          </form>
+        </div>
+      </section>
     </main>
   );
 }
