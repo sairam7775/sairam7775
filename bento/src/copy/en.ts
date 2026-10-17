@@ -978,7 +978,7 @@ export const en = {
           (analyticsDeletion
             ? "Analytics linked to your account are deleted from PostHog at the same time. "
             : "To have analytics linked to your account deleted too, write to the address below. ") +
-          "Records of what Bento Man's replies cost are kept without any link to you, because they enforce the spending limit.\n\nYou can also ask for a copy of your data, ask us to correct it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nBento is not for children under 13.",
+          "Records of what Bento's AI calls cost (Bento Man and the confirmation reader) are kept without any link to you, because they enforce the spending limit.\n\nYou can also ask for a copy of your data, ask us to correct it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nBento is not for children under 13.",
       },
     },
   },
