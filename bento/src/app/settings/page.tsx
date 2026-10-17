@@ -98,6 +98,8 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
         </form>
       </section>
 
+      {/* Only where analytics can run: no key, nothing to ask about. */}
+      {process.env.NEXT_PUBLIC_POSTHOG_KEY && (
       <section className="tile up mt-4 p-6">
         <h2 id="analytics-heading" className="text-[1.1rem] font-bold">{t.analytics.heading}</h2>
         <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
@@ -121,6 +123,7 @@ export default async function Settings({ searchParams }: PageProps<"/settings">)
           })}
         </form>
       </section>
+      )}
     </main>
   );
 }
