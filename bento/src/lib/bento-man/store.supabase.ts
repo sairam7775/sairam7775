@@ -12,6 +12,7 @@ import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
 import { shiftConflicts, shiftRefusal } from "./shift";
 import { DEFAULT_PREFS, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
+import { copy } from "@/copy";
 
 const toMin = (t: string | null): number | null => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
 
@@ -50,7 +51,7 @@ function routeMisfit(trip: { startDate: string | null; endDate: string | null },
   const tripNights = Math.round((Date.parse(trip.endDate) - Date.parse(trip.startDate)) / 86_400_000);
   const routeNights = cities.reduce((s, c) => s + c.nights, 0);
   return routeNights > tripNights
-    ? `the route is ${routeNights} nights and the trip is now ${tripNights}`
+    ? copy.plan.dates.routeLonger(routeNights, tripNights)
     : null;
 }
 
@@ -373,7 +374,7 @@ export class SupabaseStore implements TripStore {
     this.stateCache = null;
     const before = await this.state();
     if (before.trip.startDate !== d.before.startDate || before.trip.endDate !== d.before.endDate) {
-      throw new Error("the trip dates changed while this was open. Ask again.");
+      throw new Error(copy.plan.dates.changedWhileOpen);
     }
     const prepared = await this.prepareDates(
       before,

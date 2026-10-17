@@ -7,6 +7,7 @@ import { runTool, TOOLS, type ToolContext } from "../tools";
 import { ProposalSchema } from "../diff";
 import { buildContext } from "../context";
 import { SYSTEM_PROMPT, voiceLint } from "../prompt";
+import { copy } from "@/copy";
 
 const owner = { pace: "standard" as const, interestTags: ["shrines", "history", "nature"] as ("shrines" | "history" | "nature")[], energy: 0.25, crowdTolerance: 0.15, discovery: 0.5, excludes: ["beaches", "hiking"] };
 const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -126,7 +127,7 @@ describe("days", () => {
     const ctx = ctxFor(new MemoryStore({ trip: nov, prefs: owner, cities: [{ cityId: "takayama", nights: 9 }] }));
     const r = await runTool("plan_days", {}, ctx);
     expect(r.isError).toBe(true);
-    expect(r.result).toMatch(/Takayama is at stub tier/);
+    expect(r.result).toContain(copy.plan.route.notCovered("Takayama"));
     expect(ctx.proposal).toBeNull();
   });
 

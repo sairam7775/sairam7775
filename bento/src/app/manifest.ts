@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
+import { copy } from "@/copy";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Bento",
     short_name: "Bento",
-    description:
-      "A trip planner for people who have never been to Japan. Real travel times, honest expectations, and a plan that tells you what's still missing.",
+    description: copy.meta.description,
     start_url: "/trips",
     display: "standalone",
     background_color: "#FBF8F3",

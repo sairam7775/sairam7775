@@ -13,6 +13,7 @@
  *  temple with no ticket is not a gap; a teamLab slot with no ticket is. */
 import type { BookingKind } from "@/lib/types";
 import { bookingHoldsPlace } from "./match";
+import { copy } from "@/copy";
 
 export type GapSeverity = "blocking" | "closing" | "worth_knowing";
 
@@ -115,10 +116,10 @@ const daysBetween = (a: string, b: string) =>
   Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 
 const longDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "long", timeZone: "UTC" });
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString(copy.locale, { day: "numeric", month: "long", timeZone: "UTC" });
 
 const shortDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString(copy.locale, { day: "numeric", month: "short", timeZone: "UTC" });
 
 /** Every night of the trip. The last date is a departure day, not a night:
  *  you check out and leave, so it needs no bed. */
@@ -178,7 +179,7 @@ export function detectGaps(input: GapInput): GapReport {
     if (!run.length) return;
     const first = run[0];
     const last = run[run.length - 1];
-    const where = first.cityName ? ` in ${first.cityName}` : "";
+    const where = first.cityName ? copy.plan.gaps.inCity(first.cityName) : "";
     const before = [...bookings]
       .filter((b) => b.type === "accommodation" && b.endsOn && b.endsOn <= first.date)
       .sort((a, b) => (a.endsOn! < b.endsOn! ? 1 : -1))[0];
@@ -187,27 +188,27 @@ export function detectGaps(input: GapInput): GapReport {
       .sort((a, b) => (a.startsOn! < b.startsOn! ? -1 : 1))[0];
 
     const between: string[] = [];
-    if (before) between.push(`${before.title} runs through the ${shortDate(addDays(before.endsOn!, -1))}`);
-    if (after) between.push(`${after.title} starts on the ${shortDate(after.startsOn!)}`);
+    if (before) between.push(copy.plan.gaps.runsThrough(before.title, shortDate(addDays(before.endsOn!, -1))));
+    if (after) between.push(copy.plan.gaps.startsOn(after.title, shortDate(after.startsOn!)));
 
     const span = run.length === 1
-      ? `the night of ${longDate(first.date)}`
-      : `${run.length} nights, ${longDate(first.date)} to ${longDate(last.date)}`;
+      ? copy.plan.gaps.oneNight(longDate(first.date))
+      : copy.plan.gaps.nights(run.length, longDate(first.date), longDate(last.date));
 
     all.push({
       key: `bed:${first.date}:${run.length}`,
       severity: "blocking",
-      title: `You have nowhere to sleep on ${span}${where}.`,
+      title: copy.plan.gaps.noBed(span, where),
       detail: between.length
-        ? `${between.join(" and ")}. Nothing covers the nights in between.`
+        ? copy.plan.gaps.between(between.join(copy.plan.gaps.betweenJoin))
         : first.cityName
-          ? `Your route has you in ${first.cityName} ${run.length === 1 ? "that night" : "those nights"}, and no accommodation is recorded.`
-          : "No accommodation is recorded, and the route does not say where you are.",
+          ? copy.plan.gaps.noBedInCity(first.cityName, run.length)
+          : copy.plan.gaps.noBedNoCity,
       date: first.date,
       bookingType: "accommodation",
       actions: [
-        { label: "Add a booking", kind: "add_booking", hint: "accommodation" },
-        { label: "Ask Bento Man", kind: "ask_bento_man", hint: `Where should we stay on ${longDate(first.date)}?` },
+        { label: copy.plan.gaps.addBooking, kind: "add_booking", hint: "accommodation" },
+        { label: copy.plan.gaps.askBentoMan, kind: "ask_bento_man", hint: copy.plan.gaps.askWhereToStay(longDate(first.date)) },
       ],
     });
     run = [];
@@ -240,14 +241,13 @@ export function detectGaps(input: GapInput): GapReport {
     all.push({
       key: `move:${from.cityId}:${to.cityId}`,
       severity: "worth_knowing",
-      title: `Nothing booked for ${from.name} to ${to.name}${when ? ` on the ${shortDate(when)}` : ""}.`,
-      detail:
-        "Most trains on this corridor take an IC card and no reservation, so this is usually fine to leave. Book it if you have a large case, or if it is a peak week.",
+      title: copy.plan.gaps.noMove(from.name, to.name, when ? shortDate(when) : null),
+      detail: copy.plan.gaps.noMoveDetail,
       date: when,
       bookingType: "transport",
       actions: [
-        { label: "Add a booking", kind: "add_booking", hint: "transport" },
-        { label: "Ask Bento Man", kind: "ask_bento_man", hint: `How do we get from ${from.name} to ${to.name}?` },
+        { label: copy.plan.gaps.addBooking, kind: "add_booking", hint: "transport" },
+        { label: copy.plan.gaps.askBentoMan, kind: "ask_bento_man", hint: copy.plan.gaps.askHowToGet(from.name, to.name) },
       ],
     });
   }
@@ -270,15 +270,13 @@ export function detectGaps(input: GapInput): GapReport {
       all.push({
         key: `ticket:${p.placeId}:${p.date}`,
         severity: "blocking",
-        title: `${p.name} needs a ticket booked in advance, and none is recorded.`,
-        detail: lead
-          ? `It is on your ${longDate(p.date)}. These release about ${lead} days ahead${closing ? `, and that window is ${daysUntil <= 0 ? "gone" : `${daysUntil} days from closing`}` : ""}. The planner will leave it out of the day until a booking exists.`
-          : `It is on your ${longDate(p.date)}. The planner will leave it out of the day until a booking exists.`,
+        title: copy.plan.gaps.ticketNeeded(p.name),
+        detail: copy.plan.gaps.ticketDetail(longDate(p.date), lead ?? null, closing ? (daysUntil <= 0 ? copy.plan.gaps.windowGone : copy.plan.gaps.windowClosing(daysUntil)) : null),
         date: p.date,
         bookingType: "activity",
         actions: [
-          { label: "Add a booking", kind: "add_booking", hint: "activity", placeId: p.placeId, title: p.name },
-          { label: "Ask Bento Man", kind: "ask_bento_man", hint: `Tell me about booking ${p.name}.` },
+          { label: copy.plan.gaps.addBooking, kind: "add_booking", hint: "activity", placeId: p.placeId, title: p.name },
+          { label: copy.plan.gaps.askBentoMan, kind: "ask_bento_man", hint: copy.plan.gaps.askAboutTicket(p.name) },
         ],
         daysLeft: lead != null ? Math.max(0, daysUntil) : undefined,
       });
@@ -290,11 +288,11 @@ export function detectGaps(input: GapInput): GapReport {
       all.push({
         key: `ticket-soon:${p.placeId}:${p.date}`,
         severity: "closing",
-        title: `${p.name} is worth booking ahead, and the window is closing.`,
-        detail: `It is on your ${longDate(p.date)}, ${daysUntil === 0 ? "today" : `${daysUntil} day${daysUntil === 1 ? "" : "s"} away`}, and it usually wants about ${lead} days' notice. Walking up often works; it is not a certainty.`,
+        title: copy.plan.gaps.ticketSoon(p.name),
+        detail: copy.plan.gaps.ticketSoonDetail(longDate(p.date), daysUntil === 0 ? copy.plan.gaps.today : copy.plan.gaps.daysAway(daysUntil), lead),
         date: p.date,
         bookingType: "activity",
-        actions: [{ label: "Add a booking", kind: "add_booking", hint: "activity", placeId: p.placeId, title: p.name }],
+        actions: [{ label: copy.plan.gaps.addBooking, kind: "add_booking", hint: "activity", placeId: p.placeId, title: p.name }],
         daysLeft: Math.max(0, daysUntil),
       });
     }
@@ -305,12 +303,11 @@ export function detectGaps(input: GapInput): GapReport {
     all.push({
       key: "flight:none",
       severity: "worth_knowing",
-      title: "No flights recorded.",
-      detail:
-        "Bento does not book flights or fetch them from anywhere. Adding them here means the arrival day is planned around the time you actually land, rather than from midnight.",
+      title: copy.plan.gaps.noFlights,
+      detail: copy.plan.gaps.noFlightsDetail,
       date: input.startDate,
       bookingType: "flight",
-      actions: [{ label: "Add a booking", kind: "add_booking", hint: "flight" }],
+      actions: [{ label: copy.plan.gaps.addBooking, kind: "add_booking", hint: "flight" }],
     });
   }
 

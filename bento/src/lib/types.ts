@@ -1,3 +1,4 @@
+import { copy } from "@/copy";
 /** Domain types shared by the app and (from P4) the planning engine.
  *  These mirror the migrations in supabase/migrations. */
 
@@ -29,18 +30,10 @@ export type InterestTag =
   | "onsen"
   | "offbeat";
 
-export const INTEREST_TAGS: { id: InterestTag; label: string; hint: string }[] = [
-  { id: "shrines", label: "Shrines & temples", hint: "Fushimi Inari, Todai-ji, Koyasan" },
-  { id: "history", label: "History & castles", hint: "Himeji, Matsumoto, Hiroshima" },
-  { id: "nature", label: "Nature & landscape", hint: "Gardens, gorges, mountains" },
-  { id: "food", label: "Food & drink", hint: "Markets, izakaya, ramen, sake" },
-  { id: "onsen", label: "Onsen", hint: "Hot springs and ryokan" },
-  { id: "art", label: "Art & museums", hint: "Naoshima, teamLab, craft" },
-  { id: "popculture", label: "Anime & pop culture", hint: "Akihabara, Ghibli, game centres" },
-  { id: "shopping", label: "Shopping", hint: "Depachika, vintage, stationery" },
-  { id: "nightlife", label: "Nightlife", hint: "Bars, live houses, late izakaya" },
-  { id: "offbeat", label: "Off the beaten path", hint: "Places most visitors miss" },
-];
+// In this order; the words are in copy.plan.interests.
+export const INTEREST_TAGS: { id: InterestTag; label: string; hint: string }[] = (
+  ["shrines", "history", "nature", "food", "onsen", "art", "popculture", "shopping", "nightlife", "offbeat"] as const
+).map((id) => ({ id, ...copy.plan.interests[id] }));
 
 /** How a traveller likes it. Continuous 0–1 axes.
  *

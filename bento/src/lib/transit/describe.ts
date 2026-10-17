@@ -1,31 +1,31 @@
 import type { Route, RouteLeg } from "./types";
+import { copy } from "@/copy";
 
-const yen = (n: number, kind: Route["fareKind"]) => `${kind === "exact" ? "" : "~"}¥${n.toLocaleString("en")}`;
+const yen = (n: number, kind: Route["fareKind"]) => copy.plan.transit.yen(n.toLocaleString(copy.locale), kind !== "exact");
 
 /** The leg as a traveller can follow it. Not "20 minutes" — which line,
  *  how many stops, what it costs, and the thing that trips people up. */
 export function describeLeg(leg: RouteLeg, fareKind: Route["fareKind"]): string {
   if (leg.mode === "walk") {
-    return `Walk · ${leg.from.name} → ${leg.to.name} · ${leg.minutes} min`;
+    return copy.plan.transit.walk(leg.from.name, leg.to.name, leg.minutes);
   }
-  const stops = leg.stops === 1 ? "nonstop" : `${leg.stops} stops`;
-  const fare = leg.fareJpy ? ` · ${yen(leg.fareJpy, fareKind)}` : "";
-  const notes = leg.notes.length ? ` — ${leg.notes.join("; ")}` : "";
-  return `${leg.line} · ${leg.from.name} → ${leg.to.name} · ${stops} · ${leg.minutes} min${fare}${notes}`;
+  const stops = leg.stops === 1 ? copy.plan.transit.nonstop : copy.plan.transit.stops(leg.stops);
+  const fare = leg.fareJpy ? yen(leg.fareJpy, fareKind) : "";
+  return copy.plan.transit.ride(leg.line, leg.from.name, leg.to.name, stops, leg.minutes, fare, leg.notes.join(copy.plan.transit.noteJoin));
 }
 
 export function describeRoute(r: Route): { summary: string; lines: string[] } {
   const h = Math.floor(r.minutes / 60);
   const m = r.minutes % 60;
-  const dur = h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m} min`;
+  const dur = copy.plan.transit.duration(h, m);
   const unpriced = r.unpricedRides ?? 0;
-  const missing = `${unpriced === 1 ? "a fare" : `${unpriced} fares`} not in Bento yet`;
+  const missing = copy.plan.transit.faresMissing(unpriced);
   const fare = unpriced
-    ? r.fareJpy ? `${yen(r.fareJpy, r.fareKind)} + ${missing}` : `fare not in Bento yet`
-    : r.fareJpy ? yen(r.fareJpy, r.fareKind) : "free";
-  const changes = r.transfers === 0 ? "no changes" : r.transfers === 1 ? "1 change" : `${r.transfers} changes`;
+    ? r.fareJpy ? copy.plan.transit.farePlusMissing(yen(r.fareJpy, r.fareKind), missing) : copy.plan.transit.fareMissing
+    : r.fareJpy ? yen(r.fareJpy, r.fareKind) : copy.plan.transit.free;
+  const changes = copy.plan.transit.changes(r.transfers);
   return {
-    summary: `${r.from.name} → ${r.to.name} · ${dur} · ${fare} · ${changes}`,
+    summary: copy.plan.transit.summary(r.from.name, r.to.name, dur, fare, changes),
     lines: r.legs.map((l) => describeLeg(l, r.fareKind)),
   };
 }

@@ -9,6 +9,7 @@
 import { DAY_BUDGET_MINUTES, type TravelPace } from "@/lib/types";
 import { parseClock } from "./filter";
 import type { PlaceInput, TravelFn, TravelLeg } from "./types";
+import { copy } from "@/copy";
 
 export interface RetimeItem {
   placeId: string;
@@ -65,7 +66,7 @@ export function retimeDay(input: {
     let leg: TravelLeg | null = null;
     if (prev && place) {
       leg = input.travel(prev, place);
-      if (!leg) warnings.push(`No route on record from ${prev.name} to ${place.name} — assumed ${FALLBACK_TRAVEL_MIN} min`);
+      if (!leg) warnings.push(copy.plan.warnings.noRouteAssumed(prev.name, place.name, FALLBACK_TRAVEL_MIN));
     }
     const travelMin = prev ? (leg?.minutes ?? FALLBACK_TRAVEL_MIN) : 0;
     let start = clockMin + travelMin;
@@ -81,7 +82,7 @@ export function retimeDay(input: {
 
     if (it.locked && it.startMin != null) {
       if (it.startMin < start) {
-        warnings.push(`${place?.name ?? it.placeId} is pinned at ${clock(it.startMin)} but the previous stop runs until ${clock(start - travelMin)} — ${start - it.startMin} min short`);
+        warnings.push(copy.plan.warnings.pinnedShort(place?.name ?? it.placeId, clock(it.startMin), clock(start - travelMin), start - it.startMin));
       }
       start = Math.max(start, it.startMin);
     }
@@ -89,14 +90,14 @@ export function retimeDay(input: {
     if (place?.opensAt) {
       const opens = parseClock(place.opensAt);
       if (opens != null && start < opens) {
-        warnings.push(`${place.name} opens at ${place.opensAt} — ${opens - start} min wait`);
+        warnings.push(copy.plan.warnings.opensWait(place.name, place.opensAt!, opens - start));
         start = opens;
       }
     }
     const end = start + it.durationMin;
     if (place?.closesAt) {
       const closes = parseClock(place.closesAt);
-      if (closes != null && end > closes) warnings.push(`${place.name} closes at ${place.closesAt}; this visit runs to ${clock(end)}`);
+      if (closes != null && end > closes) warnings.push(copy.plan.warnings.closesDuring(place.name, place.closesAt!, clock(end)));
     }
 
     activeMin += travelMin + it.durationMin;
@@ -113,7 +114,7 @@ export function retimeDay(input: {
   }
 
   const overBy = Math.max(0, activeMin - budgetMin);
-  if (overBy) warnings.push(`${Math.floor(overBy / 60) ? `${Math.floor(overBy / 60)}h ` : ""}${overBy % 60}m over a ${budgetMin / 60}-hour day`);
+  if (overBy) warnings.push(copy.plan.warnings.overDay(`${Math.floor(overBy / 60) ? `${Math.floor(overBy / 60)}h ` : ""}${overBy % 60}m`, budgetMin / 60));
 
   return {
     items: out,

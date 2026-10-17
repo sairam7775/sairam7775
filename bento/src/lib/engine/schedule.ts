@@ -2,6 +2,7 @@ import { DAY_BUDGET_MINUTES } from "@/lib/types";
 import { hardFilter, parseClock, parseWindow } from "./filter";
 import { buildReason, chooseDuration, DEFAULT_WEIGHTS, scorePlace, type ScoreContext } from "./score";
 import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, Weights } from "./types";
+import { copy } from "@/copy";
 
 /** When the graph cannot say, assume this and warn. Never silently zero. */
 const FALLBACK_TRAVEL_MIN = 45;
@@ -59,7 +60,7 @@ export function planDay(input: DayInput): DayPlan {
       considered.push(r);
       continue;
     }
-    if (r && lockedIds.has(p.id)) warnings.push(`${p.name} is pinned but ${r.detail} — kept because you pinned it`);
+    if (r && lockedIds.has(p.id)) warnings.push(copy.plan.warnings.pinnedAnyway(p.name, r.detail));
     pool.push(p);
   }
 
@@ -72,14 +73,14 @@ export function planDay(input: DayInput): DayPlan {
     let leg = travel(a, b);
     if (!leg) {
       leg = { mode: "estimate", minutes: FALLBACK_TRAVEL_MIN, fareJpy: 0, fareKind: "estimate",
-        detail: `About ${FALLBACK_TRAVEL_MIN} min — no transit data between ${a.name} and ${b.name} yet`, lines: [] };
+        detail: copy.plan.warnings.noTrainData(FALLBACK_TRAVEL_MIN, a.name, b.name), lines: [] };
       for (const p of [a, b]) {
         if (p.nearestStation) continue;
-        const msg = `${p.name} has no station in the transit graph yet — legs to it are estimated at ${FALLBACK_TRAVEL_MIN} min`;
+        const msg = copy.plan.warnings.noStation(p.name, FALLBACK_TRAVEL_MIN);
         if (!warnings.includes(msg)) warnings.push(msg);
       }
       if (a.nearestStation && b.nearestStation) {
-        const msg = `No route between ${a.nearestStation} and ${b.nearestStation} in the graph yet — estimated at ${FALLBACK_TRAVEL_MIN} min`;
+        const msg = copy.plan.warnings.noRoute(a.nearestStation, b.nearestStation, FALLBACK_TRAVEL_MIN);
         if (!warnings.includes(msg)) warnings.push(msg);
       }
     }
@@ -115,7 +116,7 @@ export function planDay(input: DayInput): DayPlan {
   // Pinned items go in first and are never moved or dropped (§08).
   for (const l of input.locked ?? []) {
     const p = byId.get(l.placeId);
-    if (!p) { warnings.push(`Pinned place ${l.placeId} is not in this city's list`); continue; }
+    if (!p) { warnings.push(copy.plan.warnings.pinnedMissing(l.placeId)); continue; }
     seq.push(draftOf(p, true, l.startMin ?? null));
   }
   seq.sort((a, b) => (a.lockedStart ?? Infinity) - (b.lockedStart ?? Infinity));
@@ -162,7 +163,7 @@ export function planDay(input: DayInput): DayPlan {
         const clash = conflictWith(p);
         if (clash) {
           considered.push({ placeId: p.id, name: p.name, stage: "conflict", term: "conflicts_with",
-            detail: `can't share a day with ${clash.name} — they're at opposite ends of the city` });
+            detail: copy.plan.leftOut.clash(clash.name) });
           continue;
         }
         const duration = chooseDuration(p, t.pace)!;
@@ -189,12 +190,12 @@ export function planDay(input: DayInput): DayPlan {
           if (rejectedIds().has(o.p.id)) continue;
           if (o.duration + o.dTravel > rem) {
             considered.push({ placeId: o.p.id, name: o.p.name, stage: "grow", term: "no_time",
-              detail: `needs ${o.duration} min plus ${o.dTravel} min travel; ${Math.max(0, rem)} min left in the day` });
+              detail: copy.plan.leftOut.noTime(o.duration, o.dTravel, Math.max(0, rem)) });
           } else {
             const worst = [...o.score.terms].sort((a, b) => a.contribution - b.contribution)[0];
-            const far = o.dTravel >= 30 ? `far from the rest of the day (+${o.dTravel} min)` : null;
+            const far = o.dTravel >= 30 ? copy.plan.leftOut.far(o.dTravel) : null;
             considered.push({ placeId: o.p.id, name: o.p.name, stage: "grow", term: far ? "travel" : worst.term,
-              detail: far ?? worst.clause ?? `scored ${o.score.total.toFixed(1)} — not enough to earn a slot` });
+              detail: far ?? worst.clause ?? copy.plan.leftOut.lowScore(o.score.total.toFixed(1)) });
           }
         }
         break;
@@ -205,8 +206,8 @@ export function planDay(input: DayInput): DayPlan {
       d.alternatives = ranked.slice(1, 4).map((o) => ({
         placeId: o.p.id, name: o.p.name, score: o.marginal,
         whyNot: o.dTravel > winner.dTravel + 15
-          ? `further from the rest of the day (+${o.dTravel - winner.dTravel} min)`
-          : `scored a little lower: ${[...o.score.terms].sort((a, b) => a.contribution - b.contribution)[0].term.replace(/_/g, " ")}`,
+          ? copy.plan.leftOut.further(o.dTravel - winner.dTravel)
+          : copy.plan.leftOut.slightlyLower([...o.score.terms].sort((a, b) => a.contribution - b.contribution)[0].term.replace(/_/g, " ")),
       }));
       seq.splice(winner.at, 0, d);
     }
@@ -305,8 +306,8 @@ export function planDay(input: DayInput): DayPlan {
       const extra: string[] = [];
       if (tNow < opens) {
         const wait = opens - tNow;
-        extra.push(wait > 20 ? `opens at ${clock(opens)}` : `opens at ${clock(opens)}, so a short wait`);
-        if (wait > 20) warnings.push(`${p.name} opens at ${clock(opens)} — the day waits ${wait} min for it`);
+        extra.push(wait > 20 ? copy.plan.reasons.opensAt(clock(opens)) : copy.plan.reasons.opensAtWait(clock(opens)));
+        if (wait > 20) warnings.push(copy.plan.warnings.opensLate(p.name, clock(opens), wait));
         tNow = opens;
       }
 
@@ -320,7 +321,7 @@ export function planDay(input: DayInput): DayPlan {
       }
       d.score = scorePlace(p, t, { categoryCounts: before, remainingMin: budgetMin - usedBefore, month, earlyStart }, w);
       if (d.lockedStart != null) {
-        if (tNow > d.lockedStart) warnings.push(`${p.name} is pinned for ${clock(d.lockedStart)} but the day only reaches it by ${clock(tNow)}`);
+        if (tNow > d.lockedStart) warnings.push(copy.plan.warnings.pinnedLate(p.name, clock(d.lockedStart), clock(tNow)));
         else tNow = d.lockedStart;
       }
       const startMin = tNow;
@@ -328,15 +329,15 @@ export function planDay(input: DayInput): DayPlan {
 
       if (endMin > closes) {
         violations.push({ placeId: p.id, name: p.name, stage: "validate", term: "hours",
-          detail: `closes at ${clock(closes)}; you'd arrive at ${clock(startMin)} and need ${d.durationMin} min` });
+          detail: copy.plan.leftOut.closesBefore(clock(closes), clock(startMin), d.durationMin) });
       }
 
       // Window clauses: the honest version of "go early".
       for (const win of p.bestWindow) {
         const { before, after } = parseWindow(win);
-        if (before != null && startMin <= before) extra.push(`starting ${clock(startMin)}, before it fills`);
-        else if (before != null && (p.crowdLevel ?? 0) >= 0.8) extra.push(`the busiest hour of your day, and unavoidable — it's worth the crowd`);
-        if (after != null && startMin >= after) extra.push(`after ${clock(after)}, when it empties out`);
+        if (before != null && startMin <= before) extra.push(copy.plan.reasons.beforeCrowd(clock(startMin)));
+        else if (before != null && (p.crowdLevel ?? 0) >= 0.8) extra.push(copy.plan.reasons.busiestHour);
+        if (after != null && startMin >= after) extra.push(copy.plan.reasons.afterCrowd(clock(after)));
       }
 
       const { reason, terms } = buildReason(d.score, extra);
@@ -372,7 +373,7 @@ export function planDay(input: DayInput): DayPlan {
     considered.push(...drop);
     seq = seq.filter((d) => !drop.some((v) => v.placeId === d.place.id));
     stale = true;
-    if (round === MAX_VALIDATE_ROUNDS - 1) warnings.push("Some places could not be fitted to their opening hours");
+    if (round === MAX_VALIDATE_ROUNDS - 1) warnings.push(copy.plan.warnings.hoursNotFitted);
   }
   // Out of rounds with drops still pending: `timed` was computed before the
   // last drop and still holds the places just rejected — the plan would show
@@ -391,7 +392,7 @@ export function planDay(input: DayInput): DayPlan {
   }
 
   if (timed.unpriced) {
-    warnings.push(`${timed.unpriced === 1 ? "One ride's fare isn't" : `${timed.unpriced} rides' fares aren't`} in Bento yet, so the day's cost leaves ${timed.unpriced === 1 ? "it" : "them"} out`);
+    warnings.push(copy.plan.warnings.unpriced(timed.unpriced));
   }
   const activeMin = usedMin();
   const placesJpy = timed.items.reduce((s, i) => s + i.costJpy, 0);

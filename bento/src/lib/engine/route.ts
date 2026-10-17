@@ -5,6 +5,7 @@
 import { route, type Graph } from "@/lib/transit/graph";
 import { describeRoute } from "@/lib/transit/describe";
 import type { CoverageTier, InterestTag } from "@/lib/types";
+import { copy } from "@/copy";
 
 export interface RouteCityInput {
   cityId: string;
@@ -86,11 +87,7 @@ export function hubFor(cityId: string, graph: Graph): string | null {
   return null;
 }
 
-const PLANNING: Record<CoverageTier, string> = {
-  deep: "can build full days here",
-  outline: "can suggest places here but won't claim a day is complete",
-  stub: "doesn't know this place well enough yet to plan days here",
-};
+const PLANNING: Record<CoverageTier, string> = copy.plan.route.canPlan;
 
 export function assessRoute(
   input: RouteCityInput[],
@@ -126,7 +123,7 @@ export function assessRoute(
     } else {
       legs.push({
         fromCityId: a, toCityId: b, minutes: null, fareJpy: null, fareKind: "estimate",
-        summary: `${nameOf(a)} → ${nameOf(b)} · no route in the graph yet`, lines: [],
+        summary: copy.plan.route.noLeg(nameOf(a), nameOf(b)), lines: [],
       });
     }
   };
@@ -176,37 +173,35 @@ export function assessRoute(
   let verdict: RouteVerdict = "fine";
   if (staying >= 2 && nightsPerCity < 2) {
     verdict = "overpacked";
-    reasons.push(`${staying} cities in ${totalNights} nights is ${nightsPerCity.toFixed(1)} nights per city — every second day is a moving day`);
+    reasons.push(copy.plan.route.tooManyCities(staying, totalNights, nightsPerCity.toFixed(1)));
   }
   if (movingShare > 0.3) {
     verdict = "overpacked";
-    reasons.push(`${Math.round(movingShare * 100)}% of waking time spent moving`);
+    reasons.push(copy.plan.route.movingShare(Math.round(movingShare * 100)));
   }
   if (verdict === "fine" && (nightsPerCity < 2.5 && staying >= 2)) {
     verdict = "tight";
-    reasons.push(`${nightsPerCity.toFixed(1)} nights per city leaves one full day in the shorter stops`);
+    reasons.push(copy.plan.route.shortStops(nightsPerCity.toFixed(1)));
   }
   if (verdict === "fine" && movingShare > 0.2) {
     verdict = "tight";
-    reasons.push(`${Math.round(movingShare * 100)}% of waking time spent moving`);
+    reasons.push(copy.plan.route.movingShare(Math.round(movingShare * 100)));
   }
   for (const c of cities) {
-    if (c.tier === "stub" && c.nights > 0) reasons.push(`${c.name} is at stub tier — Bento ${PLANNING.stub}`);
+    if (c.tier === "stub" && c.nights > 0) reasons.push(copy.plan.route.notCovered(c.name));
   }
-  if (unknownLegs) reasons.push(`${unknownLegs} leg${unknownLegs === 1 ? "" : "s"} not in the transit graph yet, so the train time is incomplete`);
+  if (unknownLegs) reasons.push(copy.plan.route.unknownLegs(unknownLegs));
 
   const nightsMismatch =
     tripNights != null && tripNights !== totalNights
-      ? `the trip has ${tripNights} nights and this route uses ${totalNights}`
+      ? copy.plan.route.nightsMismatch(tripNights, totalNights)
       : null;
 
-  const h = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m` : `${m} min`);
+  const h = copy.plan.route.hours;
   const arithmetic =
     staying <= 1
-      ? `${staying === 1 ? cities.find((c) => c.nights > 0)!.name : "One city"}, ${totalNights} night${totalNights === 1 ? "" : "s"}, no city changes.`
-      : `${staying} cities in ${totalNights} nights is ${nightsPerCity.toFixed(1)} nights per city. ` +
-        `${cityChanges} city change${cityChanges === 1 ? "" : "s"} at about ${CHANGE_COST_MIN / 60} hours each (check out, station, check in) ` +
-        `plus ${h(trainMinutes)} on trains is ${h(movingMinutes)} moving — about ${Math.round(movingShare * 100)}% of your waking time.`;
+      ? copy.plan.route.oneCity(staying === 1 ? cities.find((c) => c.nights > 0)!.name : copy.plan.route.oneCityUnnamed, totalNights)
+      : copy.plan.route.arithmetic(staying, totalNights, nightsPerCity.toFixed(1), cityChanges, CHANGE_COST_MIN / 60, h(trainMinutes), h(movingMinutes), Math.round(movingShare * 100));
 
   return { cities, legs, totalNights, cityChanges, trainMinutes, movingMinutes, movingShare, nightsPerCity, verdict, reasons, arithmetic, tripNights, nightsMismatch };
 }
@@ -259,24 +254,24 @@ export function allocateDates(startDate: string | null, cities: RouteCityInput[]
  *  answer every time. Bento Man explains it; assess_route checks it. */
 export function suggestRoute(totalNights: number, interests: InterestTag[] = []): { cities: (RouteCityInput & { reason: string })[]; note: string } {
   const likesHistory = interests.includes("history") || interests.includes("shrines");
-  const kyoto = (n: number) => ({ cityId: "kyoto-city", nights: n, reason: "The reason most people come. Temples, gardens, and the two mornings that make the trip." });
-  const osaka = (n: number) => ({ cityId: "osaka-city", nights: n, reason: "Where the airport is, and the food. Two nights is enough; it is a base, not a sight." });
-  const nara = { cityId: "nara-city", nights: 0, reason: "A day trip from Kyoto: the deer and Todai-ji, back for dinner. Bento Man can give the train." };
-  const hiroshima = (n: number) => ({ cityId: "hiroshima-city", nights: n, reason: "The Peace Park in the morning, Miyajima in the afternoon. Worth the Shinkansen." });
-  const himeji = { cityId: "himeji", nights: 0, reason: "On the line to Hiroshima. Get off, see the castle, get back on." };
+  const kyoto = (n: number) => ({ cityId: "kyoto-city", nights: n, reason: copy.plan.route.suggestions.kyoto });
+  const osaka = (n: number) => ({ cityId: "osaka-city", nights: n, reason: copy.plan.route.suggestions.osaka });
+  const nara = { cityId: "nara-city", nights: 0, reason: copy.plan.route.suggestions.nara };
+  const hiroshima = (n: number) => ({ cityId: "hiroshima-city", nights: n, reason: copy.plan.route.suggestions.hiroshima });
+  const himeji = { cityId: "himeji", nights: 0, reason: copy.plan.route.suggestions.himeji };
 
-  if (totalNights <= 2) return { cities: [kyoto(totalNights)], note: "Too short to move. One city, done properly." };
-  if (totalNights === 3) return { cities: [kyoto(3), nara], note: "Kyoto with a day in Nara. Osaka is close enough for an evening if you want one." };
-  if (totalNights <= 5) return { cities: [osaka(Math.min(2, totalNights - 3)), kyoto(totalNights - Math.min(2, totalNights - 3)), nara], note: "Land in Osaka, move to Kyoto. Nara as a day trip." };
+  if (totalNights <= 2) return { cities: [kyoto(totalNights)], note: copy.plan.route.suggestions.tooShort };
+  if (totalNights === 3) return { cities: [kyoto(3), nara], note: copy.plan.route.suggestions.kyotoNara };
+  if (totalNights <= 5) return { cities: [osaka(Math.min(2, totalNights - 3)), kyoto(totalNights - Math.min(2, totalNights - 3)), nara], note: copy.plan.route.suggestions.osakaKyoto };
   if (totalNights <= 7) {
     return {
       cities: [osaka(2), kyoto(totalNights - 4), nara, hiroshima(2)],
-      note: likesHistory ? "Hiroshima earns its two nights for someone who likes history." : "Hiroshima is the one long move. Skip it and give Kyoto the nights if trains are not your thing.",
+      note: likesHistory ? copy.plan.route.suggestions.hiroshimaHistory : copy.plan.route.suggestions.hiroshimaOptional,
     };
   }
   const extra = totalNights - 8;
   return {
     cities: [osaka(2), kyoto(4 + extra), nara, himeji, hiroshima(2)],
-    note: "The full corridor. Himeji is a stop on the way to Hiroshima, not a night.",
+    note: copy.plan.route.suggestions.full,
   };
 }

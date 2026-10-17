@@ -1,7 +1,8 @@
 import { chooseDuration, HARD_MOBILITY } from "./score";
 import type { PlaceInput, Rejected, TravellerInput } from "./types";
+import { copy } from "@/copy";
 
-const WEEKDAY = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAY = copy.plan.weekdays as Record<number, string>;
 
 /** Words people use for a category, mapped to the stored one. */
 const ALIAS: Record<string, string> = {
@@ -36,13 +37,13 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
   const reject = (term: string, detail: string): Rejected => ({ placeId: p.id, name: p.name, stage: "filter", term, detail });
 
   if (p.coverageTier === "stub") {
-    return reject("coverage", "I don't know this place well enough yet to plan around it");
+    return reject("coverage", copy.plan.leftOut.notCovered);
   }
   if (p.verificationStatus !== "verified") {
-    return reject("unverified", "nobody has checked this record yet, so I won't plan on it");
+    return reject("unverified", copy.plan.leftOut.unchecked);
   }
   if (chooseDuration(p, t.pace) == null) {
-    return reject("no_duration", "no verified duration on record");
+    return reject("no_duration", copy.plan.leftOut.noDuration);
   }
 
   // Excludes match the category, the tags, and what the place demands —
@@ -51,28 +52,27 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
   const demands = new Set([p.category, ...p.interestTags, ...((p.energy ?? 0) >= 0.75 ? ["hiking"] : [])].map(normaliseTerm));
   const excluded = t.excludes.find((x) => demands.has(normaliseTerm(x)));
   if (excluded) {
-    return reject("excluded", `you said never: ${excluded}`);
+    return reject("excluded", copy.plan.leftOut.excluded(excluded));
   }
 
   const need = t.mobility.find((m) => HARD_MOBILITY.has(m) && p.skipIf.includes(m));
   if (need) {
-    return reject("not_suitable", `marked as one to skip for ${need.replace(/_/g, " ")}`);
+    return reject("not_suitable", copy.plan.leftOut.notSuitable(need.replace(/_/g, " ")));
   }
 
   if (p.closedWeekdays.includes(ctx.weekday)) {
-    return reject("closed", `closed on ${WEEKDAY[ctx.weekday]}s`);
+    return reject("closed", copy.plan.leftOut.closed(WEEKDAY[ctx.weekday]));
   }
   if (p.closedDates.includes(ctx.date)) {
-    return reject("closed", "closed on this date");
+    return reject("closed", copy.plan.leftOut.closedDate);
   }
 
   if (p.bookingReq === "required" && !ctx.bookedPlaceIds.has(p.id)) {
-    const lead = p.bookingLeadDays ? ` about ${p.bookingLeadDays} days ahead` : "";
-    return reject("booking_required", `needs a ticket booked${lead} — none recorded`);
+    return reject("booking_required", copy.plan.leftOut.needsTicket(p.bookingLeadDays ?? null));
   }
 
   if (ctx.usedPlaceIds.has(p.id)) {
-    return reject("already_planned", "already in the trip on another day");
+    return reject("already_planned", copy.plan.leftOut.alreadyPlanned);
   }
 
   return null;
