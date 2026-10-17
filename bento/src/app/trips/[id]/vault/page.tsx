@@ -105,7 +105,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
         <ErrorNote message={error} />
         {warning && <Notice>{warning}</Notice>}
         {saved && <Notice>{t.saved}</Notice>}
-        {(saved || warning) && <TrackOnce event="booking_saved" props={{ reference_kept: !warning }} consume={["saved", "warning"]} />}
+        {(saved || warning) && <TrackOnce event="booking_saved" props={{ type: typeof sp.kind === "string" ? sp.kind : null, from_paste: sp.pasted === "1", reference_kept: !warning }} consume={["saved", "warning", "kind", "pasted"]} />}
         {!canEncrypt() && (
           // The server has no BENTO_BOOKING_REF_KEY (openssl rand -base64 32).
           <Notice>{t.noReferences}</Notice>

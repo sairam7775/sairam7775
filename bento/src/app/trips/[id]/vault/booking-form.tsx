@@ -154,6 +154,7 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
 
       <form action={saveBooking} onSubmit={() => track("booking_save_submitted", { type, from_paste: fromPaste })} className="mt-5 flex flex-col gap-4">
         <input type="hidden" name="tripId" value={tripId} />
+        {fromPaste && <input type="hidden" name="fromPaste" value="1" />}
         {defaultPlaceId && <input type="hidden" name="placeId" value={defaultPlaceId} />}
 
         <div className="flex flex-col gap-1.5">

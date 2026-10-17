@@ -34,10 +34,12 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
   const was = useRef(status);
   useEffect(() => {
     if (was.current === "proposed" && status !== "proposed") {
-      track("proposal_answered", { answer: status, route: Boolean(proposal.route), dates: Boolean(proposal.dates), days: proposal.days.length, verdict: proposal.route?.verdict ?? null });
+      // The message id lets a dashboard count each answer once, even if two
+      // open tabs both see it change.
+      track("proposal_answered", { answer: status, proposal_id: messageId, route: Boolean(proposal.route), dates: Boolean(proposal.dates), days: proposal.days.length, verdict: proposal.route?.verdict ?? null });
     }
     was.current = status;
-  }, [status, proposal]);
+  }, [status, proposal, messageId]);
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
   return (
     <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">
