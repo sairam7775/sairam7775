@@ -14,7 +14,7 @@ const t = copy.trips;
 function formatRange(start: string | null, end: string | null) {
   if (!start && !end) return t.noDates;
   const fmt = (d: string) =>
-    new Date(`${d}T00:00:00Z`).toLocaleDateString("en-GB", {
+    new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, {
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -24,7 +24,7 @@ function formatRange(start: string | null, end: string | null) {
     const nights = Math.round(
       (Date.parse(`${end}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000,
     );
-    return `${fmt(start)} – ${fmt(end)} · ${t.nights(nights)}`;
+    return t.range(fmt(start), fmt(end), nights);
   }
   return fmt((start ?? end)!);
 }

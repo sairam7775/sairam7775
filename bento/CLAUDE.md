@@ -295,7 +295,8 @@ usefulness, not tone.
   the file. `copy.test.ts` refuses empty lines and internal words (stub,
   tier…). Not in it: Bento Man's prompt (instructions to the model) and place
   data (the database). A second language is a file satisfying `Copy`.
-  Moving in progress: the trip page, vault and admin
+  Dates are written with `copy.locale`. Moving in progress: the trip page,
+  vault, admin and the plan helpers (`lib/bento-man`, `lib/vault`)
   still have their own text.
 - Server Components by default; `"use client"` only where interaction needs it.
 - Server actions for mutations, with Zod validation at the boundary.

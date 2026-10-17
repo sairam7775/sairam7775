@@ -6,6 +6,9 @@
  *  Voice (DESIGN.md): plain sentences, no cheerleading, no internal words.
  *  `copy.test.ts` checks every line is filled in and free of jargon. */
 export const en = {
+  /** How dates and numbers are written (a BCP 47 tag, for toLocaleDateString). */
+  locale: "en-GB",
+
   meta: {
     title: "Bento — plan Japan properly",
     description:
@@ -248,7 +251,8 @@ export const en = {
     signedInAs: "Signed in as",
     untitled: "Untitled trip",
     noDates: "No dates yet",
-    nights: (n: number) => `${n} night${n === 1 ? "" : "s"}`,
+    /** A trip's dates as shown in the list, from dates already written out. */
+    range: (from: string, to: string, nights: number) => `${from} – ${to} · ${nights} night${nights === 1 ? "" : "s"}`,
     people: (n: number) => `${n} people`,
     delete: "Delete",
     deleteLabel: (title: string) => `Delete ${title}`,
