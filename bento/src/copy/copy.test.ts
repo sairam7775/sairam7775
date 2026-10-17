@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { copy } from ".";
+import { copy, type Copy } from ".";
 
 /** Every line, with sample values filled in for the functions. */
 function lines(node: unknown, path: string[] = []): [string, string][] {
@@ -23,6 +23,12 @@ describe("copy", () => {
     // Words from the code and the database that mean nothing to a traveller.
     const jargon = /\b(stub|tier|null|undefined|supabase|RLS|proposal_id|draft)\b|\b\d+n\b/i;
     for (const [path, text] of all) expect(text, path).not.toMatch(jargon);
+  });
+
+  it("makes another language list every line (a type check)", () => {
+    // @ts-expect-error: a language missing the Supabase messages must not compile.
+    const partial: Copy = { ...copy, auth: { ...copy.auth, supabase: {} } };
+    expect(partial).toBeDefined();
   });
 
   it("fills in what it's given", () => {

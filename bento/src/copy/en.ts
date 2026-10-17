@@ -167,7 +167,7 @@ export const en = {
       session_expired: "Your session expired. Sign in again.",
       session_not_found: "Your session expired. Sign in again.",
       reauthentication_needed: "For your security, sign in again before changing your password.",
-    } as Record<string, string>,
+    } satisfies Record<string, string>,
     unknownError: "Something went wrong. Try again.",
     serverError: "Something went wrong on our side. Try again in a moment.",
   },

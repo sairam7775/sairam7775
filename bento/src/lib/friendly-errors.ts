@@ -10,7 +10,8 @@ interface AuthLikeError {
   message?: string;
 }
 
-const AUTH = copy.auth.supabase;
+// Widened for lookup by any code; `Copy` still requires every key above.
+const AUTH: Record<string, string> = copy.auth.supabase;
 
 export function authErrorMessage(error: AuthLikeError | null | undefined): string {
   if (!error) return copy.auth.unknownError;
