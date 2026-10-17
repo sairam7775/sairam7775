@@ -61,6 +61,17 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     status: (m.diff_status as ChatMessage["status"]) ?? null,
   }));
 
+  // Names for every city a proposal in the chat mentions, so an old day
+  // proposal keeps its city after the route changes.
+  const proposalCityIds = [...new Set(messages.flatMap((m) => m.proposal?.days.map((d) => d.cityId) ?? []))];
+  const { data: cityRows } = proposalCityIds.length
+    ? await db.from("cities").select("id, name").in("id", proposalCityIds)
+    : { data: [] as { id: string; name: string }[] };
+  const cityNames = Object.fromEntries([
+    ...(cityRows ?? []).map((c) => [c.id, c.name] as const),
+    ...state.cities.map((c) => [c.cityId, c.name] as const),
+  ]);
+
   const requested = typeof sp.day === "string" ? sp.day : null;
   const { dayList, statsByDate, selected, selectedDay, selectedMeta, stats } = buildTripView(state, requested);
 
@@ -250,7 +261,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         </section>
 
         <section id="bento-man" data-tour="chat" aria-label={copy.chat.name} className="tile up flex scroll-mt-4 bg-surface! h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
-          <Chat tripId={id} cityNames={Object.fromEntries(state.cities.map((c) => [c.cityId, c.name]))} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
+          <Chat tripId={id} cityNames={cityNames} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
         </section>
       </div>
     </main>

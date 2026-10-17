@@ -54,7 +54,11 @@ export async function saveBooking(formData: FormData) {
   let warning: string | null = null;
   if (data.reference) {
     if (canEncrypt()) referenceEncrypted = encryptRef(data.reference);
-    else warning = e.savedWithoutReference; // no BENTO_BOOKING_REF_KEY on this server
+    else {
+      // Never log the reference itself.
+      console.error("Booking reference not saved: BENTO_BOOKING_REF_KEY is missing or invalid.");
+      warning = e.savedWithoutReference;
+    }
   }
 
   const amount = data.costAmount ? Number(data.costAmount) : null;

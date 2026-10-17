@@ -23,8 +23,8 @@ const fmtDate = (d: string) =>
 /** A proposal as the traveller answers it: the day as it would be, each
  *  stop flagged against today, what was left out and why, and two buttons.
  *  Renders from stored data, so it looks the same an hour later. */
-/** `cityNames` names the cities on the route, for days the proposal only
- *  knows by id. */
+/** `cityNames` names every city the chat's proposals mention (from the
+ *  catalogue, not just today's route), for days a proposal knows by id. */
 export function ProposalCard({ tripId, messageId, proposal, status, cityNames }: { tripId: string; messageId: string; proposal: Proposal; status: ProposalStatus; cityNames: Record<string, string> }) {
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
   return (

@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
 
   const mock = mockModeEnabled();
   if (!mock && !process.env.ANTHROPIC_API_KEY) {
+    console.error("The confirmation reader is off: ANTHROPIC_API_KEY is not set.");
     return NextResponse.json({ error: copy.server.readerOff }, { status: 503 });
   }
 
