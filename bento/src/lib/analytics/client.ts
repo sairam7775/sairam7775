@@ -13,14 +13,19 @@ import { pathOnly } from "./url";
  *  email, a name or a birth date. Autocapture keeps no element text, and
  *  session replays blank out every piece of text, attribute and field. */
 
+type Prop = string | number | boolean | null | string[];
+
 // `ph`: the SDK, once downloaded and initialised (init runs once per page).
 // `started`: capturing now, i.e. the answer is yes.
 // `wanted`: the latest answer, so a "no" that lands while the SDK is still
 // downloading wins.
 let ph: PostHog | null = null;
-let loading: Promise<PostHog> | null = null;
+let sdk: Promise<PostHog> | null = null;
 let started = false;
 let wanted = false;
+// Until the root component has read the answer, events are held (a page's
+// own effects run first). A no, or no answer, drops them unsent.
+let refused = false;
 let pendingUser: string | null = null;
 // A signed-out page asked to unlink before PostHog had started.
 let forgetPending = false;
@@ -35,8 +40,13 @@ const scrub = (bag: Bag) => {
 
 export const analyticsConfigured = () => Boolean(KEY);
 
-function load(key: string): Promise<PostHog> {
-  loading ??= import("posthog-js").then(({ default: posthog }) => {
+// Events from the moments between a yes and the SDK being ready (a cold
+// page load), sent once it is. Dropped if the answer turns to no.
+type Queued = ["event", string, Record<string, Prop> | undefined] | ["error", unknown, Record<string, Prop> | undefined];
+let queue: Queued[] = [];
+const MAX_QUEUE = 50;
+
+function init(posthog: PostHog, key: string) {
     posthog.init(key, {
       // Through our own domain (next.config rewrites), so blockers that drop
       // third-party trackers don't hide real errors.
@@ -68,18 +78,21 @@ function load(key: string): Promise<PostHog> {
         return event;
       },
     });
-    return posthog;
-  });
-  return loading;
 }
 
 export function start() {
   if (!KEY || typeof window === "undefined") return;
   wanted = true;
+  refused = false;
   if (started) return;
-  void load(KEY).then((posthog) => {
+  const key = KEY;
+  sdk ??= import("posthog-js").then(({ default: posthog }) => posthog);
+  void sdk.then((posthog) => {
+    // Initialise only if the answer is still yes now the download is done,
+    // so a no that landed meanwhile leaves nothing behind.
     if (!wanted || started) return;
     const first = ph === null;
+    if (first) init(posthog, key);
     ph = posthog;
     posthog.opt_in_capturing();
     if (!first) posthog.startSessionRecording();
@@ -89,6 +102,11 @@ export function start() {
       forgetUser();
     }
     if (pendingUser) posthog.identify(pendingUser);
+    for (const q of queue) {
+      if (q[0] === "event") posthog.capture(q[1], q[2]);
+      else posthog.captureException(q[1], q[2]);
+    }
+    queue = [];
   });
 }
 
@@ -110,6 +128,8 @@ export function stop() {
 
 function halt() {
   wanted = false;
+  refused = true;
+  queue = [];
   if (started && ph) {
     // reset() first: it clears consent, and the default is opted out anyway.
     ph.reset();
@@ -154,8 +174,6 @@ export function forgetUser() {
   ph.opt_in_capturing();
 }
 
-type Prop = string | number | boolean | null | string[];
-
 /** A server message as the name of its line in copy.server ("tooSlow"),
  *  never the sentence itself; "other" when it isn't one of ours. */
 export function reasonOf(message: string, lines: Record<string, unknown>): string {
@@ -164,8 +182,10 @@ export function reasonOf(message: string, lines: Record<string, unknown>): strin
 
 export function track(event: string, props?: Record<string, Prop>) {
   if (started) ph?.capture(event, props);
+  else if (!refused && queue.length < MAX_QUEUE) queue.push(["event", event, props]);
 }
 
 export function trackError(error: unknown, props?: Record<string, Prop>) {
   if (started) ph?.captureException(error, props);
+  else if (!refused && queue.length < MAX_QUEUE) queue.push(["error", error, props]);
 }
