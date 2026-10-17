@@ -33,6 +33,7 @@ export function start() {
   if (started) return;
   if (initialized) {
     posthog.opt_in_capturing();
+    posthog.startSessionRecording();
     started = true;
     if (pendingUser) posthog.identify(pendingUser);
     return;
@@ -53,7 +54,12 @@ export function start() {
     session_recording: {
       maskAllInputs: true,
       maskTextSelector: "*",
+      // Names also sit in attributes (aria-label="Delete Kyoto trip").
+      maskAllElementAttributes: true,
     },
+    // Opted out unless told otherwise, so reset() (sign-out, withdrawal) or
+    // cleared storage can only ever fall back to not capturing.
+    opt_out_capturing_by_default: true,
     disable_surveys: true,
     before_send: (event) => {
       if (!event) return event;
@@ -63,6 +69,7 @@ export function start() {
       return event;
     },
   });
+  posthog.opt_in_capturing();
   initialized = true;
   started = true;
   if (pendingUser) posthog.identify(pendingUser);
@@ -86,8 +93,10 @@ export function stop() {
 
 function halt() {
   if (started) {
-    posthog.opt_out_capturing();
+    // reset() first: it clears consent, and the default is opted out anyway.
     posthog.reset();
+    posthog.opt_out_capturing();
+    posthog.stopSessionRecording();
     started = false;
   }
   if (typeof window === "undefined") return;
@@ -114,7 +123,10 @@ export function identify(userId: string) {
 /** Signing out: the next person on this browser is someone new. */
 export function forgetUser() {
   pendingUser = null;
-  if (started) posthog.reset();
+  if (!started) return;
+  // reset() clears consent; the traveller's "yes" still stands, so opt back in.
+  posthog.reset();
+  posthog.opt_in_capturing();
 }
 
 type Prop = string | number | boolean | null | string[];
