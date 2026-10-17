@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { User } from "@supabase/supabase-js";
 import { isWrongBrowser, landSignedIn, linkFailed } from "./auth-landing";
 import { PASSWORD_RESET_COOKIE } from "./auth-config";
+import { copy } from "@/copy";
 
 const ORIGIN = "https://bento.test";
 const user = { id: "8f52ecc8-0000-4000-8000-000000000000" } as User;
@@ -25,14 +26,14 @@ describe("auth landing", () => {
   it("sends a failed reset link back to forgot-password, saying why", () => {
     const expired = linkFailed(ORIGIN, "/settings/password");
     expect(expired.headers.get("location")).toMatch(/^https:\/\/bento\.test\/forgot-password\?/);
-    expect(errorOf(expired)).toMatch(/expired or was already used/);
-    expect(errorOf(linkFailed(ORIGIN, "/settings/password", true))).toMatch(/different browser/);
+    expect(errorOf(expired)).toBe(copy.auth.errors.resetLinkUsed);
+    expect(errorOf(linkFailed(ORIGIN, "/settings/password", true))).toBe(copy.auth.errors.linkOtherBrowser(true));
   });
 
   it("sends any other failed link to sign-in", () => {
     const res = linkFailed(ORIGIN, "/trips");
     expect(res.headers.get("location")).toMatch(/^https:\/\/bento\.test\/sign-in\?/);
-    expect(errorOf(res)).toMatch(/sign-in link/);
+    expect(errorOf(res)).toBe(copy.auth.errors.signInLinkUsed);
   });
 
   it("marks a reset landing so the old password isn't asked for", () => {

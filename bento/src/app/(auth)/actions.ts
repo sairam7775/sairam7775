@@ -8,10 +8,11 @@ import { safeNext } from "@/lib/safe-next";
 import { authErrorMessage } from "@/lib/friendly-errors";
 import { googleSignInEnabled, inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
+import { copy } from "@/copy";
 
 const credentials = z.object({
-  email: z.email("That doesn't look like an email address."),
-  password: z.string().min(8, "Passwords need at least 8 characters."),
+  email: z.email(copy.auth.errors.badEmail),
+  password: z.string().min(8, copy.auth.errors.shortPassword),
 });
 
 function backTo(page: string, message: string, next?: string) {
@@ -50,7 +51,7 @@ export async function signInWithPassword(formData: FormData) {
     if (error.status === 429) redirect(backTo("/sign-in", authErrorMessage(error), next));
     // Deliberately vague: saying which half was wrong tells an attacker
     // whether an address has an account here.
-    redirect(backTo("/sign-in", "That email and password don't match.", next));
+    redirect(backTo("/sign-in", copy.auth.errors.wrongPassword, next));
   }
 
   redirect(next);
@@ -67,7 +68,7 @@ export async function confirmAge(formData: FormData) {
   const now = new Date();
   const dob = String(formData.get("birthdate") ?? "");
   const age = ageOn(dob, now);
-  if (age == null) redirect(backTo("/sign-up", "Enter your date of birth.", next));
+  if (age == null) redirect(backTo("/sign-up", copy.auth.errors.noBirthdate, next));
 
   const cookie = { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" } as const;
   if (age < MIN_AGE) {
@@ -110,13 +111,13 @@ export async function signUpWithPassword(formData: FormData) {
 
 export async function signInWithGoogle(formData: FormData) {
   const next = safeNext(formData.get("next"));
-  if (!googleSignInEnabled()) redirect(backTo("/sign-in", "Google sign-in isn't available yet. Use your email and password.", next));
+  if (!googleSignInEnabled()) redirect(backTo("/sign-in", copy.auth.errors.googleOff, next));
   // Google sign-in creates an account for a new address, so it passes the
   // same age screen as email sign-up.
   const age = ageStatus(await cookies());
-  if (age === "blocked") redirect(backTo("/sign-in", "Sorry, you can't use Bento.", next));
+  if (age === "blocked") redirect(backTo("/sign-in", copy.auth.errors.googleBlocked, next));
   if (age === "unknown") {
-    redirect(backTo("/sign-up", "Before continuing with Google, confirm your date of birth — it's asked once, and not kept.", next));
+    redirect(backTo("/sign-up", copy.auth.errors.googleAgeFirst, next));
   }
   const supabase = await createClient();
 
@@ -128,7 +129,7 @@ export async function signInWithGoogle(formData: FormData) {
   });
 
   if (error || !data.url) {
-    redirect(backTo("/sign-in", "Google sign-in is unavailable right now.", next));
+    redirect(backTo("/sign-in", copy.auth.errors.googleDown, next));
   }
 
   redirect(data.url);
@@ -137,7 +138,7 @@ export async function signInWithGoogle(formData: FormData) {
 /** "Forgot password?": always the same answer, whether or not the address
  *  has an account, so the form can't be used to find out who's signed up. */
 export async function requestPasswordReset(formData: FormData) {
-  const parsed = z.email("That doesn't look like an email address.").safeParse(formData.get("email"));
+  const parsed = z.email(copy.auth.errors.badEmail).safeParse(formData.get("email"));
   if (!parsed.success) redirect(backTo("/forgot-password", parsed.error.issues[0].message));
 
   const supabase = await createClient();
@@ -147,17 +148,17 @@ export async function requestPasswordReset(formData: FormData) {
   // An unknown address isn't an error (Supabase answers the same either
   // way), so a real failure can be reported without revealing anything.
   if (error) {
-    redirect(backTo("/forgot-password", error.status === 429 ? authErrorMessage(error) : "We couldn't send the reset email just now. Try again in a few minutes."));
+    redirect(backTo("/forgot-password", error.status === 429 ? authErrorMessage(error) : copy.auth.errors.resetSendFailed));
   }
   redirect("/forgot-password?sent=1");
 }
 
 const newPassword = z
   .object({
-    password: z.string().min(8, "Passwords need at least 8 characters.").max(72, "Passwords can be at most 72 characters."),
+    password: z.string().min(8, copy.auth.errors.shortPassword).max(72, copy.auth.errors.longPassword),
     confirm: z.string(),
   })
-  .refine((v) => v.password === v.confirm, { message: "The two passwords don't match.", path: ["confirm"] });
+  .refine((v) => v.password === v.confirm, { message: copy.auth.errors.mismatch, path: ["confirm"] });
 
 /** Sets a new password for the signed-in user: from Settings, or at the end
  *  of a reset link (which signs them in first, via /auth/callback). */
@@ -167,7 +168,7 @@ export async function updatePassword(formData: FormData) {
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(backTo("/sign-in", "Your reset link expired. Ask for a new one.", "/settings/password"));
+  if (!user) redirect(backTo("/sign-in", copy.auth.errors.resetExpired, "/settings/password"));
   const reset = inPasswordReset(jar.get(PASSWORD_RESET_COOKIE)?.value, user.id);
 
   const parsed = newPassword.safeParse({ password: formData.get("password"), confirm: formData.get("confirm") });
@@ -178,7 +179,7 @@ export async function updatePassword(formData: FormData) {
   if (!reset) {
     const current = String(formData.get("current") ?? "");
     const check = await supabase.auth.signInWithPassword({ email: user.email ?? "", password: current });
-    if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : "Your current password isn't right.");
+    if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : copy.auth.errors.wrongCurrent);
   }
 
   const { error } = await supabase.auth.updateUser({ password: parsed.data!.password });

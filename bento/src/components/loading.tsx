@@ -1,3 +1,5 @@
+import { copy } from "@/copy";
+
 /** The loading state: the Bento mark with its umeboshi hopping from
  *  compartment to compartment. Keyframes live in globals.css so the
  *  animation is shared with the standalone SVG in public/logo.
@@ -8,7 +10,7 @@
 export function BentoLoader({
   size = 40,
   tone = "dark",
-  label = "Loading",
+  label = copy.loading.label,
 }: {
   size?: number;
   tone?: "dark" | "light";
@@ -32,8 +34,8 @@ export function BentoLoader({
 export function PageLoader({ caption }: { caption?: string }) {
   return (
     <div className="flex min-h-[60vh] flex-1 flex-col items-center justify-center gap-4">
-      <BentoLoader size={56} label={caption ?? "Loading"} />
-      <p className="disp text-[1rem] font-bold text-ink-2">{caption ?? "Packing the box…"}</p>
+      <BentoLoader size={56} label={caption ?? copy.loading.label} />
+      <p className="disp text-[1rem] font-bold text-ink-2">{caption ?? copy.loading.packing}</p>
     </div>
   );
 }
@@ -49,8 +51,8 @@ export function TripSkeleton() {
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
       <div className="flex items-center gap-3">
-        <BentoLoader size={28} label="Loading your trip" />
-        <span className="disp text-[1rem] font-bold text-ink-2">Packing the box…</span>
+        <BentoLoader size={28} label={copy.loading.trip} />
+        <span className="disp text-[1rem] font-bold text-ink-2">{copy.loading.packing}</span>
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,34%)]">
         <div className="flex flex-col gap-4">

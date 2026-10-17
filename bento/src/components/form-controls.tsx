@@ -2,6 +2,7 @@
 
 import { useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
+import { copy } from "@/copy";
 
 /** Opens the browser's calendar on a click anywhere in the field, not just
  *  on the small icon (Chrome only opens it from the icon). */
@@ -74,10 +75,10 @@ export function PasswordInput({ className, ...props }: Omit<ComponentProps<"inpu
         type="button"
         onClick={() => setShown((s) => !s)}
         aria-pressed={shown}
-        aria-label={shown ? "Hide password" : "Show password"}
+        aria-label={shown ? copy.form.hidePassword : copy.form.showPassword}
         className="absolute inset-y-1 right-1 rounded-lg px-3 text-[0.8rem] font-medium text-ink-2 hover:bg-sunk"
       >
-        {shown ? "Hide" : "Show"}
+        {shown ? copy.form.hide : copy.form.show}
       </button>
     </div>
   );
@@ -101,7 +102,7 @@ export function ChoiceButton({ name, value, pressed, className, children }: { na
   const saving = pending && data?.get(name) === value;
   return (
     <button type="submit" name={name} value={value} aria-pressed={pressed} disabled={pending} aria-busy={saving} className={`${className ?? ""} disabled:cursor-wait`}>
-      {saving ? "Saving…" : children}
+      {saving ? copy.common.saving : children}
     </button>
   );
 }

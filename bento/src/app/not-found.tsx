@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { StatusPage, primaryButton, secondaryButton } from "@/components/status-page";
+import { copy } from "@/copy";
 
 export default function NotFound() {
   return (
-    <StatusPage kicker="404" title="Nothing in this box.">
-      <p>That page doesn&rsquo;t exist, or the trip isn&rsquo;t yours to open. Check the link, or go back to your trips.</p>
+    <StatusPage kicker={copy.status.notFound.kicker} title={copy.status.notFound.title}>
+      <p>{copy.status.notFound.body}</p>
       <div className="mt-6 flex flex-wrap gap-3">
-        <Link href="/trips" className={primaryButton}>Your trips</Link>
-        <Link href="/" className={secondaryButton}>Home</Link>
+        <Link href="/trips" className={primaryButton}>{copy.common.yourTrips}</Link>
+        <Link href="/" className={secondaryButton}>{copy.common.home}</Link>
       </div>
     </StatusPage>
   );

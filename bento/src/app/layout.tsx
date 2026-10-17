@@ -11,6 +11,7 @@ import "./globals.css";
 import { SeasonalBackground } from "@/components/seasonal/background";
 import { BACKGROUND_COOKIE, parseBackground } from "@/components/seasonal/season";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
+import { copy } from "@/copy";
 
 /* Fonts are self-hosted (fontsource) rather than fetched at build time, so
    a build works offline and a traveller on airport wifi never waits on a
@@ -21,9 +22,8 @@ import { THEME_COOKIE, parseTheme } from "@/lib/theme";
    uses are downloaded. */
 
 export const metadata: Metadata = {
-  title: "Bento — plan Japan properly",
-  description:
-    "A trip planner for people who have never been to Japan. Real travel times, honest expectations, and a plan that tells you what's still missing.",
+  title: copy.meta.title,
+  description: copy.meta.description,
 };
 
 const PAPER = { light: "#fbf8f3", dark: "#171213" };

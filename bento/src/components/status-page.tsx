@@ -1,13 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BentoLogo } from "@/components/logo";
+import { copy } from "@/copy";
 
 /** A whole-page message — not found, or something broke — that always
  *  leaves a way back into the app. */
 export function StatusPage({ kicker, title, children }: { kicker: string; title: string; children: ReactNode }) {
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col px-5 py-8 sm:px-8">
-      <Link href="/" className="inline-flex self-start" aria-label="Bento home">
+      <Link href="/" className="inline-flex self-start" aria-label={copy.common.homeLabel}>
         <BentoLogo />
       </Link>
       <section className="tile up mt-10 p-6 sm:p-8">
