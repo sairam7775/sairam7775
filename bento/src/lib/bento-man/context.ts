@@ -2,8 +2,15 @@
  *  the system prompt, so the cached prefix stays byte-stable (§09). Every
  *  number in here came from the database or the engine. */
 import type { CityFacts } from "@/lib/engine/route";
+import type { CoverageTier } from "@/lib/types";
+import { copy } from "@/copy";
 import { clock } from "./diff";
 import { nightsBetween, type TripState } from "./store";
+
+/** How well Bento knows a city, in the words the traveller sees on the
+ *  city chips. The model is handed these, never the tier names, so what it
+ *  repeats is what the page says ("main sights only", not "outline"). */
+export const coverageWords = (tier: CoverageTier) => copy.coverage[tier].toLowerCase();
 
 export function buildContext(state: TripState, cities: CityFacts[], today: string): string {
   const { trip, prefs } = state;
@@ -29,7 +36,7 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
   if (state.cities.length) {
     lines.push("route:");
     for (const c of state.cities) {
-      lines.push(`  ${c.sortOrder + 1}. ${c.name} (${c.cityId}) · ${c.nights} night${c.nights === 1 ? "" : "s"} · tier ${c.tier}` +
+      lines.push(`  ${c.sortOrder + 1}. ${c.name} (${c.cityId}) · ${c.nights} night${c.nights === 1 ? "" : "s"} · ${coverageWords(c.tier)}` +
         (c.arriveDate ? ` · ${c.arriveDate} → ${c.departDate}` : "") + (c.budgetBand ? ` · budget ${c.budgetBand}` : "") + (c.reason ? ` · ${c.reason}` : ""));
     }
   } else {
@@ -57,10 +64,10 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
   const stubs = cities.filter((c) => c.tier === "stub");
   lines.push(
     known.length
-      ? `cities Bento knows: ${known.map((c) => `${c.name} (${c.id}, ${c.tier}, ${c.verifiedPlaces} verified)`).join("; ")}.`
-      : "cities Bento knows: none above stub tier yet — say so if asked to plan days anywhere.",
+      ? `cities Bento knows: ${known.map((c) => `${c.name} (${c.id}, ${coverageWords(c.tier)}, ${c.verifiedPlaces} verified places)`).join("; ")}.`
+      : "cities Bento knows: none yet — say so if asked to plan days anywhere.",
   );
-  if (stubs.length) lines.push(`stub tier (name and location only; no day plans): ${stubs.map((c) => `${c.name}=${c.id}`).join(", ")}`);
+  if (stubs.length) lines.push(`${coverageWords("stub")} (name and location only; no day plans): ${stubs.map((c) => `${c.name}=${c.id}`).join(", ")}`);
 
   return `<trip_state>\n${lines.join("\n")}\n</trip_state>`;
 }

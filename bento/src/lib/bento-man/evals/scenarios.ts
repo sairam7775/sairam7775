@@ -113,11 +113,18 @@ export const SCENARIOS: Scenario[] = [
     expect: { tools: ["assess_route", "propose_route"], proposal: "route", mustNotMatch: [/(is|are) now (set|in the plan|booked)/i] },
   },
   {
-    id: "route-tier-stated",
-    intent: "Coverage tier is stated per city.",
+    id: "route-coverage-stated",
+    intent: "How well Bento knows each city is said per city, in plain words (the voice lint catches tier and stub).",
     setup: { trip: nov, prefs: owner },
     user: "What about Kyoto and Takayama, five nights each?",
-    expect: { tools: ["assess_route"], mustMatch: [/Takayama/, /don't know|do not know|not (yet )?(covered|well enough)|stub/i] },
+    expect: { tools: ["assess_route"], mustMatch: [/Takayama/, /don't know|do not know|not (yet )?(covered|well enough)/i] },
+  },
+  {
+    id: "route-coverage-words",
+    intent: "A city Bento knows only partly is described in the page's words, never by the internal name.",
+    setup: { trip: nov, prefs: owner },
+    user: "We'd like Kyoto for six nights and Himeji for three. How well do you know those two?",
+    expect: { tools: ["assess_route"], mustMatch: [/Himeji/, /main sights|well covered/i], mustNotMatch: [/\boutline\b|\bdeep\b/i] },
   },
   {
     id: "route-nara-daytrip",
