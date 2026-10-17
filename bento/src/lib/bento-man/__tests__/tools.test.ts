@@ -35,6 +35,21 @@ describe("tool definitions", () => {
     expect(examples.length).toBeGreaterThan(100);
     expect(voiceLint(examples)).toEqual([]);
   });
+  it("the voice lint catches Bento's internal words for coverage", () => {
+    expect(voiceLint("Takayama is at stub tier.").map((v) => v.rule)).toEqual(["jargon"]);
+    expect(voiceLint("Himeji has the main sights only. A deep breath, then the outline of the castle.")).toEqual([]);
+  });
+  it("the trip state and tool results hand the model the traveller's words, not tier names", async () => {
+    const store = new MemoryStore({ trip: nov, prefs: owner, cities: [{ cityId: "takayama", nights: 9 }] });
+    const state = buildContext(await store.state(), await store.cities(), "2026-09-15");
+    expect(state).toMatch(/Takayama \(takayama\) · 9 nights · not covered yet/);
+    expect(state).toMatch(/Himeji \(himeji, main sights only, \d+ verified places\)/);
+    const assessed = (await runTool("assess_route", { cities: [{ city_id: "kyoto-city", nights: 5 }, { city_id: "takayama", nights: 4 }] }, ctxFor(store))).result;
+    const suggested = (await runTool("suggest_route", {}, ctxFor(store))).result;
+    const place = (await runTool("get_place", { query: "Kiyomizu" }, ctxFor(store))).result;
+    expect(JSON.parse(place).matches[0]).toMatchObject({ city_coverage: "well covered" });
+    for (const text of [state, assessed, suggested, place]) expect(text).not.toMatch(/\b(tiers?|stub|outline|deep)\b/i);
+  });
 });
 
 describe("set_preferences / set_trip_dates", () => {
@@ -64,7 +79,7 @@ describe("routes", () => {
     ] }, ctx));
     expect(r.verdict).toBe("overpacked");
     expect(r.arithmetic).toMatch(/4 city changes/);
-    expect(r.cities.map((c: { tier: string }) => c.tier)).toEqual(["deep", "deep", "deep", "outline", "deep"]);
+    expect(r.cities.map((c: { coverage: string }) => c.coverage)).toEqual(["well covered", "well covered", "well covered", "main sights only", "well covered"]);
   });
   it("assess_route names an unknown city id", async () => {
     const r = await runTool("assess_route", { cities: [{ city_id: "kyoto", nights: 3 }] }, ctxFor(new MemoryStore()));
@@ -224,7 +239,7 @@ describe("context", () => {
     const text = buildContext(await store.state(), await store.cities(), "2026-09-15");
     expect(text).toMatch(/preferences: not set yet/);
     expect(text).toMatch(/route: none yet/);
-    expect(text).toMatch(/Kyoto \(kyoto-city, deep, 41 verified\)/);
+    expect(text).toMatch(/Kyoto \(kyoto-city, well covered, 41 verified places\)/);
     expect(text).not.toMatch(/Takayama \(/);
   });
 });

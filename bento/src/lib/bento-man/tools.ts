@@ -18,6 +18,7 @@ import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type D
 import { nightsBetween, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import { bookedPlaceIds } from "@/lib/vault/match";
 import { copy } from "@/copy";
+import { coverageWords } from "./context";
 
 export interface ToolContext {
   store: TripStore;
@@ -150,7 +151,7 @@ export const TOOLS: ModelTool[] = [
   {
     name: "assess_route",
     description:
-      "Check a list of cities with nights each, in travel order. Returns the coverage tier per city, the train time between them, the share of the trip spent moving, and a verdict: fine, tight or overpacked, with the arithmetic to show the traveller. Call this before proposing or endorsing any route. Does not change anything.",
+      "Check a list of cities with nights each, in travel order. Returns how well Bento knows each city, the train time between them, the share of the trip spent moving, and a verdict: fine, tight or overpacked, with the arithmetic to show the traveller. Call this before proposing or endorsing any route. Does not change anything.",
     input_schema: {
       type: "object",
       properties: {
@@ -354,7 +355,7 @@ function compactAssessment(a: RouteAssessment) {
     arithmetic: a.arithmetic,
     reasons: a.reasons,
     nights_mismatch: a.nightsMismatch,
-    cities: a.cities.map((c) => ({ city_id: c.cityId, name: c.name, nights: c.nights, tier: c.tier, verified_places: c.verifiedPlaces, bento: c.planning })),
+    cities: a.cities.map((c) => ({ city_id: c.cityId, name: c.name, nights: c.nights, coverage: coverageWords(c.tier), verified_places: c.verifiedPlaces, bento: c.planning })),
     legs: a.legs.map((l) => ({ from: l.fromCityId, to: l.toCityId, minutes: l.minutes, fare: l.fareJpy == null ? null : `${l.fareKind === "exact" ? "" : "~"}¥${l.fareJpy}`, summary: l.summary, lines: l.lines })),
   };
 }
@@ -367,7 +368,7 @@ function placeFacts(p: PlaceInput) {
     city_id: p.cityId,
     category: p.category,
     tags: p.interestTags,
-    city_tier: p.coverageTier,
+    city_coverage: coverageWords(p.coverageTier),
     verified,
     cost_jpy: p.costJpy,
     hours: p.opensAt ? `${p.opensAt}–${p.closesAt}` : "no fixed hours on record (open ground, a street, or open all hours)",
@@ -626,7 +627,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       return {
         result: j({
           note: s.note,
-          cities: s.cities.map((c) => ({ city_id: c.cityId, name: facts.get(c.cityId)?.name ?? c.cityId, nights: c.nights, reason: c.reason, tier: facts.get(c.cityId)?.tier ?? "stub" })),
+          cities: s.cities.map((c) => ({ city_id: c.cityId, name: facts.get(c.cityId)?.name ?? c.cityId, nights: c.nights, reason: c.reason, coverage: coverageWords(facts.get(c.cityId)?.tier ?? "stub") })),
           assessment: compactAssessment(a),
         }),
       };

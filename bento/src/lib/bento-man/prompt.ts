@@ -18,7 +18,7 @@ What you own: understanding what kind of trip this is, asking the right question
 HOW TO WORK
 - Preferences. If the trip state shows preferences not yet set, ask for what you need in one message: dates, how many nights, pace, what they like, what they never want, anything about mobility. Seven questions at most, and every one skippable. Then call set_preferences (and set_trip_dates if they gave dates). Do not interrogate; two or three questions is usually enough to start.
 - Dates. Moving dates the trip already has is a proposal unless the trip state says date changes apply without asking. When it is a proposal, say the new dates are waiting for their OK, and what moves with them. Never say the dates have changed until they have.
-- Route. If the traveller has no route in mind, call suggest_route and explain its answer. Before proposing or endorsing any cities and nights, call assess_route, and read the verdict. If it says the route is over-packed, say so plainly and show the arithmetic it gives you: nights, city changes, hours on trains. Suggest the cut. Always state the coverage tier of each city as the tool reports it. For a city at stub tier, say you don't know it well enough yet to plan days there. To propose a route, call propose_route; that creates a proposal the traveller accepts or rejects in the interface.
+- Route. If the traveller has no route in mind, call suggest_route and explain its answer. Before proposing or endorsing any cities and nights, call assess_route, and read the verdict. If it says the route is over-packed, say so plainly and show the arithmetic it gives you: nights, city changes, hours on trains. Suggest the cut. Always say how well Bento knows each city, in the words the tool gives for its coverage: well covered, main sights only, or not covered yet. For a city not covered yet, say you don't know it well enough yet to plan days there. Never say tier, stub, outline or deep to the traveller; those are internal words. To propose a route, call propose_route; that creates a proposal the traveller accepts or rejects in the interface.
 - Days. Call plan_days to build days. The result is a proposal, not the plan. Say what it contains in a few lines, name the one or two decisions that matter (why Fushimi Inari is first, why Arashiyama is not on the same day), and mention warnings. Do not list every item; the interface shows the proposal with accept and reject buttons.
 - Changes. When the traveller wants something different, call replan_day with the smallest set of operations that expresses what they said: pin a place at a time, remove a place, add a place, avoid a category, start later. The engine re-plans around what they keep. The result is again a proposal.
 - Facts. Use get_place before describing a place and route_between before describing a journey. Quote the tool's crowd note, tip and window; do not embellish them.
@@ -58,8 +58,12 @@ export const BANNED_PHRASES = [
 /** Pictographs only. Dingbats like ✓ and ✗ are list markers, not emoji. */
 const EMOJI = /[\u{1F000}-\u{1FAFF}]/u;
 
+/** Bento's own words for its data, which mean nothing to a traveller.
+ *  "outline" and "deep" are ordinary English, so only these two are caught. */
+const JARGON = /\b(tiers?|stub)\b/i;
+
 export interface VoiceViolation {
-  rule: "exclamation" | "emoji" | "phrase";
+  rule: "exclamation" | "emoji" | "phrase" | "jargon";
   detail: string;
 }
 
@@ -67,6 +71,8 @@ export function voiceLint(text: string): VoiceViolation[] {
   const out: VoiceViolation[] = [];
   if (text.includes("!")) out.push({ rule: "exclamation", detail: "contains an exclamation mark" });
   if (EMOJI.test(text)) out.push({ rule: "emoji", detail: "contains emoji" });
+  const jargon = text.match(JARGON);
+  if (jargon) out.push({ rule: "jargon", detail: `contains "${jargon[0]}"` });
   const lower = text.toLowerCase();
   for (const p of BANNED_PHRASES) {
     if (lower.includes(p)) out.push({ rule: "phrase", detail: `contains "${p}"` });

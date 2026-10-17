@@ -191,6 +191,10 @@ Practically:
 - The eval (`evals/scenarios.ts`, `scripts/eval-bento-man.ts`) is the
   regression check for prompt edits and the Sonnet 5 test. Add a scenario
   with every prompt rule you add; `voiceLint` runs on every reply.
+- The model never sees tier names. The trip state and tool results say how
+  well Bento knows a city in the city chips' words (`coverageWords` in
+  `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
+  page says; `voiceLint` fails a reply that says "tier" or "stub".
 
 ## Day view (P7)
 
