@@ -8,6 +8,7 @@ import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { createTrip, deleteTrip } from "./actions";
 import { ErrorNote } from "../(auth)/ui";
 import { copy } from "@/copy";
+import { AnalyticsUser } from "@/components/analytics/analytics";
 
 const t = copy.trips;
 
@@ -47,6 +48,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
       <AppHeader />
+      {user && <AnalyticsUser id={user.id} />}
       <Tour id="trips" seen={await tourSeen("trips")} />
 
       <h1 className="mt-8 text-3xl font-bold tracking-tight">{t.title}</h1>

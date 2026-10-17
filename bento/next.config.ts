@@ -21,6 +21,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
+  // PostHog (EU) through our own domain, so blockers that drop third-party
+  // trackers don't hide real errors. Only used after the traveller says yes.
+  async rewrites() {
+    return [
+      { source: "/ingest/static/:path*", destination: "https://eu-assets.i.posthog.com/static/:path*" },
+      { source: "/ingest/:path*", destination: "https://eu.i.posthog.com/:path*" },
+    ];
+  },
+  // PostHog's API paths end in a slash; a redirect would drop the request.
+  skipTrailingSlashRedirect: true,
 };
 
 export default nextConfig;

@@ -7,6 +7,7 @@ import { BentoLoader } from "@/components/loading";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
+import { reasonOf, track } from "@/lib/analytics/client";
 
 const t = copy.chat;
 
@@ -84,6 +85,10 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
       { id: draftId, role: "assistant", content: "", proposal: null, status: null },
     ]);
     const patch = (p: Partial<ChatMessage>) => setMessages((m) => m.map((x) => (x.id === draftId ? { ...x, ...p } : x)));
+    // Analytics: how long, which tools, what came back. Never the text.
+    const sentAt = performance.now();
+    const tools: string[] = [];
+    track("bento_man_message_sent", { first: messages.length === 0, chars: text.length });
 
     try {
       const res = await fetch("/api/chat", {
@@ -114,15 +119,29 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
             patch({ content });
           } else if (ev.type === "tool") {
             setActivity(ev.phase === "start" ? (TOOL_LABEL[ev.name] ?? t.working) : null);
+            if (ev.phase === "end") tools.push(ev.ok ? ev.name : `${ev.name}:failed`);
             if (ev.phase === "end" && content) content += "\n\n";
           } else if (ev.type === "done") {
             patch({ id: ev.messageId ?? draftId, content: ev.text, proposal: ev.proposal, status: ev.proposal ? "proposed" : null });
+            track("bento_man_replied", {
+              ms: Math.round(performance.now() - sentAt),
+              tools,
+              proposal: Boolean(ev.proposal),
+              proposal_route: Boolean(ev.proposal?.route),
+              proposal_dates: Boolean(ev.proposal?.dates),
+              proposal_days: ev.proposal?.days.length ?? 0,
+            });
           } else if (ev.type === "error") {
             throw new Error(ev.message);
           }
         }
       }
     } catch (err) {
+      track("bento_man_failed", {
+        ms: Math.round(performance.now() - sentAt),
+        reason: err instanceof TypeError ? "offline" : err instanceof Error ? reasonOf(err.message, copy.server) : "other",
+        tools,
+      });
       // fetch() rejects with a TypeError when the network itself failed.
       setError(
         err instanceof TypeError
@@ -187,6 +206,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
                   type="button"
                   onClick={() => {
                     setInput(x);
+                    track("bento_man_example_used", { example: Object.entries(t.examples).find(([, v]) => v === x)?.[0] ?? "other" });
                     field.current?.focus();
                   }}
                   className="min-h-9 rounded-full border border-rule bg-surface px-3 py-1.5 text-left text-[0.85rem] text-ink hover:border-ink/30"

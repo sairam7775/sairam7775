@@ -4,6 +4,8 @@ import { clock, describeDates, type DayDiff, type Proposal } from "@/lib/bento-m
 import { SubmitButton } from "@/components/form-controls";
 import { acceptProposal, rejectProposal } from "./actions";
 import { copy } from "@/copy";
+import { useEffect, useRef } from "react";
+import { track } from "@/lib/analytics/client";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.proposal;
@@ -26,6 +28,18 @@ const fmtDate = (d: string) =>
 /** `cityNames` names every city the chat's proposals mention (from the
  *  catalogue, not just today's route), for days a proposal knows by id. */
 export function ProposalCard({ tripId, messageId, proposal, status, cityNames }: { tripId: string; messageId: string; proposal: Proposal; status: ProposalStatus; cityNames: Record<string, string> }) {
+  // Counted when the card itself turns accepted or rejected (the server
+  // applied the answer), not when a button is pressed: a refused accept
+  // leaves the card proposed and records nothing.
+  const was = useRef(status);
+  useEffect(() => {
+    if (was.current === "proposed" && status !== "proposed") {
+      // The message id lets a dashboard count each answer once, even if two
+      // open tabs both see it change.
+      track("proposal_answered", { answer: status, proposal_id: messageId, route: Boolean(proposal.route), dates: Boolean(proposal.dates), days: proposal.days.length, verdict: proposal.route?.verdict ?? null });
+    }
+    was.current = status;
+  }, [status, proposal, messageId]);
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
   return (
     <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">

@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
 import { copy } from "@/copy";
+import { trackError } from "@/lib/analytics/client";
 
 /** Last resort, when the root layout itself fails: it replaces the whole
  *  document, so it can't rely on the app's stylesheet. */
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    trackError(error, { digest: error.digest ?? null, boundary: "root" });
+  }, [error]);
   return (
     <html lang="en">
       <body style={{ margin: 0, fontFamily: "system-ui, sans-serif", background: "#fbf8f3", color: "#231c1e" }}>

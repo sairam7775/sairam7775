@@ -20,6 +20,7 @@ import { Chat, type ChatMessage } from "./chat";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
+import { AnalyticsUser } from "@/components/analytics/analytics";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.trip;
@@ -89,11 +90,19 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
   const worst = gaps?.gaps[0] ?? null;
+  // A gap card's "Ask Bento Man" sends the gap's key, never text: the
+  // question is looked up here, so nothing a traveller reads ends up in an
+  // address (or in analytics, which records addresses).
+  const askKey = typeof sp.ask === "string" ? sp.ask : null;
+  const ask = askKey
+    ? [...(gaps?.gaps ?? []), ...(gaps?.dismissed ?? [])].find((g) => g.key === askKey)?.actions.find((a) => a.kind === "ask_bento_man")?.hint
+    : undefined;
 
   return (
     <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
       {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
       <Tour id="trip" seen={await tourSeen("trip")} />
+      <AnalyticsUser id={user.id} />
       <AppHeader back={{ href: "/trips", label: copy.common.yourTrips }}>
         {state.trip.startDate && state.trip.endDate && (
           <span className="mono hidden rounded-full bg-lacquer px-3 py-1.5 text-[0.78rem] text-rice sm:inline">
@@ -261,7 +270,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         </section>
 
         <section id="bento-man" data-tour="chat" aria-label={copy.chat.name} className="tile up flex scroll-mt-4 bg-surface! h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
-          <Chat tripId={id} cityNames={cityNames} initial={messages} ask={typeof sp.ask === "string" ? sp.ask.slice(0, 500) : undefined} />
+          <Chat tripId={id} cityNames={cityNames} initial={messages} ask={ask} />
         </section>
       </div>
     </main>

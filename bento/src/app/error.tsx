@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { StatusPage, primaryButton, secondaryButton } from "@/components/status-page";
+import { trackError } from "@/lib/analytics/client";
 import { copy } from "@/copy";
 
 /** Any page that throws lands here instead of a bare error screen. The
@@ -10,6 +11,7 @@ import { copy } from "@/copy";
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
     console.error(error);
+    trackError(error, { digest: error.digest ?? null, boundary: "page" });
   }, [error]);
 
   return (

@@ -36,6 +36,14 @@ Practically:
 - **Every way to create an account passes the age screen** (`lib/age-gate.ts`,
   COPPA): email sign-up and Google sign-in both check the cookie, and the
   birth date is never stored. A new sign-up route needs the same check.
+- **Analytics only with consent, and never content.** PostHog (EU) starts
+  only when the `bento_analytics` cookie is "yes" (banner or Settings);
+  "no" clears its storage. Everything goes through `lib/analytics/client.ts`:
+  send names, counts, durations, ids, booleans and copy keys (`reasonOf`),
+  never chat text, booking titles or references, emails, names or birth
+  dates. Autocapture keeps no element text; replays mask all text and
+  inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
+  asked. If you collect something new, update `copy.privacy` too.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
 - **Costs are stored in JPY.** Conversion happens on read, so a stale rate can

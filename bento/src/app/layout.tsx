@@ -12,6 +12,8 @@ import { SeasonalBackground } from "@/components/seasonal/background";
 import { BACKGROUND_COOKIE, parseBackground } from "@/components/seasonal/season";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { copy } from "@/copy";
+import { Analytics } from "@/components/analytics/analytics";
+import { ANALYTICS_COOKIE, parseConsent } from "@/lib/analytics/consent";
 
 /* Fonts are self-hosted (fontsource) rather than fetched at build time, so
    a build works offline and a traveller on airport wifi never waits on a
@@ -47,10 +49,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   const jar = await cookies();
   const theme = parseTheme(jar.get(THEME_COOKIE)?.value);
   const background = parseBackground(jar.get(BACKGROUND_COOKIE)?.value);
+  const consent = parseConsent(jar.get(ANALYTICS_COOKIE)?.value);
   return (
     <html lang="en" className="h-full antialiased" data-theme={theme === "system" ? undefined : theme}>
       <body className="min-h-full flex flex-col">
         <SeasonalBackground chosen={background === "auto" ? null : background}>{children}</SeasonalBackground>
+        <Analytics consent={consent} />
       </body>
     </html>
   );

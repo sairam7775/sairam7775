@@ -101,7 +101,10 @@ export async function saveBooking(formData: FormData) {
 
   revalidatePath(`/trips/${tripId}/vault`);
   revalidatePath(`/trips/${tripId}`);
-  redirect(`/trips/${tripId}/vault${warning ? `?warning=${encodeURIComponent(warning)}` : "?saved=1"}`);
+  // The kind and whether it came from a paste ride along for the analytics
+  // event the next page records (TrackOnce), which removes them again.
+  const done = new URLSearchParams({ ...(warning ? { warning } : { saved: "1" }), kind: data.type, ...(formData.get("fromPaste") === "1" ? { pasted: "1" } : {}) });
+  redirect(`/trips/${tripId}/vault?${done}`);
 }
 
 export async function deleteBooking(formData: FormData) {

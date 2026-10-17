@@ -105,6 +105,8 @@ export const en = {
       submit: "Create account",
       pending: "Creating your account…",
       haveAccount: "Already have an account?",
+      privacyNote: "By creating an account you agree to how Bento handles your data:",
+      privacyLink: "privacy",
     },
 
     forgot: {
@@ -230,6 +232,7 @@ export const en = {
       body: "Start with your dates. Bento Man takes it from there.",
     },
     footer: "Bento — Japan, planned properly",
+    privacy: "Privacy",
     footerJa: "いってらっしゃい",
     // The sample day beside the headline: an illustration, not real data.
     preview: {
@@ -889,6 +892,75 @@ export const en = {
       body: "The short walkthrough of your trips, a trip and its vault. It starts again on the trips list, then on each page as you open it.",
       replay: "Show the tour again",
       pending: "Opening…",
+    },
+    analytics: {
+      heading: "Usage analytics",
+      body: "Records which features you use and when something breaks, so we can fix it. Never what you type, your bookings or your email.",
+      on: "On",
+      off: "Off",
+      more: "How Bento uses data",
+    },
+  },
+
+  // The consent banner. Shown once, until you choose.
+  consent: {
+    label: "Analytics choice",
+    body: "Can Bento record how you use it — which buttons, which pages, and when something breaks? Never what you type, your bookings or your email. It helps us fix problems.",
+    accept: "Allow",
+    decline: "No thanks",
+    more: "Details",
+  },
+
+  privacy: {
+    title: "How Bento uses data",
+    updated: "Last updated 17 October 2026",
+    intro: "Bento is a trip planner. This page says what it keeps about you, who else handles it, and what you can do about it. In short: your plan stays yours, booking references are encrypted, and usage analytics only run if you say yes.",
+    contactLabel: "Questions or requests:",
+    contact: "bentoman.me@gmail.com",
+    // Each section: a heading and its text, in order. A blank line (\n\n) starts a new paragraph.
+    sections: {
+      account: {
+        heading: "Your account",
+        body: "Your email address and password (stored hashed by our sign-in provider), to sign you in.\n\nYour date of birth is asked once at sign-up to check you are old enough, and is not kept. Only whether you passed is remembered, in a cookie.",
+      },
+      plan: {
+        heading: "Your trips",
+        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.",
+      },
+      bentoMan: {
+        heading: "Bento Man and the confirmation reader",
+        // `chat` is the provider this deployment uses for Bento Man (BENTO_MAN_PROVIDER).
+        body: (chat: "gemini" | "anthropic") => (chat === "gemini"
+          ? "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Google (Gemini). On the plan Bento currently uses, Google may use this text to improve its products, so don't write anything to Bento Man you wouldn't want stored by Google."
+          : "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Anthropic (Claude), which does not use it to train its models.") +
+          "\n\nWhen you paste a confirmation email into the booking form, its text, including any booking reference in it, goes to Anthropic (Claude) only to fill in the form. Nothing is saved until you press Save. Booking references are never sent to Bento Man.",
+      },
+      analytics: {
+        heading: "Usage analytics (only if you say yes)",
+        body: "If you allow it, Bento records which pages you open (the page, not what's in its address), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, and errors. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. Screen recordings used to find problems blank out all text and every field, so what you type and your bookings are never recorded.\n\nYou can turn it off any time in Settings. Saying no changes nothing else about Bento.",
+      },
+      cookies: {
+        heading: "Cookies",
+        body: "Bento uses cookies to keep you signed in and to remember your choices: theme, background, the tour, the age check and your analytics answer. These are needed for the site to work.\n\nPostHog sets its own cookie and local storage only after you allow analytics.",
+      },
+      who: {
+        heading: "Who else handles your data",
+        // `googleSignIn`: whether "Continue with Google" is switched on (BENTO_GOOGLE_SIGN_IN).
+        body: (chat: "gemini" | "anthropic", googleSignIn: boolean) =>
+          (chat === "gemini"
+            ? "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU)."
+            : "Supabase (database and sign-in), Vercel (hosting), Anthropic (Bento Man and reading pasted confirmations) and, only with your consent, PostHog (analytics, EU).") +
+          (googleSignIn ? " If you continue with Google, Google also confirms who you are and shares your email address with Bento." : "") +
+          " Each handles data only to provide its service to Bento.",
+      },
+      keep: {
+        heading: "How long it's kept",
+        body: "Your account and trips are kept until you delete them. Analytics events are kept for up to one year.",
+      },
+      rights: {
+        heading: "Your rights",
+        body: "You can ask for a copy of your data, ask us to correct or delete it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nBento is not for children under 13.",
+      },
     },
   },
 
