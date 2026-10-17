@@ -1,7 +1,7 @@
-/** Addresses lose everything after the path before an event leaves: query
- *  strings can carry text (?ask= is a question for Bento Man, ?title= a
- *  booking name, ?error= a message). Pages that read such a parameter also
- *  drop it from the address bar (dropParams), which covers replays. */
+/** Addresses lose everything after the path before an event leaves. No
+ *  page puts a traveller's text in an address (gap cards send a gap key or
+ *  a place id, and the page looks the words up), but ?error= carries a
+ *  message and future links might slip; this is the backstop. */
 export function pathOnly(value: string): string {
   return /^https?:\/\//.test(value) ? value.split(/[?#]/)[0] : value;
 }

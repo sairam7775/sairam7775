@@ -12,7 +12,7 @@ import { tourSeen } from "@/components/tour/seen";
 import { CoverageRibbon, DismissedGaps, GapCard } from "./gap-cards";
 import { deleteBooking } from "./actions";
 import { copy } from "@/copy";
-import { AnalyticsUser } from "@/components/analytics/analytics";
+import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
 
 const t = copy.vault;
 
@@ -77,6 +77,12 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
   const error = typeof sp.error === "string" ? sp.error : null;
   const warning = typeof sp.warning === "string" ? sp.warning : null;
   const saved = sp.saved === "1";
+  // A ticket gap's "Add a booking" sends the place's id; its name comes
+  // from the gap, not the address.
+  const place = typeof sp.place === "string" ? sp.place : undefined;
+  const placeTitle = place
+    ? report.gaps.flatMap((g) => g.actions).find((a) => a.placeId === place)?.title
+    : undefined;
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
@@ -99,6 +105,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
         <ErrorNote message={error} />
         {warning && <Notice>{warning}</Notice>}
         {saved && <Notice>{t.saved}</Notice>}
+        {(saved || warning) && <TrackOnce event="booking_saved" props={{ reference_kept: !warning }} />}
         {!canEncrypt() && (
           // The server has no BENTO_BOOKING_REF_KEY (openssl rand -base64 32).
           <Notice>{t.noReferences}</Notice>
@@ -138,8 +145,8 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
             cities={cities}
             defaultType={typeof sp.add === "string" ? sp.add : undefined}
             defaultDate={typeof sp.on === "string" ? sp.on : undefined}
-            defaultPlaceId={typeof sp.place === "string" ? sp.place : undefined}
-            defaultTitle={typeof sp.title === "string" ? sp.title.slice(0, 160) : undefined}
+            defaultPlaceId={place}
+            defaultTitle={placeTitle}
           />
         </div>
 

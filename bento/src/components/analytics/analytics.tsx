@@ -5,7 +5,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { setAnalytics } from "@/app/settings/actions";
 import { ChoiceButton } from "@/components/form-controls";
-import { analyticsConfigured, identify, start, stop } from "@/lib/analytics/client";
+import { analyticsConfigured, identify, start, stop, track } from "@/lib/analytics/client";
 import type { Consent } from "@/lib/analytics/consent";
 import { copy } from "@/copy";
 
@@ -44,6 +44,16 @@ export function Analytics({ consent }: { consent: Consent | null }) {
       </form>
     </div>
   );
+}
+
+/** Records one event when it renders: for outcomes only the server knows,
+ *  such as a booking that really saved (the page after the redirect). */
+export function TrackOnce({ event, props }: { event: string; props?: Record<string, string | number | boolean | null> }) {
+  const key = JSON.stringify(props ?? {});
+  useEffect(() => {
+    track(event, JSON.parse(key));
+  }, [event, key]);
+  return null;
 }
 
 /** Put on signed-in pages: links events to the account's internal id

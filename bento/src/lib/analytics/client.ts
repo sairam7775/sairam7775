@@ -26,16 +26,6 @@ const scrub = (bag: Bag) => {
   for (const [k, v] of Object.entries(bag)) if (typeof v === "string") bag[k] = pathOnly(v);
 };
 
-/** Removes the named parameters from the address bar without a reload, once
- *  the page has read them. */
-export function dropParams(names: string[]) {
-  if (typeof window === "undefined") return;
-  const url = new URL(window.location.href);
-  if (!names.some((n) => url.searchParams.has(n))) return;
-  for (const n of names) url.searchParams.delete(n);
-  window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
-}
-
 export const analyticsConfigured = () => Boolean(KEY);
 
 export function start() {
