@@ -50,6 +50,9 @@ export default async function Review({ searchParams }: PageProps<"/admin/review"
         Read it as a traveller would. If the durations, the window and the tip are what you&rsquo;d tell a
         friend, sign it. If not, open the editor. Anything you skip comes round again.
       </p>
+      <Link href={`/admin/review/bulk${city ? `?city=${encodeURIComponent(city)}` : ""}`} className="mt-3 inline-flex min-h-10 items-center border border-rule bg-surface px-4 text-sm font-medium hover:bg-sunk">
+        Verify several at once →
+      </Link>
 
       <div className="mt-6">
         <ErrorNote message={typeof sp.error === "string" ? sp.error : null} />
