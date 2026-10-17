@@ -99,6 +99,20 @@ export const SCENARIOS: Scenario[] = [
     expect: { tools: ["assess_route"], mustMatch: [/overpacked|too many|too much moving|drop|cut/i] },
   },
   {
+    id: "route-overpacked-insisted",
+    intent: "After hearing the arithmetic, a traveller who still wants the route gets it as a proposal.",
+    setup: {
+      trip: nov,
+      prefs: owner,
+      history: [
+        { role: "user", content: "Book it in: Osaka 2, Kyoto 2, Nara 2, Himeji 1, Hiroshima 2." },
+        { role: "assistant", content: "That is five cities in nine nights: 4 city changes, and about a fifth of the trip on trains. It is overpacked. I would drop Himeji and Nara and do them as day trips from Osaka and Kyoto. Do you want the cut, or the route as you asked?" },
+      ],
+    },
+    user: "I understand. We still want all five, exactly as I said.",
+    expect: { tools: ["propose_route"], proposal: "route" },
+  },
+  {
     id: "route-suggest",
     intent: "With no route in mind, the corridor suggestion is used and assessed.",
     setup: { trip: nov, prefs: owner },

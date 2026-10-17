@@ -26,6 +26,11 @@ export interface ToolContext {
   today: string;
   /** Accumulates across the turn; persisted on the assistant message. */
   proposal: Proposal | null;
+  /** Set when propose_route refused an overpacked route this turn. The
+   *  traveller hasn't answered the refusal yet, so "they insist" can't be
+   *  true until the next turn. (assess_route doesn't set it: the turn they
+   *  insist on, the model assesses again before proposing.) */
+  refusedOverpacked?: boolean;
 }
 
 export interface ToolOutcome {
@@ -82,6 +87,7 @@ const ProposeRoute = z.object({
     .min(1)
     .max(8)
     .refine(uniqueCities, DUP_MSG),
+  traveller_insists: z.boolean().optional(),
 });
 
 const SuggestRoute = z.object({ nights: z.number().int().min(1).max(30).optional() });
@@ -172,7 +178,7 @@ export const TOOLS: ModelTool[] = [
   {
     name: "propose_route",
     description:
-      "Propose the trip's cities and nights, in travel order, with a one-line reason each. Creates a proposal the traveller accepts or rejects in the interface — it is not applied by this call. A city with 0 nights is a day trip or an en-route stop. Assess first; if the verdict is overpacked, tell the traveller and propose the cut instead.",
+      "Propose the trip's cities and nights, in travel order, with a one-line reason each. Creates a proposal the traveller accepts or rejects in the interface — it is not applied by this call. A city with 0 nights is a day trip or an en-route stop. Assess first; if the verdict is overpacked, tell the traveller and propose the cut instead. An overpacked route is refused unless traveller_insists is true: set it only when you showed the traveller the arithmetic in an earlier reply and they answered that they want this route anyway. After a refusal, it stays refused for the rest of that reply.",
     input_schema: {
       type: "object",
       properties: {
@@ -190,6 +196,7 @@ export const TOOLS: ModelTool[] = [
             additionalProperties: false,
           },
         },
+        traveller_insists: { type: "boolean" },
       },
       required: ["cities"],
       additionalProperties: false,
@@ -599,6 +606,12 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const input = p.data.cities.map((c) => ({ cityId: c.city_id, nights: c.nights }));
       const a = assessRoute(input, facts, graph, nightsBetween(state.trip.startDate, state.trip.endDate));
       if (a.nightsMismatch) return fail(`${a.nightsMismatch} — change the nights so the route fits the trip, or change the trip dates first`);
+      // Overpacked is a conversation before it is a proposal: the traveller
+      // hears the arithmetic first, and only their answer can overrule it.
+      if (a.verdict === "overpacked" && (!p.data.traveller_insists || ctx.refusedOverpacked)) {
+        ctx.refusedOverpacked = true;
+        return fail(`not proposed: overpacked (${a.arithmetic}). Tell the traveller the arithmetic, suggest the cut and ask what they want. Propose this route as it is only after they answer that they want it anyway, with traveller_insists: true.`);
+      }
       const dated = allocateDates(state.trip.startDate, input, state.trip.endDate);
       const after: RouteCity[] = p.data.cities.map((c, i) => ({
         cityId: c.city_id,

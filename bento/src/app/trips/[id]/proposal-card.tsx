@@ -84,6 +84,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
               </li>
             ))}
           </ol>
+          {proposal.route.verdict === "overpacked" && <p className="mt-2 text-[0.85rem] font-medium text-ume">{t.overpacked}</p>}
           <p className={`mt-2 text-[0.85rem] ${proposal.route.verdict === "overpacked" ? "text-ume" : proposal.route.verdict === "tight" ? "text-tamago" : "text-ink-2"}`}>
             {proposal.route.arithmetic}
           </p>
@@ -140,7 +141,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
           <form action={acceptProposal} className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
-            <SubmitButton className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep" pending={t.accepting}>{t.accept}</SubmitButton>
+            <SubmitButton className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep" pending={t.accepting}>{proposal.route?.verdict === "overpacked" ? t.acceptAnyway : t.accept}</SubmitButton>
             {proposal.dates && (
               <label className="order-last flex min-h-10 basis-full cursor-pointer items-center gap-2 text-[0.84rem] text-ink-2">
                 <input type="checkbox" name="remember" className="size-4 accent-accent" />
