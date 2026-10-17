@@ -115,16 +115,24 @@ export function start() {
 // an httpOnly cookie other tabs can't watch, so this tab tells them.
 const channel = typeof window !== "undefined" && "BroadcastChannel" in window ? new BroadcastChannel("bento-analytics") : null;
 channel?.addEventListener("message", (e) => {
-  if (e.data === "stop") halt();
+  if (e.data === "stop" && started) {
+    halt();
+    window.location.reload();
+  }
 });
 
-/** The answer is "no" (or changed to it): stop sending, and remove what
- *  PostHog left in this browser, so a "no" leaves nothing of ours behind
- *  but the answer itself. Safe to call when it never started. */
+/** The answer is "no" (or changed to it): stop sending, remove what
+ *  PostHog left in this browser, and (if it was running) reload so nothing
+ *  queued goes out. A "no" leaves nothing of ours behind but the answer
+ *  itself. Safe to call when it never started. */
 export function stop() {
   const wasOn = started;
   halt();
-  if (wasOn) channel?.postMessage("stop");
+  if (!wasOn) return;
+  channel?.postMessage("stop");
+  // PostHog keeps batched and retrying requests after opting out; a reload
+  // drops them, and with the answer now "no" the SDK never loads again.
+  window.location.reload();
 }
 
 function halt() {
