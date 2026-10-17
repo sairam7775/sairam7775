@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { BentoLogo } from "@/components/logo";
 import { DateInput, PasswordInput, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
+import { copy } from "@/copy";
 
 /** Sign-in and sign-up: the form on a frosted tile, and beside it (on wide
  *  screens) a lacquer panel saying what the account is for. */
@@ -20,11 +21,11 @@ export function AuthShell({
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 py-8 sm:px-8">
       <header className="up flex items-center justify-between">
-        <Link href="/" className="inline-flex" aria-label="Bento home">
+        <Link href="/" className="inline-flex" aria-label={copy.common.homeLabel}>
           <BentoLogo />
         </Link>
         <Link href="/" className="min-h-10 rounded-full px-3 py-2 text-[0.88rem] text-ink-2 hover:bg-sunk hover:text-ink">
-          ← Home
+          {copy.common.homeBack}
         </Link>
       </header>
 
@@ -56,7 +57,7 @@ export function AsidePoint({ tone, title, children }: { tone: "accent" | "edamam
   );
 }
 
-export function Divider({ label = "or" }: { label?: string }) {
+export function Divider({ label = copy.common.or }: { label?: string }) {
   return (
     <div className="my-6 flex items-center gap-3">
       <span className="h-px flex-1 bg-rule" />

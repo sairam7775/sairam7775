@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { BentoLogo } from "@/components/logo";
 import { signOut } from "@/app/(auth)/actions";
+import { copy } from "@/copy";
 
 /** The signed-in header, one row: the logo goes home to the trips list,
  *  the way back sits beside it where people look for it, and Settings and
@@ -11,7 +12,7 @@ import { signOut } from "@/app/(auth)/actions";
 export function AppHeader({ back, children }: { back?: { href: string; label: string }; children?: ReactNode }) {
   return (
     <header className="up flex items-center gap-2 sm:gap-3">
-      <Link href="/trips" className="inline-flex shrink-0" aria-label="Bento — your trips">
+      <Link href="/trips" className="inline-flex shrink-0" aria-label={copy.common.tripsHomeLabel}>
         <BentoLogo wordClassName={back ? "hidden sm:inline" : ""} />
       </Link>
       {back && (
@@ -30,10 +31,10 @@ export function AppHeader({ back, children }: { back?: { href: string; label: st
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
-          <span className="sr-only sm:not-sr-only">Settings</span>
+          <span className="sr-only sm:not-sr-only">{copy.common.settings}</span>
         </Link>
         <form action={signOut}>
-          <button className="min-h-10 whitespace-nowrap rounded-full px-2.5 text-[0.85rem] text-ink-2 hover:bg-sunk hover:text-ink sm:px-3">Sign out</button>
+          <button className="min-h-10 whitespace-nowrap rounded-full px-2.5 text-[0.85rem] text-ink-2 hover:bg-sunk hover:text-ink sm:px-3">{copy.common.signOut}</button>
         </form>
       </div>
     </header>

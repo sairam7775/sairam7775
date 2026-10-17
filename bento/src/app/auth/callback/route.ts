@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
 import { isWrongBrowser, landSignedIn, linkFailed } from "@/lib/auth-landing";
+import { copy } from "@/copy";
 
 const EMAIL_TYPES: readonly EmailOtpType[] = ["recovery", "email", "signup", "magiclink", "invite", "email_change"];
 
@@ -31,5 +32,5 @@ export async function GET(request: NextRequest) {
     return landSignedIn(origin, next, data.user);
   }
 
-  return NextResponse.redirect(`${origin}/sign-in?${new URLSearchParams({ error: "That link is incomplete. Try signing in again." })}`);
+  return NextResponse.redirect(`${origin}/sign-in?${new URLSearchParams({ error: copy.auth.errors.linkIncomplete })}`);
 }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTran
 import { createPortal } from "react-dom";
 import { markTourSeen } from "./actions";
 import { TOURS, type TourId } from "./steps";
+import { copy } from "@/copy";
 import { PAD, placeCard, type Box } from "./place";
 
 const CARD_W = 360;
@@ -119,22 +120,22 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
         style={style}
       >
         <p className="mono text-[0.7rem] uppercase tracking-[0.1em] text-ink-3">
-          Step {i + 1} of {steps.length}
+          {copy.tour.stepOf(i + 1, steps.length)}
         </p>
         <h2 id="tour-title" className="mt-1 text-[1.15rem] font-bold">{step.title}</h2>
         <p id="tour-body" className="mt-1.5 text-[0.92rem] leading-relaxed text-ink-2">{step.body}</p>
         <div className="mt-4 flex items-center gap-2">
           <button type="button" onClick={close} className="min-h-10 rounded-full px-3 text-[0.85rem] text-ink-2 hover:bg-sunk hover:text-ink">
-            Skip
+            {copy.tour.skip}
           </button>
           <span className="ml-auto" />
           {i > 0 && (
             <button type="button" onClick={back} className="min-h-10 rounded-full border border-rule px-4 text-[0.88rem] hover:bg-sunk">
-              Back
+              {copy.tour.back}
             </button>
           )}
           <button type="button" onClick={next} className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep">
-            {last ? "Done" : "Next"}
+            {last ? copy.tour.done : copy.tour.next}
           </button>
         </div>
       </div>

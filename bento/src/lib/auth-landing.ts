@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { User } from "@supabase/supabase-js";
 import { PASSWORD_RESET_COOKIE, PASSWORD_RESET_PATH, PASSWORD_RESET_TTL_S, signResetMarker } from "@/lib/auth-config";
+import { copy } from "@/copy";
 
 /** A code exchange that failed because this browser isn't the one that asked
  *  for the link (PKCE keeps its half of the secret in a cookie). */
@@ -13,10 +14,10 @@ export function isWrongBrowser(error: { code?: string } | null): boolean {
 export function linkFailed(origin: string, next: string, wrongBrowser = false): NextResponse {
   const reset = next.startsWith(PASSWORD_RESET_PATH);
   const message = wrongBrowser
-    ? `That ${reset ? "reset" : "sign-in"} link was opened in a different browser from the one that asked for it. Open it there, or ask for a new one.`
+    ? copy.auth.errors.linkOtherBrowser(reset)
     : reset
-      ? "That reset link has expired or was already used. Ask for a new one."
-      : "That sign-in link has expired or was already used. Try signing in again.";
+      ? copy.auth.errors.resetLinkUsed
+      : copy.auth.errors.signInLinkUsed;
   const page = reset ? "/forgot-password" : "/sign-in";
   return NextResponse.redirect(`${origin}${page}?${new URLSearchParams({ error: message })}`);
 }

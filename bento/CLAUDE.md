@@ -289,6 +289,14 @@ usefulness, not tone.
 
 ## Conventions
 
+- Every word a page shows lives in `src/copy/en.ts` (`import { copy } from
+  "@/copy"`). No text in components, actions or error helpers: add a line
+  there. A sentence with a value in it is a function, so word order stays in
+  the file. `copy.test.ts` refuses empty lines and internal words (stub,
+  tier…). Not in it: Bento Man's prompt (instructions to the model) and place
+  data (the database). A second language is a file satisfying `Copy`.
+  Moving in progress: the trip page, vault, trips list, home and admin
+  still have their own text.
 - Server Components by default; `"use client"` only where interaction needs it.
 - Server actions for mutations, with Zod validation at the boundary.
 - Tailwind v4 theme tokens in `globals.css` — use `text-ink-2`, `bg-surface`,
