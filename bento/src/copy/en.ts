@@ -929,11 +929,11 @@ export const en = {
       },
       bentoMan: {
         heading: "Bento Man and the confirmation reader",
-        body: "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Google (Gemini). On the plan Bento currently uses, Google may use this text to improve its products, so don't write anything to Bento Man you wouldn't want stored by Google.\n\nWhen you paste a confirmation email, its text goes to the provider only to fill in the booking form. Nothing is saved until you press Save.",
+        body: "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Google (Gemini). On the plan Bento currently uses, Google may use this text to improve its products, so don't write anything to Bento Man you wouldn't want stored by Google.\n\nWhen you paste a confirmation email into the booking form, its text, including any booking reference in it, goes to Anthropic (Claude) only to fill in the form. Nothing is saved until you press Save. Booking references are never sent to Bento Man.",
       },
       analytics: {
         heading: "Usage analytics (only if you say yes)",
-        body: "If you allow it, Bento records which pages you open, which buttons you press, how long Bento Man takes to answer, whether you accept its plans, and errors. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. Screen recordings used to find problems blank out all text and every field, so what you type and your bookings are never recorded.\n\nYou can turn it off any time in Settings. Saying no changes nothing else about Bento.",
+        body: "If you allow it, Bento records which pages you open (the page, not what's in its address), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, and errors. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. Screen recordings used to find problems blank out all text and every field, so what you type and your bookings are never recorded.\n\nYou can turn it off any time in Settings. Saying no changes nothing else about Bento.",
       },
       cookies: {
         heading: "Cookies",
@@ -941,7 +941,7 @@ export const en = {
       },
       who: {
         heading: "Who else handles your data",
-        body: "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man and the confirmation reader) and, only with your consent, PostHog (analytics, EU). Each handles data only to provide its service to Bento.",
+        body: "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU). Each handles data only to provide its service to Bento.",
       },
       keep: {
         heading: "How long it's kept",

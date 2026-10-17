@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { BookingKind } from "@/lib/types";
 import { saveBooking } from "./actions";
 import { DateInput } from "@/components/form-controls";
 import { copy } from "@/copy";
-import { reasonOf, track } from "@/lib/analytics/client";
+import { dropParams, reasonOf, track } from "@/lib/analytics/client";
 
 const t = copy.vault.form;
 
@@ -69,6 +69,10 @@ export function BookingForm({ tripId, cities, defaultType, defaultDate, defaultP
   const [type, setType] = useState<BookingKind>((KINDS.find((k) => k.id === defaultType)?.id ?? "accommodation") as BookingKind);
   const [open, setOpen] = useState(Boolean(defaultType));
   const [paste, setPaste] = useState("");
+  // A gap card's prefill is in the form now; keep the booking name out of the address bar.
+  useEffect(() => {
+    if (defaultTitle || defaultPlaceId) dropParams(["title", "place"]);
+  }, [defaultTitle, defaultPlaceId]);
   const [reading, setReading] = useState(false);
   const [readError, setReadError] = useState<string | null>(null);
   // Set when a pasted confirmation gave a date but no time, to say so.

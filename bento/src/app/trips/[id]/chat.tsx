@@ -7,7 +7,7 @@ import { BentoLoader } from "@/components/loading";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
-import { reasonOf, track } from "@/lib/analytics/client";
+import { dropParams, reasonOf, track } from "@/lib/analytics/client";
 
 const t = copy.chat;
 
@@ -44,6 +44,10 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
     setMessages(initial);
   }, [initial]);
   const [input, setInput] = useState(ask ?? "");
+  // The question is in the box now; keep it out of the address bar.
+  useEffect(() => {
+    if (ask) dropParams(["ask"]);
+  }, [ask]);
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
   const [activity, setActivity] = useState<string | null>(null);

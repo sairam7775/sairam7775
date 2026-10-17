@@ -1,6 +1,7 @@
 "use client";
 
 import posthog from "posthog-js";
+import { pathOnly } from "./url";
 
 /** The one door to PostHog. Nothing here runs until the traveller has said
  *  yes (`start`), and every call is a no-op before that, so feature code can
@@ -18,6 +19,22 @@ let started = false;
 let pendingUser: string | null = null;
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
+
+type Bag = Record<string, unknown> | undefined;
+const scrub = (bag: Bag) => {
+  if (!bag) return;
+  for (const [k, v] of Object.entries(bag)) if (typeof v === "string") bag[k] = pathOnly(v);
+};
+
+/** Removes the named parameters from the address bar without a reload, once
+ *  the page has read them. */
+export function dropParams(names: string[]) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (!names.some((n) => url.searchParams.has(n))) return;
+  for (const n of names) url.searchParams.delete(n);
+  window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+}
 
 export const analyticsConfigured = () => Boolean(KEY);
 
@@ -48,6 +65,13 @@ export function start() {
       maskTextSelector: "*",
     },
     disable_surveys: true,
+    before_send: (event) => {
+      if (!event) return event;
+      scrub(event.properties);
+      scrub(event.$set as Bag);
+      scrub(event.$set_once as Bag);
+      return event;
+    },
   });
   initialized = true;
   started = true;
