@@ -57,7 +57,7 @@ export function BookingsColumn({
     <div className="tile up px-4 py-4" style={{ animationDelay: ".24s" }} aria-busy={busy}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.heading}</span>
-        <Link href={`/trips/${tripId}/vault`} className="text-[0.78rem] font-medium text-accent hover:underline">{t.all}</Link>
+        <Link href={`/trips/${tripId}/vault`} className="text-[0.78rem] font-medium text-accent-ink hover:underline">{t.all}</Link>
       </div>
       <p className="mt-1.5 text-[0.8rem] leading-snug text-ink-3">
         {t.howTo(shortDate(date))}
@@ -71,7 +71,7 @@ export function BookingsColumn({
 
       {sorted.length === 0 ? (
         <p className="mt-3 text-[0.84rem] leading-snug text-ink-2">
-          {t.emptyBefore} <Link href={`/trips/${tripId}/vault`} className="text-accent underline underline-offset-2">{t.emptyLink}</Link>{t.emptyAfter}
+          {t.emptyBefore} <Link href={`/trips/${tripId}/vault`} className="text-accent-ink underline underline-offset-2">{t.emptyLink}</Link>{t.emptyAfter}
         </p>
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
@@ -103,7 +103,7 @@ export function BookingsColumn({
                       <button type="button" disabled={busy} onClick={() => onRemove(b)} className="ml-auto min-h-10 rounded-full px-2.5 text-ink-3 hover:bg-ume-soft hover:text-ume disabled:opacity-50">{t.takeOut}</button>
                     </>
                   ) : !range ? (
-                    <Link href={`/trips/${tripId}/vault`} className="inline-flex min-h-10 items-center text-accent underline underline-offset-2">{t.addDate}</Link>
+                    <Link href={`/trips/${tripId}/vault`} className="inline-flex min-h-10 items-center text-accent-ink underline underline-offset-2">{t.addDate}</Link>
                   ) : fits ? (
                     <button type="button" disabled={busy} onClick={() => onAdd(b)} className="ml-auto min-h-10 rounded-full border border-rule px-3 font-medium text-ink hover:bg-sunk disabled:opacity-50">
                       {t.add}

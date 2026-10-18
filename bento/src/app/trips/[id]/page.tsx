@@ -141,7 +141,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           <p className="text-[0.86rem] leading-relaxed text-ink-2">{copy.share.who}</p>
           <form action={shareTrip}>
             <input type="hidden" name="tripId" value={id} />
-            <SubmitButton pending={copy.common.saving} className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">
+            <SubmitButton pending={copy.common.saving} className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-deep">
               {copy.share.turnOn}
             </SubmitButton>
           </form>
@@ -214,7 +214,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                     {state.cities.length > 0 && (
                       <p className="text-[0.84rem] text-ink-3">{t.edit.moveNote}</p>
                     )}
-                    <SubmitButton pending={copy.common.saving} className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">{t.edit.save}</SubmitButton>
+                    <SubmitButton pending={copy.common.saving} className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-deep">{t.edit.save}</SubmitButton>
                   </form>
                   <form action={setDatePermission} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.86rem] text-ink-2">
                     <input type="hidden" name="tripId" value={id} />
@@ -232,7 +232,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               share={state.cities.length > 0 || shareUrl ? sharePanel : null}
             >
               {/* On a phone the conversation sits below the whole plan. */}
-              <a href="#bento-man" className="inline-flex min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-white hover:bg-accent-deep lg:hidden">
+              <a href="#bento-man" className="inline-flex min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-on-accent hover:bg-accent-deep lg:hidden">
                 {t.askBentoMan}
               </a>
             </TripActions>
@@ -271,7 +271,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                   ))}
                 </span>
               )}
-              <span className="ml-auto text-[0.85rem] font-medium text-accent sm:ml-0">{t.bookingsBar.open}</span>
+              <span className="ml-auto text-[0.85rem] font-medium text-accent-ink sm:ml-0">{t.bookingsBar.open}</span>
             </Link>
           )}
 

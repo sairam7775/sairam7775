@@ -66,7 +66,7 @@ export function CoverageRibbon({ nights, covered }: { nights: NightCoverage[]; c
 
       <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${nights.length}, minmax(0, 1fr))` }}>
         {nights.map((n) => (
-          <span key={n.date} className={`mono text-center text-[0.62rem] ${n.covered ? "text-rice/60" : "font-medium text-ume"}`}>
+          <span key={n.date} className={`mono text-center text-[0.62rem] ${n.covered ? "text-rice/60" : "font-medium text-ume-bright"}`}>
             {dayNum(n.date)}
           </span>
         ))}

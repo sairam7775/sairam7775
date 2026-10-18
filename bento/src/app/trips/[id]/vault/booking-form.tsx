@@ -122,7 +122,7 @@ export function BookingForm({ heading, tripId, cities, defaultType, defaultDate,
     <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
       <div className="min-w-0">{heading}</div>
       {!open && (
-        <button onClick={() => setOpen(true)} className="min-h-10 rounded-full bg-accent px-5 text-[0.88rem] font-medium text-white hover:bg-accent-deep">
+        <button onClick={() => setOpen(true)} className="min-h-10 rounded-full bg-accent px-5 text-[0.88rem] font-medium text-on-accent hover:bg-accent-deep">
           {t.open}
         </button>
       )}
@@ -255,7 +255,7 @@ export function BookingForm({ heading, tripId, cities, defaultType, defaultDate,
             <input id="notes" name="notes" value={values.notes} onChange={(e) => set("notes", e.target.value)} placeholder={t.notesPlaceholder} className={field} />
           </div>
 
-          <button type="submit" className="mt-1 min-h-10 self-start rounded-full bg-accent px-5 text-[0.88rem] font-medium text-white hover:bg-accent-deep">
+          <button type="submit" className="mt-1 min-h-10 self-start rounded-full bg-accent px-5 text-[0.88rem] font-medium text-on-accent hover:bg-accent-deep">
             {t.save}
           </button>
         </form>

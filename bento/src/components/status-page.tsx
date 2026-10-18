@@ -21,6 +21,6 @@ export function StatusPage({ kicker, title, children }: { kicker: string; title:
 }
 
 export const primaryButton =
-  "inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-[0.95rem] font-medium text-white hover:bg-accent-deep";
+  "inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-[0.95rem] font-medium text-on-accent hover:bg-accent-deep";
 export const secondaryButton =
   "inline-flex min-h-11 items-center rounded-full border border-rule px-5 text-[0.95rem] text-ink hover:bg-sunk";

@@ -263,7 +263,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
             readOnly={busy}
             className="min-h-11 flex-1 resize-none rounded-tile border border-rule bg-paper px-4 py-2.5 text-[0.95rem] leading-snug read-only:opacity-60"
           />
-          <button type="submit" disabled={busy || !input.trim()} className="h-11 shrink-0 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep disabled:opacity-50">
+          <button type="submit" disabled={busy || !input.trim()} className="h-11 shrink-0 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-on-accent hover:bg-accent-deep disabled:opacity-50">
             {t.send}
           </button>
         </div>

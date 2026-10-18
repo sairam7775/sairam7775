@@ -12,16 +12,20 @@ colors:
   rice: "#fbf8f3"           # text on lacquer
   ink: "#221c1e"
   ink-2: "#4a4145"
-  ink-3: "#8c8388"
+  ink-3: "#6f666b"
   rule: "#eae3dc"
-  accent: "#ff7757"         # salmon — primary actions only
+  accent: "#ff7757"         # salmon — primary actions only (a fill)
   accent-deep: "#e85f3f"
   accent-soft: "#ffe9e2"
-  ume: "#e5484d"            # blocking
+  accent-ink: "#b34128"     # salmon as text: links, labels, focus ring
+  on-accent: "#221c1e"      # text on a salmon fill
+  ume: "#bf2e34"            # blocking
   ume-soft: "#fbe2e3"
-  edamame: "#3f9a60"        # fine / covered
+  on-ume: "#ffffff"         # text on an ume fill
+  ume-bright: "#f26b6f"     # ume as text on lacquer (both themes)
+  edamame: "#2a7645"        # fine / covered
   edamame-soft: "#e2f4e8"
-  tamago: "#b07b00"         # tight / worth knowing
+  tamago: "#875d00"         # tight / worth knowing
   tamago-bright: "#ffc94a"
   tamago-soft: "#fff3d1"
   lavender-soft: "#e4e7fb"
@@ -39,8 +43,11 @@ colors-dark:
   accent: "#ff8a6e"
   accent-deep: "#ff7757"
   accent-soft: "#3a231d"
+  accent-ink: "#ff8a6e"
+  on-accent: "#221c1e"
   ume: "#f26b6f"
   ume-soft: "#3a1f21"
+  on-ume: "#221c1e"
   edamame: "#6fcb8e"
   edamame-soft: "#1e3327"
   tamago: "#ffd066"
@@ -115,7 +122,7 @@ components:
   button-primary:
     backgroundColor: "{colors.accent}"
     hoverBackground: "{colors.accent-deep}"
-    textColor: "#ffffff"
+    textColor: "{colors.on-accent}"   # dark: white on salmon is 2.6:1
     rounded: "{rounded.full}"
     minHeight: 40px
     padding: 10px 20px
@@ -177,7 +184,7 @@ Bento plans a first trip to Japan and tells the truth about it. The interface is
 
 The page is warm rice white (`{colors.paper}`), never pure white; tiles are white (`{colors.surface}`) and float on a soft, low shadow. Food colours carry meaning and nothing else:
 
-- **Salmon** (`{colors.accent}`) — the single accent. Primary buttons, links that move you forward, focus rings. If two things on screen are salmon, one of them is wrong.
+- **Salmon** (`{colors.accent}`) — the single accent. Primary buttons, links that move you forward, focus rings. If two things on screen are salmon, one of them is wrong. As a fill it carries dark text (`text-on-accent`); as text, a link or the focus ring it is `{colors.accent-ink}`, the shade that reads on rice white.
 - **Umeboshi** (`{colors.ume}`) — something blocks the trip: a night with no bed, an over-packed day.
 - **Edamame** (`{colors.edamame}`) — covered, fine, accepted.
 - **Tamago** (`{colors.tamago}`) — tight, or worth knowing.
@@ -195,7 +202,9 @@ Use the Tailwind tokens (`bg-paper`, `text-ink-2`, `border-rule`, `bg-accent`) �
 
 > Implementation note: the dark palette must override variables on `:root` inside the media query. A nested `@theme` block inside `@media` is hoisted by Tailwind v4 and applies unconditionally — that bug once made the app permanently dark.
 
-Text: `{colors.ink}` for headings and body, `{colors.ink-2}` for secondary copy, `{colors.ink-3}` for captions and metadata only (it is below body contrast — never use it for anything the traveller must read to act).
+Text: `{colors.ink}` for headings and body, `{colors.ink-2}` for secondary copy, `{colors.ink-3}` for captions and metadata only (it passes 4.5:1, but it is quiet — never use it for anything the traveller must read to act).
+
+**Contrast.** Every text colour passes WCAG 2.2 AA (4.5:1) on paper, surface, sunk and the soft fills, in both themes; the focus ring passes 3:1. Salmon text is `text-accent-ink`, never `text-accent` (2.5:1), except on lacquer, where salmon itself reads. Text on a salmon fill is `text-on-accent`, on an ume fill `text-on-ume`, and ume as text on lacquer is `text-ume-bright`. A new colour pair gets checked before it ships (Lighthouse or axe on the page).
 
 ## Typography
 

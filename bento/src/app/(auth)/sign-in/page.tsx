@@ -63,7 +63,7 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
 
       <p className="mt-6 text-[0.92rem] text-ink-2">
         {t.newHere}{" "}
-        <Link href="/sign-up" className="font-medium text-accent underline underline-offset-2">
+        <Link href="/sign-up" className="font-medium text-accent-ink underline underline-offset-2">
           {t.createAccount}
         </Link>
       </p>

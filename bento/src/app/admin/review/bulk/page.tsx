@@ -65,7 +65,7 @@ export default async function BulkReview({ searchParams }: PageProps<"/admin/rev
       <p className="mt-2 max-w-xl text-[0.95rem] leading-relaxed text-ink-2">
         Tick the places you&rsquo;re happy with and verify them together. Each is signed with your name and goes
         straight to travellers and Bento Man, exactly as if you&rsquo;d verified it in the{" "}
-        <Link href="/admin/review" className="text-accent underline underline-offset-2">queue</Link>. Places missing a duration,
+        <Link href="/admin/review" className="text-accent-ink underline underline-offset-2">queue</Link>. Places missing a duration,
         a tag or a source can&rsquo;t be ticked until they&rsquo;re filled in.
       </p>
       <p className="mt-2 max-w-xl text-[0.88rem] leading-relaxed text-ink-3">

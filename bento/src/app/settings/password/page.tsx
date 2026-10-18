@@ -33,7 +33,7 @@ export default async function ChangePassword({ searchParams }: PageProps<"/setti
           {!reset && (
             <p className="mt-6 text-[0.9rem] text-ink-2">
               {t.forgotCurrent}{" "}
-              <Link href="/forgot-password" className="font-medium text-accent underline underline-offset-2">{t.resetByEmail}</Link>
+              <Link href="/forgot-password" className="font-medium text-accent-ink underline underline-offset-2">{t.resetByEmail}</Link>
             </p>
           )}
         </div>

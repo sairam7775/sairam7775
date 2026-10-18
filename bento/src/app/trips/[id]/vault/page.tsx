@@ -91,7 +91,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
       <AnalyticsUser id={user.id} />
       <AppHeader back={{ href: `/trips/${id}`, label: t.back }}>
         {report.blocking > 0 && (
-          <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-white">{t.blocking(report.blocking)}</span>
+          <span className="mono pop rounded-full bg-ume px-3 py-1.5 text-[0.78rem] text-on-ume">{t.blocking(report.blocking)}</span>
         )}
       </AppHeader>
 

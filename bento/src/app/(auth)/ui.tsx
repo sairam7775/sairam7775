@@ -106,7 +106,7 @@ export function Field({
 
 export function Submit({ label, pending }: { label: string; pending: string }) {
   return (
-    <SubmitButton pending={pending} className="mt-2 min-h-11 rounded-full bg-accent px-5 text-[0.95rem] font-medium text-white hover:bg-accent-deep">
+    <SubmitButton pending={pending} className="mt-2 min-h-11 rounded-full bg-accent px-5 text-[0.95rem] font-medium text-on-accent hover:bg-accent-deep">
       {label}
     </SubmitButton>
   );
