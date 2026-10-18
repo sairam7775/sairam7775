@@ -45,8 +45,7 @@ begin
     new.trip_id    := old.trip_id;
     new.plan       := old.plan;
     new.created_at := old.created_at;
-    return new;
-  end if;
+  else
   new.plan := jsonb_build_object(
     'start', (select start_date from trips where id = new.trip_id),
     'end',   (select end_date from trips where id = new.trip_id),
@@ -67,6 +66,17 @@ begin
       from itinerary_days d left join cities c on c.id = d.city_id
       where d.trip_id = new.trip_id), '[]'::jsonb)
   );
+  end if;
+  -- Hard days are days of the saved plan: inside its dates, or the admin
+  -- page couldn't place them. (The app checks first; this is the backstop
+  -- for a direct API call or a trip edited in another tab meanwhile.)
+  if exists (
+    select 1 from unnest(new.hard_days) h
+    where new.plan->>'start' is null or new.plan->>'end' is null
+       or h < (new.plan->>'start')::date or h > (new.plan->>'end')::date
+  ) then
+    raise exception 'hard days must be inside the trip''s dates' using errcode = 'check_violation';
+  end if;
   return new;
 end;
 $$;
