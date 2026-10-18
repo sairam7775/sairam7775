@@ -48,6 +48,8 @@ begin
     return new;
   end if;
   new.plan := jsonb_build_object(
+    'start', (select start_date from trips where id = new.trip_id),
+    'end',   (select end_date from trips where id = new.trip_id),
     'route', coalesce((
       select jsonb_agg(jsonb_build_object('city', coalesce(c.name, tc.city_id), 'nights', tc.nights) order by tc.sort_order)
       from trip_cities tc left join cities c on c.id = tc.city_id
@@ -99,6 +101,5 @@ create policy "own trip_reviews change" on trip_reviews
       and t.end_date is not null and t.end_date <= current_date
   ));
 
-create policy "own trip_reviews delete" on trip_reviews
-  for delete to authenticated
-  using (exists (select 1 from trips t where t.id = trip_id and t.user_id = (select auth.uid())));
+-- No delete policy: deleting and answering again would make a new plan.
+-- A review goes with its trip, or with the account (the cascade).

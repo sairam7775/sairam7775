@@ -308,6 +308,7 @@ export const en = {
     },
     hardDaysLabel: "Which days were hardest to follow?",
     hardDay: (day: number, date: string, city: string) => `Day ${day} · ${date} · ${city}`,
+    hardDayNoCity: (day: number, date: string) => `Day ${day} · ${date}`,
     noteLabel: "Anything else?",
     notePlaceholder: "What happened, what you changed, what you'd want Bento to know",
     send: "Send",

@@ -21,7 +21,7 @@ import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
 import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
-import { reviewFromRow, reviewOpen } from "@/lib/trips/review";
+import { datesBetween, reviewFromRow, reviewOpen, snapshotFromRow } from "@/lib/trips/review";
 import { TripReviewCard } from "./trip-review";
 import type { CoverageTier } from "@/lib/types";
 
@@ -85,9 +85,19 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   // "How did the plan hold up?" once the trip has ended (0019).
   const reviewing = reviewOpen(state.trip, state.cities.length > 0, today);
   const { data: reviewRow } = reviewing
-    ? await db.from("trip_reviews").select("outcome, challenges, hard_days, note").eq("trip_id", id).maybeSingle()
+    ? await db.from("trip_reviews").select("outcome, challenges, hard_days, note, plan").eq("trip_id", id).maybeSingle()
     : { data: null };
   const review = reviewFromRow(reviewRow);
+  // An answered trip's hard days are chosen from the plan saved with the
+  // first answer, even if the trip has moved since; a new answer, from today's.
+  const reviewedPlan = review ? snapshotFromRow(reviewRow?.plan) : null;
+  const dayWord = (date: string) => fmt(date, { weekday: "short", day: "numeric", month: "short" });
+  const reviewDays = reviewedPlan
+    ? datesBetween(reviewedPlan.start, reviewedPlan.end).map((date, i) => {
+        const city = reviewedPlan.days.find((d) => d.date === date)?.city;
+        return { date, label: city ? copy.review.hardDay(i + 1, dayWord(date), city) : copy.review.hardDayNoCity(i + 1, dayWord(date)) };
+      })
+    : dayList.map(([date, meta], i) => ({ date, label: copy.review.hardDay(i + 1, dayWord(date), meta.cityName) }));
   // For the Bookings column. Never the reference: it is decrypted only on
   // the vault page.
   const { data: bookingRows } = await db
@@ -186,7 +196,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
             <TripReviewCard
               tripId={id}
               review={review}
-              days={dayList.map(([date, meta], i) => ({ date, label: copy.review.hardDay(i + 1, fmt(date, { weekday: "short", day: "numeric", month: "short" }), meta.cityName) }))}
+              days={reviewDays}
             />
           )}
           {typeof sp.reviewed === "string" && (

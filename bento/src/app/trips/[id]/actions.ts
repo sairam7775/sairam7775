@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { parseReview, reviewOpen } from "@/lib/trips/review";
+import { parseReview, reviewOpen, snapshotFromRow } from "@/lib/trips/review";
 import type { TripState } from "@/lib/bento-man/store";
 
 const Ids = z.object({ tripId: z.string().uuid(), messageId: z.string().uuid() });
@@ -106,7 +106,11 @@ export async function saveTripReview(formData: FormData) {
   const today = new Date().toISOString().slice(0, 10);
   if (!reviewOpen(trip, state.cities.length > 0, today)) back(copy.review.errors.notYet);
 
-  const parsed = parseReview(formData, trip);
+  // A changed answer picks its hard days from the plan saved with the first
+  // one (its dates then), not from today's trip.
+  const { data: saved } = await db.from("trip_reviews").select("plan").eq("trip_id", id).maybeSingle();
+  const plan = snapshotFromRow(saved?.plan);
+  const parsed = parseReview(formData, plan ? { startDate: plan.start, endDate: plan.end } : trip);
   if (!parsed.ok) back(parsed.error);
   const { review } = parsed;
   // The plan the answer is about is saved by the database with the first

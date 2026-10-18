@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CHALLENGES, HARD_DAYS_MAX, NOTE_MAX, OUTCOMES, parseReview, reviewFromRow, reviewOpen, snapshotFromRow } from "../review";
+import { CHALLENGES, datesBetween, HARD_DAYS_MAX, NOTE_MAX, OUTCOMES, parseReview, reviewFromRow, reviewOpen, snapshotFromRow } from "../review";
 import { copy } from "@/copy";
 
 const trip = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -57,6 +57,8 @@ describe("reviewFromRow", () => {
 describe("snapshotFromRow", () => {
   it("reads the plan the database saved (0019 trigger), and nothing else", () => {
     const saved = {
+      start: "2026-11-22",
+      end: "2026-11-24",
       route: [{ city: "Osaka", nights: 2 }, { city: "Kyoto", nights: 4 }],
       days: [
         { date: "2026-11-23", city: "Kyoto", stops: [{ time: "07:00", name: "Kiyomizu-dera" }, { time: null, name: "Somewhere" }] },
@@ -66,6 +68,15 @@ describe("snapshotFromRow", () => {
     expect(snapshotFromRow(saved)).toEqual(saved);
     expect(snapshotFromRow(null)).toBeNull();
     expect(snapshotFromRow({ route: "Kyoto" })).toBeNull();
+  });
+});
+
+describe("datesBetween", () => {
+  it("lists every date, both ends included", () => {
+    expect(datesBetween("2026-12-30", "2027-01-02")).toEqual(["2026-12-30", "2026-12-31", "2027-01-01", "2027-01-02"]);
+    expect(datesBetween("2026-11-20", "2026-11-20")).toEqual(["2026-11-20"]);
+    expect(datesBetween("2026-11-21", "2026-11-20")).toEqual([]);
+    expect(datesBetween(null, "2026-11-20")).toEqual([]);
   });
 });
 

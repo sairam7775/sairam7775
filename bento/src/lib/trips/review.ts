@@ -55,6 +55,9 @@ export function parseReview(form: FormData, trip: { startDate: string | null; en
  *  the stops), and an answer is about the plan they followed. This is its
  *  shape, for reading it back. */
 export const PlanSnapshotSchema = z.object({
+  /** The trip's dates then: the days an answer's hard days are chosen from. */
+  start: z.string().nullable(),
+  end: z.string().nullable(),
   route: z.array(z.object({ city: z.string(), nights: z.number() })),
   days: z.array(z.object({
     date: z.string(),
@@ -63,6 +66,14 @@ export const PlanSnapshotSchema = z.object({
   })),
 });
 export type PlanSnapshot = z.infer<typeof PlanSnapshotSchema>;
+
+/** Every date from start to end, inclusive ("YYYY-MM-DD", read as UTC). */
+export function datesBetween(start: string | null, end: string | null): string[] {
+  if (!start || !end || end < start) return [];
+  const out: string[] = [];
+  for (let t = Date.parse(`${start}T00:00:00Z`); t <= Date.parse(`${end}T00:00:00Z`) && out.length < 400; t += 86_400_000) out.push(new Date(t).toISOString().slice(0, 10));
+  return out;
+}
 
 /** A stored snapshot, or null if it isn't one. */
 export const snapshotFromRow = (v: unknown): PlanSnapshot | null => {
