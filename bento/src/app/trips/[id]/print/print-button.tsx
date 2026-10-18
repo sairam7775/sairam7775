@@ -11,7 +11,8 @@ export function PrintButton({ days, bookings }: { days: number; bookings: number
     <button
       type="button"
       onClick={() => {
-        track("plan_downloaded", { days, bookings });
+        // The print window opened; whether a PDF was saved can't be known.
+        track("plan_print_opened", { days, bookings });
         window.print();
       }}
       className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep"

@@ -18,7 +18,7 @@ export interface DocBooking extends PlannableBooking {
 }
 
 export type DocEntry =
-  | { kind: "booking"; time: string | null; title: string; type: string; part: "starts" | "ends" | "all-day" }
+  | { kind: "booking"; time: string | null; end: string | null; title: string; type: string; part: "starts" | "ends" | "all-day" }
   | {
       kind: "stop";
       time: string | null;
@@ -28,7 +28,8 @@ export type DocEntry =
       /** How to get here from the stop before. */
       getThere: string | null;
       getThereMin: number | null;
-      /** The station name (not its id). */
+      /** The nearest station or stop by name (not its id). Some are bus
+       *  stops or piers, so the name is shown as the graph gives it. */
       station: string | null;
       stationWalkMin: number | null;
       hours: { opens: string; closes: string } | null;
@@ -48,8 +49,9 @@ export interface DocDay {
 export interface PlanDocument {
   route: { city: string; nights: number }[];
   days: DocDay[];
-  /** Every booking, earliest first; ones without a date last. */
-  bookings: { title: string; type: string; first: string | null; last: string | null }[];
+  /** Every booking, earliest first; ones without a date last. Times are
+   *  null when only a date was given. */
+  bookings: { title: string; type: string; first: string | null; last: string | null; startTime: string | null; endTime: string | null }[];
 }
 
 export function planDocument(
@@ -68,7 +70,7 @@ export function planDocument(
       .map((b) => ({ b, slot: bookingSlot(b, date) }));
     const bookingEntries = blocks.map(({ b, slot }) => ({
       at: slot.startMin,
-      entry: { kind: "booking" as const, time: slot.startMin == null ? null : clock(slot.startMin), title: b.title, type: b.type, part: slot.part },
+      entry: { kind: "booking" as const, time: slot.startMin == null ? null : clock(slot.startMin), end: slot.endMin == null ? null : clock(slot.endMin), title: b.title, type: b.type, part: slot.part },
     }));
     const stops = [...(planned.get(date)?.items ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
     const stopEntries = stops.map((it, n) => {
@@ -110,7 +112,11 @@ export function planDocument(
   const listed = bookings
     .map((b) => {
       const r = bookingDates(b);
-      return { title: b.title, type: b.type, first: r?.first ?? null, last: r?.last ?? null };
+      return {
+        title: b.title, type: b.type, first: r?.first ?? null, last: r?.last ?? null,
+        startTime: b.startsAt && b.startTimeKnown !== false ? b.startsAt.slice(11, 16) : null,
+        endTime: b.endsAt && b.endTimeKnown !== false ? b.endsAt.slice(11, 16) : null,
+      };
     })
     .sort((a, b) => (a.first == null ? 1 : b.first == null ? -1 : a.first.localeCompare(b.first)));
 

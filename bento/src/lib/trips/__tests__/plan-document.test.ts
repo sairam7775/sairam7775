@@ -47,7 +47,7 @@ describe("planDocument", () => {
 
   it("shows a stay on each day it covers, and only bookings in the plan", () => {
     const middle = doc.days[2].entries;
-    expect(middle).toEqual([{ kind: "booking", time: null, title: "Hotel Kanra", type: "accommodation", part: "all-day" }]);
+    expect(middle).toEqual([{ kind: "booking", time: null, end: null, title: "Hotel Kanra", type: "accommodation", part: "all-day" }]);
     expect(JSON.stringify(doc.days)).not.toContain("Dinner, not in the plan");
   });
 
@@ -57,7 +57,13 @@ describe("planDocument", () => {
     expect(second).toMatchObject({ kind: "stop", getThere: "Walk", getThereMin: 12, station: null, stationWalkMin: null });
   });
 
-  it("lists every booking, dated ones first, and never a reference", () => {
+  it("keeps a same-day booking's end time", () => {
+    expect(doc.days[1].entries[1]).toMatchObject({ kind: "booking", title: "Tea ceremony", time: "09:00", end: "10:00" });
+  });
+
+  it("lists every booking, dated ones first, with its times, and never a reference", () => {
+    expect(doc.bookings.find((b) => b.title === "Hotel Kanra")).toMatchObject({ startTime: "15:00", endTime: "10:00" });
+    expect(doc.bookings.find((b) => b.title === "Pass, no date")).toMatchObject({ startTime: null, endTime: null });
     expect(doc.bookings.map((b) => [b.title, b.first, b.last])).toEqual([
       ["Dinner, not in the plan", "2026-11-20", "2026-11-20"],
       ["Hotel Kanra", "2026-11-21", "2026-11-23"],

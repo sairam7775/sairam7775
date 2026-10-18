@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
 import { buildTripView } from "@/lib/bento-man/trip-view";
-import type { PlaceInput } from "@/lib/engine/types";
 import { planDocument, type DocBooking, type DocEntry } from "@/lib/trips/plan-document";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { copy } from "@/copy";
@@ -46,14 +45,17 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
 
   const { dayList } = buildTripView(state, null);
   const cityIds = [...new Set(state.days.map((d) => d.cityId).filter((c): c is string => Boolean(c)))];
-  const [placeLists, graph, { data: bookingRows }] = await Promise.all([
-    Promise.all(cityIds.map((c) => store.places(c).catch(() => [] as PlaceInput[]))),
+  // A plan saved with pieces missing looks complete offline, so a failed
+  // read throws (the error page offers a retry) rather than printing less.
+  const [placeLists, graph, { data: bookingRows, error: bookingsError }] = await Promise.all([
+    Promise.all(cityIds.map((c) => store.places(c))),
     store.graph(),
     // Never the reference.
     db.from("bookings").select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on").eq("trip_id", id),
   ]);
+  if (bookingsError || !bookingRows) throw new Error(t.loadFailed);
   const places = new Map(placeLists.flat().map((p) => [p.id, p]));
-  const bookings: DocBooking[] = (bookingRows ?? []).map((b) => ({
+  const bookings: DocBooking[] = bookingRows.map((b) => ({
     id: b.id, type: b.type, title: b.title, startsAt: b.starts_at, endsAt: b.ends_at, plannedOn: b.planned_on,
     startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
@@ -122,7 +124,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
                   <span className="mono w-24 shrink-0 text-[0.72rem] uppercase tracking-[0.08em] text-ink-3">{kind(b.type)}</span>
                   <span className="flex-1 font-medium">{b.title}</span>
                   <span className="mono text-[0.8rem] text-ink-2">
-                    {b.first ? (b.first === b.last ? longDate(b.first) : bk.range(longDate(b.first), longDate(b.last!))) : t.noDate}
+                    {when(b)}
                   </span>
                 </li>
               ))}
@@ -137,6 +139,14 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
   );
 }
 
+/** A booking's dates, with its times where they were given. */
+function when(b: { first: string | null; last: string | null; startTime: string | null; endTime: string | null }) {
+  if (!b.first) return t.noDate;
+  const from = b.startTime ? t.at(longDate(b.first), b.startTime) : longDate(b.first);
+  if (b.first === b.last) return b.startTime && b.endTime ? t.at(longDate(b.first), t.timeSpan(b.startTime, b.endTime)) : from;
+  return bk.range(from, b.endTime ? t.at(longDate(b.last!), b.endTime) : longDate(b.last!));
+}
+
 function Entry({ e }: { e: DocEntry }) {
   if (e.kind === "booking") {
     const stay = e.type === "accommodation";
@@ -145,7 +155,7 @@ function Entry({ e }: { e: DocEntry }) {
       <li className="flex break-inside-avoid gap-4">
         <span className="mono w-12 shrink-0 pt-0.5 text-[0.82rem] text-ink-2">{e.time ?? "—"}</span>
         <div className="flex-1 border-l-2 border-ink pl-3">
-          <p className="mono text-[0.66rem] uppercase tracking-[0.1em] text-ink-3">{kind(e.type)} · {note ?? t.booking}</p>
+          <p className="mono text-[0.66rem] uppercase tracking-[0.1em] text-ink-3">{kind(e.type)} · {note ?? t.booking}{e.time && e.end ? ` · ${t.timeSpan(e.time, e.end)}` : ""}</p>
           <p className="text-[0.95rem] font-medium">{e.title}</p>
           {e.time == null && e.part !== "all-day" && <p className="text-[0.82rem] text-ink-3">{bk.timeNotGiven}</p>}
         </div>
