@@ -514,7 +514,6 @@ export const en = {
     station: (name: string, walk: number | null) => (walk != null ? `Nearest stop: ${name}, ${walk} min walk` : `Nearest stop: ${name}`),
     hours: (opens: string, closes: string) => `Open ${opens}–${closes}`,
     why: (reason: string) => `Why: ${reason}`,
-    booking: "Booking",
     bookings: "Bookings",
     noBookings: "No bookings added yet.",
     noDate: "No date",

@@ -76,7 +76,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
         <p className="basis-full text-[0.86rem] text-ink-2">{t.howTo}</p>
       </div>
 
-      <article className="text-ink">
+      <article className="tile p-5 text-ink sm:p-8 print:p-0">
         <header className="border-b-2 border-ink pb-4">
           <h1 className="text-[2rem] font-extrabold leading-tight">{trip.title ?? copy.trips.untitled}</h1>
           <p className="mono mt-1.5 text-[0.85rem] text-ink-2">
@@ -89,7 +89,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
         </header>
 
         <section className="mt-6 break-inside-avoid">
-          <h2 className="text-[1.15rem] font-bold">{t.route}</h2>
+          <h2 className="break-after-avoid text-[1.15rem] font-bold">{t.route}</h2>
           {doc.route.length ? (
             <p className="mt-1.5 text-[0.95rem]">{doc.route.map((c) => (c.nights ? copy.trip.cityNights(c.city, c.nights) : copy.trip.cityDayTrip(c.city))).join(copy.trip.routeJoin)}</p>
           ) : (
@@ -99,7 +99,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
 
         {doc.days.length > 0 && (
           <section className="mt-8">
-            <h2 className="text-[1.15rem] font-bold">{t.days}</h2>
+            <h2 className="break-after-avoid text-[1.15rem] font-bold">{t.days}</h2>
             {doc.days.map((d) => (
               <div key={d.date} className="mt-5">
                 <h3 className="break-after-avoid border-b border-rule pb-1.5 text-[1rem] font-bold">{t.day(d.number, longDate(d.date), d.city)}</h3>
@@ -116,7 +116,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
         )}
 
         <section className="mt-10">
-          <h2 className="text-[1.15rem] font-bold">{t.bookings}</h2>
+          <h2 className="break-after-avoid text-[1.15rem] font-bold">{t.bookings}</h2>
           {doc.bookings.length ? (
             <ul className="mt-2 flex flex-col">
               {doc.bookings.map((b, i) => (
@@ -147,7 +147,9 @@ function Entry({ e }: { e: DocEntry }) {
       <li className="flex break-inside-avoid gap-4">
         <span className="mono w-12 shrink-0 pt-0.5 text-[0.82rem] text-ink-2">{e.time ?? "—"}</span>
         <div className="flex-1 border-l-2 border-ink pl-3">
-          <p className="mono text-[0.66rem] uppercase tracking-[0.1em] text-ink-3">{kind(e.type)} · {note ?? t.booking}{e.time && e.end ? ` · ${t.timeSpan(e.time, e.end)}` : ""}</p>
+          <p className="mono text-[0.66rem] uppercase tracking-[0.1em] text-ink-3">
+            {[kind(e.type), note, e.time && e.end ? t.timeSpan(e.time, e.end) : null].filter(Boolean).join(" · ")}
+          </p>
           <p className="text-[0.95rem] font-medium">{e.title}</p>
           {e.time == null && e.part !== "all-day" && <p className="text-[0.82rem] text-ink-3">{bk.timeNotGiven}</p>}
         </div>
