@@ -20,7 +20,9 @@ import { Chat, type ChatMessage } from "./chat";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
-import { AnalyticsUser } from "@/components/analytics/analytics";
+import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
+import { datesBetween, reviewFromRow, reviewOpen, snapshotCities, snapshotFromRow } from "@/lib/trips/review";
+import { TripReviewCard } from "./trip-review";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.trip;
@@ -78,7 +80,25 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
-  const gaps = await loadGaps(db, id, new Date().toISOString().slice(0, 10)).catch(() => null);
+  const today = new Date().toISOString().slice(0, 10);
+  const gaps = await loadGaps(db, id, today).catch(() => null);
+  // "How did the plan hold up?" once the trip has ended (0019). An answer
+  // already given stays on the page, and changeable, whatever the trip does
+  // after: it is about the plan saved with it.
+  const { data: reviewRow } = await db.from("trip_reviews").select("outcome, challenges, hard_days, note, plan").eq("trip_id", id).maybeSingle();
+  const review = reviewFromRow(reviewRow);
+  const reviewing = Boolean(review) || reviewOpen(state.trip, state.cities.length > 0, today);
+  // An answered trip's hard days are chosen from the plan saved with the
+  // first answer, even if the trip has moved since; a new answer, from today's.
+  const reviewedPlan = review ? snapshotFromRow(reviewRow?.plan) : null;
+  const dayWord = (date: string) => fmt(date, { weekday: "short", day: "numeric", month: "short" });
+  const reviewedCities = reviewedPlan ? snapshotCities(reviewedPlan) : null;
+  const reviewDays = reviewedPlan
+    ? datesBetween(reviewedPlan.start, reviewedPlan.end).map((date, i) => {
+        const city = reviewedCities?.get(date);
+        return { date, label: city ? copy.review.hardDay(i + 1, dayWord(date), city) : copy.review.hardDayNoCity(i + 1, dayWord(date)) };
+      })
+    : dayList.map(([date, meta], i) => ({ date, label: copy.review.hardDay(i + 1, dayWord(date), meta.cityName) }));
   // For the Bookings column. Never the reference: it is decrypted only on
   // the vault page.
   const { data: bookingRows } = await db
@@ -172,6 +192,17 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           </header>
 
           <div className="mt-4"><ErrorNote message={error} /></div>
+
+          {reviewing && (
+            <TripReviewCard
+              tripId={id}
+              review={review}
+              days={reviewDays}
+            />
+          )}
+          {typeof sp.reviewed === "string" && (
+            <TrackOnce event="trip_reviewed" props={{ challenges: Number(sp.rc) || 0, hard_days: Number(sp.rd) || 0, has_note: sp.rn === "1" }} consume={["reviewed", "rc", "rd", "rn"]} />
+          )}
 
           {gaps && (
             <Link

@@ -281,6 +281,50 @@ export const en = {
       saveFailed: "Couldn't save the trip.",
       create: "create the trip",
     },
+    /** On an ended trip nobody has reviewed yet. */
+    reviewAsk: "How did it go?",
+  },
+
+  // After a trip ends: did the plan work? (lib/trips/review.ts, 0019)
+  review: {
+    heading: "How did the plan hold up?",
+    intro: "Your trip has ended. Tell us whether you could follow the plan and what got in the way, so Bento plans better next time. Only the first question is needed.",
+    outcomeLabel: "Could you follow the plan?",
+    outcomes: {
+      as_planned: "Yes, it went to plan",
+      mostly: "Mostly, with some changes",
+      not_really: "Not really",
+    },
+    challengesLabel: "What got in the way?",
+    challenges: {
+      too_much: "Too much in one day",
+      travel_longer: "Getting around took longer than planned",
+      place_closed: "A place was closed or not as described",
+      crowds: "Crowds were worse than expected",
+      booking: "A booking or ticket problem",
+      walking: "Too much walking",
+      timing: "The times didn't suit us",
+      other: "Something else",
+    },
+    hardDaysLabel: "Which days were hardest to follow?",
+    hardDay: (day: number, date: string, city: string) => `Day ${day} · ${date} · ${city}`,
+    hardDayNoCity: (day: number, date: string) => `Day ${day} · ${date}`,
+    noteLabel: "Anything else?",
+    notePlaceholder: "What happened, what you changed, what you'd want Bento to know",
+    send: "Send",
+    update: "Save changes",
+    sending: "Sending…",
+    thanks: (outcome: string) => `Thanks for telling us how it went. You said: ${outcome}.`,
+    change: "Change your answer",
+    privacy: "Your answer is kept with this trip and read by the people who build Bento. It's deleted with the trip or your account.",
+    errors: {
+      outcome: "Choose whether you could follow the plan.",
+      noteTooLong: (max: number) => `Keep it under ${max} characters.`,
+      dayOutside: "Pick days from this trip.",
+      tooManyDays: (max: number) => `Pick up to ${max} days.`,
+      notYet: "You can say how it went once the trip has ended.",
+      saveFailed: "Couldn't save your answer. Try again.",
+    },
   },
 
   // Lengths of time, as the plan shows them: "45m", "2h", "3h 20m".
@@ -940,7 +984,7 @@ export const en = {
       },
       plan: {
         heading: "Your trips",
-        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.",
+        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.\n\nAfter a trip ends you can tell us how the plan held up. That answer is kept with the trip and read by the people who build Bento, to improve the planner.",
       },
       bentoMan: {
         heading: "Bento Man and the confirmation reader",
@@ -976,7 +1020,7 @@ export const en = {
         heading: "Your rights",
         // `analyticsDeletion`: whether deleting an account also deletes its analytics in PostHog here.
         body: (chat: "gemini" | "anthropic", googleSignIn: boolean, analyticsDeletion: boolean) =>
-          "You can delete your account at any time in Settings. Your trips, day plans, bookings, conversations with Bento Man and preferences are removed straight away. " +
+          "You can delete your account at any time in Settings. Your trips, day plans, bookings, conversations with Bento Man, trip reviews and preferences are removed straight away. " +
           (analyticsDeletion
             ? "Analytics linked to your account are deleted from PostHog at the same time. "
             : "To have analytics linked to your account deleted too, write to the address below. ") +

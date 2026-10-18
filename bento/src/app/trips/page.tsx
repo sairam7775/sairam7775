@@ -9,6 +9,7 @@ import { createTrip, deleteTrip } from "./actions";
 import { ErrorNote } from "../(auth)/ui";
 import { copy } from "@/copy";
 import { AnalyticsUser } from "@/components/analytics/analytics";
+import { reviewOpen } from "@/lib/trips/review";
 
 const t = copy.trips;
 
@@ -41,6 +42,15 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
     .from("trips")
     .select("id, title, start_date, end_date, party_size, status")
     .order("created_at", { ascending: false });
+
+  // Ended trips with a plan and no answer yet get a "How did it go?" link.
+  const [{ data: routed }, { data: reviewed }] = await Promise.all([
+    supabase.from("trip_cities").select("trip_id"),
+    supabase.from("trip_reviews").select("trip_id"),
+  ]);
+  const hasRoute = new Set((routed ?? []).map((r) => r.trip_id));
+  const hasReview = new Set((reviewed ?? []).map((r) => r.trip_id));
+  const today = new Date().toISOString().slice(0, 10);
 
   const params = await searchParams;
   const error = typeof params.error === "string" ? params.error : null;
@@ -75,6 +85,11 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
                   {formatRange(trip.start_date, trip.end_date)}
                   {trip.party_size > 1 && ` · ${t.people(trip.party_size)}`}
                 </p>
+                {!hasReview.has(trip.id) && reviewOpen({ endDate: trip.end_date }, hasRoute.has(trip.id), today) && (
+                  <Link href={`/trips/${trip.id}#review`} className="mt-2 inline-flex min-h-9 items-center rounded-full bg-accent px-3.5 text-[0.84rem] font-medium text-white hover:bg-accent-deep">
+                    {t.reviewAsk}
+                  </Link>
+                )}
               </div>
               <form action={deleteTrip}>
                 <input type="hidden" name="id" value={trip.id} />

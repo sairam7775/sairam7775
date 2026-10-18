@@ -30,6 +30,7 @@ export default async function AdminHome() {
     .order("name");
 
   const rows = (data ?? []) as Progress[];
+  const { count: reviews } = await db.from("trip_reviews").select("trip_id", { count: "exact", head: true });
 
   const totals = {
     cities: rows.length,
@@ -66,6 +67,10 @@ export default async function AdminHome() {
           Verify several at once
         </Link>
       )}
+
+      <Link href="/admin/trip-reviews" className={`${totals.drafts > 0 ? "ml-3 " : ""}mt-6 inline-block border border-rule bg-surface px-5 py-2.5 text-sm font-medium hover:bg-sunk`}>
+        Trip reviews{reviews ? ` (${reviews})` : ""}
+      </Link>
 
       <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-3 border-y border-rule py-4">
         {[

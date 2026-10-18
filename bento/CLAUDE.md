@@ -241,6 +241,28 @@ Practically:
   the media query for `:root:not([data-theme="light"])` and under
   `:root[data-theme="dark"]`. Change one, change both.
 
+## After the trip
+
+- From a trip's last day on (UTC date, the same as the database's
+  `current_date`), a trip with a route asks "How did the plan hold up?"
+  (`trip-review.tsx`, `saveTripReview`, `lib/trips/review.ts`). One answer
+  per trip in `trip_reviews` (0019). RLS: only the owner, and a first answer
+  only once the trip has ended; after that it stays visible and changeable
+  whatever the trip does. Grants let travellers write the answer columns
+  only (no plan, no delete). Change an answer with an update, not an upsert:
+  an upsert is also checked as an insert, which fails on a trip moved into
+  the future. The outcome and challenge keys
+  are fixed by check constraints — add a key there, in `review.ts` and in
+  `copy.review` together (a test compares them).
+- The first answer saves the plan as it stood (`plan`): the database makes
+  it (`trip_reviews_plan` trigger, 0019) and keeps it through every later
+  change, whatever a client sends, because the trip may have been edited
+  since. The app never sends a plan. `/admin/trip-reviews` reads answers and saved plans through
+  the service role — the route and the stops of every day marked hard — so a
+  failure can be traced to the plan that caused it, never the trip's
+  current state. No names or emails on that page. Analytics get counts only
+  (`trip_reviewed`), never the note.
+
 ## The vault (P8)
 
 - `src/lib/vault/`. `gaps.ts` is pure and testable: trip dates, route,
