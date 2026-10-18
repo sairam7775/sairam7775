@@ -104,6 +104,32 @@ describe("routes", () => {
     expect(r.cities.reduce((t: number, c: { nights: number }) => t + c.nights, 0)).toBe(9);
     expect(r.assessment.verdict).not.toBe("overpacked");
   });
+
+  const fiveCities = [
+    { city_id: "osaka-city", nights: 2, reason: "r" }, { city_id: "kyoto-city", nights: 2, reason: "r" }, { city_id: "nara-city", nights: 2, reason: "r" }, { city_id: "himeji", nights: 1, reason: "r" }, { city_id: "hiroshima-city", nights: 2, reason: "r" },
+  ];
+  it("propose_route refuses an overpacked route the traveller hasn't insisted on", async () => {
+    const ctx = ctxFor(new MemoryStore({ trip: nov, prefs: owner }));
+    const r = await runTool("propose_route", { cities: fiveCities }, ctx);
+    expect(r.isError).toBe(true);
+    expect(r.result).toMatch(/overpacked \(.*4 city changes/);
+    expect(ctx.proposal).toBeNull();
+  });
+  it("propose_route won't take 'they insist' in the same reply as its refusal", async () => {
+    const ctx = ctxFor(new MemoryStore({ trip: nov, prefs: owner }));
+    await runTool("propose_route", { cities: fiveCities }, ctx);
+    expect((await runTool("propose_route", { cities: fiveCities, traveller_insists: true }, ctx)).isError).toBe(true);
+    expect(ctx.proposal).toBeNull();
+  });
+  it("propose_route proposes an overpacked route the traveller insisted on, marked overpacked", async () => {
+    const ctx = ctxFor(new MemoryStore({ trip: nov, prefs: owner }));
+    // The turn they insist, the model assesses again first; that must not block it.
+    await runTool("assess_route", { cities: fiveCities.map(({ city_id, nights }) => ({ city_id, nights })) }, ctx);
+    const r = parse(await runTool("propose_route", { cities: fiveCities, traveller_insists: true }, ctx));
+    expect(r.proposed).toBe(true);
+    expect(ctx.proposal?.route?.verdict).toBe("overpacked");
+    expect(ProposalSchema.safeParse(ctx.proposal).success).toBe(true);
+  });
 });
 
 describe("days", () => {
