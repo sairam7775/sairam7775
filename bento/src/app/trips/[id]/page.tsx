@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { siteOrigin } from "@/lib/site-origin";
 import { Tour } from "@/components/tour/tour";
 import { tourSeen } from "@/components/tour/seen";
 import { AppHeader } from "@/components/app-header";
@@ -13,7 +15,8 @@ import { buildTripView } from "@/lib/bento-man/trip-view";
 import { loadGaps } from "@/lib/vault/store";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
-import { setDatePermission } from "./actions";
+import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
+import { ShareLink } from "./share-link";
 import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
 import { Chat, type ChatMessage } from "./chat";
@@ -109,6 +112,9 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     id: b.id, type: b.type, title: b.title, startsAt: b.starts_at, endsAt: b.ends_at, plannedOn: b.planned_on,
     startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
+  // The companions' link, if the trip is shared (0020).
+  const { data: share } = await db.from("trip_shares").select("token").eq("trip_id", id).maybeSingle();
+  const shareUrl = share ? `${siteOrigin(await headers())}/shared/${share.token}` : null;
   const worst = gaps?.gaps[0] ?? null;
   // A gap card's "Ask Bento Man" sends the gap's key, never text: the
   // question is looked up here, so nothing a traveller reads ends up in an
@@ -190,6 +196,52 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 <span aria-hidden>↓</span>
                 {copy.print.download}
               </Link>
+            )}
+            {state.cities.length > 0 && (
+              <details id="share" className="group mt-2 max-w-xl scroll-mt-6" open={sp.share === "1"}>
+                <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk [&::-webkit-details-marker]:hidden">
+                  {shareUrl ? copy.share.openOn : copy.share.open}
+                  <span aria-hidden className="transition-transform group-open:rotate-180">▾</span>
+                </summary>
+                <div className="tile mt-3 flex flex-col gap-3 p-5">
+                  {shareUrl ? (
+                    <>
+                      <ShareLink url={shareUrl} title={state.trip.title ?? copy.trips.untitled} />
+                      {/* A new tab: the shared page runs no analytics, and leaves the trip page as it is. */}
+                      <a href={shareUrl} target="_blank" rel="noopener noreferrer" className="w-fit text-[0.86rem] font-medium text-accent underline underline-offset-2">
+                        {copy.share.preview}
+                      </a>
+                      <p className="text-[0.84rem] leading-relaxed text-ink-3">{copy.share.who}</p>
+                      <div className="flex flex-wrap items-center gap-2 border-t border-rule pt-3">
+                        <form action={renewShareLink}>
+                          <input type="hidden" name="tripId" value={id} />
+                          <SubmitButton pending={copy.common.saving} className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk">
+                            {copy.share.renew}
+                          </SubmitButton>
+                        </form>
+                        <form action={stopSharing}>
+                          <input type="hidden" name="tripId" value={id} />
+                          <SubmitButton pending={copy.common.saving} className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium text-ume hover:bg-sunk">
+                            {copy.share.stop}
+                          </SubmitButton>
+                        </form>
+                        <span className="text-[0.8rem] text-ink-3">{copy.share.renewNote}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-[0.92rem] leading-relaxed text-ink-2">{copy.share.intro}</p>
+                      <p className="text-[0.84rem] leading-relaxed text-ink-3">{copy.share.who}</p>
+                      <form action={shareTrip}>
+                        <input type="hidden" name="tripId" value={id} />
+                        <SubmitButton pending={copy.common.saving} className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">
+                          {copy.share.turnOn}
+                        </SubmitButton>
+                      </form>
+                    </>
+                  )}
+                </div>
+              </details>
             )}
             {/* On a phone the conversation sits below the whole plan. */}
             <a href="#bento-man" className="mt-2 flex w-fit min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-white hover:bg-accent-deep lg:hidden">

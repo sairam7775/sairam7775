@@ -506,6 +506,8 @@ export const en = {
     back: "Back to the trip",
     saved: (date: string) => `Saved from Bento on ${date}. If you change the plan, download it again.`,
     link: "Open the latest version in Bento:",
+    // While the trip is shared: the companions' link, which opens for anyone.
+    linkShared: "Latest version, for everyone travelling:",
     checkNote: "The times, travel and opening hours here come from Bento's checked information on the day you saved it. Places do sometimes change their hours or close for a holiday, so for anything you can't miss, a quick look before you set off is worth it.",
     people: (n: number) => `${n} travelling`,
     route: "Route",
@@ -555,6 +557,34 @@ export const en = {
     remember: "Change dates without asking next time",
     reject: "Reject",
     rejecting: "Rejecting…",
+  },
+
+  // Sharing the plan by link with the people travelling (0020).
+  share: {
+    open: "Share with companions",
+    openOn: "Shared with companions",
+    intro: "Give the people travelling with you a link to this plan. They can open it without an account, and it always shows the latest version.",
+    who: "Anyone with the link can see the route, the day plans and your bookings' names and times. Booking reference numbers are never shown. You can switch the link off at any time.",
+    turnOn: "Share with companions",
+    linkLabel: "Link for your companions",
+    copy: "Copy",
+    copied: "Copied",
+    send: "Send…",
+    preview: "See what they see",
+    renew: "Make a new link",
+    renewNote: "The old link stops working.",
+    stop: "Stop sharing",
+    failed: "Couldn't change sharing for this trip. Try again in a moment.",
+    printHint: "The link in this plan opens only for you. Share the trip to give your companions a link that works for them.",
+    // The shared page.
+    viewerNote: "A trip plan shared with you on Bento. This page always shows the latest version.",
+    ownerNote: "This is what your companions see with the link.",
+    backToTrip: "Back to your trip",
+    loadFailed: "Bento couldn't load this plan just now. Try again in a moment.",
+    gone: {
+      title: "This link doesn't open a trip any more",
+      body: "Whoever shared it may have switched it off or made a new one. Ask them for the latest link.",
+    },
   },
 
   chat: {
@@ -1003,7 +1033,7 @@ export const en = {
 
   privacy: {
     title: "How Bento uses data",
-    updated: "Last updated 17 October 2026",
+    updated: "Last updated 18 October 2026",
     intro: "Bento is a trip planner. This page says what it keeps about you, who else handles it, and what you can do about it. In short: your plan stays yours, booking references are encrypted, and usage analytics only run if you say yes.",
     contactLabel: "Questions or requests:",
     contact: "bentoman.me@gmail.com",
@@ -1015,7 +1045,7 @@ export const en = {
       },
       plan: {
         heading: "Your trips",
-        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.\n\nAfter a trip ends you can tell us how the plan held up. That answer is kept with the trip and read by the people who build Bento, to improve the planner.",
+        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.\n\nAfter a trip ends you can tell us how the plan held up. That answer is kept with the trip and read by the people who build Bento, to improve the planner.\n\nIf you share a trip with your companions, anyone with its link can see the route, the day plans and your bookings' names and times (never reference numbers) until you switch the link off. Pages opened with a shared link don't run analytics.",
       },
       bentoMan: {
         heading: "Bento Man and the confirmation reader",

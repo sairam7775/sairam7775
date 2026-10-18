@@ -7,21 +7,29 @@ import { setAnalytics } from "@/app/settings/actions";
 import { ChoiceButton } from "@/components/form-controls";
 import { analyticsConfigured, forgetUser, identify, start, stop, track } from "@/lib/analytics/client";
 import type { Consent } from "@/lib/analytics/consent";
+import { isSharedPath } from "@/lib/analytics/url";
 import { copy } from "@/copy";
 
 /** Starts or stops PostHog to match the stored answer, and asks once when
  *  there is none. Renders nothing when this deployment has no PostHog key
  *  (local work, previews), so nobody is asked about analytics that would
- *  never run. */
+ *  never run.
+ *
+ *  A shared plan (/shared/…) is opened with its key in the address, often
+ *  by someone who has never used Bento: nothing starts there and nobody is
+ *  asked. It isn't stopped either, which would forget this browser's own
+ *  answer and identity. Leaving the page for the rest of Bento starts it. */
 export function Analytics({ consent }: { consent: Consent | null }) {
   const path = usePathname();
+  const shared = isSharedPath(path);
 
   useEffect(() => {
+    if (shared) return;
     if (consent === "yes") start();
     else stop();
-  }, [consent]);
+  }, [consent, shared]);
 
-  if (!analyticsConfigured() || consent !== null || path === "/privacy") return null;
+  if (!analyticsConfigured() || consent !== null || path === "/privacy" || shared) return null;
   const t = copy.consent;
 
   return (
