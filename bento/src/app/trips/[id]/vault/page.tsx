@@ -6,6 +6,7 @@ import { loadBookings, loadGaps, type VaultBooking } from "@/lib/vault/store";
 import { canEncrypt } from "@/lib/vault/crypto";
 import { vaultTotal, type VaultTotal } from "@/lib/vault/money";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
+import { ConfirmButton } from "@/components/form-controls";
 import { BookingForm } from "./booking-form";
 import { Tour } from "@/components/tour/tour";
 import { tourSeen } from "@/components/tour/seen";
@@ -132,15 +133,16 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
       <DismissedGaps tripId={id} gaps={report.dismissed} />
 
       <section aria-label={t.bookingsLabel} className="mt-10">
-        <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <h2 className="text-[1.5rem] font-bold">{t.everything}</h2>
-          <span className="mono text-[0.72rem] text-ink-3">
-            {t.recorded(bookings.length)}{spent && ` · ${spent}`}
-          </span>
-        </div>
-
-        <div id="add-booking" data-tour="add-booking" className="mt-4 scroll-mt-6">
+        <div id="add-booking" data-tour="add-booking" className="scroll-mt-6">
           <BookingForm
+            heading={
+              <>
+                <h2 className="text-[1.5rem] font-bold">{t.everything}</h2>
+                <p className="mono mt-1 text-[0.76rem] text-ink-2">
+                  {t.recorded(bookings.length)}{spent && ` · ${spent}`}
+                </p>
+              </>
+            }
             tripId={id}
             cities={cities}
             defaultType={typeof sp.add === "string" ? sp.add : undefined}
@@ -157,29 +159,36 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
                 <span className="mono text-[0.6rem] uppercase tracking-[0.1em] text-ink-3">{t.groups[g]}</span>
                 <ul className="mt-3 flex flex-col gap-3">
                   {bookings.filter((b) => b.type === g).map((b) => (
-                    <li key={b.id} className="flex flex-wrap items-start justify-between gap-2 border-b border-rule pb-3 last:border-b-0 last:pb-0">
-                      <div className="min-w-0">
-                        <span className="disp block text-[1rem] font-bold leading-snug">{b.title}</span>
-                        <span className="mono mt-0.5 block text-[0.68rem] text-ink-3">
-                          {[b.provider, when(b), money(b)].filter(Boolean).join(" · ") || t.noDates}
-                        </span>
-                        {b.notes && <p className="mt-1 text-[0.82rem] text-ink-2">{b.notes}</p>}
-                        {b.referenceError && <p className="mt-1 text-[0.78rem] text-ume">{b.referenceError}</p>}
-                      </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        {b.reference ? (
-                          <span className="mono rounded-full bg-lacquer px-2.5 py-1 text-[0.72rem] text-rice">{b.reference}</span>
-                        ) : b.referenceMasked ? (
-                          <Link href={`/trips/${id}/vault?reveal=${b.id}#${b.id}`} className="mono rounded-full bg-sunk px-2.5 py-1 text-[0.72rem] text-ink-2">
-                            {b.referenceMasked}
-                          </Link>
-                        ) : null}
-                        <form action={deleteBooking}>
+                    <li key={b.id} id={b.id} className="scroll-mt-24 border-b border-rule pb-3 last:border-b-0 last:pb-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="disp min-w-0 pt-1.5 text-[1rem] font-bold leading-snug">{b.title}</span>
+                        {/* Apart from the reference, and it asks: a slip here loses a booking. */}
+                        <form action={deleteBooking} className="-mr-2 shrink-0">
                           <input type="hidden" name="tripId" value={id} />
                           <input type="hidden" name="id" value={b.id} />
-                          <button className="mono text-[0.62rem] uppercase tracking-[0.08em] text-ink-3 hover:text-ume">{t.remove}</button>
+                          <ConfirmButton message={t.removeConfirm(b.title)} pending={copy.common.saving} className="min-h-9 rounded-full px-3 text-[0.8rem] text-ink-2 hover:bg-ume-soft hover:text-ume">
+                            {t.remove}
+                          </ConfirmButton>
                         </form>
                       </div>
+                      <p className="mono mt-0.5 text-[0.74rem] leading-relaxed text-ink-2">
+                        {[b.provider, when(b), money(b)].filter(Boolean).join(" · ") || t.noDates}
+                      </p>
+                      {b.notes && <p className="mt-1 text-[0.84rem] text-ink-2">{b.notes}</p>}
+                      {(b.reference || b.referenceMasked) && (
+                        <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.8rem] text-ink-2">
+                          <span>{t.referenceLabel}</span>
+                          {b.reference ? (
+                            <span className="mono rounded-full bg-lacquer px-2.5 py-1 text-[0.76rem] text-rice">{b.reference}</span>
+                          ) : (
+                            <Link href={`/trips/${id}/vault?reveal=${b.id}#${b.id}`} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-sunk px-3 hover:bg-rule">
+                              <span className="mono text-[0.76rem]">{b.referenceMasked}</span>
+                              <span className="font-medium underline underline-offset-2">{t.referenceShow}</span>
+                            </Link>
+                          )}
+                        </p>
+                      )}
+                      {b.referenceError && <p className="mt-1 text-[0.8rem] text-ume">{b.referenceError}</p>}
                     </li>
                   ))}
                 </ul>
