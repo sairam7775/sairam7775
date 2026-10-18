@@ -185,6 +185,12 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 </SubmitButton>
               </form>
             </details>
+            {state.cities.length > 0 && (
+              <Link href={`/trips/${id}/print`} className="mt-3 flex w-fit min-h-10 items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk">
+                <span aria-hidden>↓</span>
+                {copy.print.download}
+              </Link>
+            )}
             {/* On a phone the conversation sits below the whole plan. */}
             <a href="#bento-man" className="mt-2 flex w-fit min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-white hover:bg-accent-deep lg:hidden">
               {t.askBentoMan}

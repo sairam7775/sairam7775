@@ -28,7 +28,7 @@ export function Analytics({ consent }: { consent: Consent | null }) {
     <div
       role="region"
       aria-label={t.label}
-      className="pop fixed inset-x-3 bottom-3 z-40 mx-auto max-w-xl rounded-tile bg-surface p-4 shadow-tile sm:inset-x-6 sm:p-5"
+      className="pop fixed inset-x-3 bottom-3 z-40 mx-auto max-w-xl rounded-tile bg-surface p-4 shadow-tile print:hidden sm:inset-x-6 sm:p-5"
     >
       <p className="text-[0.9rem] leading-relaxed text-ink-2">
         {t.body}{" "}
