@@ -6,7 +6,7 @@ import { siteOrigin } from "@/lib/site-origin";
 import { Tour } from "@/components/tour/tour";
 import { tourSeen } from "@/components/tour/seen";
 import { AppHeader } from "@/components/app-header";
-import { DateRangeInputs, SubmitButton } from "@/components/form-controls";
+import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseProposal } from "@/lib/bento-man/diff";
@@ -17,6 +17,7 @@ import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
 import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
 import { ShareLink } from "./share-link";
+import { TripActions } from "./trip-actions";
 import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
 import { Chat, type ChatMessage } from "./chat";
@@ -115,6 +116,39 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   // The companions' link, if the trip is shared (0020).
   const { data: share } = await db.from("trip_shares").select("token").eq("trip_id", id).maybeSingle();
   const shareUrl = share ? `${siteOrigin(await headers())}/shared/${share.token}` : null;
+  // Changing or ending a link is quiet and asks first: whoever has it loses it.
+  const quiet = "min-h-9 rounded-full px-3.5 text-[0.84rem] font-medium text-ink-2";
+  const sharePanel = (
+    <div className="tile flex flex-col gap-3 p-5">
+      {shareUrl ? (
+        <>
+          <ShareLink url={shareUrl} title={state.trip.title ?? copy.trips.untitled} />
+          <p className="text-[0.86rem] leading-relaxed text-ink-2">{copy.share.who}</p>
+          <div className="flex flex-wrap gap-1 border-t border-rule pt-3">
+            <form action={renewShareLink}>
+              <input type="hidden" name="tripId" value={id} />
+              <ConfirmButton message={copy.share.renewConfirm} pending={copy.common.saving} className={`${quiet} hover:bg-sunk`}>{copy.share.renew}</ConfirmButton>
+            </form>
+            <form action={stopSharing}>
+              <input type="hidden" name="tripId" value={id} />
+              <ConfirmButton message={copy.share.stopConfirm} pending={copy.common.saving} className={`${quiet} hover:bg-ume-soft hover:text-ume`}>{copy.share.stop}</ConfirmButton>
+            </form>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-[0.92rem] leading-relaxed text-ink-2">{copy.share.intro}</p>
+          <p className="text-[0.86rem] leading-relaxed text-ink-2">{copy.share.who}</p>
+          <form action={shareTrip}>
+            <input type="hidden" name="tripId" value={id} />
+            <SubmitButton pending={copy.common.saving} className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">
+              {copy.share.turnOn}
+            </SubmitButton>
+          </form>
+        </>
+      )}
+    </div>
+  );
   const worst = gaps?.gaps[0] ?? null;
   // A gap card's "Ask Bento Man" sends the gap's key, never text: the
   // question is looked up here, so nothing a traveller reads ends up in an
@@ -154,100 +188,54 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               {state.trip.partySize > 1 && ` ${t.travelling(state.trip.partySize)}`}
               {state.prefs.set && ` ${t.pace[state.prefs.pace]}`}
             </p>
-            <details data-tour="edit-trip" className="group mt-3 max-w-xl" open={!state.trip.startDate || !state.trip.endDate}>
-              <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk [&::-webkit-details-marker]:hidden">
-                {state.trip.startDate && state.trip.endDate ? t.edit.open : t.edit.addDates}
-                <span aria-hidden className="transition-transform group-open:rotate-180">▾</span>
-              </summary>
-              <form
-                key={`${state.trip.title ?? ""}|${state.trip.startDate ?? ""}|${state.trip.endDate ?? ""}|${state.trip.partySize}`}
-                action={updateTrip}
-                className="tile mt-3 flex flex-col gap-4 p-5">
-                <input type="hidden" name="id" value={id} />
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="title" className={fieldLabel}>{t.edit.name}</label>
-                  <input id="title" name="title" defaultValue={state.trip.title ?? ""} placeholder={copy.trips.new.namePlaceholder} className={fieldInput} />
-                </div>
-                <div className="grid gap-4 sm:grid-cols-3">
-                  <DateRangeInputs startLabel={copy.trips.new.arrive} endLabel={copy.trips.new.leave} defaultStart={state.trip.startDate} defaultEnd={state.trip.endDate} labelClass={fieldLabel} inputClass={fieldInput} />
-                  <div className="flex flex-col gap-1.5">
-                    <label htmlFor="partySize" className={fieldLabel}>{copy.trips.new.people}</label>
-                    <input id="partySize" name="partySize" type="number" min={1} max={20} defaultValue={state.trip.partySize} className={fieldInput} />
-                  </div>
-                </div>
-                {state.cities.length > 0 && (
-                  <p className="text-[0.84rem] text-ink-3">{t.edit.moveNote}</p>
-                )}
-                <SubmitButton pending={copy.common.saving} className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">{t.edit.save}</SubmitButton>
-              </form>
-              <form action={setDatePermission} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.86rem] text-ink-2">
-                <input type="hidden" name="tripId" value={id} />
-                <input type="hidden" name="allow" value={state.prefs.autoApplyDates ? "off" : "on"} />
-                <span>
-                  {state.prefs.autoApplyDates ? t.edit.datesAuto : t.edit.datesAsk}
-                </span>
-                <SubmitButton pending={copy.common.saving} className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk">
-                  {state.prefs.autoApplyDates ? t.edit.askFirst : t.edit.dontAsk}
-                </SubmitButton>
-              </form>
-            </details>
-            {state.cities.length > 0 && (
-              <Link href={`/trips/${id}/print`} className="mt-3 flex w-fit min-h-10 items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk">
-                <span aria-hidden>↓</span>
-                {copy.print.download}
-              </Link>
-            )}
-            {/* Shown while shared even with no route, so a link can always be switched off. */}
-            {(state.cities.length > 0 || shareUrl) && (
-              <details id="share" className="group mt-2 max-w-xl scroll-mt-6" open={sp.share === "1"}>
-                <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk [&::-webkit-details-marker]:hidden">
-                  {shareUrl ? copy.share.openOn : copy.share.open}
-                  <span aria-hidden className="transition-transform group-open:rotate-180">▾</span>
-                </summary>
-                <div className="tile mt-3 flex flex-col gap-3 p-5">
-                  {shareUrl ? (
-                    <>
-                      <ShareLink url={shareUrl} title={state.trip.title ?? copy.trips.untitled} />
-                      {/* A new tab: the shared page runs no analytics, and leaves the trip page as it is. */}
-                      <a href={shareUrl} target="_blank" rel="noopener noreferrer" className="w-fit text-[0.86rem] font-medium text-accent underline underline-offset-2">
-                        {copy.share.preview}
-                      </a>
-                      <p className="text-[0.84rem] leading-relaxed text-ink-3">{copy.share.who}</p>
-                      <div className="flex flex-wrap items-center gap-2 border-t border-rule pt-3">
-                        <form action={renewShareLink}>
-                          <input type="hidden" name="tripId" value={id} />
-                          <SubmitButton pending={copy.common.saving} className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk">
-                            {copy.share.renew}
-                          </SubmitButton>
-                        </form>
-                        <form action={stopSharing}>
-                          <input type="hidden" name="tripId" value={id} />
-                          <SubmitButton pending={copy.common.saving} className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium text-ume hover:bg-sunk">
-                            {copy.share.stop}
-                          </SubmitButton>
-                        </form>
-                        <span className="text-[0.8rem] text-ink-3">{copy.share.renewNote}</span>
+            <TripActions
+              editLabel={state.trip.startDate && state.trip.endDate ? t.edit.open : t.edit.addDates}
+              initial={!state.trip.startDate || !state.trip.endDate ? "edit" : sp.share === "1" ? "share" : null}
+              downloadHref={state.cities.length > 0 ? `/trips/${id}/print` : null}
+              shared={Boolean(shareUrl)}
+              edit={
+                <>
+                  <form
+                    key={`${state.trip.title ?? ""}|${state.trip.startDate ?? ""}|${state.trip.endDate ?? ""}|${state.trip.partySize}`}
+                    action={updateTrip}
+                    className="tile flex flex-col gap-4 p-5">
+                    <input type="hidden" name="id" value={id} />
+                    <div className="flex flex-col gap-1.5">
+                      <label htmlFor="title" className={fieldLabel}>{t.edit.name}</label>
+                      <input id="title" name="title" defaultValue={state.trip.title ?? ""} placeholder={copy.trips.new.namePlaceholder} className={fieldInput} />
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-3">
+                      <DateRangeInputs startLabel={copy.trips.new.arrive} endLabel={copy.trips.new.leave} defaultStart={state.trip.startDate} defaultEnd={state.trip.endDate} labelClass={fieldLabel} inputClass={fieldInput} />
+                      <div className="flex flex-col gap-1.5">
+                        <label htmlFor="partySize" className={fieldLabel}>{copy.trips.new.people}</label>
+                        <input id="partySize" name="partySize" type="number" min={1} max={20} defaultValue={state.trip.partySize} className={fieldInput} />
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-[0.92rem] leading-relaxed text-ink-2">{copy.share.intro}</p>
-                      <p className="text-[0.84rem] leading-relaxed text-ink-3">{copy.share.who}</p>
-                      <form action={shareTrip}>
-                        <input type="hidden" name="tripId" value={id} />
-                        <SubmitButton pending={copy.common.saving} className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">
-                          {copy.share.turnOn}
-                        </SubmitButton>
-                      </form>
-                    </>
-                  )}
-                </div>
-              </details>
-            )}
-            {/* On a phone the conversation sits below the whole plan. */}
-            <a href="#bento-man" className="mt-2 flex w-fit min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-white hover:bg-accent-deep lg:hidden">
-              {t.askBentoMan}
-            </a>
+                    </div>
+                    {state.cities.length > 0 && (
+                      <p className="text-[0.84rem] text-ink-3">{t.edit.moveNote}</p>
+                    )}
+                    <SubmitButton pending={copy.common.saving} className="self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep">{t.edit.save}</SubmitButton>
+                  </form>
+                  <form action={setDatePermission} className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-[0.86rem] text-ink-2">
+                    <input type="hidden" name="tripId" value={id} />
+                    <input type="hidden" name="allow" value={state.prefs.autoApplyDates ? "off" : "on"} />
+                    <span>
+                      {state.prefs.autoApplyDates ? t.edit.datesAuto : t.edit.datesAsk}
+                    </span>
+                    <SubmitButton pending={copy.common.saving} className="min-h-9 rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk">
+                      {state.prefs.autoApplyDates ? t.edit.askFirst : t.edit.dontAsk}
+                    </SubmitButton>
+                  </form>
+                </>
+              }
+              /* Shown while shared even with no route, so a link can always be switched off. */
+              share={state.cities.length > 0 || shareUrl ? sharePanel : null}
+            >
+              {/* On a phone the conversation sits below the whole plan. */}
+              <a href="#bento-man" className="inline-flex min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-white hover:bg-accent-deep lg:hidden">
+                {t.askBentoMan}
+              </a>
+            </TripActions>
           </header>
 
           <div className="mt-4"><ErrorNote message={error} /></div>

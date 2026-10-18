@@ -238,6 +238,7 @@ One shadow (`{elevation.tile}`) for tiles and floating pills. The lacquer box ha
 - **The day box** — lacquer frame; compartments sized by duration; pin / ↑ / ↓ / remove on each stop.
 - **Bento Man panel** — header (mark + name + "Nothing changes until you accept it"), scrolling conversation, input pinned to the bottom. User messages are lacquer bubbles; Bento Man's are plain text beside the mark. Empty state offers example prompts as chips.
 - **Proposal card** — paper card with a sunk header ("**Proposal** · summary"), the route or days as they would be, change tags (new / moved / out), warnings in tamago, and Accept / Reject.
+- **Trip actions** — one row of secondary pills under the trip's route: Edit trip, Download plan, Share plan (a green dot while a link is out), and Ask Bento Man ↓ on a phone. The open one's panel sits below the whole row, one at a time, never between the pills. Changing or ending a share link is a quiet button that confirms.
 - **Gap ribbon** — one bar per night, solid edamame where covered, ume where not; the worst gap as a sentence; links to Bookings.
 
 ## Motion
