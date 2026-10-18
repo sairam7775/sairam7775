@@ -116,6 +116,8 @@ export const en = {
       submit: "Create account",
       pending: "Creating your account…",
       haveAccount: "Already have an account?",
+      name: "What should Bento call you?",
+      nameHint: "Optional. Only used to greet you; you can change it in Settings.",
       // One sentence with two links: start, terms link, middle, privacy link, end.
       agree: {
         start: "By creating an account you agree to the",
@@ -205,6 +207,11 @@ export const en = {
   home: {
     howItWorksLink: "How it works",
     yourTripsCta: "Your trips →",
+    // Beside "Your trips →" when signed in.
+    greeting: {
+      named: (name: string) => `Welcome back, ${name}.`,
+      plain: "Welcome back.",
+    },
     startPlanning: "Start planning",
     hero: {
       kicker: "For your first trip to Japan",
@@ -268,6 +275,19 @@ export const en = {
   trips: {
     title: "Your trips",
     signedInAs: "Signed in as",
+    // Above the title: Japanese first, then its meaning. `first` before any trip exists.
+    greeting: {
+      returning: {
+        ja: "おかえりなさい",
+        named: (name: string) => `Welcome back, ${name}.`,
+        plain: "Welcome back.",
+      },
+      first: {
+        ja: "はじめまして",
+        named: (name: string) => `Nice to meet you, ${name}.`,
+        plain: "Nice to meet you.",
+      },
+    },
     untitled: "Untitled trip",
     noDates: "No dates yet",
     /** A trip's dates as shown in the list, from dates already written out. */
@@ -996,6 +1016,57 @@ export const en = {
     title: "Settings",
     passwordChanged: "Your password was changed.",
     account: "Account",
+    name: {
+      heading: "Your name",
+      body: "What Bento calls you when you come back. Optional, and never sent to Bento Man or analytics. Leave it empty for none.",
+      label: "Name",
+      save: "Save name",
+      failed: "Your name wasn't saved. Try again in a moment.",
+    },
+    // Only admin accounts see this section.
+    admin: {
+      heading: "Admin",
+      body: "Only admin accounts see this section.",
+      tools: {
+        heading: "Tools",
+        curation: "Curation: cities and coverage",
+        review: (n: number) => (n > 0 ? `Review queue · ${n} to check` : "Review queue · nothing to check"),
+        bulk: "Verify several at once",
+        tripReviews: (n: number) => `Trip reviews · ${n}`,
+      },
+      spend: {
+        heading: "This month",
+        // Dollar amounts arrive written out, e.g. "0.07".
+        spent: (spent: string, cap: string) => `AI spend so far: $${spent} of the $${cap} monthly limit for everyone.`,
+        perUser: (cap: string) => `Each traveller can spend up to $${cap} a month.`,
+        model: (provider: string, model: string) => `Bento Man runs on ${provider}, model ${model}.`,
+        fallbacks: (models: string) => `If it's busy or out of quota: ${models}.`,
+        changeNote: "These are set in Vercel's environment variables; a change there needs a new deploy.",
+        providers: { gemini: "Google Gemini", anthropic: "Anthropic Claude" },
+      },
+      admins: {
+        heading: "Admins",
+        you: "you",
+        since: (date: string) => `since ${date}`,
+        remove: "Remove",
+        removeLabel: (email: string) => `Remove admin access for ${email}`,
+        removeConfirm: (email: string) => `Remove admin access for ${email}? They keep their account and trips.`,
+        addLabel: "Give someone admin access",
+        addHint: "They need a Bento account first. Admins can verify places, change how well a city is covered and read trip reviews.",
+        add: "Make admin",
+        addConfirm: "Give this account admin access? It will be able to verify places, change city coverage and read trip reviews.",
+        added: "Admin access given.",
+        removed: "Admin access removed.",
+        errors: {
+          badEmail: "That doesn't look like an email address.",
+          noAccount: "No Bento account uses that address. Ask them to sign up first.",
+          already: "That account is already an admin.",
+          self: "You can't remove your own admin access. Ask another admin.",
+          last: "Bento needs at least one admin.",
+          failed: "That didn't save. Try again in a moment.",
+        },
+      },
+    },
     password: {
       heading: "Password",
       google: "You sign in with Google, so there’s no Bento password to change.",
@@ -1039,7 +1110,7 @@ export const en = {
       submit: "Delete my account",
       pending: "Deleting…",
       confirm: "Delete your account and everything in it? This can't be undone.",
-      admin: "This account has admin access. Remove the admin access first, so nobody is locked out of curation.",
+      admin: "This account has admin access. Ask another admin to remove it in their Settings first, so nobody is locked out of curation.",
       emailMismatch: "That isn't the email address this account uses.",
       failed: `Your account wasn't deleted. Try again, or write to ${CONTACT}.`,
       done: "Your account and everything in it has been deleted.",
@@ -1088,7 +1159,7 @@ export const en = {
       },
       account: {
         heading: "Your account",
-        body: "Your email address and password (stored hashed by our sign-in provider), to sign you in.\n\nYour date of birth is asked once at sign-up to check you are old enough, and is not kept. Only whether you passed is remembered, in a cookie.",
+        body: "Your email address and password (stored hashed by our sign-in provider), to sign you in.\n\nYour name, if you give one, only to greet you. It isn't sent to Bento Man or analytics, and you can change or remove it in Settings.\n\nYour date of birth is asked once at sign-up to check you are old enough, and is not kept. Only whether you passed is remembered, in a cookie.",
       },
       plan: {
         heading: "Your trips",
@@ -1125,7 +1196,7 @@ export const en = {
           (chat === "gemini"
             ? "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU)."
             : "Supabase (database and sign-in), Vercel (hosting), Anthropic (Bento Man and reading pasted confirmations) and, only with your consent, PostHog (analytics, EU).") +
-          (googleSignIn ? " If you continue with Google, Google also confirms who you are and shares your email address with Bento." : "") +
+          (googleSignIn ? " If you continue with Google, Google also confirms who you are and shares your email address and name with Bento." : "") +
           (chat === "gemini"
             ? " Apart from Google's use of Bento Man messages described above, each handles data only to provide its service to Bento."
             : " Each handles data only to provide its service to Bento."),
@@ -1141,7 +1212,7 @@ export const en = {
       },
       protect: {
         heading: "How it's protected",
-        body: "Connections to Bento are encrypted. Booking reference numbers are encrypted again before they are stored, with a key kept apart from the database.\n\nA trip can only be read by its owner, which the database itself enforces, and by people the owner gives a shared link to. Only the operator can reach the systems behind Bento.",
+        body: "Connections to Bento are encrypted. Booking reference numbers are encrypted again before they are stored, with a key kept apart from the database.\n\nA trip can only be read by its owner, which the database itself enforces, and by people the owner gives a shared link to. Only the operator can reach the systems behind Bento. Admins the operator appoints to check place information can read trip reviews and the plans saved with them, but never travellers' names or email addresses.",
       },
       keep: {
         heading: "How long it's kept",

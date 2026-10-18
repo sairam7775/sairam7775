@@ -264,6 +264,23 @@ Practically:
   current state. No names or emails on that page. Analytics get counts only
   (`trip_reviewed`), never the note.
 
+## Names and admins
+
+- A traveller's name is optional (sign-up, Settings → Your name) and lives in
+  the account's own metadata, `user_metadata.display_name`; no table, no
+  migration. Read it only through `displayName()` (`lib/account/name.ts`):
+  the account can write its own metadata, so the name is cleaned on the way
+  out too. A saved empty name is an answer, so Google's first name doesn't
+  come back. It greets on the trips and home pages and goes nowhere else:
+  never to Bento Man, analytics or admin pages.
+- Settings shows an Admin section to admins only (`isAdmin` in
+  `lib/admin.ts`): links to the curation tools, this month's AI spend
+  (`spend_since_month_start`, the cap's own sum) and the live model, and the
+  admin list (`lib/admin-overview.ts`). `addAdmin` / `removeAdmin`
+  (`settings/admin-actions.ts`) call `requireAdmin()` themselves and write
+  `app_admins` with the service role. An admin can't remove themselves, and
+  the last admin can't be removed. Only existing accounts can be made admin.
+
 ## Legal pages
 
 - `/privacy`, `/terms`, `/cookies` and `/about` (who runs Bento) are public

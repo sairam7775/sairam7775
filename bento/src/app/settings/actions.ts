@@ -5,6 +5,9 @@ import { z } from "zod";
 import { THEME_COOKIE, THEMES } from "@/lib/theme";
 import { BACKGROUND_COOKIE, BACKGROUNDS } from "@/components/seasonal/season";
 import { ANALYTICS_COOKIE } from "@/lib/analytics/consent";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { cleanName } from "@/lib/account/name";
 
 const KEEP = { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 } as const;
 
@@ -39,4 +42,18 @@ export async function setAnalytics(formData: FormData) {
   const parsed = z.enum(["yes", "no"]).safeParse(formData.get("analytics"));
   if (!parsed.success) return;
   (await cookies()).set(ANALYTICS_COOKIE, parsed.data, { ...KEEP, secure: process.env.NODE_ENV === "production" });
+}
+
+/** Settings → Your name. Kept in the account's own metadata. An empty name
+ *  is saved too, so a Google first name doesn't come back once cleared
+ *  (lib/account/name.ts). */
+export async function setDisplayName(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in?next=/settings");
+  const { error } = await supabase.auth.updateUser({ data: { display_name: cleanName(formData.get("name")) } });
+  if (error) {
+    console.error("Saving a name failed:", error.message);
+    redirect("/settings?nameError=1#name");
+  }
 }
