@@ -103,7 +103,7 @@ export function GapCard({ tripId, gap }: { tripId: string; gap: Gap }) {
             <a
               key={a.label}
               href={`/trips/${tripId}/vault?add=${encodeURIComponent(a.hint ?? "other")}${gap.date ? `&on=${gap.date}` : ""}${a.placeId ? `&place=${encodeURIComponent(a.placeId)}` : ""}#add-booking`}
-              className="rounded-full bg-lacquer px-4 py-2 text-[0.82rem] font-medium text-rice"
+              className="inline-flex min-h-10 items-center rounded-full bg-lacquer px-4 text-[0.84rem] font-medium text-rice"
             >
               {a.label}
             </a>
@@ -111,16 +111,17 @@ export function GapCard({ tripId, gap }: { tripId: string; gap: Gap }) {
             <a
               key={a.label}
               href={`/trips/${tripId}?ask=${encodeURIComponent(gap.key)}#bento-man`}
-              className="rounded-full border border-ink/15 px-4 py-2 text-[0.82rem] font-medium"
+              className="inline-flex min-h-10 items-center rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk"
             >
               {a.label}
             </a>
           ),
         )}
-        <form action={dismissGap} className="ml-auto self-center">
+        {/* Quiet, and undoable from "you said were not a problem" below. */}
+        <form action={dismissGap} className="-mr-2 ml-auto self-center">
           <input type="hidden" name="tripId" value={tripId} />
           <input type="hidden" name="gapKey" value={gap.key} />
-          <button className="mono text-[0.64rem] uppercase tracking-[0.08em] text-ink-3 underline underline-offset-2">{t.dismiss}</button>
+          <button className="min-h-9 rounded-full px-3 text-[0.84rem] text-ink-2 hover:bg-sunk">{t.dismiss}</button>
         </form>
       </div>
     </div>
@@ -131,7 +132,7 @@ export function DismissedGaps({ tripId, gaps }: { tripId: string; gaps: Gap[] })
   if (!gaps.length) return null;
   return (
     <details className="tile up mt-3 px-5 py-4">
-      <summary className="mono cursor-pointer text-[0.64rem] uppercase tracking-[0.1em] text-ink-3">
+      <summary className="cursor-pointer text-[0.86rem] text-ink-2">
         {t.dismissed(gaps.length)}
       </summary>
       <ul className="mt-3 flex flex-col gap-2">
@@ -141,7 +142,7 @@ export function DismissedGaps({ tripId, gaps }: { tripId: string; gaps: Gap[] })
             <form action={restoreGap}>
               <input type="hidden" name="tripId" value={tripId} />
               <input type="hidden" name="gapKey" value={g.key} />
-              <button className="mono text-[0.62rem] uppercase tracking-[0.08em] text-accent underline underline-offset-2">{t.restore}</button>
+              <button className="min-h-9 rounded-full px-3 text-[0.84rem] font-medium text-ink-2 underline underline-offset-2 hover:bg-sunk">{t.restore}</button>
             </form>
           </li>
         ))}

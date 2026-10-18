@@ -654,6 +654,10 @@ export const en = {
     noDates: "no dates recorded",
     referenceUnreadable: "This reference can't be shown: it was saved with an older key. Add it again from the confirmation.",
     remove: "Remove",
+    removeConfirm: (title: string) => `Remove “${title}”? This can't be undone.`,
+    // On each booking: the reference, masked until the traveller asks.
+    referenceLabel: "Reference",
+    referenceShow: "Show",
     empty: "Nothing recorded yet. Add what you book as you book it, and the ribbon above fills in.",
     // The running total: "~¥48,200 at rates from 10 Oct, plus GBP 120 with no rate on record".
     total: {
