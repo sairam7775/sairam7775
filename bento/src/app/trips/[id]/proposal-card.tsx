@@ -103,7 +103,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
                 <span className="mono pt-0.5 text-[0.78rem] text-ink-3">{clock(it.startMin)}</span>
                 <div>
                   <span className="font-medium">{it.name}</span>
-                  {it.locked && <span className="mono ml-2 text-[0.74rem] uppercase tracking-[0.1em] text-accent">{t.pinned}</span>}
+                  {it.locked && <span className="mono ml-2 text-[0.74rem] uppercase tracking-[0.1em] text-accent-ink">{t.pinned}</span>}
                   <span className={`mono ml-2 rounded-full px-1.5 py-0.5 text-[0.74rem] uppercase tracking-[0.1em] ${CHANGE[it.change].cls}`}>{CHANGE[it.change].label}</span>
                   <p className="text-[0.82rem] leading-snug text-ink-2">{it.reason}</p>
                   {it.arriveDetail && <p className="mono mt-0.5 text-[0.78rem] text-ink-3">↳ {it.arriveDetail}</p>}
@@ -141,7 +141,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
           <form action={acceptProposal} className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <input type="hidden" name="tripId" value={tripId} />
             <input type="hidden" name="messageId" value={messageId} />
-            <SubmitButton className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep" pending={t.accepting}>{proposal.route?.verdict === "overpacked" ? t.acceptAnyway : t.accept}</SubmitButton>
+            <SubmitButton className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-on-accent hover:bg-accent-deep" pending={t.accepting}>{proposal.route?.verdict === "overpacked" ? t.acceptAnyway : t.accept}</SubmitButton>
             {proposal.dates && (
               <label className="order-last flex min-h-10 basis-full cursor-pointer items-center gap-2 text-[0.84rem] text-ink-2">
                 <input type="checkbox" name="remember" className="size-4 accent-accent" />

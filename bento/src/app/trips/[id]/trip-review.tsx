@@ -49,7 +49,7 @@ export function TripReviewCard({ tripId, review, days }: { tripId: string; revie
         <textarea id="review-note" name="note" rows={4} maxLength={NOTE_MAX} defaultValue={review?.note ?? ""} placeholder={r.notePlaceholder} className={fieldInput} />
       </div>
       <p className="text-[0.82rem] text-ink-3">{r.privacy}</p>
-      <SubmitButton pending={r.sending} className="min-h-10 self-start rounded-full bg-accent px-5 text-sm font-medium text-white hover:bg-accent-deep">
+      <SubmitButton pending={r.sending} className="min-h-10 self-start rounded-full bg-accent px-5 text-sm font-medium text-on-accent hover:bg-accent-deep">
         {review ? r.update : r.send}
       </SubmitButton>
     </form>

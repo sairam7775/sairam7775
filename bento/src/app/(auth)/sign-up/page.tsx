@@ -8,7 +8,7 @@ import { googleSignInEnabled } from "@/lib/auth-config";
 import { copy } from "@/copy";
 import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { confirmAge, signUpWithPassword, signInWithGoogle } from "../actions";
-import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
+import { AgreeNote, AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
 
 export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
   const supabase = await createClient();
@@ -75,16 +75,16 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
             <Field id="email" name="email" type="email" label={copy.auth.email} autoComplete="email" placeholder={copy.auth.emailPlaceholder} />
             <Field id="password" name="password" type="password" label={copy.auth.password} autoComplete="new-password" hint={copy.auth.passwordHint} />
             <Submit label={t.submit} pending={t.pending} />
-            <p className="text-[0.8rem] text-ink-3">
-              {t.privacyNote} <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">{t.privacyLink}</Link>.
-            </p>
           </form>
+
+          {/* Under both ways in, so it covers Continue with Google too. */}
+          <AgreeNote start={t.agree.start} />
         </>
       )}
 
       <p className="mt-6 text-[0.92rem] text-ink-2">
         {t.haveAccount}{" "}
-        <Link href={next === "/trips" ? "/sign-in" : `/sign-in?${new URLSearchParams({ next })}`} className="font-medium text-accent underline underline-offset-2">
+        <Link href={next === "/trips" ? "/sign-in" : `/sign-in?${new URLSearchParams({ next })}`} className="font-medium text-accent-ink underline underline-offset-2">
           {copy.common.signIn}
         </Link>
       </p>

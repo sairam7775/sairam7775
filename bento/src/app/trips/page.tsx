@@ -86,7 +86,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
                   {trip.party_size > 1 && ` · ${t.people(trip.party_size)}`}
                 </p>
                 {!hasReview.has(trip.id) && reviewOpen({ endDate: trip.end_date }, hasRoute.has(trip.id), today) && (
-                  <Link href={`/trips/${trip.id}#review`} className="mt-2 inline-flex min-h-9 items-center rounded-full bg-accent px-3.5 text-[0.84rem] font-medium text-white hover:bg-accent-deep">
+                  <Link href={`/trips/${trip.id}#review`} className="mt-2 inline-flex min-h-9 items-center rounded-full bg-accent px-3.5 text-[0.84rem] font-medium text-on-accent hover:bg-accent-deep">
                     {t.reviewAsk}
                   </Link>
                 )}
@@ -153,7 +153,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
 
           <SubmitButton
             pending={t.new.pending}
-            className="mt-1 self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-deep"
+            className="mt-1 self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-deep"
           >
             {t.new.submit}
           </SubmitButton>

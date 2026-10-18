@@ -8,7 +8,7 @@ import { safeNext } from "@/lib/safe-next";
 import { siteOrigin } from "@/lib/site-origin";
 import { authErrorMessage } from "@/lib/friendly-errors";
 import { googleSignInEnabled, inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
-import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
+import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, AGE_OK_VALUE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
 import { copy } from "@/copy";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteAccountData, postHogDeleter } from "@/lib/account/delete";
@@ -57,8 +57,9 @@ export async function signInWithPassword(formData: FormData) {
   redirect(next);
 }
 
-/** The neutral age screen (COPPA). The birth date is checked here and not
- *  kept; only the outcome is remembered, in a cookie. */
+/** The neutral age screen (16 and over, lib/age-gate.ts). The birth date
+ *  is checked here and not kept; only the outcome is remembered, in a
+ *  cookie. */
 export async function confirmAge(formData: FormData) {
   const next = safeNext(formData.get("next"));
   const back = `/sign-up?${new URLSearchParams({ next })}`;
@@ -76,7 +77,7 @@ export async function confirmAge(formData: FormData) {
     // but only until the birthday that makes them eligible.
     jar.set(AGE_BLOCKED_COOKIE, "1", { ...cookie, maxAge: secondsUntilEligible(dob, now) });
   } else {
-    jar.set(AGE_OK_COOKIE, "1", { ...cookie, maxAge: 60 * 60 * 24 * 365 });
+    jar.set(AGE_OK_COOKIE, AGE_OK_VALUE, { ...cookie, maxAge: 60 * 60 * 24 * 365 });
   }
   redirect(back);
 }

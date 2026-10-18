@@ -12,17 +12,21 @@
   --color-rice: #fbf8f3;
   --color-ink: #221c1e;
   --color-ink-2: #4a4145;
-  --color-ink-3: #8c8388;
+  --color-ink-3: #6f666b;
   --color-rule: #eae3dc;
 
   --color-accent: #ff7757;       /* salmon */
   --color-accent-deep: #e85f3f;
   --color-accent-soft: #ffe9e2;
-  --color-ume: #e5484d;
+  --color-accent-ink: #b34128;   /* salmon as text: links, labels, the focus ring */
+  --color-on-accent: #221c1e;    /* text on a salmon fill */
+  --color-ume: #bf2e34;
   --color-ume-soft: #fbe2e3;
-  --color-edamame: #3f9a60;
+  --color-on-ume: #ffffff;       /* text on an ume fill */
+  --color-ume-bright: #f26b6f;   /* ume as text on lacquer, in both themes */
+  --color-edamame: #2a7645;
   --color-edamame-soft: #e2f4e8;
-  --color-tamago: #b07b00;
+  --color-tamago: #875d00;
   --color-tamago-bright: #ffc94a;
   --color-tamago-soft: #fff3d1;
   --color-lavender-soft: #e4e7fb;
@@ -65,8 +69,11 @@
     --color-accent: #ff8a6e;
     --color-accent-deep: #ff7757;
     --color-accent-soft: #3a231d;
+    --color-accent-ink: #ff8a6e;
+    --color-on-accent: #221c1e;
     --color-ume: #f26b6f;
     --color-ume-soft: #3a1f21;
+    --color-on-ume: #221c1e;
     --color-edamame: #6fcb8e;
     --color-edamame-soft: #1e3327;
     --color-tamago: #ffd066;
@@ -92,8 +99,11 @@
   --color-accent: #ff8a6e;
   --color-accent-deep: #ff7757;
   --color-accent-soft: #3a231d;
+  --color-accent-ink: #ff8a6e;
+  --color-on-accent: #221c1e;
   --color-ume: #f26b6f;
   --color-ume-soft: #3a1f21;
+  --color-on-ume: #221c1e;
   --color-edamame: #6fcb8e;
   --color-edamame-soft: #1e3327;
   --color-tamago: #ffd066;
@@ -150,8 +160,15 @@ h1, h2, h3, h4 {
   border-radius: var(--radius-box);
 }
 
+/* An example in an empty field (you@example.com) is still text to read:
+   the caption grey, which passes 4.5:1, not the browser's faded default. */
+::placeholder {
+  color: var(--color-ink-3);
+  opacity: 1;
+}
+
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 2px solid var(--color-accent-ink);
   outline-offset: 3px;
   border-radius: 6px;
 }

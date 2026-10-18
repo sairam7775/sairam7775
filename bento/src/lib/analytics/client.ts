@@ -72,6 +72,9 @@ function init(posthog: PostHog, key: string) {
       disable_surveys: true,
       before_send: (event) => {
         if (!event) return event;
+        // No location from the IP address: Bento has no use for it (the
+        // privacy page says so).
+        event.properties = { ...event.properties, $geoip_disable: true };
         scrub(event.properties);
         scrub(event.$set as Bag);
         scrub(event.$set_once as Bag);

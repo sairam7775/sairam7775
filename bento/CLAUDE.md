@@ -34,8 +34,9 @@ Practically:
 - **Redirects after sign-in go through `safeNext`** (`lib/safe-next.ts`).
   "Starts with /" is not enough: `//evil` leaves the site.
 - **Every way to create an account passes the age screen** (`lib/age-gate.ts`,
-  COPPA): email sign-up and Google sign-in both check the cookie, and the
-  birth date is never stored. A new sign-up route needs the same check.
+  16 and over): email sign-up and Google sign-in both check the cookie, and
+  the birth date is never stored. A new sign-up route needs the same check.
+  The privacy page and the terms state the age too; a test keeps them equal.
 - **Analytics only with consent, and never content.** PostHog (EU) starts
   only when the `bento_analytics` cookie is "yes" (banner or Settings);
   "no" clears its storage. Everything goes through `lib/analytics/client.ts`:
@@ -262,6 +263,25 @@ Practically:
   failure can be traced to the plan that caused it, never the trip's
   current state. No names or emails on that page. Analytics get counts only
   (`trip_reviewed`), never the note.
+
+## Legal pages
+
+- `/privacy`, `/terms`, `/cookies` and `/about` (who runs Bento) are public
+  and share `components/legal/legal-page.tsx`; their words are in
+  `copy.privacy`, `copy.terms`, `copy.cookies` and `copy.about`. They are
+  linked from the home footer, Settings and each other (`LEGAL_LINKS`).
+- The operator's name and contact are the constants at the top of
+  `copy/en.ts` (`OPERATOR`, `CONTACT`). Until the business is registered
+  the name is "Bento Man" and the full name and address are given on request.
+- Keep them true to the code. A new cookie gets a row in `copy.cookies`; a
+  new company that handles data goes in `privacy.who` and `privacy.where`;
+  collecting something new means a line in `copy.privacy`.
+- Sign-up names the terms and the privacy policy under both ways in (email
+  and Google). The consent banner's Allow and No thanks look the same, and
+  the cookies page lets anyone change their answer, signed in or not.
+- No claim the data can't back: places and train times are seed values
+  until verified, so the copy says "Bento's place and train information",
+  never "real", "checked" or "verified".
 
 ## Sharing
 

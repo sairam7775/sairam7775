@@ -106,7 +106,7 @@ export function Field({
 
 export function Submit({ label, pending }: { label: string; pending: string }) {
   return (
-    <SubmitButton pending={pending} className="mt-2 min-h-11 rounded-full bg-accent px-5 text-[0.95rem] font-medium text-white hover:bg-accent-deep">
+    <SubmitButton pending={pending} className="mt-2 min-h-11 rounded-full bg-accent px-5 text-[0.95rem] font-medium text-on-accent hover:bg-accent-deep">
       {label}
     </SubmitButton>
   );
@@ -126,6 +126,20 @@ export function GoogleButton({ label }: { label: string }) {
       </svg>
       {label}
     </button>
+  );
+}
+
+/** "By creating an account you agree to the terms of use and … the privacy
+ *  policy." Wherever an account can be created: under sign-up, and under
+ *  Continue with Google on sign-in, which creates one for a new address. */
+export function AgreeNote({ start }: { start: string }) {
+  const t = copy.auth.signUp.agree;
+  const link = "font-medium underline underline-offset-2 hover:text-ink";
+  return (
+    <p className="mt-4 text-[0.85rem] leading-relaxed text-ink-2">
+      {start} <Link href="/terms" className={link}>{t.terms}</Link>{" "}
+      {t.middle} <Link href="/privacy" className={link}>{t.privacy}</Link>{t.end}
+    </p>
   );
 }
 

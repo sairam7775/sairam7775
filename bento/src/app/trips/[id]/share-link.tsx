@@ -39,7 +39,7 @@ export function ShareLink({ url, title }: { url: string; title: string }) {
               // No clipboard (an old browser, a denied permission): the field selects on focus.
             }
           }}
-          className="min-h-10 rounded-full bg-accent px-5 text-[0.88rem] font-medium text-white hover:bg-accent-deep"
+          className="min-h-10 rounded-full bg-accent px-5 text-[0.88rem] font-medium text-on-accent hover:bg-accent-deep"
         >
           <span aria-live="polite">{copied ? t.copied : t.copy}</span>
         </button>

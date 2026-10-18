@@ -70,7 +70,7 @@ export default async function Review({ searchParams }: PageProps<"/admin/review"
               <h2 className="text-xl font-bold">{next.name} <span className="ml-2 text-base font-medium text-ink-3">{next.name_ja}</span></h2>
               <p className="mono mt-1 text-[0.72rem] text-ink-3">{next.id} · {next.cities?.name} · {next.category}</p>
             </div>
-            <Link href={`/admin/places/${next.id}`} className="mono text-[0.7rem] uppercase tracking-[0.08em] text-accent underline underline-offset-2">Open editor</Link>
+            <Link href={`/admin/places/${next.id}`} className="mono text-[0.7rem] uppercase tracking-[0.08em] text-accent-ink underline underline-offset-2">Open editor</Link>
           </header>
 
           <section className="grid gap-x-8 gap-y-5 px-6 py-5 sm:grid-cols-2">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition, type CSSProperties, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { markTourSeen } from "./actions";
 import { TOURS, type TourId } from "./steps";
@@ -64,6 +64,22 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
     if (open) card.current?.focus();
   }, [open, i, mounted]);
 
+  // The card is modal: Tab and Shift+Tab go round its buttons, never out
+  // to the page behind the dim.
+  const keepFocusIn = (e: KeyboardEvent<HTMLDivElement>) => {
+    const buttons = [...(card.current?.querySelectorAll("button") ?? [])];
+    if (buttons.length === 0) return;
+    const first = buttons[0], end = buttons[buttons.length - 1];
+    const at = document.activeElement;
+    if (e.shiftKey && (at === first || at === card.current)) {
+      e.preventDefault();
+      end.focus();
+    } else if (!e.shiftKey && at === end) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   const last = i === steps.length - 1;
   const next = () => (last ? close() : setI(i + 1));
   const back = () => setI(Math.max(0, i - 1));
@@ -112,7 +128,8 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
         aria-describedby="tour-body"
         tabIndex={-1}
         onKeyDown={(e) => {
-          if (e.key === "Escape") close();
+          if (e.key === "Tab") keepFocusIn(e);
+          else if (e.key === "Escape") close();
           else if (e.key === "ArrowRight") next();
           else if (e.key === "ArrowLeft") back();
         }}
@@ -134,7 +151,7 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
               {copy.tour.back}
             </button>
           )}
-          <button type="button" onClick={next} className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep">
+          <button type="button" onClick={next} className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-on-accent hover:bg-accent-deep">
             {last ? copy.tour.done : copy.tour.next}
           </button>
         </div>

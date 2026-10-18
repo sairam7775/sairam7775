@@ -35,7 +35,7 @@ export default async function ForgotPassword({ searchParams }: PageProps<"/forgo
 
       <p className="mt-6 text-[0.92rem] text-ink-2">
         {t.remembered}{" "}
-        <Link href="/sign-in" className="font-medium text-accent underline underline-offset-2">
+        <Link href="/sign-in" className="font-medium text-accent-ink underline underline-offset-2">
           {copy.common.signIn}
         </Link>
       </p>

@@ -5,7 +5,7 @@ import { googleSignInEnabled } from "@/lib/auth-config";
 import { copy } from "@/copy";
 import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { signInWithPassword, signInWithGoogle } from "../actions";
-import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Submit } from "../ui";
+import { AgreeNote, AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Submit } from "../ui";
 
 export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
   const supabase = await createClient();
@@ -46,6 +46,7 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
             <input type="hidden" name="next" value={next} />
             <GoogleButton label={copy.auth.google} />
           </form>
+          <AgreeNote start={t.googleAgree} />
 
           <Divider label={copy.auth.orEmail} />
         </>
@@ -63,7 +64,7 @@ export default async function SignIn({ searchParams }: PageProps<"/sign-in">) {
 
       <p className="mt-6 text-[0.92rem] text-ink-2">
         {t.newHere}{" "}
-        <Link href="/sign-up" className="font-medium text-accent underline underline-offset-2">
+        <Link href="/sign-up" className="font-medium text-accent-ink underline underline-offset-2">
           {t.createAccount}
         </Link>
       </p>
