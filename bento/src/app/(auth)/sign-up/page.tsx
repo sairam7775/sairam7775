@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { ageStatus } from "@/lib/age-gate";
 import { safeNext } from "@/lib/safe-next";
+import { NAME_MAX } from "@/lib/account/name";
 import { googleSignInEnabled } from "@/lib/auth-config";
 import { copy } from "@/copy";
 import { AnalyticsSignedOut } from "@/components/analytics/analytics";
@@ -72,6 +73,7 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
           )}
 
           <form action={signUpWithPassword} className="flex flex-col gap-4">
+            <Field id="name" name="name" type="text" label={t.name} autoComplete="given-name" hint={t.nameHint} optional maxLength={NAME_MAX} />
             <Field id="email" name="email" type="email" label={copy.auth.email} autoComplete="email" placeholder={copy.auth.emailPlaceholder} />
             <Field id="password" name="password" type="password" label={copy.auth.password} autoComplete="new-password" hint={copy.auth.passwordHint} />
             <Submit label={t.submit} pending={t.pending} />

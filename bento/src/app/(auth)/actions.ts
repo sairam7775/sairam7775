@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
 import { siteOrigin } from "@/lib/site-origin";
 import { authErrorMessage } from "@/lib/friendly-errors";
+import { cleanName } from "@/lib/account/name";
 import { googleSignInEnabled, inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, AGE_OK_VALUE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
 import { copy } from "@/copy";
@@ -95,12 +96,18 @@ export async function signUpWithPassword(formData: FormData) {
     redirect(backTo("/sign-up", parsed.error.issues[0].message));
   }
 
+  // Optional: kept only when given, so a later Google sign-in can still
+  // offer its first name (lib/account/name.ts).
+  const name = cleanName(formData.get("name"));
   const supabase = await createClient();
   const { error } = await supabase.auth.signUp({
     ...parsed.data,
-    // A custom email template appends &token_hash=… to this (README), so it
-    // always carries a query string.
-    options: { emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/trips")}` },
+    options: {
+      // A custom email template appends &token_hash=… to this (README), so it
+      // always carries a query string.
+      emailRedirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/trips")}`,
+      ...(name ? { data: { display_name: name } } : {}),
+    },
   });
 
   if (error) {

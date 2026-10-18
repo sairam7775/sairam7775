@@ -10,6 +10,7 @@ import { ErrorNote } from "../(auth)/ui";
 import { copy } from "@/copy";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { reviewOpen } from "@/lib/trips/review";
+import { displayName } from "@/lib/account/name";
 
 const t = copy.trips;
 
@@ -54,6 +55,9 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
 
   const params = await searchParams;
   const error = typeof params.error === "string" ? params.error : null;
+  const name = displayName(user);
+  // はじめまして until the first trip exists, おかえりなさい after.
+  const hello = trips && trips.length > 0 ? t.greeting.returning : t.greeting.first;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
@@ -61,7 +65,11 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
       {user && <AnalyticsUser id={user.id} />}
       <Tour id="trips" seen={await tourSeen("trips")} />
 
-      <h1 className="mt-8 text-3xl font-bold tracking-tight">{t.title}</h1>
+      <p className="up mt-8 flex flex-wrap items-baseline gap-x-2.5 text-[1.05rem]">
+        <span lang="ja" className="disp font-bold text-accent-ink">{hello.ja}</span>
+        <span className="text-ink-2">{name ? hello.named(name) : hello.plain}</span>
+      </p>
+      <h1 className="mt-1 text-3xl font-bold tracking-tight">{t.title}</h1>
       <p className="mt-2 text-[0.95rem] text-ink-2">
         {t.signedInAs} <span className="mono break-all text-[0.85rem]">{user?.email}</span>
       </p>

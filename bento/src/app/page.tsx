@@ -6,6 +6,7 @@ import { copy } from "@/copy";
 import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { Notice } from "@/app/(auth)/ui";
 import { LegalNav } from "@/components/legal/legal-page";
+import { displayName } from "@/lib/account/name";
 
 const t = copy.home;
 
@@ -19,8 +20,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const name = displayName(user);
   const cta = user ? (
-    <Link href="/trips" className={primary}>{t.yourTripsCta}</Link>
+    <>
+      <Link href="/trips" className={primary}>{t.yourTripsCta}</Link>
+      <span className="text-[0.98rem] text-ink-2">{name ? t.greeting.named(name) : t.greeting.plain}</span>
+    </>
   ) : (
     <>
       <Link href="/sign-up" className={primary}>{t.startPlanning}</Link>

@@ -77,6 +77,8 @@ export function Field({
   hint,
   placeholder,
   max,
+  optional = false,
+  maxLength,
 }: {
   id: string;
   name: string;
@@ -86,20 +88,25 @@ export function Field({
   hint?: string;
   placeholder?: string;
   max?: string;
+  /** Not required; the hint should say so. */
+  optional?: boolean;
+  maxLength?: number;
 }) {
+  // The hint is read out with the field, not only seen under it.
+  const described = hint ? `${id}-hint` : undefined;
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className={fieldLabel}>
         {label}
       </label>
       {type === "password" ? (
-        <PasswordInput id={id} name={name} required autoComplete={autoComplete} placeholder={placeholder} className={fieldInput} />
+        <PasswordInput id={id} name={name} required={!optional} autoComplete={autoComplete} placeholder={placeholder} aria-describedby={described} className={fieldInput} />
       ) : type === "date" ? (
-        <DateInput id={id} name={name} required max={max} autoComplete={autoComplete} className={fieldInput} />
+        <DateInput id={id} name={name} required={!optional} max={max} autoComplete={autoComplete} aria-describedby={described} className={fieldInput} />
       ) : (
-        <input id={id} name={name} type={type} required autoComplete={autoComplete} placeholder={placeholder} className={fieldInput} />
+        <input id={id} name={name} type={type} required={!optional} maxLength={maxLength} autoComplete={autoComplete} placeholder={placeholder} aria-describedby={described} className={fieldInput} />
       )}
-      {hint && <p className="text-[0.8rem] text-ink-3">{hint}</p>}
+      {hint && <p id={described} className="text-[0.8rem] text-ink-3">{hint}</p>}
     </div>
   );
 }
