@@ -5,6 +5,7 @@
  *  for them are in copy.review. */
 import { z } from "zod";
 import { copy } from "@/copy";
+import { allocateDates } from "@/lib/engine/route";
 
 export const OUTCOMES = ["as_planned", "mostly", "not_really"] as const;
 export const CHALLENGES = ["too_much", "travel_longer", "place_closed", "crowds", "booking", "walking", "timing", "other"] as const;
@@ -73,6 +74,18 @@ export function datesBetween(start: string | null, end: string | null): string[]
   if (!start || !end || end < start) return [];
   const out: string[] = [];
   for (let t = Date.parse(`${start}T00:00:00Z`); t <= Date.parse(`${end}T00:00:00Z`) && out.length < 400; t += 86_400_000) out.push(new Date(t).toISOString().slice(0, 10));
+  return out;
+}
+
+/** The city of each date in a saved plan: the route's nights laid over the
+ *  dates as the trip page lays them, then each planned day's own city. A
+ *  day with no stops (arriving, leaving) still has one. */
+export function snapshotCities(plan: PlanSnapshot): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const c of allocateDates(plan.start, plan.route.map((r) => ({ cityId: r.city, nights: r.nights })), plan.end)) {
+    for (const d of c.dates) out.set(d, c.cityId);
+  }
+  for (const d of plan.days) if (d.city) out.set(d.date, d.city);
   return out;
 }
 

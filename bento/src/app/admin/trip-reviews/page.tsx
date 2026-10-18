@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import { AppHeader } from "@/components/app-header";
-import { CHALLENGES, OUTCOMES, reviewFromRow, snapshotFromRow, type TripReview } from "@/lib/trips/review";
+import { CHALLENGES, OUTCOMES, reviewFromRow, snapshotCities, snapshotFromRow, type TripReview } from "@/lib/trips/review";
 import { copy } from "@/copy";
 
 const r = copy.review;
@@ -99,6 +99,7 @@ export default async function TripReviews() {
             <ul className="mt-4 flex flex-col gap-4">
               {rows.map(({ row, review, plan }) => {
                 const route = (plan?.route ?? []).map((c) => `${c.city} ${c.nights}n`).join(" → ");
+                const cities = plan ? snapshotCities(plan) : null;
                 return (
                   <li key={row.trip_id} className="tile p-5">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -126,7 +127,7 @@ export default async function TripReviews() {
                             const stops = (d?.stops ?? []).map((s) => `${s.time ?? "--:--"} ${s.name}`);
                             return (
                               <li key={date} className="text-[0.86rem]">
-                                <span className="font-medium">{fmt(date)}{d?.city ? ` · ${d.city}` : ""}</span>
+                                <span className="font-medium">{fmt(date)}{cities?.get(date) ? ` · ${cities.get(date)}` : ""}</span>
                                 <span className="text-ink-3">{stops.length ? ` — ${stops.join(", ")}` : " — no stops planned"}</span>
                               </li>
                             );

@@ -21,7 +21,7 @@ import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
 import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
-import { datesBetween, reviewFromRow, reviewOpen, snapshotFromRow } from "@/lib/trips/review";
+import { datesBetween, reviewFromRow, reviewOpen, snapshotCities, snapshotFromRow } from "@/lib/trips/review";
 import { TripReviewCard } from "./trip-review";
 import type { CoverageTier } from "@/lib/types";
 
@@ -92,9 +92,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   // first answer, even if the trip has moved since; a new answer, from today's.
   const reviewedPlan = review ? snapshotFromRow(reviewRow?.plan) : null;
   const dayWord = (date: string) => fmt(date, { weekday: "short", day: "numeric", month: "short" });
+  const reviewedCities = reviewedPlan ? snapshotCities(reviewedPlan) : null;
   const reviewDays = reviewedPlan
     ? datesBetween(reviewedPlan.start, reviewedPlan.end).map((date, i) => {
-        const city = reviewedPlan.days.find((d) => d.date === date)?.city;
+        const city = reviewedCities?.get(date);
         return { date, label: city ? copy.review.hardDay(i + 1, dayWord(date), city) : copy.review.hardDayNoCity(i + 1, dayWord(date)) };
       })
     : dayList.map(([date, meta], i) => ({ date, label: copy.review.hardDay(i + 1, dayWord(date), meta.cityName) }));

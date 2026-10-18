@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CHALLENGES, datesBetween, HARD_DAYS_MAX, NOTE_MAX, OUTCOMES, parseReview, reviewFromRow, reviewOpen, snapshotFromRow } from "../review";
+import { CHALLENGES, datesBetween, HARD_DAYS_MAX, NOTE_MAX, OUTCOMES, parseReview, reviewFromRow, reviewOpen, snapshotCities, snapshotFromRow } from "../review";
 import { copy } from "@/copy";
 
 const trip = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -69,6 +69,26 @@ describe("snapshotFromRow", () => {
     expect(snapshotFromRow(saved)).toEqual(saved);
     expect(snapshotFromRow(null)).toBeNull();
     expect(snapshotFromRow({ route: "Kyoto" })).toBeNull();
+  });
+});
+
+describe("snapshotCities", () => {
+  it("gives every date of a saved plan its city, days with no stops included", () => {
+    const plan = {
+      start: "2026-11-20",
+      end: "2026-11-24",
+      party: 2,
+      route: [{ city: "Osaka", nights: 1 }, { city: "Kyoto", nights: 3 }],
+      days: [{ date: "2026-11-22", city: "Nara", stops: [{ time: "09:00", name: "Todai-ji" }] }],
+    };
+    expect([...snapshotCities(plan)].sort()).toEqual([
+      ["2026-11-20", "Osaka"],
+      ["2026-11-21", "Kyoto"],
+      ["2026-11-22", "Nara"],
+      ["2026-11-23", "Kyoto"],
+      ["2026-11-24", "Kyoto"],
+    ]);
+    expect(snapshotCities({ ...plan, start: null, end: null, days: [] }).size).toBe(0);
   });
 });
 
