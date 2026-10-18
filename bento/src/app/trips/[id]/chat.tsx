@@ -268,6 +268,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
           </button>
         </div>
         <p className="mt-1.5 hidden text-[0.75rem] text-ink-3 sm:block">{t.keys}</p>
+        <p className="mt-1 text-[0.72rem] leading-snug text-ink-3">{t.trust}</p>
       </form>
     </div>
   );

@@ -505,6 +505,8 @@ export const en = {
     howTo: "Choose “Save as PDF” in the print window to keep a copy on your phone or computer. It opens without a connection.",
     back: "Back to the trip",
     saved: (date: string) => `Saved from Bento on ${date}. If you change the plan, download it again.`,
+    link: "Open the latest version in Bento:",
+    checkNote: "The times, travel and opening hours here come from Bento's checked information on the day you saved it. Places do sometimes change their hours or close for a holiday, so for anything you can't miss, a quick look before you set off is worth it.",
     people: (n: number) => `${n} travelling`,
     route: "Route",
     days: "Day by day",
@@ -570,6 +572,8 @@ export const en = {
     answering: "Bento Man is answering…",
     send: "Send",
     keys: "Enter to send · Shift + Enter for a new line",
+    // Under the message box. What to rely on first, then the honest limit.
+    trust: "Times, trains and opening hours come from Bento's checked information. Bento Man can sometimes word things wrongly: what your plan and proposals show is what counts.",
     thinking: "Thinking",
     working: "Working",
     // What Bento Man is doing while a reply is on its way.
