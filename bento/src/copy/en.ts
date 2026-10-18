@@ -5,6 +5,15 @@
  *
  *  Voice (DESIGN.md): plain sentences, no cheerleading, no internal words.
  *  `copy.test.ts` checks every line is filled in and free of jargon. */
+
+/** Who runs Bento, as the legal pages name them. Until the business is
+ *  registered this is the trade name alone: the owner's name and postal
+ *  address are given to anyone who asks, which Japan's privacy law allows.
+ *  Change it here once registered, and the pages follow. */
+const OPERATOR = "Bento Man";
+const CONTACT = "bentoman.me@gmail.com";
+const MIN_AGE = 16;
+
 export const en = {
   /** How dates and numbers are written (a BCP 47 tag, for toLocaleDateString). */
   locale: "en-GB",
@@ -12,7 +21,7 @@ export const en = {
   meta: {
     title: "Bento — plan Japan properly",
     description:
-      "A trip planner for people who have never been to Japan. Real travel times, honest expectations, and a plan that tells you what's still missing.",
+      "A trip planner for people who have never been to Japan. The travel time between every stop, honest expectations, and a plan that tells you what's still missing.",
   },
 
   common: {
@@ -77,7 +86,7 @@ export const en = {
       points: {
         plan: { title: "Your plan, as you left it", body: "Every accepted day, every pinned stop, and the conversation with Bento Man." },
         gaps: { title: "The gaps, still flagged", body: "A night with no bed or a train with no ticket stays on the list until it’s booked." },
-        bookings: { title: "Bookings in one place", body: "Confirmation numbers are encrypted, and only you can see them." },
+        bookings: { title: "Bookings in one place", body: "Confirmation numbers are encrypted, and shown only to you." },
       },
       forgot: "Forgot password?",
       submit: "Sign in",
@@ -93,7 +102,7 @@ export const en = {
       greetingMeaning: "“Nice to meet you” — said once, at the start.",
       points: {
         tell: { title: "Tell Bento Man the trip", body: "Dates, who’s going, what you like and what you’d never do. A few questions, not a form." },
-        route: { title: "Get a route that adds up", body: "Cities and nights with the train time shown. Over-packed plans are refused, with the arithmetic." },
+        route: { title: "Get a route that adds up", body: "Cities and nights with the train time shown. An over-packed plan is flagged, with the arithmetic." },
         days: { title: "Each day as a box", body: "Stops sized to the time they take. Nothing changes until you accept it." },
       },
       blocked: "Sorry, we can’t create an account for you.",
@@ -105,8 +114,14 @@ export const en = {
       submit: "Create account",
       pending: "Creating your account…",
       haveAccount: "Already have an account?",
-      privacyNote: "By creating an account you agree to how Bento handles your data:",
-      privacyLink: "privacy",
+      // One sentence with two links: start, terms link, middle, privacy link, end.
+      agree: {
+        start: "By creating an account you agree to the",
+        terms: "terms of use",
+        middle: "and to how Bento handles your data, set out in the",
+        privacy: "privacy policy",
+        end: ".",
+      },
     },
 
     forgot: {
@@ -193,7 +208,7 @@ export const en = {
       kicker: "For your first trip to Japan",
       kickerJa: "弁当",
       title: "Plan Japan like you’ve been before.",
-      body: "Bento is a trip planner that tells you the honest version — how long each place really takes, which trains to catch, and what’s still missing from your plan — the way a friend who lives there would.",
+      body: "Bento is a trip planner that tells you the honest version — how long each place takes, which trains get you there, and what’s still missing from your plan — the way a friend who lives there would.",
       note: "Bento suggests; you decide. Nothing changes in your plan until you say yes.",
     },
     how: {
@@ -209,14 +224,14 @@ export const en = {
     different: {
       eyebrow: "What it does differently",
       title: "Honest, not exhaustive",
-      durations: { title: "Real durations, not listings", body: "Fushimi Inari is 45 minutes to the gates and three hours to the summit. Which one you have time for changes the day." },
+      durations: { title: "Time on the ground, not listings", body: "Fushimi Inari is 45 minutes to the gates and three hours to the summit. Which one you have time for changes the day." },
       honest: { title: "It admits what it doesn’t know", body: "Every city says how well it’s covered. A thin guess dressed up as a plan is the one thing this won’t do." },
       gaps: { title: "It finds the gaps", body: "The night you have no hotel, the leg with no train, the ticket whose booking window closes next week." },
     },
     coverage: {
       eyebrow: "Where it knows best today",
       title: "The Kansai–Sanyo corridor",
-      body: "The trains between these cities, with real times and fares, and place-by-place detail for the cities most first trips are built on. The rest of Japan is on the map too — and each city tells you how much Bento really knows about it.",
+      body: "The trains between these cities, with their times and fares, and the cities most first trips are built on, where place-by-place detail is being added now. The rest of Japan is on the map too — and each city tells you how much Bento really knows about it.",
       // Each city: its name, then its name in Japanese.
       cities: {
         kyoto: { name: "Kyoto", ja: "京都" },
@@ -232,11 +247,10 @@ export const en = {
       body: "Start with your dates. Bento Man takes it from there.",
     },
     footer: "Bento — Japan, planned properly",
-    privacy: "Privacy",
     footerJa: "いってらっしゃい",
     // The sample day beside the headline: an illustration, not real data.
     preview: {
-      caption: "An example day in Kyoto, planned by Bento: four stops from 7:30, with the reason for each.",
+      caption: "An example of a day in Bento: Kyoto, four stops from 7:30, with the reason for each.",
       date: "Sunday 22 November",
       summary: "Kyoto · 6h 40m",
       stops: {
@@ -412,8 +426,8 @@ export const en = {
     unpin: "Unpin",
     pinHint: "Keep this exactly here",
     unpinHint: "Let Bento move this",
-    moveEarlier: "Move earlier",
-    moveLater: "Move later",
+    moveEarlier: (name: string) => `Move ${name} earlier`,
+    moveLater: (name: string) => `Move ${name} later`,
     remove: "Remove",
     removeLabel: (name: string) => `Remove ${name}`,
     removeConfirm: (name: string) => `Remove ${name} from this day?`,
@@ -508,7 +522,7 @@ export const en = {
     link: "Open the latest version in Bento:",
     // While the trip is shared: the companions' link, which opens for anyone.
     linkShared: "Latest version, for everyone travelling:",
-    checkNote: "The times, travel and opening hours here come from Bento's checked information on the day you saved it. Places do sometimes change their hours or close for a holiday, so for anything you can't miss, a quick look before you set off is worth it.",
+    checkNote: "The times, travel and opening hours here come from Bento's place and train information on the day you saved it. Places do sometimes change their hours or close for a holiday, so for anything you can't miss, a quick look before you set off is worth it.",
     people: (n: number) => `${n} travelling`,
     route: "Route",
     days: "Day by day",
@@ -607,7 +621,7 @@ export const en = {
     send: "Send",
     keys: "Enter to send · Shift + Enter for a new line",
     // Under the message box. What to rely on first, then the honest limit.
-    trust: "Times, trains and opening hours come from Bento's checked information. Bento Man can sometimes word things wrongly: what your plan and proposals show is what counts.",
+    trust: "Times, trains and opening hours come from Bento's own place and train information, not Bento Man's memory. Bento Man can sometimes word things wrongly: what your plan and proposals show is what counts.",
     thinking: "Thinking",
     working: "Working",
     // What Bento Man is doing while a reply is on its way.
@@ -1025,8 +1039,12 @@ export const en = {
       confirm: "Delete your account and everything in it? This can't be undone.",
       admin: "This account has admin access. Remove the admin access first, so nobody is locked out of curation.",
       emailMismatch: "That isn't the email address this account uses.",
-      failed: "Your account wasn't deleted. Try again, or write to bentoman.me@gmail.com.",
+      failed: `Your account wasn't deleted. Try again, or write to ${CONTACT}.`,
       done: "Your account and everything in it has been deleted.",
+    },
+    legal: {
+      heading: "Your data and Bento's terms",
+      body: "What Bento keeps and why, the terms you agreed to, the cookies it uses, and who runs it.",
     },
   },
 
@@ -1039,14 +1057,33 @@ export const en = {
     more: "Details",
   },
 
+  // Shared by the legal pages: the links between them (also in the home
+  // footer and Settings) and the contact line at the end of each.
+  legal: {
+    navLabel: "About Bento and your data",
+    privacy: "Privacy",
+    terms: "Terms",
+    cookies: "Cookies",
+    about: "Who runs Bento",
+    contactLabel: "Questions or requests:",
+    contact: CONTACT,
+  },
+
   privacy: {
     title: "How Bento uses data",
     updated: "Last updated 18 October 2026",
     intro: "Bento is a trip planner. This page says what it keeps about you, who else handles it, and what you can do about it. In short: your plan stays yours, booking references are encrypted, and usage analytics only run if you say yes.",
-    contactLabel: "Questions or requests:",
-    contact: "bentoman.me@gmail.com",
+    // Links shown under a section, by the section's key.
+    links: {
+      operator: "Business details",
+      cookies: "Every cookie, and your analytics answer",
+    },
     // Each section: a heading and its text, in order. A blank line (\n\n) starts a new paragraph.
     sections: {
+      operator: {
+        heading: "Who is responsible",
+        body: `Bento is run by ${OPERATOR}, an individual based in Japan, who is responsible for your data under Japan's Act on the Protection of Personal Information and, for visitors in the EU and UK, the GDPR.\n\nThe operator's full name and postal address are given without delay to anyone who asks. Write to ${CONTACT}.`,
+      },
       account: {
         heading: "Your account",
         body: "Your email address and password (stored hashed by our sign-in provider), to sign you in.\n\nYour date of birth is asked once at sign-up to check you are old enough, and is not kept. Only whether you passed is remembered, in a cookie.",
@@ -1065,11 +1102,19 @@ export const en = {
       },
       analytics: {
         heading: "Usage analytics (only if you say yes)",
-        body: "If you allow it, Bento records which pages you open (the page, not what's in its address), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, and errors. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. Screen recordings used to find problems blank out all text and every field, so what you type and your bookings are never recorded.\n\nYou can turn it off any time in Settings. Saying no changes nothing else about Bento.",
+        body: "If you allow it, Bento records which pages you open (the page, not what's in its address), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, and errors. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. PostHog receives your device's IP address, as any website does, and Bento tells it not to work out your location from it. Screen recordings used to find problems blank out all text and every field, so what you type and your bookings are never recorded.\n\nYou can turn it off any time in Settings or on the cookies page. Saying no changes nothing else about Bento.",
+      },
+      purposes: {
+        heading: "Why Bento uses it",
+        body: "Your account and your plans: to give you the service you signed up for.\n\nKeeping Bento secure, within its spending limit, and fixing what breaks: Bento's legitimate interest in keeping it working for everyone.\n\nUsage analytics: only with your consent, which you can withdraw at any time.\n\nBento doesn't sell your data, doesn't use it for advertising, and doesn't use it to make decisions about you that have legal or similarly serious effects.",
+      },
+      emails: {
+        heading: "Emails",
+        body: "Bento only emails you about your account: a link to confirm your address when you sign up, and a link to reset your password when you ask for one. They come with having an account, so they have no unsubscribe link.\n\nBento sends no newsletters or marketing. If that ever changes, it will only be with your yes, and every such email will have a link that stops them in one click.",
       },
       cookies: {
         heading: "Cookies",
-        body: "Bento uses cookies to keep you signed in and to remember your choices: theme, background, the tour, the age check and your analytics answer. These are needed for the site to work.\n\nPostHog sets its own cookie and local storage only after you allow analytics.",
+        body: "Bento uses cookies to keep you signed in and to remember your choices: theme, background, the tour, the age check and your analytics answer. These are needed for the site to work.\n\nPostHog sets its own cookie and local storage only after you allow analytics. The cookies page lists each one, what it's for and how long it lasts.",
       },
       who: {
         heading: "Who else handles your data",
@@ -1079,22 +1124,159 @@ export const en = {
             ? "Supabase (database and sign-in), Vercel (hosting), Google (Bento Man), Anthropic (reading pasted confirmations) and, only with your consent, PostHog (analytics, EU)."
             : "Supabase (database and sign-in), Vercel (hosting), Anthropic (Bento Man and reading pasted confirmations) and, only with your consent, PostHog (analytics, EU).") +
           (googleSignIn ? " If you continue with Google, Google also confirms who you are and shares your email address with Bento." : "") +
-          " Each handles data only to provide its service to Bento.",
+          (chat === "gemini"
+            ? " Apart from Google's use of Bento Man messages described above, each handles data only to provide its service to Bento."
+            : " Each handles data only to provide its service to Bento."),
+      },
+      where: {
+        heading: "Where it's handled",
+        body: (chat: "gemini" | "anthropic") =>
+          "Your account and trips are stored in India (Mumbai), where Bento's servers also run. " +
+          (chat === "gemini"
+            ? "Bento Man's replies are made by Google, and pasted confirmations are read by Anthropic, mainly in the United States."
+            : "Bento Man's replies and the reading of pasted confirmations are made by Anthropic, mainly in the United States.") +
+          " Usage analytics, if you allow them, are stored in the EU (Germany).\n\nPrivacy law differs between these places: India has its Digital Personal Data Protection Act, the EU has the GDPR, and the United States has no single national privacy law. Each company works under its terms with Bento, which limit what it may do with your data. Ask us if you'd like more detail about any of them.",
+      },
+      protect: {
+        heading: "How it's protected",
+        body: "Connections to Bento are encrypted. Booking reference numbers are encrypted again before they are stored, with a key kept apart from the database.\n\nA trip can only be read by its owner, which the database itself enforces, and by people the owner gives a shared link to. Only the operator can reach the systems behind Bento.",
       },
       keep: {
         heading: "How long it's kept",
-        body: "Your account and trips are kept until you delete them. Analytics events are kept for up to one year.",
+        body: "Your account and trips are kept until you delete them. A shared link works until you switch it off or delete the trip. Analytics events are kept for up to one year.",
+      },
+      children: {
+        heading: "Children",
+        body: `Bento is for people aged ${MIN_AGE} and over. Sign-up asks for a date of birth and won't create an account for anyone younger, and Bento doesn't knowingly keep data about children under ${MIN_AGE}. If you think a child has an account, write to us and we'll delete it.`,
       },
       rights: {
         heading: "Your rights",
         // `analyticsDeletion`: whether deleting an account also deletes its analytics in PostHog here.
         body: (chat: "gemini" | "anthropic", googleSignIn: boolean, analyticsDeletion: boolean) =>
-          "You can delete your account at any time in Settings. Your trips, day plans, bookings, conversations with Bento Man, trip reviews and preferences are removed straight away. " +
+          "You can delete a trip from your trips list, or your whole account in Settings, at any time. Deleting your account removes your trips, day plans, bookings, shared links, conversations with Bento Man, trip reviews and preferences straight away. " +
           (analyticsDeletion
             ? "Analytics linked to your account are deleted from PostHog at the same time. "
             : "To have analytics linked to your account deleted too, write to the address below. ") +
-          "Records of what Bento's AI calls cost (Bento Man and the confirmation reader) are kept without any link to you, because they enforce the spending limit.\n\nYou can also ask for a copy of your data, ask us to correct it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nBento is not for children under 13.",
+          "Records of what Bento's AI calls cost (Bento Man and the confirmation reader) are kept without any link to you, because they enforce the spending limit.\n\nIf you can't sign in, write to us from the email address on the account and we will delete it within 30 days.\n\nYou can also ask for a copy of your data, ask us to correct it or stop using it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nIf you're unhappy with how Bento handles your data, please tell us first. You can also complain to Japan's Personal Information Protection Commission, or to the data protection authority where you live.",
       },
+    },
+  },
+
+  terms: {
+    title: "Terms of use",
+    updated: "Last updated 18 October 2026",
+    intro: "The agreement between you and Bento when you use it. It's written to be read: if anything here is unclear, write to us and we'll explain.",
+    sections: {
+      service: {
+        heading: "What Bento is",
+        body: `Bento is a trip planner for Japan, run by ${OPERATOR}. It helps you plan a route and your days, and keeps the bookings you add in one place.\n\nBento doesn't sell or book travel and isn't a travel agency. When you book a hotel, a flight, a train or a ticket, your agreement is with that provider, not with Bento.`,
+      },
+      refunds: {
+        heading: "Price and refunds",
+        body: "Bento is free. There are no fees, subscriptions or charges, so there is nothing to refund.\n\nBookings you make elsewhere follow that provider's own cancellation and refund rules. Adding one to Bento doesn't change them, and Bento can't cancel or refund it for you.\n\nIf Bento ever offers something paid, its price, what it includes and its refund rules will be shown before you pay, and nothing will be charged without your clear yes.",
+      },
+      account: {
+        heading: "Your account",
+        body: `You need to be ${MIN_AGE} or older to create an account. If you're under 18, check that a parent or guardian is happy for you to use Bento.\n\nAn account is for one person. Keep your password to yourself: you're responsible for what's done with your account. If you think someone else has used it, change your password and write to us.`,
+      },
+      yours: {
+        heading: "Your plans stay yours",
+        body: "Trips, notes and bookings you add belong to you. You allow Bento to store them and use them to run the service for you: for example, to send your trip to Bento Man when you ask it something, or to show a shared plan to the people you give its link to. The privacy page sets out how.\n\nYou can delete a trip, or your whole account, at any time.",
+      },
+      bentoMan: {
+        heading: "Bento Man's suggestions",
+        body: "Times, trains and opening hours in your plan come from Bento's place and train information, and Bento Man works from them. Bento Man can still word something wrongly, and places change their hours or close for a holiday, so for anything you can't miss, such as a last train or a timed ticket, a quick look at the official source before you set off is worth it.\n\nNothing changes in your plan until you accept it. What you do on your trip is your decision.",
+      },
+      sharing: {
+        heading: "Shared plans",
+        body: "When you share a trip, anyone with its link can see the plan. Share it only with people you want to see it. You can make a new link or switch sharing off at any time.",
+      },
+      use: {
+        heading: "Using Bento fairly",
+        body: "Please don't use Bento to break the law; try to get into other people's accounts or trips; try to break, overload or get round Bento's security or limits; copy Bento's place and train information in bulk, by script or otherwise; or get Bento Man to write things that are hateful, harassing or meant to harm.\n\nIf an account is used like this, we may suspend or close it. Unless the law or someone's safety stops us, we'll tell you why and give you a chance to explain.",
+      },
+      changes: {
+        heading: "When Bento or these terms change",
+        body: "Bento is new and will change: features may be added, changed or removed. If Bento is ever going to close, the site will say so at least 30 days before, so you can save your plans (Download plan keeps a copy).\n\nIf these terms change in a way that matters, the new version will be published here, with the date it applies from, at least 14 days before. If you keep using Bento after that date, the new terms apply; if you don't agree with them, you can delete your account.",
+      },
+      responsibility: {
+        heading: "Responsibility",
+        body: "Bento is provided as it is. We work to keep it accurate and running, but can't promise it will always be available or free of mistakes.\n\nWe're fully responsible for harm we cause on purpose or through gross negligence. For a loss caused by ordinary carelessness on our part, we're responsible only for the direct loss that could normally be expected. Nothing in these terms takes away rights you have under the consumer law where you live.",
+      },
+      law: {
+        heading: "Law",
+        body: "These terms are governed by the law of Japan. If there's a problem, please write to us first: most things can be sorted out that way. If it can't be, it goes to a court in Japan that has jurisdiction, unless the law where you live gives you the right to use your own courts.",
+      },
+    },
+  },
+
+  cookies: {
+    title: "Cookies",
+    updated: "Last updated 18 October 2026",
+    intro: "Cookies are small files a site keeps in your browser. Bento uses a few, to keep you signed in and to remember your choices. They stay on this device and are never used for advertising.",
+    purpose: "What it's for",
+    lasts: "How long",
+    needed: {
+      heading: "Needed for Bento to work",
+      body: "Set when you use the part of Bento they belong to. They can't be switched off here, because Bento wouldn't work without them, but you can delete them in your browser.",
+      // Each row: the cookie's name, what it's for and how long it lasts. In this order.
+      rows: {
+        session: { name: "sb-…-auth-token", purpose: "Keeps you signed in. Removed when you sign out.", lasts: "Up to 400 days" },
+        emailLink: { name: "sb-…-code-verifier", purpose: "Finishes signing you in from a link we email you, in the browser that asked for it.", lasts: "Until you use the link" },
+        reset: { name: "bento_pw_reset", purpose: "Lets you choose a new password after opening a reset link.", lasts: "15 minutes" },
+        ageOk: { name: "bento_age_ok", purpose: "Remembers that you passed the age check at sign-up, so it's asked once. Your date of birth is never kept.", lasts: "1 year" },
+        ageBlocked: { name: "bento_age_blocked", purpose: "Remembers that the age check didn't pass, so it can't simply be retried with another date.", lasts: "Until the birthday that makes you old enough" },
+        analytics: { name: "bento_analytics", purpose: "Your answer about usage analytics, yes or no.", lasts: "1 year, then Bento asks again" },
+        theme: { name: "bento_theme", purpose: "The theme you chose in Settings.", lasts: "1 year" },
+        season: { name: "bento_season", purpose: "The background you chose in Settings.", lasts: "1 year" },
+        tour: { name: "bento_tour", purpose: "Which parts of the tour you've seen, so it doesn't start again.", lasts: "1 year" },
+      },
+    },
+    analytics: {
+      heading: "Usage analytics (only if you say yes)",
+      body: "Set only after you allow usage analytics, and removed from this browser when you say no.",
+      rows: {
+        posthog: { name: "ph_… and __ph_…", purpose: "PostHog's random ID for this browser, linked to your account's internal number when you're signed in (never your email), and its note that you said yes. Kept in a cookie and in local storage.", lasts: "1 year" },
+      },
+    },
+    choice: {
+      heading: "Your analytics answer",
+      body: "Change it here at any time, signed in or not. Saying no changes nothing else about Bento.",
+      none: "You haven't answered yet, so nothing is recorded.",
+      yes: "You've allowed usage analytics.",
+      no: "You've said no to usage analytics.",
+      off: "This copy of Bento doesn't run usage analytics, so there's nothing to choose.",
+    },
+    browser: {
+      heading: "In your browser",
+      body: "You can also delete or block cookies in your browser's settings. If you block the ones Bento needs, you won't be able to sign in.",
+    },
+  },
+
+  about: {
+    title: "Who runs Bento",
+    updated: "Last updated 18 October 2026",
+    intro: "Bento is a small, independent trip planner for first trips to Japan.",
+    details: {
+      heading: "Business details",
+      // Each row: a label and its value, in this order.
+      rows: {
+        operator: { label: "Run by", value: `${OPERATOR}, an individual based in Japan` },
+        contact: { label: "Contact", value: CONTACT },
+        address: { label: "Full name and address", value: "Given without delay to anyone who asks: write to the address above." },
+        price: { label: "Price", value: "Free. No fees, subscriptions or paid features." },
+        bookings: { label: "Bookings", value: "Bento doesn't sell or book travel and isn't a travel agency." },
+      },
+    },
+    commerce: {
+      heading: "特定商取引法に基づく表記",
+      headingMeaning: "Notice under Japan's Act on Specified Commercial Transactions",
+      body: "Bento sells nothing, so this notice isn't required. It will be published here in full before anything is offered for sale.",
+    },
+    credits: {
+      heading: "Fonts and images",
+      body: "Text is set in Zen Maru Gothic (© The Zen Maru Gothic Authors), Zen Kaku Gothic New (© The Zen Project Authors) and DM Mono (© The DM Mono Project Authors). The Bento wordmark is drawn from Bricolage Grotesque (© The Bricolage Grotesque Project Authors). All four are used under the SIL Open Font License 1.1. The fonts are served by Bento itself, so no font service sees your visit.\n\nThe logo, icons and seasonal illustrations were made for Bento. Bento uses no stock photos or other people's images.",
+      licence: "Read the SIL Open Font License",
     },
   },
 

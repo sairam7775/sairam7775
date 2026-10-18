@@ -5,10 +5,11 @@ import { BentoLogo, BentoMark } from "@/components/logo";
 import { copy } from "@/copy";
 import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { Notice } from "@/app/(auth)/ui";
+import { LegalNav } from "@/components/legal/legal-page";
 
 const t = copy.home;
 
-const primary = "inline-flex min-h-11 items-center rounded-full bg-accent px-6 text-[0.95rem] font-medium text-white hover:bg-accent-deep";
+const primary = "inline-flex min-h-11 items-center rounded-full bg-accent px-6 text-[0.95rem] font-medium text-on-accent hover:bg-accent-deep";
 const secondary = "inline-flex min-h-11 items-center rounded-full border border-rule bg-surface px-6 text-[0.95rem] font-medium text-ink hover:bg-sunk";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
@@ -49,7 +50,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <p className="flex items-center gap-3 text-[0.9rem] font-medium text-ink-2">
             <span aria-hidden className="h-[2px] w-7 bg-accent" />
             {t.hero.kicker}
-            <span lang="ja" className="text-accent">{t.hero.kickerJa}</span>
+            <span lang="ja" className="text-accent-ink">{t.hero.kickerJa}</span>
           </p>
           <h1 className="mt-5 text-[2.6rem] font-black leading-[1.05] sm:text-[3.6rem]">
             {t.hero.title}
@@ -87,7 +88,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       <section className="mt-24">
         <div className="tile grid gap-6 p-6 sm:p-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)] md:items-center">
           <div>
-            <p className="text-[0.85rem] font-bold text-accent-deep">{t.coverage.eyebrow}</p>
+            <p className="text-[0.85rem] font-bold text-accent-ink">{t.coverage.eyebrow}</p>
             <h2 className="mt-2 text-[1.7rem] font-bold leading-tight">{t.coverage.title}</h2>
             <p className="mt-3 text-[0.98rem] leading-relaxed text-ink-2">{t.coverage.body}</p>
           </div>
@@ -121,7 +122,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
       <footer className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-rule py-6 text-[0.85rem] text-ink-3">
         <span className="inline-flex items-center gap-2"><BentoMark size={18} /> {t.footer}</span>
-        <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">{t.privacy}</Link>
+        <LegalNav className="-mx-2.5" />
         <span lang="ja">{t.footerJa}</span>
       </footer>
     </main>
@@ -131,7 +132,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 function SectionHead({ eyebrow, title }: { eyebrow: string; title: string }) {
   return (
     <div>
-      <p className="text-[0.85rem] font-bold text-accent-deep">{eyebrow}</p>
+      <p className="text-[0.85rem] font-bold text-accent-ink">{eyebrow}</p>
       <h2 className="mt-1 text-[2rem] font-bold leading-tight">{title}</h2>
     </div>
   );

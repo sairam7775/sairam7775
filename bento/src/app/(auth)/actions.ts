@@ -57,8 +57,9 @@ export async function signInWithPassword(formData: FormData) {
   redirect(next);
 }
 
-/** The neutral age screen (COPPA). The birth date is checked here and not
- *  kept; only the outcome is remembered, in a cookie. */
+/** The neutral age screen (16 and over, lib/age-gate.ts). The birth date
+ *  is checked here and not kept; only the outcome is remembered, in a
+ *  cookie. */
 export async function confirmAge(formData: FormData) {
   const next = safeNext(formData.get("next"));
   const back = `/sign-up?${new URLSearchParams({ next })}`;

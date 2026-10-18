@@ -190,7 +190,7 @@ export function DayBox(p: DayBoxProps) {
           }}
         >
           {draggingBooking && dropFits === false && (
-            <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-xl bg-ume px-4 py-3 text-center text-[0.86rem] font-medium text-white shadow-tile">
+            <div role="alert" className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-xl bg-ume px-4 py-3 text-center text-[0.86rem] font-medium text-on-ume shadow-tile">
               {bk.wrongDayHover(draggingBooking.title, whenText(draggingBooking))}
             </div>
           )}
@@ -235,7 +235,7 @@ export function DayBox(p: DayBoxProps) {
                 {p.overFromIndex === i && (
                   <div className="flex items-center gap-3 px-2" role="separator" aria-label={t.budgetEndsLabel}>
                     <span className="h-[2px] flex-1 bg-accent/80" style={{ backgroundImage: "repeating-linear-gradient(90deg, transparent 0 6px, var(--color-lacquer) 6px 12px)" }} />
-                    <span className="mono pop rounded-full bg-accent px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.1em] text-white">{t.budgetEnds(dur(p.budgetMin))}</span>
+                    <span className="mono pop rounded-full bg-accent px-2.5 py-1 text-[0.62rem] uppercase tracking-[0.1em] text-on-accent">{t.budgetEnds(dur(p.budgetMin))}</span>
                     <span className="h-[2px] flex-1 bg-accent/80" style={{ backgroundImage: "repeating-linear-gradient(90deg, transparent 0 6px, var(--color-lacquer) 6px 12px)" }} />
                   </div>
                 )}
@@ -277,10 +277,10 @@ export function DayBox(p: DayBoxProps) {
                           <button className="min-h-9 rounded-full border border-ink/15 px-3 text-[0.78rem] text-ink-2 hover:border-ink/40" title={it.locked ? t.unpinHint : t.pinHint}>{it.locked ? t.unpin : t.pin}</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="up" />
-                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === 0} aria-label={t.moveEarlier}>↑</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === 0} aria-label={t.moveEarlier(it.name)}>↑</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="down" />
-                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === items.length - 1} aria-label={t.moveLater}>↓</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === items.length - 1} aria-label={t.moveLater(it.name)}>↓</button>
                         </form>
                         <form action={removeItem} className="ml-auto">{hidden}<input type="hidden" name="placeId" value={it.placeId} />
                           <ConfirmButton message={t.removeConfirm(it.name)} aria-label={t.removeLabel(it.name)} className="min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume">{t.remove}</ConfirmButton>
@@ -372,7 +372,7 @@ function BookingBlock({ b, startMin, endMin, part, busy, onRemove }: {
       <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{startMin != null ? clock(startMin) : copy.time.none}</span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <span className="mono rounded-full bg-accent px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-white">{bk.booked}</span>
+          <span className="mono rounded-full bg-accent px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-on-accent">{bk.booked}</span>
           {untimed && <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{bk.timeNotGiven}</span>}
           <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{KIND_LABEL[b.type] ?? bk.kinds.other}{note ? ` · ${note}` : ""}</span>
           {length != null && <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(length)}</span>}
@@ -393,7 +393,7 @@ function Ring({ pct, over }: { pct: number; over: boolean }) {
   const c = 2 * Math.PI * r;
   const filled = c * (pct / 100);
   return (
-    <svg width="76" height="76" viewBox="0 0 76 76" aria-label={t.ringLabel(pct)}>
+    <svg width="76" height="76" viewBox="0 0 76 76" role="img" aria-label={t.ringLabel(pct)}>
       <circle cx="38" cy="38" r={r} fill="none" stroke="var(--color-rule)" strokeWidth="8" />
       <circle
         cx="38" cy="38" r={r} fill="none"

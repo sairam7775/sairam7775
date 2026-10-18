@@ -75,16 +75,19 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
             <Field id="email" name="email" type="email" label={copy.auth.email} autoComplete="email" placeholder={copy.auth.emailPlaceholder} />
             <Field id="password" name="password" type="password" label={copy.auth.password} autoComplete="new-password" hint={copy.auth.passwordHint} />
             <Submit label={t.submit} pending={t.pending} />
-            <p className="text-[0.8rem] text-ink-3">
-              {t.privacyNote} <Link href="/privacy" className="underline underline-offset-2 hover:text-ink">{t.privacyLink}</Link>.
-            </p>
           </form>
+
+          {/* Under both ways in, so it covers Continue with Google too. */}
+          <p className="mt-4 text-[0.85rem] leading-relaxed text-ink-2">
+            {t.agree.start} <Link href="/terms" className="font-medium underline underline-offset-2 hover:text-ink">{t.agree.terms}</Link>{" "}
+            {t.agree.middle} <Link href="/privacy" className="font-medium underline underline-offset-2 hover:text-ink">{t.agree.privacy}</Link>{t.agree.end}
+          </p>
         </>
       )}
 
       <p className="mt-6 text-[0.92rem] text-ink-2">
         {t.haveAccount}{" "}
-        <Link href={next === "/trips" ? "/sign-in" : `/sign-in?${new URLSearchParams({ next })}`} className="font-medium text-accent underline underline-offset-2">
+        <Link href={next === "/trips" ? "/sign-in" : `/sign-in?${new URLSearchParams({ next })}`} className="font-medium text-accent-ink underline underline-offset-2">
           {copy.common.signIn}
         </Link>
       </p>

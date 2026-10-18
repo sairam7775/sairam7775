@@ -1,13 +1,16 @@
-/** COPPA: don't collect an account from a child under 13 without verifiable
- *  parental consent, which Bento doesn't offer. So sign-up starts with a
- *  neutral age screen.
+/** Bento doesn't offer parental consent, so it doesn't take accounts from
+ *  children: 16 and over. That is COPPA's 13 in the US, the GDPR's highest
+ *  age of digital consent (16, set by several EU countries), and the age
+ *  Japan's privacy guidance treats as old enough to consent alone. So sign-up
+ *  starts with a neutral age screen. The privacy page and the terms say 16
+ *  too (copy/en.ts); a test checks they agree.
  *
  *  Neutral means the screen asks for a date of birth and doesn't say what
  *  the cut-off is, and a refused visitor can't just go back and type a
  *  different year: the refusal is remembered in a cookie. The birth date is
  *  checked and thrown away; nothing about age is stored but that cookie. */
 
-export const MIN_AGE = 13;
+export const MIN_AGE = 16;
 
 export const AGE_OK_COOKIE = "bento_age_ok";
 export const AGE_BLOCKED_COOKIE = "bento_age_blocked";

@@ -10,6 +10,8 @@ import type { Consent } from "@/lib/analytics/consent";
 import { isSharedPath } from "@/lib/analytics/url";
 import { copy } from "@/copy";
 
+const choice = "min-h-10 min-w-28 rounded-full border border-ink/25 bg-surface px-5 text-[0.9rem] font-medium text-ink hover:bg-sunk";
+
 /** Starts or stops PostHog to match the stored answer, and asks once when
  *  there is none. Renders nothing when this deployment has no PostHog key
  *  (local work, previews), so nobody is asked about analytics that would
@@ -29,7 +31,8 @@ export function Analytics({ consent }: { consent: Consent | null }) {
     else stop();
   }, [consent, shared]);
 
-  if (!analyticsConfigured() || consent !== null || path === "/privacy" || shared) return null;
+  // Not over the pages that explain it (the cookies page asks itself).
+  if (!analyticsConfigured() || consent !== null || path === "/privacy" || path === "/cookies" || shared) return null;
   const t = copy.consent;
 
   return (
@@ -40,15 +43,15 @@ export function Analytics({ consent }: { consent: Consent | null }) {
     >
       <p className="text-[0.9rem] leading-relaxed text-ink-2">
         {t.body}{" "}
-        <Link href="/privacy" className="text-accent underline underline-offset-2">{t.more}</Link>
+        <Link href="/cookies" className="text-accent-ink underline underline-offset-2">{t.more}</Link>
       </p>
+      {/* The two answers look alike: saying no must be as easy as saying yes. */}
       <form action={setAnalytics} className="mt-3 flex flex-wrap gap-2">
-        <ChoiceButton name="analytics" value="yes" pressed={false} className="min-h-10 rounded-full bg-accent px-5 text-[0.9rem] font-medium text-white hover:bg-accent-deep">
-          {t.accept}
-        </ChoiceButton>
-        <ChoiceButton name="analytics" value="no" pressed={false} className="min-h-10 rounded-full border border-rule px-5 text-[0.9rem] font-medium text-ink hover:bg-sunk">
-          {t.decline}
-        </ChoiceButton>
+        {([["yes", t.accept], ["no", t.decline]] as const).map(([value, label]) => (
+          <ChoiceButton key={value} name="analytics" value={value} pressed={false} className={choice}>
+            {label}
+          </ChoiceButton>
+        ))}
       </form>
     </div>
   );
