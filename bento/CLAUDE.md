@@ -278,10 +278,11 @@ Practically:
   (`spend_since_month_start`, the cap's own sum) and the live model, and the
   admin list (`lib/admin-overview.ts`). `addAdmin` / `removeAdmin`
   (`settings/admin-actions.ts`) call `requireAdmin()` themselves and write
-  `app_admins` with the service role. Removal is one locked database
-  function (`remove_admin`, 0021): never yourself, never the last admin, and
-  only while you are still an admin, so two admins removing each other at
-  once can't leave none. Only existing accounts can be made admin.
+  `app_admins` only through two locked database functions (0021):
+  `add_admin` and `remove_admin` re-check that the one acting is still an
+  admin, and removal refuses yourself and the last admin, so admins acting
+  at once can't leave none or act after losing access. Only existing
+  accounts can be made admin.
 
 ## Legal pages
 

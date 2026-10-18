@@ -12,9 +12,9 @@ function back(outcome: { admin: "added" | "removed" } | { adminError: AdminError
 }
 
 /** Settings → Admin → give an existing account admin access. Only an admin
- *  can, checked here (not just by hiding the form), and the write goes
- *  through the service role because nobody can write `app_admins` over the
- *  API. Logged with ids only. */
+ *  can, checked here (not just by hiding the form) and again by add_admin
+ *  (0021), under the roster lock: an admin removed while this request was
+ *  on its way can't still give access. Logged with ids only. */
 export async function addAdmin(formData: FormData) {
   const { user, db } = await requireAdmin();
   const email = z.email().safeParse(String(formData.get("email") ?? "").trim());
@@ -29,12 +29,14 @@ export async function addAdmin(formData: FormData) {
   }
   if (!target) back({ adminError: "noAccount" });
 
-  const { error } = await db.from("app_admins").insert({ user_id: target.id, note: `Given in Settings by ${user.id}` });
-  if (error?.code === "23505") back({ adminError: "already" });
+  const { data, error } = await db.rpc("add_admin", { p_actor: user.id, p_target: target.id, p_note: `Given in Settings by ${user.id}` });
   if (error) {
     console.error("Giving admin access failed:", error.message);
     back({ adminError: "failed" });
   }
+  if (data === "already") back({ adminError: "already" });
+  // No longer an admin by the time it ran.
+  if (data !== "added") back({ adminError: "failed" });
   console.info(`Admin access given to ${target.id} by ${user.id}`);
   back({ admin: "added" });
 }

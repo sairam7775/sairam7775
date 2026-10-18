@@ -1216,7 +1216,7 @@ export const en = {
       },
       protect: {
         heading: "How it's protected",
-        body: "Connections to Bento are encrypted. Booking reference numbers are encrypted again before they are stored, with a key kept apart from the database.\n\nA trip can only be read by its owner, which the database itself enforces, and by people the owner gives a shared link to. Only the operator can reach the systems behind Bento. Admins the operator appoints to check place information can read trip reviews and the plans saved with them, but never travellers' names or email addresses.",
+        body: "Connections to Bento are encrypted. Booking reference numbers are encrypted again before they are stored, with a key kept apart from the database.\n\nA trip can only be read by its owner, which the database itself enforces, and by people the owner gives a shared link to. Only the operator can reach the systems behind Bento. Admins the operator appoints to check place information can read trip reviews and the plans saved with them, but never travellers' names or email addresses. The only email addresses an admin sees are those of the other admins, in the list of who has admin access.",
       },
       keep: {
         heading: "How long it's kept",
