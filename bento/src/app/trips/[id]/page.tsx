@@ -197,7 +197,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 {copy.print.download}
               </Link>
             )}
-            {state.cities.length > 0 && (
+            {/* Shown while shared even with no route, so a link can always be switched off. */}
+            {(state.cities.length > 0 || shareUrl) && (
               <details id="share" className="group mt-2 max-w-xl scroll-mt-6" open={sp.share === "1"}>
                 <summary className="inline-flex min-h-10 cursor-pointer list-none items-center gap-1.5 rounded-full border border-rule px-4 text-[0.88rem] text-ink-2 hover:bg-sunk [&::-webkit-details-marker]:hidden">
                   {shareUrl ? copy.share.openOn : copy.share.open}
