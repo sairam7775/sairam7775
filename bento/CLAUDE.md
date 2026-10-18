@@ -241,6 +241,20 @@ Practically:
   the media query for `:root:not([data-theme="light"])` and under
   `:root[data-theme="dark"]`. Change one, change both.
 
+## After the trip
+
+- From a trip's last day on (UTC date, the same as the database's
+  `current_date`), a trip with a route asks "How did the plan hold up?"
+  (`trip-review.tsx`, `saveTripReview`, `lib/trips/review.ts`). One answer
+  per trip in `trip_reviews` (0019), changeable; RLS lets only the owner
+  write it, and only once the trip has ended. The outcome and challenge keys
+  are fixed by check constraints — add a key there, in `review.ts` and in
+  `copy.review` together (a test compares them).
+- `/admin/trip-reviews` reads them through the service role, with the route
+  and the stops of every day marked hard, so a failure can be traced to the
+  plan. No names or emails on that page. Analytics get counts only
+  (`trip_reviewed`), never the note.
+
 ## The vault (P8)
 
 - `src/lib/vault/`. `gaps.ts` is pure and testable: trip dates, route,

@@ -20,7 +20,9 @@ import { Chat, type ChatMessage } from "./chat";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
-import { AnalyticsUser } from "@/components/analytics/analytics";
+import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
+import { OUTCOMES, reviewFromRow, reviewOpen } from "@/lib/trips/review";
+import { TripReviewCard } from "./trip-review";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.trip;
@@ -78,7 +80,14 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
-  const gaps = await loadGaps(db, id, new Date().toISOString().slice(0, 10)).catch(() => null);
+  const today = new Date().toISOString().slice(0, 10);
+  const gaps = await loadGaps(db, id, today).catch(() => null);
+  // "How did the plan hold up?" once the trip has ended (0019).
+  const reviewing = reviewOpen(state.trip, state.cities.length > 0, today);
+  const { data: reviewRow } = reviewing
+    ? await db.from("trip_reviews").select("outcome, challenges, hard_days, note").eq("trip_id", id).maybeSingle()
+    : { data: null };
+  const review = reviewFromRow(reviewRow);
   // For the Bookings column. Never the reference: it is decrypted only on
   // the vault page.
   const { data: bookingRows } = await db
@@ -172,6 +181,17 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           </header>
 
           <div className="mt-4"><ErrorNote message={error} /></div>
+
+          {reviewing && (
+            <TripReviewCard
+              tripId={id}
+              review={review}
+              days={dayList.map(([date, meta], i) => ({ date, label: copy.review.hardDay(i + 1, fmt(date, { weekday: "short", day: "numeric", month: "short" }), meta.cityName) }))}
+            />
+          )}
+          {typeof sp.reviewed === "string" && (
+            <TrackOnce event="trip_reviewed" props={{ outcome: (OUTCOMES as readonly string[]).includes(sp.reviewed) ? sp.reviewed : null, challenges: Number(sp.rc) || 0, hard_days: Number(sp.rd) || 0, has_note: sp.rn === "1" }} consume={["reviewed", "rc", "rd", "rn"]} />
+          )}
 
           {gaps && (
             <Link

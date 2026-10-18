@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
+import { parseReview, reviewOpen } from "@/lib/trips/review";
 
 const Ids = z.object({ tripId: z.string().uuid(), messageId: z.string().uuid() });
 
@@ -81,6 +82,41 @@ export async function rejectProposal(formData: FormData) {
     .eq("trip_id", tripId)
     .eq("diff_status", "proposed");
   revalidatePath(`/trips/${tripId}`);
+}
+
+/** "How did the plan hold up?" (0019). One answer per trip, changeable;
+ *  the database refuses it before the trip's last day too. */
+export async function saveTripReview(formData: FormData) {
+  const tripId = z.string().uuid().safeParse(formData.get("tripId"));
+  if (!tripId.success) redirect("/trips");
+  const id = tripId.data;
+  const db = await createClient();
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) redirect("/sign-in");
+  const back: (error: string) => never = (error) => redirect(`/trips/${id}?error=${encodeURIComponent(error)}#review`);
+
+  const [{ data: trip }, { data: route }] = await Promise.all([
+    db.from("trips").select("start_date, end_date").eq("id", id).maybeSingle(),
+    db.from("trip_cities").select("trip_id").eq("trip_id", id).limit(1),
+  ]);
+  if (!trip) redirect("/trips");
+  const today = new Date().toISOString().slice(0, 10);
+  if (!reviewOpen({ endDate: trip.end_date }, Boolean(route?.length), today)) back(copy.review.errors.notYet);
+
+  const parsed = parseReview(formData, { startDate: trip.start_date, endDate: trip.end_date });
+  if (!parsed.ok) back(parsed.error);
+  const { review } = parsed;
+  const { error } = await db.from("trip_reviews").upsert(
+    { trip_id: id, outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note },
+    { onConflict: "trip_id" },
+  );
+  if (error) back(copy.review.errors.saveFailed);
+
+  revalidatePath(`/trips/${id}`);
+  revalidatePath("/trips");
+  // Counts only, for analytics (TrackOnce on the trip page); never the note.
+  const marks = new URLSearchParams({ reviewed: review.outcome, rc: String(review.challenges.length), rd: String(review.hardDays.length), rn: review.note ? "1" : "0" });
+  redirect(`/trips/${id}?${marks}#review`);
 }
 
 async function guard(formData: FormData) {
