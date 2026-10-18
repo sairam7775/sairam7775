@@ -110,6 +110,8 @@ create policy "own trip_reviews write" on trip_reviews
     select 1 from trips t
     where t.id = trip_id and t.user_id = (select auth.uid())
       and t.end_date is not null and t.end_date <= current_date
+      -- and there was a plan to follow: the saved plan is the trip's route.
+      and exists (select 1 from trip_cities tc where tc.trip_id = t.id)
   ));
 
 -- An answer, once given, stays changeable even if the trip is edited later
