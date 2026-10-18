@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { siteOrigin } from "@/lib/site-origin";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
 import { buildTripView } from "@/lib/bento-man/trip-view";
@@ -64,6 +66,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
   const { trip } = state;
   const nights = nightsBetween(trip.startDate, trip.endDate);
   const today = new Date().toISOString().slice(0, 10);
+  const tripUrl = `${siteOrigin(await headers())}/trips/${id}`;
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:py-12 print:max-w-none print:p-0">
@@ -86,6 +89,11 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
             {trip.partySize > 1 && ` · ${t.people(trip.partySize)}`}
           </p>
           <p className="mt-1 text-[0.8rem] text-ink-3">{t.saved(fmt(today, { day: "numeric", month: "long", year: "numeric" }))}</p>
+          {/* Written out in full: on paper the address is the link. */}
+          <p className="mt-0.5 text-[0.8rem] text-ink-3">
+            {t.link}{" "}
+            <a href={tripUrl} className="break-all font-medium text-ink-2 underline underline-offset-2">{tripUrl}</a>
+          </p>
         </header>
 
         <section className="mt-6 break-inside-avoid">
@@ -134,6 +142,10 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
           )}
           <p className="mt-3 text-[0.82rem] text-ink-3">{t.referencesNote}</p>
         </section>
+
+        <footer className="mt-10 break-inside-avoid border-t border-rule pt-4">
+          <p className="text-[0.82rem] leading-relaxed text-ink-3">{t.checkNote}</p>
+        </footer>
       </article>
     </main>
   );

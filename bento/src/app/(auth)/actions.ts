@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
+import { siteOrigin } from "@/lib/site-origin";
 import { authErrorMessage } from "@/lib/friendly-errors";
 import { googleSignInEnabled, inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
@@ -25,11 +26,7 @@ function backTo(page: string, message: string, next?: string) {
 }
 
 async function origin() {
-  const h = await headers();
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    `${h.get("x-forwarded-proto") ?? "http"}://${h.get("host")}`
-  ).replace(/\/+$/, "");
+  return siteOrigin(await headers());
 }
 
 export async function signInWithPassword(formData: FormData) {
