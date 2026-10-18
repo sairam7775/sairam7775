@@ -19,6 +19,10 @@ create table trip_reviews (
   -- trip's dates; a date change later doesn't rewrite what was said.
   hard_days   date[] not null default '{}' check (cardinality(hard_days) <= 60),
   note        text check (char_length(note) <= 2000),
+  -- The route and every day's stops as they were when the traveller
+  -- answered (lib/trips/review.ts planSnapshot). The trip can change
+  -- afterwards; the answer is about the plan they followed.
+  plan        jsonb check (plan is null or (jsonb_typeof(plan) = 'object' and pg_column_size(plan) <= 200000)),
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );

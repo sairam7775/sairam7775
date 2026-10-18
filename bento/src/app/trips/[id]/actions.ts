@@ -7,7 +7,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { parseReview, reviewOpen } from "@/lib/trips/review";
+import { parseReview, planSnapshot, reviewOpen } from "@/lib/trips/review";
+import type { TripState } from "@/lib/bento-man/store";
 
 const Ids = z.object({ tripId: z.string().uuid(), messageId: z.string().uuid() });
 
@@ -95,19 +96,25 @@ export async function saveTripReview(formData: FormData) {
   if (!user) redirect("/sign-in");
   const back: (error: string) => never = (error) => redirect(`/trips/${id}?error=${encodeURIComponent(error)}#review`);
 
-  const [{ data: trip }, { data: route }] = await Promise.all([
-    db.from("trips").select("start_date, end_date").eq("id", id).maybeSingle(),
-    db.from("trip_cities").select("trip_id").eq("trip_id", id).limit(1),
-  ]);
-  if (!trip) redirect("/trips");
+  let state: TripState;
+  try {
+    state = await new SupabaseStore(db, id, user.id).state();
+  } catch {
+    redirect("/trips");
+  }
+  const { trip } = state;
   const today = new Date().toISOString().slice(0, 10);
-  if (!reviewOpen({ endDate: trip.end_date }, Boolean(route?.length), today)) back(copy.review.errors.notYet);
+  if (!reviewOpen(trip, state.cities.length > 0, today)) back(copy.review.errors.notYet);
 
-  const parsed = parseReview(formData, { startDate: trip.start_date, endDate: trip.end_date });
+  const parsed = parseReview(formData, trip);
   if (!parsed.ok) back(parsed.error);
   const { review } = parsed;
+  // Day trips sit on days whose city isn't on the route; name those too.
+  const offRoute = [...new Set(state.days.map((d) => d.cityId).filter((c): c is string => Boolean(c) && !state.cities.some((r) => r.cityId === c)))];
+  const { data: extra } = offRoute.length ? await db.from("cities").select("id, name").in("id", offRoute) : { data: [] as { id: string; name: string }[] };
+  const plan = planSnapshot(state, Object.fromEntries((extra ?? []).map((c) => [c.id, c.name])));
   const { error } = await db.from("trip_reviews").upsert(
-    { trip_id: id, outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note },
+    { trip_id: id, outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note, plan },
     { onConflict: "trip_id" },
   );
   if (error) back(copy.review.errors.saveFailed);

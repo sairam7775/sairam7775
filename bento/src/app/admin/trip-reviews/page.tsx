@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/lib/admin";
 import { AppHeader } from "@/components/app-header";
-import { CHALLENGES, OUTCOMES, reviewFromRow, type TripReview } from "@/lib/trips/review";
+import { CHALLENGES, OUTCOMES, reviewFromRow, snapshotFromRow, type TripReview } from "@/lib/trips/review";
 import { copy } from "@/copy";
 
 const r = copy.review;
@@ -11,16 +11,14 @@ interface Row {
   challenges: string[] | null;
   hard_days: string[] | null;
   note: string | null;
+  plan: unknown;
   updated_at: string;
-  trips: { start_date: string | null; end_date: string | null; party_size: number; trip_cities: { nights: number; sort_order: number; cities: { name: string } | null }[] } | null;
+  trips: { start_date: string | null; end_date: string | null; party_size: number } | null;
 }
 
-interface DayRow {
-  trip_id: string;
-  date: string;
-  cities: { name: string } | null;
-  itinerary_items: { sort_order: number; start_time: string | null; places: { name: string } | null }[];
-}
+/** How many answers the list shows; the totals count every answer. */
+const LIST = 200;
+const PAGE = 1000;
 
 const OUTCOME_STYLE: Record<TripReview["outcome"], string> = {
   as_planned: "bg-edamame-soft text-edamame",
@@ -32,29 +30,33 @@ const fmt = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.lo
 
 /** What travellers said after their trips (0019): the planner's report
  *  card. The route and the stops of every day they found hard sit next to
- *  the answer, so a failure can be traced to the plan that caused it. No
- *  names or emails: the trip is enough to find the problem. */
+ *  the answer, from the plan saved with it (the trip may have changed
+ *  since), so a failure can be traced to the plan that caused it. No names
+ *  or emails: the trip is enough to find the problem. */
 export default async function TripReviews() {
   const { db } = await requireAdmin();
 
+  // Totals over every answer: only the two short columns, a page at a time.
+  const all: { outcome: string; challenges: string[] | null }[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data: page } = await db.from("trip_reviews").select("outcome, challenges").order("trip_id").range(from, from + PAGE - 1);
+    all.push(...(page ?? []));
+    if (!page || page.length < PAGE) break;
+  }
+  const answers = all.flatMap((row) => reviewFromRow({ ...row, hard_days: [], note: null }) ?? []);
+
   const { data } = await db
     .from("trip_reviews")
-    .select("trip_id, outcome, challenges, hard_days, note, updated_at, trips(start_date, end_date, party_size, trip_cities(nights, sort_order, cities(name)))")
+    .select("trip_id, outcome, challenges, hard_days, note, plan, updated_at, trips(start_date, end_date, party_size)")
     .order("updated_at", { ascending: false })
-    .limit(200);
+    .limit(LIST);
   const rows = ((data ?? []) as unknown as Row[]).flatMap((row) => {
     const review = reviewFromRow(row);
-    return review ? [{ row, review }] : [];
+    return review ? [{ row, review, plan: snapshotFromRow(row.plan) }] : [];
   });
 
-  const ids = rows.filter(({ review }) => review.hardDays.length).map(({ row }) => row.trip_id);
-  const { data: dayData } = ids.length
-    ? await db.from("itinerary_days").select("trip_id, date, cities(name), itinerary_items(sort_order, start_time, places(name))").in("trip_id", ids)
-    : { data: [] };
-  const days = new Map(((dayData ?? []) as unknown as DayRow[]).map((d) => [`${d.trip_id}|${d.date}`, d]));
-
   const count = <K extends string>(keys: readonly K[], pick: (v: TripReview) => K[]) =>
-    keys.map((k) => [k, rows.filter(({ review }) => pick(review).includes(k)).length] as const);
+    keys.map((k) => [k, answers.filter((v) => pick(v).includes(k)).length] as const);
   const outcomes = count(OUTCOMES, (v) => [v.outcome]);
   const challenges = count(CHALLENGES, (v) => v.challenges).sort((a, b) => b[1] - a[1]);
 
@@ -68,12 +70,12 @@ export default async function TripReviews() {
         What travellers said after their trips: whether they could follow the plan, and what got in the way.
       </p>
 
-      {rows.length === 0 ? (
+      {answers.length === 0 ? (
         <p className="tile mt-8 px-5 py-8 text-center text-[0.95rem] text-ink-2">No reviews yet. They appear once a trip has ended and the traveller answers.</p>
       ) : (
         <>
           <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-3 border-y border-rule py-4">
-            {[["Reviews", rows.length] as const, ...outcomes.map(([k, n]) => [r.outcomes[k], n] as const)].map(([label, value]) => (
+            {[["Reviews", answers.length] as const, ...outcomes.map(([k, n]) => [r.outcomes[k], n] as const)].map(([label, value]) => (
               <div key={label}>
                 <dt className="mono text-[0.64rem] uppercase tracking-[0.1em] text-ink-3">{label}</dt>
                 <dd className="mono mt-0.5 text-lg tabular-nums">{value}</dd>
@@ -94,11 +96,11 @@ export default async function TripReviews() {
           </section>
 
           <section className="mt-10">
-            <h2 className="border-b-2 border-ink pb-1.5 text-base font-bold">Every answer</h2>
+            <h2 className="border-b-2 border-ink pb-1.5 text-base font-bold">{answers.length > LIST ? `The latest ${LIST} answers` : "Every answer"}</h2>
             <ul className="mt-4 flex flex-col gap-4">
-              {rows.map(({ row, review }) => {
+              {rows.map(({ row, review, plan }) => {
                 const trip = row.trips;
-                const route = [...(trip?.trip_cities ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((c) => `${c.cities?.name ?? "?"} ${c.nights}n`).join(" → ");
+                const route = (plan?.route ?? []).map((c) => `${c.city} ${c.nights}n`).join(" → ");
                 return (
                   <li key={row.trip_id} className="tile p-5">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -121,11 +123,11 @@ export default async function TripReviews() {
                         <p className="mono text-[0.64rem] uppercase tracking-[0.1em] text-ink-3">Hardest days</p>
                         <ul className="mt-1.5 flex flex-col gap-1.5">
                           {review.hardDays.map((date) => {
-                            const d = days.get(`${row.trip_id}|${date}`);
-                            const stops = [...(d?.itinerary_items ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((i) => `${i.start_time?.slice(0, 5) ?? "--:--"} ${i.places?.name ?? "?"}`);
+                            const d = plan?.days.find((x) => x.date === date);
+                            const stops = (d?.stops ?? []).map((s) => `${s.time ?? "--:--"} ${s.name}`);
                             return (
                               <li key={date} className="text-[0.86rem]">
-                                <span className="font-medium">{fmt(date)}{d?.cities?.name ? ` · ${d.cities.name}` : ""}</span>
+                                <span className="font-medium">{fmt(date)}{d?.city ? ` · ${d.city}` : ""}</span>
                                 <span className="text-ink-3">{stops.length ? ` — ${stops.join(", ")}` : " — no stops planned"}</span>
                               </li>
                             );

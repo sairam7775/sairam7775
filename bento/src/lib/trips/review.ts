@@ -5,6 +5,8 @@
  *  for them are in copy.review. */
 import { z } from "zod";
 import { copy } from "@/copy";
+import { clock } from "@/lib/bento-man/diff";
+import type { TripState } from "@/lib/bento-man/store";
 
 export const OUTCOMES = ["as_planned", "mostly", "not_really"] as const;
 export const CHALLENGES = ["too_much", "travel_longer", "place_closed", "crowds", "booking", "walking", "timing", "other"] as const;
@@ -46,6 +48,37 @@ export function parseReview(form: FormData, trip: { startDate: string | null; en
   if (p.data.hardDays.some((d) => !startDate || !endDate || d < startDate || d > endDate)) return { ok: false, error: copy.review.errors.dayOutside };
   return { ok: true, review: { outcome: p.data.outcome, challenges: p.data.challenges, hardDays: p.data.hardDays, note: p.data.note || null } };
 }
+
+/** The plan as it stood when the traveller answered. Saved with the review,
+ *  because the trip can change afterwards (new dates shift every day; a
+ *  re-plan swaps the stops), and an answer is about the plan they followed. */
+export const PlanSnapshotSchema = z.object({
+  route: z.array(z.object({ city: z.string(), nights: z.number() })),
+  days: z.array(z.object({
+    date: z.string(),
+    city: z.string().nullable(),
+    stops: z.array(z.object({ time: z.string().nullable(), name: z.string() })),
+  })),
+});
+export type PlanSnapshot = z.infer<typeof PlanSnapshotSchema>;
+
+export function planSnapshot(state: Pick<TripState, "cities" | "days">, cityNames: Record<string, string> = {}): PlanSnapshot {
+  const names = { ...cityNames, ...Object.fromEntries(state.cities.map((c) => [c.cityId, c.name])) };
+  return {
+    route: [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder).map((c) => ({ city: c.name, nights: c.nights })),
+    days: [...state.days].sort((a, b) => a.date.localeCompare(b.date)).map((d) => ({
+      date: d.date,
+      city: d.cityId ? (names[d.cityId] ?? d.cityId) : null,
+      stops: [...d.items].sort((a, b) => a.sortOrder - b.sortOrder).map((i) => ({ time: i.startMin == null ? null : clock(i.startMin), name: i.name })),
+    })),
+  };
+}
+
+/** A stored snapshot, or null if it isn't one. */
+export const snapshotFromRow = (v: unknown): PlanSnapshot | null => {
+  const p = PlanSnapshotSchema.safeParse(v);
+  return p.success ? p.data : null;
+};
 
 /** A stored row as the app reads it; anything unexpected is dropped rather
  *  than shown. */

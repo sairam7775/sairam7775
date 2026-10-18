@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CHALLENGES, NOTE_MAX, OUTCOMES, parseReview, reviewFromRow, reviewOpen } from "../review";
+import { CHALLENGES, NOTE_MAX, OUTCOMES, parseReview, planSnapshot, reviewFromRow, reviewOpen, snapshotFromRow } from "../review";
 import { copy } from "@/copy";
 
 const trip = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -45,6 +45,32 @@ describe("reviewFromRow", () => {
     expect(reviewFromRow(null)).toBeNull();
     expect(reviewFromRow({ outcome: "odd", challenges: [], hard_days: [], note: null })).toBeNull();
     expect(reviewFromRow({ outcome: "not_really", challenges: ["crowds", "weather"], hard_days: null, note: "n" })).toEqual({ outcome: "not_really", challenges: ["crowds"], hardDays: [], note: "n" });
+  });
+});
+
+describe("planSnapshot", () => {
+  const item = (name: string, sortOrder: number, startMin: number | null) => ({ placeId: name, name, sortOrder, startMin, durationMin: 60, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null });
+  it("keeps the route in order and every day's stops with their times, naming day-trip cities", () => {
+    const snap = planSnapshot({
+      cities: [
+        { cityId: "kyoto-city", name: "Kyoto", tier: "deep", nights: 4, sortOrder: 1, budgetBand: null, reason: null, arriveDate: null, departDate: null },
+        { cityId: "osaka-city", name: "Osaka", tier: "deep", nights: 2, sortOrder: 0, budgetBand: null, reason: null, arriveDate: null, departDate: null },
+      ],
+      days: [
+        { date: "2026-11-24", cityId: "nara-city", items: [item("Todai-ji", 0, 600)] },
+        { date: "2026-11-23", cityId: "kyoto-city", items: [item("Kodai-ji", 1, 540), item("Kiyomizu-dera", 0, 420), item("Somewhere", 2, null)] },
+      ],
+    }, { "nara-city": "Nara" });
+    expect(snap).toEqual({
+      route: [{ city: "Osaka", nights: 2 }, { city: "Kyoto", nights: 4 }],
+      days: [
+        { date: "2026-11-23", city: "Kyoto", stops: [{ time: "07:00", name: "Kiyomizu-dera" }, { time: "09:00", name: "Kodai-ji" }, { time: null, name: "Somewhere" }] },
+        { date: "2026-11-24", city: "Nara", stops: [{ time: "10:00", name: "Todai-ji" }] },
+      ],
+    });
+    expect(snapshotFromRow(JSON.parse(JSON.stringify(snap)))).toEqual(snap);
+    expect(snapshotFromRow(null)).toBeNull();
+    expect(snapshotFromRow({ route: "Kyoto" })).toBeNull();
   });
 });
 
