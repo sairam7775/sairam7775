@@ -82,12 +82,12 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const error = typeof sp.error === "string" ? sp.error : null;
   const today = new Date().toISOString().slice(0, 10);
   const gaps = await loadGaps(db, id, today).catch(() => null);
-  // "How did the plan hold up?" once the trip has ended (0019).
-  const reviewing = reviewOpen(state.trip, state.cities.length > 0, today);
-  const { data: reviewRow } = reviewing
-    ? await db.from("trip_reviews").select("outcome, challenges, hard_days, note, plan").eq("trip_id", id).maybeSingle()
-    : { data: null };
+  // "How did the plan hold up?" once the trip has ended (0019). An answer
+  // already given stays on the page, and changeable, whatever the trip does
+  // after: it is about the plan saved with it.
+  const { data: reviewRow } = await db.from("trip_reviews").select("outcome, challenges, hard_days, note, plan").eq("trip_id", id).maybeSingle();
   const review = reviewFromRow(reviewRow);
+  const reviewing = Boolean(review) || reviewOpen(state.trip, state.cities.length > 0, today);
   // An answered trip's hard days are chosen from the plan saved with the
   // first answer, even if the trip has moved since; a new answer, from today's.
   const reviewedPlan = review ? snapshotFromRow(reviewRow?.plan) : null;

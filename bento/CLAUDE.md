@@ -246,8 +246,12 @@ Practically:
 - From a trip's last day on (UTC date, the same as the database's
   `current_date`), a trip with a route asks "How did the plan hold up?"
   (`trip-review.tsx`, `saveTripReview`, `lib/trips/review.ts`). One answer
-  per trip in `trip_reviews` (0019), changeable; RLS lets only the owner
-  write it, and only once the trip has ended. The outcome and challenge keys
+  per trip in `trip_reviews` (0019). RLS: only the owner, and a first answer
+  only once the trip has ended; after that it stays visible and changeable
+  whatever the trip does. Grants let travellers write the answer columns
+  only (no plan, no delete). Change an answer with an update, not an upsert:
+  an upsert is also checked as an insert, which fails on a trip moved into
+  the future. The outcome and challenge keys
   are fixed by check constraints — add a key there, in `review.ts` and in
   `copy.review` together (a test compares them).
 - The first answer saves the plan as it stood (`plan`): the database makes

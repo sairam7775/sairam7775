@@ -104,21 +104,25 @@ export async function saveTripReview(formData: FormData) {
   }
   const { trip } = state;
   const today = new Date().toISOString().slice(0, 10);
-  if (!reviewOpen(trip, state.cities.length > 0, today)) back(copy.review.errors.notYet);
-
-  // A changed answer picks its hard days from the plan saved with the first
-  // one (its dates then), not from today's trip.
+  // A changed answer is about the plan saved with the first one: its days are
+  // chosen from that plan's dates, and it stays changeable whatever the trip
+  // does after. A first answer waits for the trip to end.
   const { data: saved } = await db.from("trip_reviews").select("plan").eq("trip_id", id).maybeSingle();
   const plan = snapshotFromRow(saved?.plan);
+  if (!saved && !reviewOpen(trip, state.cities.length > 0, today)) back(copy.review.errors.notYet);
   const parsed = parseReview(formData, plan ? { startDate: plan.start, endDate: plan.end } : trip);
   if (!parsed.ok) back(parsed.error);
   const { review } = parsed;
   // The plan the answer is about is saved by the database with the first
   // answer and kept from then on (0019's trigger); the app never sends one.
-  const { error } = await db.from("trip_reviews").upsert(
-    { trip_id: id, outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note },
-    { onConflict: "trip_id" },
-  );
+  // An existing answer is updated, not upserted: an upsert is checked as an
+  // insert too, which a trip moved into the future would fail.
+  const answer = { outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note };
+  let { error } = saved
+    ? await db.from("trip_reviews").update(answer).eq("trip_id", id)
+    : await db.from("trip_reviews").insert({ trip_id: id, ...answer });
+  // Two first answers at once: the other made the row; this one updates it.
+  if (error?.code === "23505") ({ error } = await db.from("trip_reviews").update(answer).eq("trip_id", id));
   if (error) back(copy.review.errors.saveFailed);
 
   revalidatePath(`/trips/${id}`);

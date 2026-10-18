@@ -88,8 +88,8 @@ grant select on trip_reviews to authenticated;
 grant insert (trip_id, outcome, challenges, hard_days, note) on trip_reviews to authenticated;
 grant update (trip_id, outcome, challenges, hard_days, note) on trip_reviews to authenticated;
 
--- The traveller's own trips only, and only once the trip has ended: a
--- review of a plan nobody has followed yet is a guess.
+-- The traveller's own trips only, and a first answer only once the trip has
+-- ended: a review of a plan nobody has followed yet is a guess.
 create policy "own trip_reviews read" on trip_reviews
   for select to authenticated
   using (exists (select 1 from trips t where t.id = trip_id and t.user_id = (select auth.uid())));
@@ -102,14 +102,12 @@ create policy "own trip_reviews write" on trip_reviews
       and t.end_date is not null and t.end_date <= current_date
   ));
 
+-- An answer, once given, stays changeable even if the trip is edited later
+-- (moved into the future, its route cleared): it is about the saved plan.
 create policy "own trip_reviews change" on trip_reviews
   for update to authenticated
   using (exists (select 1 from trips t where t.id = trip_id and t.user_id = (select auth.uid())))
-  with check (exists (
-    select 1 from trips t
-    where t.id = trip_id and t.user_id = (select auth.uid())
-      and t.end_date is not null and t.end_date <= current_date
-  ));
+  with check (exists (select 1 from trips t where t.id = trip_id and t.user_id = (select auth.uid())));
 
 -- No delete policy: deleting and answering again would make a new plan.
 -- A review goes with its trip, or with the account (the cascade).
