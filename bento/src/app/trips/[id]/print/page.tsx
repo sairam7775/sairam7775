@@ -5,18 +5,17 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site-origin";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { nightsBetween, type TripState } from "@/lib/bento-man/store";
+import type { TripState } from "@/lib/bento-man/store";
 import { buildTripView } from "@/lib/bento-man/trip-view";
-import { bookingWhen, planDocument, type DocBooking, type DocEntry } from "@/lib/trips/plan-document";
+import { planDocument, type DocBooking } from "@/lib/trips/plan-document";
 import { AnalyticsUser } from "@/components/analytics/analytics";
+import { SubmitButton } from "@/components/form-controls";
+import { PlanSheet } from "@/components/plan/plan-sheet";
+import { PrintButton } from "@/components/plan/print-button";
 import { copy } from "@/copy";
-import { PrintButton } from "./print-button";
+import { shareTrip } from "../actions";
 
 const t = copy.print;
-const bk = copy.bookings;
-const fmt = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { ...opts, timeZone: "UTC" });
-const longDate = (d: string) => fmt(d, { weekday: "short", day: "numeric", month: "short" });
-const kind = (type: string) => (bk.kinds as Record<string, string>)[type] ?? bk.kinds.other;
 
 /** The file name a browser gives the saved PDF comes from the title. */
 export async function generateMetadata({ params }: PageProps<"/trips/[id]/print">): Promise<Metadata> {
@@ -27,10 +26,8 @@ export async function generateMetadata({ params }: PageProps<"/trips/[id]/print"
 }
 
 /** The whole plan on one page, made to be printed or saved as a PDF and
- *  carried offline: the route, every day with its bookings and stops (how
- *  to get there, the station, opening hours, the tip), and the bookings
- *  list. Accepted state only, as on the trip page. Never a booking
- *  reference: this leaves Bento. */
+ *  carried offline (components/plan/plan-sheet.tsx). Accepted state only,
+ *  as on the trip page. Never a booking reference: this leaves Bento. */
 export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print">) {
   const { id } = await params;
   const db = await createClient();
@@ -49,11 +46,12 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
   const cityIds = [...new Set(state.days.map((d) => d.cityId).filter((c): c is string => Boolean(c)))];
   // A plan saved with pieces missing looks complete offline, so a failed
   // read throws (the error page offers a retry) rather than printing less.
-  const [placeLists, graph, { data: bookingRows, error: bookingsError }] = await Promise.all([
+  const [placeLists, graph, { data: bookingRows, error: bookingsError }, { data: share }] = await Promise.all([
     Promise.all(cityIds.map((c) => store.places(c))),
     store.graph(),
     // Never the reference.
     db.from("bookings").select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on").eq("trip_id", id),
+    db.from("trip_shares").select("token").eq("trip_id", id).maybeSingle(),
   ]);
   if (bookingsError || !bookingRows) throw new Error(t.loadFailed);
   const places = new Map(placeLists.flat().map((p) => [p.id, p]));
@@ -62,11 +60,13 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
     startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
   const doc = planDocument(state, dayList, bookings, places, graph.stations);
-
-  const { trip } = state;
-  const nights = nightsBetween(trip.startDate, trip.endDate);
   const today = new Date().toISOString().slice(0, 10);
-  const tripUrl = `${siteOrigin(await headers())}/trips/${id}`;
+  // Shared: the companions' link, so the copy they're sent opens for them.
+  // Not shared (or unknown): the trip page, which opens only for its owner.
+  const origin = siteOrigin(await headers());
+  const link = share
+    ? { label: t.linkShared, url: `${origin}/shared/${share.token}` }
+    : { label: t.link, url: `${origin}/trips/${id}` };
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:py-12 print:max-w-none print:p-0">
@@ -77,134 +77,19 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
         </Link>
         <PrintButton days={doc.days.length} bookings={doc.bookings.length} />
         <p className="basis-full text-[0.86rem] text-ink-2">{t.howTo}</p>
+        {!share && (
+          <form action={shareTrip} className="flex basis-full flex-wrap items-center gap-x-3 gap-y-2 border-t border-rule pt-3">
+            <input type="hidden" name="tripId" value={id} />
+            <input type="hidden" name="from" value="print" />
+            <p className="text-[0.86rem] text-ink-2">{copy.share.printHint}</p>
+            <SubmitButton pending={copy.common.saving} className="min-h-10 rounded-full border border-rule bg-surface px-4 text-[0.86rem] font-medium hover:bg-sunk">
+              {copy.share.turnOn}
+            </SubmitButton>
+          </form>
+        )}
       </div>
 
-      <article className="tile p-5 text-ink sm:p-8 print:p-0">
-        <header className="border-b-2 border-ink pb-4">
-          <h1 className="text-[2rem] font-extrabold leading-tight">{trip.title ?? copy.trips.untitled}</h1>
-          <p className="mono mt-1.5 text-[0.85rem] text-ink-2">
-            {trip.startDate && trip.endDate
-              ? copy.trip.dateRange(fmt(trip.startDate, { day: "numeric", month: "short", year: "numeric" }), fmt(trip.endDate, { day: "numeric", month: "short", year: "numeric" }), nights ?? 0)
-              : copy.trips.noDates}
-            {trip.partySize > 1 && ` · ${t.people(trip.partySize)}`}
-          </p>
-          <p className="mt-1 text-[0.8rem] text-ink-3">{t.saved(fmt(today, { day: "numeric", month: "long", year: "numeric" }))}</p>
-          {/* Written out in full: on paper the address is the link. */}
-          <p className="mt-0.5 text-[0.8rem] text-ink-3">
-            {t.link}{" "}
-            <a href={tripUrl} className="break-all font-medium text-ink-2 underline underline-offset-2">{tripUrl}</a>
-          </p>
-        </header>
-
-        <section className="mt-6 break-inside-avoid">
-          <h2 className="break-after-avoid text-[1.15rem] font-bold">{t.route}</h2>
-          {doc.route.length ? (
-            <p className="mt-1.5 text-[0.95rem]">{doc.route.map((c) => (c.nights ? copy.trip.cityNights(c.city, c.nights) : copy.trip.cityDayTrip(c.city))).join(copy.trip.routeJoin)}</p>
-          ) : (
-            <p className="mt-1.5 text-[0.95rem] text-ink-2">{copy.trip.noRoute}</p>
-          )}
-        </section>
-
-        {doc.days.length > 0 && (
-          <section className="mt-8">
-            <h2 className="break-after-avoid text-[1.15rem] font-bold">{t.days}</h2>
-            {doc.days.map((d) => (
-              <div key={d.date} className="mt-5">
-                <h3 className="break-after-avoid border-b border-rule pb-1.5 text-[1rem] font-bold">{t.day(d.number, longDate(d.date), d.city)}</h3>
-                {d.entries.length ? (
-                  <ol className="mt-2 flex flex-col gap-3">
-                    {d.entries.map((e, i) => <Entry key={i} e={e} />)}
-                  </ol>
-                ) : (
-                  <p className="mt-2 text-[0.9rem] text-ink-3">{t.nothingPlanned}</p>
-                )}
-              </div>
-            ))}
-          </section>
-        )}
-
-        <section className="mt-10">
-          <h2 className="break-after-avoid text-[1.15rem] font-bold">{t.bookings}</h2>
-          {doc.bookings.length ? (
-            <ul className="mt-2 flex flex-col">
-              {doc.bookings.map((b, i) => (
-                <li key={i} className="flex break-inside-avoid flex-wrap items-baseline gap-x-3 border-b border-rule py-2 text-[0.92rem]">
-                  <span className="mono w-24 shrink-0 text-[0.72rem] uppercase tracking-[0.08em] text-ink-3">{kind(b.type)}</span>
-                  <span className="flex-1 font-medium">{b.title}</span>
-                  <span className="mono text-[0.8rem] text-ink-2">
-                    {bookingWhen(b, longDate)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-[0.9rem] text-ink-2">{t.noBookings}</p>
-          )}
-          <p className="mt-3 text-[0.82rem] text-ink-3">{t.referencesNote}</p>
-        </section>
-
-        <footer className="mt-10 break-inside-avoid border-t border-rule pt-4">
-          <p className="text-[0.82rem] leading-relaxed text-ink-3">{t.checkNote}</p>
-        </footer>
-      </article>
+      <PlanSheet trip={state.trip} doc={doc} today={today} link={link} />
     </main>
-  );
-}
-
-function Entry({ e }: { e: DocEntry }) {
-  if (e.kind === "lunch") {
-    return (
-      <li className="flex break-inside-avoid gap-4">
-        <span className="mono w-12 shrink-0 pt-0.5 text-[0.82rem] text-ink-2">{e.time}</span>
-        <div className="flex-1 pl-3.5">
-          <p className="text-[0.98rem] font-bold">
-            {copy.day.lunch}
-            <span className="mono ml-2 text-[0.76rem] font-normal text-ink-3">{copy.time.duration(e.durationMin)} · {e.time}–{e.end}</span>
-          </p>
-          <p className="mt-0.5 text-[0.84rem] text-ink-2">{copy.day.lunchNote}</p>
-        </div>
-      </li>
-    );
-  }
-  if (e.kind === "booking") {
-    const stay = e.type === "accommodation";
-    const note = e.part === "ends" ? (stay ? bk.checkOut : bk.ends) : e.part === "all-day" ? (stay ? bk.staying : bk.allDay) : stay ? bk.checkIn : null;
-    return (
-      <li className="flex break-inside-avoid gap-4">
-        <span className="mono w-12 shrink-0 pt-0.5 text-[0.82rem] text-ink-2">{e.time ?? "—"}</span>
-        <div className="flex-1 border-l-2 border-ink pl-3">
-          <p className="mono text-[0.66rem] uppercase tracking-[0.1em] text-ink-3">
-            {[kind(e.type), note, e.time && e.end ? t.timeSpan(e.time, e.end) : null].filter(Boolean).join(" · ")}
-          </p>
-          <p className="text-[0.95rem] font-medium">{e.title}</p>
-          {e.time == null && e.part !== "all-day" && <p className="text-[0.82rem] text-ink-3">{bk.timeNotGiven}</p>}
-        </div>
-      </li>
-    );
-  }
-  const facts = [
-    e.station ? t.station(e.station, e.stationWalkMin) : null,
-    e.hours ? t.hours(e.hours.opens, e.hours.closes) : null,
-  ].filter(Boolean);
-  return (
-    <li className="flex break-inside-avoid gap-4">
-      <span className="mono w-12 shrink-0 pt-0.5 text-[0.82rem] text-ink-2">{e.time ?? "--:--"}</span>
-      <div className="flex-1 pl-3.5">
-        {e.getThere && (
-          <p className="mono mb-1 text-[0.74rem] text-ink-3">
-            {t.getThere(e.getThere)}{e.getThereMin != null && ` · ${copy.time.minutes(e.getThereMin)}`}
-          </p>
-        )}
-        <p className="text-[0.98rem] font-bold">
-          {e.name}
-          {e.durationMin != null && <span className="mono ml-2 text-[0.76rem] font-normal text-ink-3">{copy.time.duration(e.durationMin)}{e.end ? ` · ${e.time}–${e.end}` : ""}</span>}
-        </p>
-        {e.clashesWith.length > 0 && <p className="mt-0.5 text-[0.84rem] font-medium text-ume">{copy.day.clashesWith(e.clashesWith.join(", "))}</p>}
-        {facts.length > 0 && <p className="mt-0.5 text-[0.84rem] text-ink-2">{facts.join(" · ")}</p>}
-        {e.crowdNote && <p className="mt-0.5 text-[0.84rem] text-ink-2">{e.crowdNote}</p>}
-        {e.tip && <p className="mt-0.5 text-[0.84rem] text-ink-2">{e.tip}</p>}
-        {e.why && <p className="mt-0.5 text-[0.8rem] text-ink-3">{t.why(e.why)}</p>}
-      </div>
-    </li>
   );
 }

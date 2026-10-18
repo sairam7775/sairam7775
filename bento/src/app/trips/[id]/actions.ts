@@ -74,6 +74,45 @@ export async function setDatePermission(formData: FormData) {
   revalidatePath(`/trips/${tripId}`);
 }
 
+const ShareForm = z.object({ tripId: z.string().uuid(), from: z.enum(["trip", "print"]).default("trip") });
+
+/** Sharing the plan by link (0020). The database makes the token; a new
+ *  link is the old row deleted and a fresh one inserted, so the old address
+ *  stops working at once. */
+export async function shareTrip(formData: FormData) {
+  await changeShare(formData, "on");
+}
+
+export async function renewShareLink(formData: FormData) {
+  await changeShare(formData, "renew");
+}
+
+export async function stopSharing(formData: FormData) {
+  await changeShare(formData, "off");
+}
+
+async function changeShare(formData: FormData, how: "on" | "renew" | "off") {
+  const parsed = ShareForm.safeParse({ tripId: formData.get("tripId"), from: formData.get("from") ?? undefined });
+  if (!parsed.success) redirect("/trips");
+  const { tripId, from } = parsed.data;
+  const db = await createClient();
+  const { data: { user } } = await db.auth.getUser();
+  if (!user) redirect("/sign-in");
+  const failed = `/trips/${tripId}?error=${encodeURIComponent(copy.share.failed)}#share`;
+  if (how !== "on") {
+    const { error } = await db.from("trip_shares").delete().eq("trip_id", tripId);
+    if (error) redirect(failed);
+  }
+  if (how !== "off") {
+    const { error } = await db.from("trip_shares").insert({ trip_id: tripId });
+    // Already shared (a second tap): the link there is stays.
+    if (error && error.code !== "23505") redirect(failed);
+  }
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/print`);
+  redirect(from === "print" ? `/trips/${tripId}/print` : `/trips/${tripId}?share=1#share`);
+}
+
 export async function rejectProposal(formData: FormData) {
   const { db, tripId, messageId } = await guard(formData);
   await db
