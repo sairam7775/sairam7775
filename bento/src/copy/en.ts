@@ -561,8 +561,8 @@ export const en = {
 
   // Sharing the plan by link with the people travelling (0020).
   share: {
-    open: "Share with companions",
-    openOn: "Shared with companions",
+    open: "Share plan",
+    openOn: "Shared",
     intro: "Give the people travelling with you a link to this plan. They can open it without an account, and it always shows the latest version.",
     who: "Anyone with the link can see the route, the day plans and your bookings' names and times. Booking reference numbers are never shown. You can switch the link off at any time.",
     turnOn: "Share with companions",
@@ -572,8 +572,9 @@ export const en = {
     send: "Send…",
     preview: "See what they see",
     renew: "Make a new link",
-    renewNote: "The old link stops working.",
+    renewConfirm: "Make a new link? The current one stops working for everyone who has it.",
     stop: "Stop sharing",
+    stopConfirm: "Stop sharing this plan? The link stops working for everyone who has it.",
     failed: "Couldn't change sharing for this trip. Try again in a moment.",
     printHint: "The link in this plan opens only for you. Share the trip to give your companions a link that works for them.",
     // The shared page.
