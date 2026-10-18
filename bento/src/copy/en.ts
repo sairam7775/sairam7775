@@ -497,6 +497,30 @@ export const en = {
     doingRemove: "take the booking out",
   },
 
+  // The whole plan on one page, to save as a PDF (/trips/[id]/print).
+  print: {
+    download: "Download plan",
+    pageTitle: (trip: string) => `${trip} · plan`,
+    save: "Save as PDF",
+    howTo: "Choose “Save as PDF” in the print window to keep a copy on your phone or computer. It opens without a connection.",
+    back: "Back to the trip",
+    saved: (date: string) => `Saved from Bento on ${date}. If you change the plan, download it again.`,
+    people: (n: number) => `${n} travelling`,
+    route: "Route",
+    days: "Day by day",
+    day: (n: number, date: string, city: string) => `Day ${n} · ${date} · ${city}`,
+    nothingPlanned: "Nothing planned for this day.",
+    getThere: (how: string) => `Getting there: ${how}`,
+    station: (name: string, walk: number | null) => (walk != null ? `${name} Station, ${walk} min walk` : `${name} Station`),
+    hours: (opens: string, closes: string) => `Open ${opens}–${closes}`,
+    why: (reason: string) => `Why: ${reason}`,
+    booking: "Booking",
+    bookings: "Bookings",
+    noBookings: "No bookings added yet.",
+    noDate: "No date",
+    referencesNote: "Booking reference numbers are not in this download. They stay encrypted in Bento: open the trip's Bookings page to see them.",
+  },
+
   proposal: {
     heading: "Proposal",
     status: {

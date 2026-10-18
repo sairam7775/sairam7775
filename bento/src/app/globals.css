@@ -312,3 +312,21 @@ h1, h2, h3, h4 {
   .bento-hop { animation: none; transform: translate(18px, 18px); }
   .bento-squish { animation: bento-pulse 1.6s ease-in-out infinite; }
 }
+
+/* The downloaded plan (trips/[id]/print) prints dark on white whatever the
+   theme. :root:root outranks the dark selectors above by coming later at the
+   same specificity. The scene behind the page never prints. */
+@media print {
+  :root:root {
+    --color-paper: #ffffff;
+    --color-surface: #ffffff;
+    --color-sunk: #f3eee8;
+    --color-ink: #221c1e;
+    --color-ink-2: #4a4145;
+    --color-ink-3: #6b6367;
+    --color-rule: #d8d0c8;
+  }
+  body { background: #ffffff; }
+  .season-backdrop { display: none; }
+  @page { margin: 14mm 12mm; }
+}
