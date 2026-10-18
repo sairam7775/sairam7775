@@ -25,10 +25,11 @@ const bookings: DocBooking[] = [
   { id: "b2", type: "activity", title: "Tea ceremony", startsAt: "2026-11-21T09:00:00Z", endsAt: "2026-11-21T10:00:00Z", plannedOn: "2026-11-21" },
   { id: "b3", type: "restaurant", title: "Dinner, not in the plan", startsAt: "2026-11-20T19:00:00Z", endsAt: null, plannedOn: null },
   { id: "b4", type: "other", title: "Pass, no date", startsAt: null, endsAt: null, plannedOn: null },
+  { id: "b5", type: "accommodation", title: "Check-out only", startsAt: null, endsAt: "2026-11-23T11:00:00Z", plannedOn: null },
 ];
 const places = new Map([
   ["kyt-kiyomizu", place("kyt-kiyomizu", { nearestStation: "kiyomizu-gojo", stationWalkMin: 15, opensAt: "06:00", closesAt: "18:00", crowdNote: "Quiet before 08:00", localTip: "Take the back slope down" })],
-  ["kyt-kodaiji", place("kyt-kodaiji", { nearestStation: "no-such-station", stationWalkMin: 10 })],
+  ["kyt-kodaiji", place("kyt-kodaiji", { name: "Kodai-ji", nearestStation: "no-such-station", stationWalkMin: 10 })],
 ]);
 const stations = new Map([["kiyomizu-gojo", { name: "Kiyomizu-Gojo" }]]);
 
@@ -66,6 +67,11 @@ describe("planDocument", () => {
     expect(JSON.stringify(doc.days)).not.toContain("Dinner, not in the plan");
   });
 
+  it("names a stop from its place record, falling back to the stored name", () => {
+    const named = planDocument(state, dayList, [], new Map([["kyt-kiyomizu", place("kyt-kiyomizu", { name: "Kiyomizu-dera Temple" })]]), stations);
+    expect(named.days[1].entries.map((e) => (e.kind === "stop" ? e.name : null))).toEqual(["Kiyomizu-dera Temple", "Kodai-ji"]);
+  });
+
   it("gives a stop its station by name, hours, notes and how to get there (not for the first stop)", () => {
     const [first, , second] = doc.days[1].entries;
     expect(first).toMatchObject({ kind: "stop", getThere: null, station: "Kiyomizu-Gojo", stationWalkMin: 15, hours: { opens: "06:00", closes: "18:00" }, crowdNote: "Quiet before 08:00", tip: "Take the back slope down", why: "quiet at opening", end: "08:00" });
@@ -79,10 +85,12 @@ describe("planDocument", () => {
   it("lists every booking, dated ones first, with its times, and never a reference", () => {
     expect(doc.bookings.find((b) => b.title === "Hotel Kanra")).toMatchObject({ startTime: "15:00", endTime: "10:00" });
     expect(doc.bookings.find((b) => b.title === "Pass, no date")).toMatchObject({ startTime: null, endTime: null });
+    expect(doc.bookings.find((b) => b.title === "Check-out only")).toMatchObject({ startTime: null, endTime: "11:00" });
     expect(doc.bookings.map((b) => [b.title, b.first, b.last])).toEqual([
       ["Dinner, not in the plan", "2026-11-20", "2026-11-20"],
       ["Hotel Kanra", "2026-11-21", "2026-11-23"],
       ["Tea ceremony", "2026-11-21", "2026-11-21"],
+      ["Check-out only", "2026-11-23", "2026-11-23"],
       ["Pass, no date", null, null],
     ]);
     expect(JSON.stringify(doc)).not.toMatch(/reference/i);

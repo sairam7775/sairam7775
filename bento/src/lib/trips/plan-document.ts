@@ -82,7 +82,8 @@ export function planDocument(
           kind: "stop" as const,
           time: it.startMin == null ? null : clock(it.startMin),
           end: it.startMin != null && it.durationMin != null ? clock(it.startMin + it.durationMin) : null,
-          name: it.name,
+          // The place record loaded for this page; the stored name is the fallback.
+          name: p?.name ?? it.name,
           durationMin: it.durationMin,
           getThere: n > 0 ? it.arriveDetail : null,
           getThereMin: n > 0 ? it.arriveMinutes : null,
@@ -112,7 +113,9 @@ export function planDocument(
 
   const listed = bookings
     .map((b) => {
-      const r = bookingDates(b);
+      // A booking can have only an end (a check-out, an arrival): keep its date.
+      const endOnly = !b.startsAt && b.endsAt ? b.endsAt.slice(0, 10) : null;
+      const r = bookingDates(b) ?? (endOnly ? { first: endOnly, last: endOnly } : null);
       return {
         title: b.title, type: b.type, first: r?.first ?? null, last: r?.last ?? null,
         startTime: b.startsAt && b.startTimeKnown !== false ? b.startsAt.slice(11, 16) : null,
