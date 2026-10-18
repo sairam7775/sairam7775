@@ -13,6 +13,10 @@
 export const MIN_AGE = 16;
 
 export const AGE_OK_COOKIE = "bento_age_ok";
+/** What a pass stores: the age it was checked against. Raising MIN_AGE
+ *  then re-asks everyone who passed a lower check (13 until October 2026),
+ *  instead of honouring their old cookie for its remaining year. */
+export const AGE_OK_VALUE = String(MIN_AGE);
 export const AGE_BLOCKED_COOKIE = "bento_age_blocked";
 
 /** Whole years between a "YYYY-MM-DD" birth date and `today`, or null if
@@ -36,7 +40,7 @@ export type AgeStatus = "ok" | "blocked" | "unknown";
 /** What the two cookies say. A refusal always wins over a later "ok". */
 export function ageStatus(cookie: { get(name: string): { value: string } | undefined }): AgeStatus {
   if (cookie.get(AGE_BLOCKED_COOKIE)) return "blocked";
-  return cookie.get(AGE_OK_COOKIE)?.value === "1" ? "ok" : "unknown";
+  return cookie.get(AGE_OK_COOKIE)?.value === AGE_OK_VALUE ? "ok" : "unknown";
 }
 
 /** Seconds from `now` until the visitor born on `dob` turns MIN_AGE, so a

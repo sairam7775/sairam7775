@@ -8,7 +8,7 @@ import { googleSignInEnabled } from "@/lib/auth-config";
 import { copy } from "@/copy";
 import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { confirmAge, signUpWithPassword, signInWithGoogle } from "../actions";
-import { AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
+import { AgreeNote, AsidePoint, AuthShell, Divider, ErrorNote, Field, GoogleButton, Notice, Submit } from "../ui";
 
 export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
   const supabase = await createClient();
@@ -78,10 +78,7 @@ export default async function SignUp({ searchParams }: PageProps<"/sign-up">) {
           </form>
 
           {/* Under both ways in, so it covers Continue with Google too. */}
-          <p className="mt-4 text-[0.85rem] leading-relaxed text-ink-2">
-            {t.agree.start} <Link href="/terms" className="font-medium underline underline-offset-2 hover:text-ink">{t.agree.terms}</Link>{" "}
-            {t.agree.middle} <Link href="/privacy" className="font-medium underline underline-offset-2 hover:text-ink">{t.agree.privacy}</Link>{t.agree.end}
-          </p>
+          <AgreeNote start={t.agree.start} />
         </>
       )}
 

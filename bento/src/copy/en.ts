@@ -88,6 +88,8 @@ export const en = {
         gaps: { title: "The gaps, still flagged", body: "A night with no bed or a train with no ticket stays on the list until it’s booked." },
         bookings: { title: "Bookings in one place", body: "Confirmation numbers are encrypted, and shown only to you." },
       },
+      // Begins the agreement line under Continue with Google, which creates an account for a new address.
+      googleAgree: "New to Bento? Continuing with Google creates your account, and you agree to the",
       forgot: "Forgot password?",
       submit: "Sign in",
       pending: "Signing in…",

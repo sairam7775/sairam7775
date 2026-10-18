@@ -129,6 +129,20 @@ export function GoogleButton({ label }: { label: string }) {
   );
 }
 
+/** "By creating an account you agree to the terms of use and … the privacy
+ *  policy." Wherever an account can be created: under sign-up, and under
+ *  Continue with Google on sign-in, which creates one for a new address. */
+export function AgreeNote({ start }: { start: string }) {
+  const t = copy.auth.signUp.agree;
+  const link = "font-medium underline underline-offset-2 hover:text-ink";
+  return (
+    <p className="mt-4 text-[0.85rem] leading-relaxed text-ink-2">
+      {start} <Link href="/terms" className={link}>{t.terms}</Link>{" "}
+      {t.middle} <Link href="/privacy" className={link}>{t.privacy}</Link>{t.end}
+    </p>
+  );
+}
+
 export function ErrorNote({ message }: { message: string | null }) {
   if (!message) return null;
   return (

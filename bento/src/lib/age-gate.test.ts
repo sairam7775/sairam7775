@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ageOn, ageStatus, secondsUntilEligible, AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, MIN_AGE } from "./age-gate";
+import { ageOn, ageStatus, secondsUntilEligible, AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, AGE_OK_VALUE, MIN_AGE } from "./age-gate";
 import { copy } from "@/copy";
 
 const today = new Date("2026-10-13T12:00:00Z");
@@ -27,9 +27,14 @@ describe("ageOn", () => {
 describe("ageStatus", () => {
   const jar = (o: Record<string, string>) => ({ get: (n: string) => (n in o ? { value: o[n] } : undefined) });
   it("is unknown until the visitor answers", () => expect(ageStatus(jar({}))).toBe("unknown"));
-  it("is ok after an adult answer", () => expect(ageStatus(jar({ [AGE_OK_COOKIE]: "1" }))).toBe("ok"));
+  it("is ok after an answer checked against today's age", () => expect(ageStatus(jar({ [AGE_OK_COOKIE]: AGE_OK_VALUE }))).toBe("ok"));
+  it("asks again when the pass was against the old, lower age", () => {
+    // Before the age went up, a pass stored "1"; a 13–15 year old must not keep it.
+    expect(ageStatus(jar({ [AGE_OK_COOKIE]: "1" }))).toBe("unknown");
+    expect(ageStatus(jar({ [AGE_OK_COOKIE]: "13" }))).toBe("unknown");
+  });
   it("a refusal wins, even if an ok cookie is also there", () => {
-    expect(ageStatus(jar({ [AGE_BLOCKED_COOKIE]: "1", [AGE_OK_COOKIE]: "1" }))).toBe("blocked");
+    expect(ageStatus(jar({ [AGE_BLOCKED_COOKIE]: "1", [AGE_OK_COOKIE]: AGE_OK_VALUE }))).toBe("blocked");
   });
 });
 
