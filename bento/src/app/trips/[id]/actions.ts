@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { parseReview, planSnapshot, reviewOpen } from "@/lib/trips/review";
+import { parseReview, reviewOpen } from "@/lib/trips/review";
 import type { TripState } from "@/lib/bento-man/store";
 
 const Ids = z.object({ tripId: z.string().uuid(), messageId: z.string().uuid() });
@@ -109,20 +109,12 @@ export async function saveTripReview(formData: FormData) {
   const parsed = parseReview(formData, trip);
   if (!parsed.ok) back(parsed.error);
   const { review } = parsed;
-  const answer = { outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note };
-  // A changed answer keeps the plan saved with the first one: the trip may
-  // have been edited since, and the answer is about the plan they followed.
-  const updated = await db.from("trip_reviews").update(answer).eq("trip_id", id).select("trip_id");
-  let error = updated.error;
-  if (!error && !updated.data?.length) {
-    // Day trips sit on days whose city isn't on the route; name those too.
-    const offRoute = [...new Set(state.days.map((d) => d.cityId).filter((c): c is string => Boolean(c) && !state.cities.some((r) => r.cityId === c)))];
-    const { data: extra } = offRoute.length ? await db.from("cities").select("id, name").in("id", offRoute) : { data: [] as { id: string; name: string }[] };
-    const plan = planSnapshot(state, Object.fromEntries((extra ?? []).map((c) => [c.id, c.name])));
-    ({ error } = await db.from("trip_reviews").insert({ trip_id: id, ...answer, plan }));
-    // Two sends at once: the other one made the row (and its plan); answer it.
-    if (error?.code === "23505") ({ error } = await db.from("trip_reviews").update(answer).eq("trip_id", id));
-  }
+  // The plan the answer is about is saved by the database with the first
+  // answer and kept from then on (0019's trigger); the app never sends one.
+  const { error } = await db.from("trip_reviews").upsert(
+    { trip_id: id, outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note },
+    { onConflict: "trip_id" },
+  );
   if (error) back(copy.review.errors.saveFailed);
 
   revalidatePath(`/trips/${id}`);
