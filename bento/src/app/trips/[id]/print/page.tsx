@@ -140,6 +140,20 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
 }
 
 function Entry({ e }: { e: DocEntry }) {
+  if (e.kind === "lunch") {
+    return (
+      <li className="flex break-inside-avoid gap-4">
+        <span className="mono w-12 shrink-0 pt-0.5 text-[0.82rem] text-ink-2">{e.time}</span>
+        <div className="flex-1 pl-3.5">
+          <p className="text-[0.98rem] font-bold">
+            {copy.day.lunch}
+            <span className="mono ml-2 text-[0.76rem] font-normal text-ink-3">{copy.time.duration(e.durationMin)} · {e.time}–{e.end}</span>
+          </p>
+          <p className="mt-0.5 text-[0.84rem] text-ink-2">{copy.day.lunchNote}</p>
+        </div>
+      </li>
+    );
+  }
   if (e.kind === "booking") {
     const stay = e.type === "accommodation";
     const note = e.part === "ends" ? (stay ? bk.checkOut : bk.ends) : e.part === "all-day" ? (stay ? bk.staying : bk.allDay) : stay ? bk.checkIn : null;
@@ -173,6 +187,7 @@ function Entry({ e }: { e: DocEntry }) {
           {e.name}
           {e.durationMin != null && <span className="mono ml-2 text-[0.76rem] font-normal text-ink-3">{copy.time.duration(e.durationMin)}{e.end ? ` · ${e.time}–${e.end}` : ""}</span>}
         </p>
+        {e.clashesWith.length > 0 && <p className="mt-0.5 text-[0.84rem] font-medium text-ume">{copy.day.clashesWith(e.clashesWith.join(", "))}</p>}
         {facts.length > 0 && <p className="mt-0.5 text-[0.84rem] text-ink-2">{facts.join(" · ")}</p>}
         {e.crowdNote && <p className="mt-0.5 text-[0.84rem] text-ink-2">{e.crowdNote}</p>}
         {e.tip && <p className="mt-0.5 text-[0.84rem] text-ink-2">{e.tip}</p>}

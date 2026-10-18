@@ -5,9 +5,10 @@
  *  Nothing here chooses or moves anything — it reads what the trip page
  *  shows. Never a booking reference: the download leaves Bento, and a
  *  reference plus a surname can cancel a booking. */
-import type { TripState } from "@/lib/bento-man/store";
+import type { Prefs, TripState } from "@/lib/bento-man/store";
+import { dayStats } from "@/lib/engine/day-stats";
 import type { PlaceInput } from "@/lib/engine/types";
-import { bookingDates, bookingSlot, canPlanOn, type PlannableBooking } from "@/lib/vault/plan-day";
+import { bookingDates, bookingSlot, canPlanOn, clashingBookings, type PlannableBooking } from "@/lib/vault/plan-day";
 import { clock } from "@/lib/bento-man/diff";
 import { copy } from "@/copy";
 
@@ -19,6 +20,8 @@ export interface DocBooking extends PlannableBooking {
 }
 
 export type DocEntry =
+  /** The lunch break the day box shows (engine/day-stats.ts). */
+  | { kind: "lunch"; time: string; end: string; durationMin: number }
   | { kind: "booking"; time: string | null; end: string | null; title: string; type: string; part: "starts" | "ends" | "all-day" }
   | {
       kind: "stop";
@@ -37,6 +40,8 @@ export type DocEntry =
       crowdNote: string | null;
       tip: string | null;
       why: string | null;
+      /** Planned bookings this stop runs into, as the day box flags them. */
+      clashesWith: string[];
     };
 
 export interface DocDay {
@@ -56,7 +61,7 @@ export interface PlanDocument {
 }
 
 export function planDocument(
-  state: Pick<TripState, "cities" | "days">,
+  state: Pick<TripState, "cities" | "days"> & { prefs: Pick<Prefs, "pace"> },
   dayList: [string, { cityName: string }][],
   bookings: DocBooking[],
   places: Map<string, PlaceInput>,
@@ -74,7 +79,7 @@ export function planDocument(
       entry: { kind: "booking" as const, time: slot.startMin == null ? null : clock(slot.startMin), end: slot.endMin == null ? null : clock(slot.endMin), title: b.title, type: b.type, part: slot.part },
     }));
     const stops = [...(planned.get(date)?.items ?? [])].sort((a, b) => a.sortOrder - b.sortOrder);
-    const stopEntries = stops.map((it, n) => {
+    const stopEntries: { at: number | null; entry: DocEntry }[] = stops.map((it, n) => {
       const p = places.get(it.placeId);
       return {
         at: it.startMin,
@@ -93,9 +98,17 @@ export function planDocument(
           crowdNote: p?.crowdNote ?? null,
           tip: p?.localTip ?? null,
           why: it.reason,
+          clashesWith: clashingBookings(it, bookings, date).map((b) => b.title),
         },
       };
     });
+    // The lunch break, where the day box puts it: before the first stop that
+    // starts after it (none after it, no lunch shown).
+    const lunch = dayStats(stops, state.prefs.pace).lunch;
+    const lunchAt = lunch ? stops.findIndex((it) => it.startMin != null && it.startMin >= lunch.endMin) : -1;
+    if (lunch && lunchAt > -1) {
+      stopEntries.splice(lunchAt, 0, { at: lunch.startMin, entry: { kind: "lunch", time: clock(lunch.startMin), end: clock(lunch.endMin), durationMin: lunch.endMin - lunch.startMin } });
+    }
     // Untimed bookings (all day, or no time given) lead the day; the rest
     // merge with the stops by clock, a booking before a stop at the same time.
     // Stops keep their own order: a stop with no time stays where it is.

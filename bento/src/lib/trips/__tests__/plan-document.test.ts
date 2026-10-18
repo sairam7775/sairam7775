@@ -11,6 +11,7 @@ const city = (cityId: string, name: string, nights: number, sortOrder: number) =
 const place = (id: string, more: Partial<PlaceInput>) => ({ id, nearestStation: null, stationWalkMin: null, opensAt: null, closesAt: null, crowdNote: null, localTip: null, ...more }) as PlaceInput;
 
 const state = {
+  prefs: { pace: "standard" as const },
   cities: [city("kyoto-city", "Kyoto", 2, 1), city("osaka-city", "Osaka", 1, 0)],
   days: [
     { date: "2026-11-21", cityId: "kyoto-city", items: [
@@ -56,7 +57,7 @@ describe("planDocument", () => {
   });
 
   it("merges a day's bookings and stops by the clock, stops in their own order", () => {
-    expect(doc.days[1].entries.map((e) => `${e.time} ${e.kind === "stop" ? e.name : e.title}`)).toEqual([
+    expect(doc.days[1].entries.map((e) => `${e.time} ${e.kind === "stop" ? e.name : e.kind === "booking" ? e.title : "Lunch"}`)).toEqual([
       "07:00 Kiyomizu-dera", "09:00 Tea ceremony", "10:00 Kodai-ji", "15:00 Hotel Kanra",
     ]);
   });
@@ -65,6 +66,17 @@ describe("planDocument", () => {
     const middle = doc.days[2].entries;
     expect(middle).toEqual([{ kind: "booking", time: null, end: null, title: "Hotel Kanra", type: "accommodation", part: "all-day" }]);
     expect(JSON.stringify(doc.days)).not.toContain("Dinner, not in the plan");
+  });
+
+  it("puts the day box's lunch break before the first stop after it, and flags a stop that runs into a booking", () => {
+    const day = { date: "2026-11-22", cityId: "kyoto-city", items: [item("kyt-a", "Morning temple", 0, 540), item("kyt-b", "Afternoon garden", 1, 810, { arriveMinutes: 10, arriveDetail: "Walk" })] };
+    day.items[0].durationMin = 120;
+    const ticket: DocBooking = { id: "b9", type: "activity", title: "Kimono fitting", startsAt: "2026-11-22T13:45:00Z", endsAt: "2026-11-22T14:15:00Z", plannedOn: "2026-11-22" };
+    const d = planDocument({ ...state, days: [day] }, dayList, [ticket], places, stations).days[2];
+    expect(d.entries.map((e) => `${e.time} ${e.kind}`)).toEqual(["09:00 stop", "11:30 lunch", "13:30 stop", "13:45 booking"]);
+    expect(d.entries[1]).toEqual({ kind: "lunch", time: "11:30", end: "12:30", durationMin: 60 });
+    expect(d.entries[0]).toMatchObject({ clashesWith: [] });
+    expect(d.entries[2]).toMatchObject({ name: "Afternoon garden", clashesWith: ["Kimono fitting"] });
   });
 
   it("names a stop from its place record, falling back to the stored name", () => {
