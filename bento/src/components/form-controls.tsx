@@ -107,20 +107,22 @@ export function ChoiceButton({ name, value, pressed, className, children }: { na
   );
 }
 
-/** A submit button that asks first. For things that can't be undone. */
-export function ConfirmButton({ children, message, className, ...rest }: ComponentProps<"button"> & { message: string }) {
+/** A submit button that asks first. For things that can't be undone. With
+ *  `pending`, it says it's working once confirmed, like SubmitButton. */
+export function ConfirmButton({ children, message, pending: pendingLabel, className, ...rest }: ComponentProps<"button"> & { message: string; pending?: ReactNode }) {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       {...rest}
       disabled={pending || rest.disabled}
+      aria-busy={pending}
       className={`${className ?? ""} disabled:opacity-50`}
       onClick={(e) => {
         if (!window.confirm(message)) e.preventDefault();
       }}
     >
-      {children}
+      {pending && pendingLabel ? pendingLabel : children}
     </button>
   );
 }

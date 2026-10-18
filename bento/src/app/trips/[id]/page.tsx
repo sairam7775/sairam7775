@@ -127,11 +127,11 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           <div className="flex flex-wrap gap-1 border-t border-rule pt-3">
             <form action={renewShareLink}>
               <input type="hidden" name="tripId" value={id} />
-              <ConfirmButton message={copy.share.renewConfirm} className={`${quiet} hover:bg-sunk`}>{copy.share.renew}</ConfirmButton>
+              <ConfirmButton message={copy.share.renewConfirm} pending={copy.common.saving} className={`${quiet} hover:bg-sunk`}>{copy.share.renew}</ConfirmButton>
             </form>
             <form action={stopSharing}>
               <input type="hidden" name="tripId" value={id} />
-              <ConfirmButton message={copy.share.stopConfirm} className={`${quiet} hover:bg-ume-soft hover:text-ume`}>{copy.share.stop}</ConfirmButton>
+              <ConfirmButton message={copy.share.stopConfirm} pending={copy.common.saving} className={`${quiet} hover:bg-ume-soft hover:text-ume`}>{copy.share.stop}</ConfirmButton>
             </form>
           </div>
         </>
