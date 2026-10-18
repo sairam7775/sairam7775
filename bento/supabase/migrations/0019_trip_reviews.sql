@@ -15,8 +15,8 @@ create table trip_reviews (
   challenges  text[] not null default '{}' check (
     challenges <@ array['too_much', 'travel_longer', 'place_closed', 'crowds', 'booking', 'walking', 'timing', 'other']::text[]
   ),
-  -- The days that were hardest to follow. The app keeps them inside the
-  -- trip's dates; a date change later doesn't rewrite what was said.
+  -- The days that were hardest to follow, inside the saved plan's dates
+  -- (checked by the trigger below); a date change later doesn't rewrite them.
   hard_days   date[] not null default '{}' check (cardinality(hard_days) <= 60),
   note        text check (char_length(note) <= 2000),
   -- The route and every day's stops as they were when the traveller first
@@ -90,13 +90,13 @@ revoke execute on function trip_reviews_plan() from anon, authenticated, public;
 alter table trip_reviews enable row level security;
 
 -- Supabase grants every new table to signed-in users in full. A traveller
--- writes only their answer: the plan (and the dates) are the database's.
--- trip_id is in the update list because an upsert names it; the trigger
--- keeps it as it was.
+-- writes only their answer: the plan (and the dates) are the database's,
+-- and an answer stays on its trip. The app changes an answer with an update,
+-- never an upsert (an upsert is also checked as an insert).
 revoke all on trip_reviews from anon, authenticated;
 grant select on trip_reviews to authenticated;
 grant insert (trip_id, outcome, challenges, hard_days, note) on trip_reviews to authenticated;
-grant update (trip_id, outcome, challenges, hard_days, note) on trip_reviews to authenticated;
+grant update (outcome, challenges, hard_days, note) on trip_reviews to authenticated;
 
 -- The traveller's own trips only, and a first answer only once the trip has
 -- ended: a review of a plan nobody has followed yet is a guess.
