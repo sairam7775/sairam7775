@@ -250,9 +250,12 @@ Practically:
   write it, and only once the trip has ended. The outcome and challenge keys
   are fixed by check constraints — add a key there, in `review.ts` and in
   `copy.review` together (a test compares them).
-- `/admin/trip-reviews` reads them through the service role, with the route
-  and the stops of every day marked hard, so a failure can be traced to the
-  plan. No names or emails on that page. Analytics get counts only
+- The first answer saves the plan as it stood (`plan`, `planSnapshot`);
+  changing the answer later keeps that plan, because the trip may have been
+  edited since. `/admin/trip-reviews` reads answers and saved plans through
+  the service role — the route and the stops of every day marked hard — so a
+  failure can be traced to the plan that caused it, never the trip's
+  current state. No names or emails on that page. Analytics get counts only
   (`trip_reviewed`), never the note.
 
 ## The vault (P8)

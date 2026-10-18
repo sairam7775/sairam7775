@@ -109,14 +109,20 @@ export async function saveTripReview(formData: FormData) {
   const parsed = parseReview(formData, trip);
   if (!parsed.ok) back(parsed.error);
   const { review } = parsed;
-  // Day trips sit on days whose city isn't on the route; name those too.
-  const offRoute = [...new Set(state.days.map((d) => d.cityId).filter((c): c is string => Boolean(c) && !state.cities.some((r) => r.cityId === c)))];
-  const { data: extra } = offRoute.length ? await db.from("cities").select("id, name").in("id", offRoute) : { data: [] as { id: string; name: string }[] };
-  const plan = planSnapshot(state, Object.fromEntries((extra ?? []).map((c) => [c.id, c.name])));
-  const { error } = await db.from("trip_reviews").upsert(
-    { trip_id: id, outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note, plan },
-    { onConflict: "trip_id" },
-  );
+  const answer = { outcome: review.outcome, challenges: review.challenges, hard_days: review.hardDays, note: review.note };
+  // A changed answer keeps the plan saved with the first one: the trip may
+  // have been edited since, and the answer is about the plan they followed.
+  const updated = await db.from("trip_reviews").update(answer).eq("trip_id", id).select("trip_id");
+  let error = updated.error;
+  if (!error && !updated.data?.length) {
+    // Day trips sit on days whose city isn't on the route; name those too.
+    const offRoute = [...new Set(state.days.map((d) => d.cityId).filter((c): c is string => Boolean(c) && !state.cities.some((r) => r.cityId === c)))];
+    const { data: extra } = offRoute.length ? await db.from("cities").select("id, name").in("id", offRoute) : { data: [] as { id: string; name: string }[] };
+    const plan = planSnapshot(state, Object.fromEntries((extra ?? []).map((c) => [c.id, c.name])));
+    ({ error } = await db.from("trip_reviews").insert({ trip_id: id, ...answer, plan }));
+    // Two sends at once: the other one made the row (and its plan); answer it.
+    if (error?.code === "23505") ({ error } = await db.from("trip_reviews").update(answer).eq("trip_id", id));
+  }
   if (error) back(copy.review.errors.saveFailed);
 
   revalidatePath(`/trips/${id}`);
