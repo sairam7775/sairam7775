@@ -127,8 +127,9 @@ export async function saveTripReview(formData: FormData) {
 
   revalidatePath(`/trips/${id}`);
   revalidatePath("/trips");
-  // Counts only, for analytics (TrackOnce on the trip page); never the note.
-  const marks = new URLSearchParams({ reviewed: review.outcome, rc: String(review.challenges.length), rd: String(review.hardDays.length), rn: review.note ? "1" : "0" });
+  // Counts only, for analytics (TrackOnce on the trip page): never the
+  // answer or the note.
+  const marks = new URLSearchParams({ reviewed: "1", rc: String(review.challenges.length), rd: String(review.hardDays.length), rn: review.note ? "1" : "0" });
   redirect(`/trips/${id}?${marks}#review`);
 }
 

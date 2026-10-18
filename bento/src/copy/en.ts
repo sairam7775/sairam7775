@@ -320,6 +320,7 @@ export const en = {
       outcome: "Choose whether you could follow the plan.",
       noteTooLong: (max: number) => `Keep it under ${max} characters.`,
       dayOutside: "Pick days from this trip.",
+      tooManyDays: (max: number) => `Pick up to ${max} days.`,
       notYet: "You can say how it went once the trip has ended.",
       saveFailed: "Couldn't save your answer. Try again.",
     },

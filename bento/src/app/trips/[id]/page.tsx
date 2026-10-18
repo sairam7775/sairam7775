@@ -21,7 +21,7 @@ import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
 import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
-import { OUTCOMES, reviewFromRow, reviewOpen } from "@/lib/trips/review";
+import { reviewFromRow, reviewOpen } from "@/lib/trips/review";
 import { TripReviewCard } from "./trip-review";
 import type { CoverageTier } from "@/lib/types";
 
@@ -190,7 +190,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
             />
           )}
           {typeof sp.reviewed === "string" && (
-            <TrackOnce event="trip_reviewed" props={{ outcome: (OUTCOMES as readonly string[]).includes(sp.reviewed) ? sp.reviewed : null, challenges: Number(sp.rc) || 0, hard_days: Number(sp.rd) || 0, has_note: sp.rn === "1" }} consume={["reviewed", "rc", "rd", "rn"]} />
+            <TrackOnce event="trip_reviewed" props={{ challenges: Number(sp.rc) || 0, hard_days: Number(sp.rd) || 0, has_note: sp.rn === "1" }} consume={["reviewed", "rc", "rd", "rn"]} />
           )}
 
           {gaps && (

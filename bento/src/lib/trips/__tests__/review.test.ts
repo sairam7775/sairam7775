@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { CHALLENGES, NOTE_MAX, OUTCOMES, parseReview, planSnapshot, reviewFromRow, reviewOpen, snapshotFromRow } from "../review";
+import { CHALLENGES, HARD_DAYS_MAX, NOTE_MAX, OUTCOMES, parseReview, planSnapshot, reviewFromRow, reviewOpen, snapshotFromRow } from "../review";
 import { copy } from "@/copy";
 
 const trip = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -33,6 +33,12 @@ describe("parseReview", () => {
   it("refuses keys the database wouldn't accept", () => {
     expect(parseReview(form([["outcome", "great"]]), trip).ok).toBe(false);
     expect(parseReview(form([["outcome", "mostly"], ["challenge", "weather"]]), trip).ok).toBe(false);
+  });
+  it("refuses more hard days than the database keeps", () => {
+    const long = { startDate: "2026-01-01", endDate: "2026-12-31" };
+    const days = Array.from({ length: HARD_DAYS_MAX + 1 }, (_, i) => new Date(Date.UTC(2026, 0, 1 + i)).toISOString().slice(0, 10));
+    expect(parseReview(form([["outcome", "mostly"], ...days.map((d): [string, string] => ["hardDay", d])]), long)).toEqual({ ok: false, error: copy.review.errors.tooManyDays(HARD_DAYS_MAX) });
+    expect(parseReview(form([["outcome", "mostly"], ...days.slice(1).map((d): [string, string] => ["hardDay", d])]), long).ok).toBe(true);
   });
   it("refuses a day outside the trip and a note that is too long", () => {
     expect(parseReview(form([["outcome", "mostly"], ["hardDay", "2026-12-01"]]), trip)).toEqual({ ok: false, error: copy.review.errors.dayOutside });

@@ -14,6 +14,8 @@ export type Outcome = (typeof OUTCOMES)[number];
 export type Challenge = (typeof CHALLENGES)[number];
 
 export const NOTE_MAX = 2000;
+/** The most hard days one answer keeps (0019's check). */
+export const HARD_DAYS_MAX = 60;
 
 export interface TripReview {
   outcome: Outcome;
@@ -32,7 +34,7 @@ export function reviewOpen(trip: { endDate: string | null }, hasPlan: boolean, t
 const Form = z.object({
   outcome: z.enum(OUTCOMES, { message: copy.review.errors.outcome }),
   challenges: z.array(z.enum(CHALLENGES)),
-  hardDays: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
+  hardDays: z.array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)).max(HARD_DAYS_MAX, copy.review.errors.tooManyDays(HARD_DAYS_MAX)),
   note: z.string().max(NOTE_MAX, copy.review.errors.noteTooLong(NOTE_MAX)),
 });
 
