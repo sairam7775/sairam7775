@@ -520,6 +520,7 @@ export const en = {
     noDate: "No date",
     at: (date: string, time: string) => `${date} ${time}`,
     timeSpan: (from: string, to: string) => `${from}–${to}`,
+    endsAt: (date: string, time: string) => `${date}, ends ${time}`,
     loadFailed: "Bento couldn't load the whole plan, so there's nothing to save yet. Try again in a moment.",
     referencesNote: "Booking reference numbers are not in this download. They stay encrypted in Bento: open the trip's Bookings page to see them.",
   },

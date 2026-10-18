@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
 import { buildTripView } from "@/lib/bento-man/trip-view";
-import { planDocument, type DocBooking, type DocEntry } from "@/lib/trips/plan-document";
+import { bookingWhen, planDocument, type DocBooking, type DocEntry } from "@/lib/trips/plan-document";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { copy } from "@/copy";
 import { PrintButton } from "./print-button";
@@ -35,13 +35,13 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
   const { data: { user } } = await db.auth.getUser();
   if (!user) redirect(`/sign-in?next=/trips/${id}/print`);
 
+  // Only a trip that isn't there (or isn't theirs) is a 404. Any other
+  // failed read throws to the error page, which offers a retry.
+  const { data: exists, error: tripError } = await db.from("trips").select("id").eq("id", id).maybeSingle();
+  if (tripError) throw new Error(t.loadFailed);
+  if (!exists) notFound();
   const store = new SupabaseStore(db, id, user.id);
-  let state: TripState;
-  try {
-    state = await store.state();
-  } catch {
-    notFound();
-  }
+  const state: TripState = await store.state();
 
   const { dayList } = buildTripView(state, null);
   const cityIds = [...new Set(state.days.map((d) => d.cityId).filter((c): c is string => Boolean(c)))];
@@ -124,7 +124,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
                   <span className="mono w-24 shrink-0 text-[0.72rem] uppercase tracking-[0.08em] text-ink-3">{kind(b.type)}</span>
                   <span className="flex-1 font-medium">{b.title}</span>
                   <span className="mono text-[0.8rem] text-ink-2">
-                    {when(b)}
+                    {bookingWhen(b, longDate)}
                   </span>
                 </li>
               ))}
@@ -137,14 +137,6 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
       </article>
     </main>
   );
-}
-
-/** A booking's dates, with its times where they were given. */
-function when(b: { first: string | null; last: string | null; startTime: string | null; endTime: string | null }) {
-  if (!b.first) return t.noDate;
-  const from = b.startTime ? t.at(longDate(b.first), b.startTime) : longDate(b.first);
-  if (b.first === b.last) return b.startTime && b.endTime ? t.at(longDate(b.first), t.timeSpan(b.startTime, b.endTime)) : from;
-  return bk.range(from, b.endTime ? t.at(longDate(b.last!), b.endTime) : longDate(b.last!));
 }
 
 function Entry({ e }: { e: DocEntry }) {

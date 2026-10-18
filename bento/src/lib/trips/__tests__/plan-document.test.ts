@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { planDocument, type DocBooking } from "../plan-document";
+import { bookingWhen, planDocument, type DocBooking } from "../plan-document";
+import { copy } from "@/copy";
 import type { PlaceInput } from "@/lib/engine/types";
 
 const item = (placeId: string, name: string, sortOrder: number, startMin: number | null, extra: Partial<{ arriveDetail: string; arriveMinutes: number; reason: string }> = {}) => ({
@@ -30,6 +31,20 @@ const places = new Map([
   ["kyt-kodaiji", place("kyt-kodaiji", { nearestStation: "no-such-station", stationWalkMin: 10 })],
 ]);
 const stations = new Map([["kiyomizu-gojo", { name: "Kiyomizu-Gojo" }]]);
+
+describe("bookingWhen", () => {
+  const day = (d: string) => `<${d}>`;
+  const row = (first: string | null, last: string | null, startTime: string | null, endTime: string | null) => ({ title: "x", type: "activity", first, last, startTime, endTime });
+  it("gives the dates with whichever times are known", () => {
+    expect(bookingWhen(row("2026-11-21", "2026-11-21", "09:00", "10:00"), day)).toBe(`<2026-11-21> 09:00–10:00`);
+    expect(bookingWhen(row("2026-11-21", "2026-11-21", "09:00", null), day)).toBe(`<2026-11-21> 09:00`);
+    expect(bookingWhen(row("2026-11-21", "2026-11-21", null, "17:00"), day)).toBe(`<2026-11-21>, ends 17:00`);
+    expect(bookingWhen(row("2026-11-21", "2026-11-21", null, null), day)).toBe(`<2026-11-21>`);
+    expect(bookingWhen(row("2026-11-21", "2026-11-23", "15:00", "10:00"), day)).toBe(copy.bookings.range("<2026-11-21> 15:00", "<2026-11-23> 10:00"));
+    expect(bookingWhen(row("2026-11-21", "2026-11-23", null, null), day)).toBe(copy.bookings.range("<2026-11-21>", "<2026-11-23>"));
+    expect(bookingWhen(row(null, null, null, null), day)).toBe(copy.print.noDate);
+  });
+});
 
 describe("planDocument", () => {
   const doc = planDocument(state, dayList, bookings, places, stations);

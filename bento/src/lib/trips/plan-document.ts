@@ -9,6 +9,7 @@ import type { TripState } from "@/lib/bento-man/store";
 import type { PlaceInput } from "@/lib/engine/types";
 import { bookingDates, bookingSlot, canPlanOn, type PlannableBooking } from "@/lib/vault/plan-day";
 import { clock } from "@/lib/bento-man/diff";
+import { copy } from "@/copy";
 
 export interface DocBooking extends PlannableBooking {
   id: string;
@@ -125,4 +126,17 @@ export function planDocument(
     days,
     bookings: listed,
   };
+}
+
+/** A booking's dates, with its times where they were given. */
+export function bookingWhen(b: PlanDocument["bookings"][number], longDate: (d: string) => string): string {
+  const t = copy.print;
+  if (!b.first) return t.noDate;
+  const from = b.startTime ? t.at(longDate(b.first), b.startTime) : longDate(b.first);
+  if (b.first === b.last) {
+    if (b.startTime && b.endTime) return t.at(longDate(b.first), t.timeSpan(b.startTime, b.endTime));
+    // A date with no start time can still have a known end.
+    return !b.startTime && b.endTime ? t.endsAt(longDate(b.first), b.endTime) : from;
+  }
+  return copy.bookings.range(from, b.endTime ? t.at(longDate(b.last!), b.endTime) : longDate(b.last!));
 }
