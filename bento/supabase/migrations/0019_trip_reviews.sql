@@ -50,6 +50,7 @@ begin
   new.plan := jsonb_build_object(
     'start', (select start_date from trips where id = new.trip_id),
     'end',   (select end_date from trips where id = new.trip_id),
+    'party', (select party_size from trips where id = new.trip_id),
     'route', coalesce((
       select jsonb_agg(jsonb_build_object('city', coalesce(c.name, tc.city_id), 'nights', tc.nights) order by tc.sort_order)
       from trip_cities tc left join cities c on c.id = tc.city_id
@@ -77,6 +78,15 @@ create trigger trip_reviews_plan before insert or update on trip_reviews
 revoke execute on function trip_reviews_plan() from anon, authenticated, public;
 
 alter table trip_reviews enable row level security;
+
+-- Supabase grants every new table to signed-in users in full. A traveller
+-- writes only their answer: the plan (and the dates) are the database's.
+-- trip_id is in the update list because an upsert names it; the trigger
+-- keeps it as it was.
+revoke all on trip_reviews from anon, authenticated;
+grant select on trip_reviews to authenticated;
+grant insert (trip_id, outcome, challenges, hard_days, note) on trip_reviews to authenticated;
+grant update (trip_id, outcome, challenges, hard_days, note) on trip_reviews to authenticated;
 
 -- The traveller's own trips only, and only once the trip has ended: a
 -- review of a plan nobody has followed yet is a guess.

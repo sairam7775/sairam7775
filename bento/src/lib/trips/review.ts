@@ -58,6 +58,7 @@ export const PlanSnapshotSchema = z.object({
   /** The trip's dates then: the days an answer's hard days are chosen from. */
   start: z.string().nullable(),
   end: z.string().nullable(),
+  party: z.number(),
   route: z.array(z.object({ city: z.string(), nights: z.number() })),
   days: z.array(z.object({
     date: z.string(),

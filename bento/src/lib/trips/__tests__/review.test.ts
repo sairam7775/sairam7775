@@ -59,6 +59,7 @@ describe("snapshotFromRow", () => {
     const saved = {
       start: "2026-11-22",
       end: "2026-11-24",
+      party: 2,
       route: [{ city: "Osaka", nights: 2 }, { city: "Kyoto", nights: 4 }],
       days: [
         { date: "2026-11-23", city: "Kyoto", stops: [{ time: "07:00", name: "Kiyomizu-dera" }, { time: null, name: "Somewhere" }] },

@@ -13,7 +13,6 @@ interface Row {
   note: string | null;
   plan: unknown;
   updated_at: string;
-  trips: { start_date: string | null; end_date: string | null; party_size: number } | null;
 }
 
 /** How many answers the list shows; the totals count every answer. */
@@ -47,7 +46,7 @@ export default async function TripReviews() {
 
   const { data } = await db
     .from("trip_reviews")
-    .select("trip_id, outcome, challenges, hard_days, note, plan, updated_at, trips(start_date, end_date, party_size)")
+    .select("trip_id, outcome, challenges, hard_days, note, plan, updated_at")
     .order("updated_at", { ascending: false })
     .limit(LIST);
   const rows = ((data ?? []) as unknown as Row[]).flatMap((row) => {
@@ -99,15 +98,15 @@ export default async function TripReviews() {
             <h2 className="border-b-2 border-ink pb-1.5 text-base font-bold">{answers.length > LIST ? `The latest ${LIST} answers` : "Every answer"}</h2>
             <ul className="mt-4 flex flex-col gap-4">
               {rows.map(({ row, review, plan }) => {
-                const trip = row.trips;
                 const route = (plan?.route ?? []).map((c) => `${c.city} ${c.nights}n`).join(" → ");
                 return (
                   <li key={row.trip_id} className="tile p-5">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
                       <span className={`mono rounded-[3px] px-1.5 py-0.5 text-[0.66rem] uppercase tracking-[0.08em] ${OUTCOME_STYLE[review.outcome]}`}>{r.outcomes[review.outcome]}</span>
                       <span className="mono text-[0.72rem] text-ink-3">
-                        {trip?.start_date && trip.end_date ? `${fmt(trip.start_date)} – ${fmt(trip.end_date)}` : "No dates"}
-                        {trip && trip.party_size > 1 ? ` · ${trip.party_size} people` : ""} · answered {fmt(row.updated_at.slice(0, 10))}
+                        {/* All from the saved plan: the trip may have changed since. */}
+                        {plan?.start && plan.end ? `${fmt(plan.start)} – ${fmt(plan.end)}` : "No dates"}
+                        {plan && plan.party > 1 ? ` · ${plan.party} people` : ""} · answered {fmt(row.updated_at.slice(0, 10))}
                       </span>
                     </div>
                     {route && <p className="mono mt-2 text-[0.8rem] text-ink-2">{route}</p>}
