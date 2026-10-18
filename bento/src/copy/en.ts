@@ -1033,11 +1033,15 @@ export const en = {
         review: (n: number) => (n > 0 ? `Review queue · ${n} to check` : "Review queue · nothing to check"),
         bulk: "Verify several at once",
         tripReviews: (n: number) => `Trip reviews · ${n}`,
+        // When a count couldn't be read just now: the link without it.
+        reviewPlain: "Review queue",
+        tripReviewsPlain: "Trip reviews",
       },
       spend: {
         heading: "This month",
         // Dollar amounts arrive written out, e.g. "0.07".
         spent: (spent: string, cap: string) => `AI spend so far: $${spent} of the $${cap} monthly limit for everyone.`,
+        unavailable: (cap: string) => `This month's AI spend couldn't be read just now. The monthly limit for everyone is $${cap}; reload to try again.`,
         perUser: (cap: string) => `Each traveller can spend up to $${cap} a month.`,
         model: (provider: string, model: string) => `Bento Man runs on ${provider}, model ${model}.`,
         fallbacks: (models: string) => `If it's busy or out of quota: ${models}.`,

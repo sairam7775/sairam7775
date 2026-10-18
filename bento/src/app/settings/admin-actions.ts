@@ -40,22 +40,24 @@ export async function addAdmin(formData: FormData) {
 }
 
 /** Settings → Admin → remove someone's admin access. Never your own (another
- *  admin has to), and never the last one, so curation can't be locked out. */
+ *  admin has to), and never the last one, so curation can't be locked out.
+ *  The rules live in one locked database function (remove_admin, 0021):
+ *  checked here in separate calls, two admins removing each other at once
+ *  could both pass and leave none. */
 export async function removeAdmin(formData: FormData) {
   const { user, db } = await requireAdmin();
   const id = z.uuid().safeParse(formData.get("userId"));
   if (!id.success) back({ adminError: "failed" });
-  if (id.data === user.id) back({ adminError: "self" });
 
-  const { count, error: countError } = await db.from("app_admins").select("user_id", { count: "exact", head: true });
-  if (countError) back({ adminError: "failed" });
-  if ((count ?? 0) <= 1) back({ adminError: "last" });
-
-  const { error } = await db.from("app_admins").delete().eq("user_id", id.data);
+  const { data, error } = await db.rpc("remove_admin", { p_actor: user.id, p_target: id.data });
   if (error) {
     console.error("Removing admin access failed:", error.message);
     back({ adminError: "failed" });
   }
+  if (data === "self") back({ adminError: "self" });
+  if (data === "last") back({ adminError: "last" });
+  // Removed by someone else meanwhile, or no longer an admin: nothing to do.
+  if (data !== "removed") back({ adminError: "failed" });
   console.info(`Admin access removed from ${id.data} by ${user.id}`);
   back({ admin: "removed" });
 }

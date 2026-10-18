@@ -209,17 +209,23 @@ function AdminSection({ overview: o, you, added, error }: { overview: AdminOverv
       <h3 className="mt-5 text-[0.95rem] font-bold">{t.tools.heading}</h3>
       <ul className="mt-2 flex flex-wrap gap-2">
         <li><Link href="/admin" className={link}>{t.tools.curation}</Link></li>
-        <li><Link href="/admin/review" className={link}>{t.tools.review(o.toCheck)}</Link></li>
-        {o.toCheck > 0 && <li><Link href="/admin/review/bulk" className={link}>{t.tools.bulk}</Link></li>}
-        <li><Link href="/admin/trip-reviews" className={link}>{t.tools.tripReviews(o.tripReviews)}</Link></li>
+        <li><Link href="/admin/review" className={link}>{o.toCheck == null ? t.tools.reviewPlain : t.tools.review(o.toCheck)}</Link></li>
+        {o.toCheck !== 0 && <li><Link href="/admin/review/bulk" className={link}>{t.tools.bulk}</Link></li>}
+        <li><Link href="/admin/trip-reviews" className={link}>{o.tripReviews == null ? t.tools.tripReviewsPlain : t.tools.tripReviews(o.tripReviews)}</Link></li>
       </ul>
 
       <h3 className="mt-6 text-[0.95rem] font-bold">{t.spend.heading}</h3>
       <div className="mt-2 rounded-xl bg-sunk px-4 py-3 text-[0.92rem] leading-relaxed text-ink-2">
-        <p className="text-ink">{t.spend.spent(o.spentUsd.toFixed(2), o.capUsd.toFixed(2))}</p>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-rule" aria-hidden>
-          <div className={`h-full rounded-full ${o.spentUsd >= o.capUsd ? "bg-ume" : "bg-edamame"}`} style={{ width: `${Math.min(100, (o.spentUsd / o.capUsd) * 100)}%` }} />
-        </div>
+        {o.spentUsd == null ? (
+          <p className="text-ink">{t.spend.unavailable(o.capUsd.toFixed(2))}</p>
+        ) : (
+          <>
+            <p className="text-ink">{t.spend.spent(o.spentUsd.toFixed(2), o.capUsd.toFixed(2))}</p>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-rule" aria-hidden>
+              <div className={`h-full rounded-full ${o.spentUsd >= o.capUsd ? "bg-ume" : "bg-edamame"}`} style={{ width: `${Math.min(100, (o.spentUsd / o.capUsd) * 100)}%` }} />
+            </div>
+          </>
+        )}
         <p className="mt-2">{t.spend.perUser(o.perUserCapUsd.toFixed(2))}</p>
         <p>{t.spend.model(t.spend.providers[o.provider], o.model)}</p>
         {o.fallbacks.length > 0 && <p>{t.spend.fallbacks(o.fallbacks.join(", "))}</p>}

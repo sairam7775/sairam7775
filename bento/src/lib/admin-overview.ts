@@ -6,11 +6,12 @@ import { globalMonthlyCapUsd, monthlyCapUsd } from "@/lib/guards/spend";
 /** What the admin section of Settings shows. Read with the service role,
  *  so only call it after checking the viewer is an admin. */
 export interface AdminOverview {
-  /** Places waiting for a human to check them. */
-  toCheck: number;
-  tripReviews: number;
-  /** This calendar month, everyone together, as the spending cap counts it. */
-  spentUsd: number;
+  /** Places waiting for a human to check them. null: couldn't be read just now. */
+  toCheck: number | null;
+  tripReviews: number | null;
+  /** This calendar month, everyone together, as the spending cap counts it.
+   *  null when it couldn't be read: never shown as $0.00. */
+  spentUsd: number | null;
   capUsd: number;
   perUserCapUsd: number;
   provider: ProviderName;
@@ -35,9 +36,9 @@ export async function adminOverview(db: SupabaseClient): Promise<AdminOverview> 
     }),
   );
   return {
-    toCheck: drafts.count ?? 0,
-    tripReviews: reviews.count ?? 0,
-    spentUsd: Number(spend.data ?? 0),
+    toCheck: drafts.error ? null : (drafts.count ?? 0),
+    tripReviews: reviews.error ? null : (reviews.count ?? 0),
+    spentUsd: spend.error || spend.data == null ? null : Number(spend.data),
     capUsd: globalMonthlyCapUsd(),
     perUserCapUsd: monthlyCapUsd(),
     provider: configuredProvider(),
