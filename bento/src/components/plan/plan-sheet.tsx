@@ -12,9 +12,12 @@ const kind = (type: string) => (bk.kinds as Record<string, string>)[type] ?? bk.
  *  for companions with the shared link (/shared/[token]): the route, every
  *  day with its bookings and stops, and the bookings list. Never a booking
  *  reference: neither leaves it in Bento's hands. `link` is the address
- *  printed under the title, written out in full so it works on paper. */
-export function PlanSheet({ trip, doc, today, link }: { trip: TripMeta; doc: PlanDocument; today: string; link: { label: string; url: string } }) {
+ *  printed under the title, written out in full so it works on paper.
+ *  Companions can't change the plan or open its bookings, so their sheet
+ *  doesn't tell them to. */
+export function PlanSheet({ trip, doc, today, link, companion = false }: { trip: TripMeta; doc: PlanDocument; today: string; link: { label: string; url: string }; companion?: boolean }) {
   const nights = nightsBetween(trip.startDate, trip.endDate);
+  const savedOn = fmt(today, { day: "numeric", month: "long", year: "numeric" });
   return (
     <article className="tile p-5 text-ink sm:p-8 print:p-0">
       <header className="border-b-2 border-ink pb-4">
@@ -25,7 +28,7 @@ export function PlanSheet({ trip, doc, today, link }: { trip: TripMeta; doc: Pla
             : copy.trips.noDates}
           {trip.partySize > 1 && ` · ${t.people(trip.partySize)}`}
         </p>
-        <p className="mt-1 text-[0.8rem] text-ink-3">{t.saved(fmt(today, { day: "numeric", month: "long", year: "numeric" }))}</p>
+        <p className="mt-1 text-[0.8rem] text-ink-3">{companion ? copy.share.saved(savedOn) : t.saved(savedOn)}</p>
         {/* Written out in full: on paper the address is the link. */}
         <p className="mt-0.5 text-[0.8rem] text-ink-3">
           {link.label}{" "}
@@ -77,7 +80,7 @@ export function PlanSheet({ trip, doc, today, link }: { trip: TripMeta; doc: Pla
         ) : (
           <p className="mt-2 text-[0.9rem] text-ink-2">{t.noBookings}</p>
         )}
-        <p className="mt-3 text-[0.82rem] text-ink-3">{t.referencesNote}</p>
+        <p className="mt-3 text-[0.82rem] text-ink-3">{companion ? copy.share.referencesNote : t.referencesNote}</p>
       </section>
 
       <footer className="mt-10 break-inside-avoid border-t border-rule pt-4">

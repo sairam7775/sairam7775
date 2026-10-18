@@ -580,6 +580,9 @@ export const en = {
     viewerNote: "A trip plan shared with you on Bento. This page always shows the latest version.",
     ownerNote: "This is what your companions see with the link.",
     backToTrip: "Back to your trip",
+    // On the sheet itself, for companions, who can't change the plan or open its bookings.
+    saved: (date: string) => `Saved from Bento on ${date}.`,
+    referencesNote: "Booking reference numbers aren't shared. Ask whoever shared this plan if you need one.",
     loadFailed: "Bento couldn't load this plan just now. Try again in a moment.",
     gone: {
       title: "This link doesn't open a trip any more",

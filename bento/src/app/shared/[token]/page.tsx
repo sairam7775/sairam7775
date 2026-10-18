@@ -77,7 +77,7 @@ export default async function SharedPlanPage({ params }: PageProps<"/shared/[tok
         <p className="basis-full text-[0.86rem] text-ink-2">{copy.print.howTo}</p>
       </div>
 
-      <PlanSheet trip={plan.state.trip} doc={doc} today={today} link={{ label: copy.print.linkShared, url }} />
+      <PlanSheet trip={plan.state.trip} doc={doc} today={today} link={{ label: copy.print.linkShared, url }} companion />
     </main>
   );
 }
