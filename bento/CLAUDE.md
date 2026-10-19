@@ -45,6 +45,10 @@ Practically:
   dates. Autocapture keeps no element text; replays mask all text and
   inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
+- **CSP is report-only for now.** The policy lives in `src/lib/security/csp.ts`;
+  add any new third-party origin there after checking that the app really uses
+  it. Per-request nonces through Proxy are the next step before removing
+  `'unsafe-inline'`.
 - **Deleting an account removes everything of theirs** (Settings → Privacy
   & data → Delete account, `settings/delete` → `deleteAccount` →
   `lib/account/delete.ts`): every user table cascades
