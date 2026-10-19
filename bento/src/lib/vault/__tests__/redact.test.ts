@@ -36,6 +36,17 @@ describe("redactConfirmation", () => {
     expect(r.text).not.toContain(ref);
   });
 
+  it.each([
+    ["Confirmation number: ABC 123 456", "ABC 123 456"],
+    ["Booking reference: AB/12345", "AB/12345"],
+    ["Order number: ORD_88_2041", "ORD_88_2041"],
+  ])("takes a reference with spaces, slashes or underscores out whole: %s", (text, ref) => {
+    const r = redactConfirmation(`${text} for your stay\nArrive 2026-11-20`);
+    expect(r.reference).toBe(ref);
+    expect(r.text).not.toMatch(/123 456|12345|2041/);
+    expect(r.text).toContain("for your stay");
+  });
+
   it("doesn't read a word that only contains a label, such as Preference", () => {
     const r = redactConfirmation("Preference: 2 single beds, room 1204");
     expect(r.reference).toBeNull();

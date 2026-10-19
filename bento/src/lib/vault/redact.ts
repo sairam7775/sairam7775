@@ -20,9 +20,11 @@ const REMOVED = {
 const LABEL = String.raw`(?:booking|reservation)\s+(?:reference|ref\.?|number|no\.?|id|code)|confirmation(?:\s+(?:number|no\.?|code|#))?|reference(?:\s+(?:number|no\.?|code))?|ref\.?|pnr|record\s+locator|(?:e-?ticket|ticket|order|itinerary)\s+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
 // The label must start a word ("Preference" isn't "reference"); a lookbehind
 // rather than \b, which doesn't see the start of a Japanese label. The value
-// is taken whole, up to 100 characters, so a long one never leaves its tail
-// in the text.
-const REFERENCE = new RegExp(String.raw`(?<![A-Za-z])(${LABEL})(\s*(?:is|:|：|#|-|–|no\.)?\s*)([A-Z0-9][A-Z0-9-]{3,99})(?![A-Z0-9-])`, "gi");
+// is taken whole, so a long one never leaves its tail in the text: after a
+// space, slash, dot, underscore or hyphen it goes on only while the next
+// group has a digit ("ABC 123 456", "AB/12345"), so "ABC123 for your stay"
+// stops at the reference.
+const REFERENCE = new RegExp(String.raw`(?<![A-Za-z])(${LABEL})(\s*(?:is|:|：|#|-|–|no\.)?\s*)([A-Z0-9][A-Z0-9_-]*(?:[ /._-][A-Z0-9_]*\d[A-Z0-9_]*)*)(?![A-Z0-9_-])`, "gi");
 // The longest reference the booking form keeps (ParsedBookingSchema).
 const REFERENCE_MAX = 60;
 
@@ -40,6 +42,7 @@ const LONG_NUMBER = /\b\d(?:[ -]?\d){11,18}\b/g;
  *  digit, or it is a run of capitals (a PNR such as QWERTY). "Confirmation
  *  of your booking" has neither. */
 function looksLikeReference(value: string): boolean {
+  if (value.replace(/[^A-Z0-9]/gi, "").length < 4) return false;
   return /\d/.test(value) || /^[A-Z]{5,8}$/.test(value);
 }
 
