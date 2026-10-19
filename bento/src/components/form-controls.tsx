@@ -67,7 +67,12 @@ export function DateRangeInputs({
           name={startName}
           value={start}
           aria-describedby={summaryId}
-          onChange={(e) => setStart(e.target.value)}
+          onChange={(e) => {
+            setStart(e.target.value);
+            // A later arrival carries the departure with it, so the range is
+            // never backwards; the warning below is only for a typed date.
+            if (end && e.target.value && end < e.target.value) setEnd(e.target.value);
+          }}
           className={inputClass}
         />
       </div>
