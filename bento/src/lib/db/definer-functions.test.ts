@@ -16,9 +16,9 @@ const migrationsDirectory = join(process.cwd(), "supabase", "migrations");
 // put ALTER FUNCTION clauses on one statement. Match those statements without
 // splitting on semicolons inside the bodies.
 function migrationFunctionStatements(sql: string): string[] {
-  const statement = /^[ \t]*(?:create\s+(?:or\s+replace\s+)?function\b[\s\S]*?\bas\s+(\$(?:[a-z_][a-z0-9_]*)?\$)[\s\S]*?\1\s*;|alter\s+function\b[^;]*;)/gim;
+  const statement = /^[ \t]*(?:create\s+(?:or\s+replace\s+)?(?:function|procedure)\b[\s\S]*?\bas\s+(\$(?:[a-z_][a-z0-9_]*)?\$)[\s\S]*?\1\s*;|alter\s+(?:function|routine|procedure)\b[^;]*;)/gim;
   const statements = [...sql.matchAll(statement)].map(([text]) => text.trim());
-  const functionCommands = [...sql.matchAll(/^[ \t]*(?:create\s+(?:or\s+replace\s+)?|alter\s+)function\b/gim)].length;
+  const functionCommands = [...sql.matchAll(/^[ \t]*(?:create\s+(?:or\s+replace\s+)?(?:function|procedure)|alter\s+(?:function|routine|procedure))\b/gim)].length;
   if (statements.length !== functionCommands) {
     throw new Error("could not read every CREATE or ALTER FUNCTION statement");
   }
@@ -108,7 +108,7 @@ function parseCreateFunction(statement: string): FunctionState | null {
 function parseAlterFunction(
   statement: string,
 ): (Pick<FunctionState, "name" | "argumentTypes"> & { searchPath?: string | null; securityDefiner?: boolean }) | null {
-  const alter = /^alter\s+function\s+((?:"[^"]+"|[\w$]+)(?:\s*\.\s*(?:"[^"]+"|[\w$]+))?)\s*\(([\s\S]*)\)\s*(.*);$/i.exec(
+  const alter = /^alter\s+(?:function|routine|procedure)\s+((?:"[^"]+"|[\w$]+)(?:\s*\.\s*(?:"[^"]+"|[\w$]+))?)\s*\(([\s\S]*)\)\s*(.*);$/i.exec(
     statement,
   );
   if (!alter) return null;
@@ -141,7 +141,11 @@ function hasSafeSearchPath(path: string | null): boolean {
     : trimmed;
   if (unquoted === "") return true;
   // pg_temp last, and only schemas travellers can't write to before it.
-  const entries = unquoted.split(",").map((entry) => entry.trim().replace(/^"|"$/g, "").toLowerCase());
+  // A quoted entry keeps its case, as PostgreSQL reads it: "PG_TEMP" isn't pg_temp.
+  const entries = unquoted.split(",").map((entry) => {
+    const name = entry.trim();
+    return name.startsWith('"') && name.endsWith('"') ? name.slice(1, -1) : name.toLowerCase();
+  });
   return entries.at(-1) === "pg_temp" && entries.slice(0, -1).every((entry) => TRUSTED_SCHEMAS.has(entry));
 }
 
@@ -158,8 +162,9 @@ function functionsAfter(migrations: { file: string; sql: string }[]): Map<string
         functions.set(identity(created), created);
         continue;
       }
-      // A CREATE this can't read (OUT parameters without RETURNS, say) could
-      // be an unchecked definer, so it fails rather than being skipped.
+      // A CREATE this can't read (OUT parameters without RETURNS, or any
+      // procedure) could be an unchecked definer, so it fails rather than
+      // being skipped.
       if (/^create\b/i.test(statement)) throw new Error(`${file}: could not read ${statement.split("\n")[0]}`);
 
       const altered = parseAlterFunction(statement);
@@ -219,6 +224,23 @@ describe("SECURITY DEFINER function search paths", () => {
     expect(unsafeDefiners(functionsAfter([definer("f", "public, pg_temp")]))).toEqual([]);
     expect(unsafeDefiners(functionsAfter([definer("f", "''")]))).toEqual([]);
     expect(unsafeDefiners(functionsAfter([definer("f", "writable, pg_temp")]))).toEqual(["public.f(text) (last changed in 0001_a.sql)"]);
+    // Quoted names keep their case, so "PG_TEMP" is not the pg_temp alias.
+    expect(unsafeDefiners(functionsAfter([definer("f", 'public, "PG_TEMP"')]))).toEqual(["public.f(text) (last changed in 0001_a.sql)"]);
+    expect(unsafeDefiners(functionsAfter([definer("f", '"public", "pg_temp"')]))).toEqual([]);
+  });
+
+  it("reads ALTER ROUTINE like ALTER FUNCTION", () => {
+    const created = { file: "0001_a.sql", sql: "create or replace function public.f(p_a text)\nreturns void\nlanguage sql\nas $$ select 1 $$;" };
+    const promoted = { file: "0002_b.sql", sql: "alter routine public.f(text) security definer;" };
+    const fixed = { file: "0003_c.sql", sql: "alter routine public.f(text) set search_path = public, pg_temp;" };
+    expect(unsafeDefiners(functionsAfter([created, promoted]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
+    expect(unsafeDefiners(functionsAfter([created, promoted, fixed]))).toEqual([]);
+  });
+
+  it("refuses procedures, which it can't check yet", () => {
+    const procedure = { file: "0001_a.sql", sql: "create or replace procedure public.p(p_a text)\nlanguage sql\nsecurity definer\nas $$ select 1 $$;" };
+    expect(() => functionsAfter([procedure])).toThrow("0001_a.sql");
+    expect(() => functionsAfter([{ file: "0002_b.sql", sql: "alter procedure public.p(text) security definer;" }])).toThrow("0002_b.sql");
   });
 
   it("ignores a comment when reading an ALTER's security mode", () => {
