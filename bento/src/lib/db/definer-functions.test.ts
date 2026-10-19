@@ -55,13 +55,19 @@ function normalizeType(type: string): string {
   return aliases[normalized] ?? normalized;
 }
 
+// Unquoted names fold to lower case; a quoted one keeps its case (and its
+// quotes, unless it is all lower case anyway), as PostgreSQL treats them.
 function functionName(rawName: string): string {
-  const parts = rawName
-    .replace(/"/g, "")
-    .split(".")
-    .map((part) => part.trim().toLowerCase());
+  const parts = rawName.split(".").map((part) => {
+    const trimmed = part.trim();
+    if (!trimmed.startsWith('"')) return trimmed.toLowerCase();
+    const inner = trimmed.slice(1, -1);
+    return inner === inner.toLowerCase() ? inner : trimmed;
+  });
   return parts.length === 1 ? `public.${parts[0]}` : parts.join(".");
 }
+
+const withoutSqlComments = (sql: string) => sql.replace(/--[^\r\n]*/g, " ").replace(/\/\*[\s\S]*?\*\//g, " ");
 
 function configuredSearchPath(header: string): string | null {
   const withoutComments = header
@@ -110,9 +116,10 @@ function parseAlterFunction(
   // An ALTER can change the search path, the security mode, or both: a
   // function made SECURITY DEFINER later needs a safe path just the same.
   // RESET search_path (or RESET ALL) removes the path, so it reads as none.
-  const searchPath = configuredSearchPath(alter[3]);
-  const reset = /\breset\s+(?:search_path|all)\b/i.test(alter[3]);
-  const mode = /\bsecurity\s+(definer|invoker)\b/i.exec(alter[3])?.[1].toLowerCase();
+  const action = withoutSqlComments(alter[3]);
+  const searchPath = configuredSearchPath(action);
+  const reset = /\breset\s+(?:search_path|all)\b/i.test(action);
+  const mode = /\bsecurity\s+(definer|invoker)\b/i.exec(action)?.[1].toLowerCase();
   if (searchPath === null && !reset && !mode) return null;
   return {
     name: functionName(alter[1]),
@@ -133,9 +140,12 @@ function hasSafeSearchPath(path: string | null): boolean {
     ? trimmed.slice(1, -1).trim()
     : trimmed;
   if (unquoted === "") return true;
-  const entries = unquoted.split(",").map((entry) => entry.trim().replace(/^"|"$/g, ""));
-  return entries.at(-1)?.toLowerCase() === "pg_temp";
+  // pg_temp last, and only schemas travellers can't write to before it.
+  const entries = unquoted.split(",").map((entry) => entry.trim().replace(/^"|"$/g, "").toLowerCase());
+  return entries.at(-1) === "pg_temp" && entries.slice(0, -1).every((entry) => TRUSTED_SCHEMAS.has(entry));
 }
+
+const TRUSTED_SCHEMAS = new Set(["public", "pg_catalog"]);
 
 /** Every function as it stands after these migrations, in order. */
 function functionsAfter(migrations: { file: string; sql: string }[]): Map<string, FunctionState> {
@@ -148,6 +158,9 @@ function functionsAfter(migrations: { file: string; sql: string }[]): Map<string
         functions.set(identity(created), created);
         continue;
       }
+      // A CREATE this can't read (OUT parameters without RETURNS, say) could
+      // be an unchecked definer, so it fails rather than being skipped.
+      if (/^create\b/i.test(statement)) throw new Error(`${file}: could not read ${statement.split("\n")[0]}`);
 
       const altered = parseAlterFunction(statement);
       if (altered) {
@@ -195,6 +208,33 @@ describe("SECURITY DEFINER function search paths", () => {
     expect(unsafeDefiners(functionsAfter([created]))).toEqual([]);
     expect(unsafeDefiners(functionsAfter([created, reset]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
     expect(unsafeDefiners(functionsAfter([created, resetAll]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
+  });
+
+  const definer = (name: string, path: string) => ({
+    file: "0001_a.sql",
+    sql: `create or replace function public.${name}(p_a text)\nreturns void\nlanguage sql\nsecurity definer\nset search_path = ${path}\nas $$ select 1 $$;`,
+  });
+
+  it("allows only trusted schemas before pg_temp", () => {
+    expect(unsafeDefiners(functionsAfter([definer("f", "public, pg_temp")]))).toEqual([]);
+    expect(unsafeDefiners(functionsAfter([definer("f", "''")]))).toEqual([]);
+    expect(unsafeDefiners(functionsAfter([definer("f", "writable, pg_temp")]))).toEqual(["public.f(text) (last changed in 0001_a.sql)"]);
+  });
+
+  it("ignores a comment when reading an ALTER's security mode", () => {
+    const created = { file: "0001_a.sql", sql: "create or replace function public.f(p_a text)\nreturns void\nlanguage sql\nas $$ select 1 $$;" };
+    const promoted = { file: "0002_b.sql", sql: "alter function public.f(text) /* was security invoker */ security definer;" };
+    expect(unsafeDefiners(functionsAfter([created, promoted]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
+  });
+
+  it("refuses a CREATE FUNCTION it can't read, such as one with OUT parameters and no RETURNS", () => {
+    const outParams = { file: "0001_a.sql", sql: "create or replace function public.f(p_a text, out p_b int)\nlanguage sql\nsecurity definer\nas $$ select 1 $$;" };
+    expect(() => functionsAfter([outParams])).toThrow("0001_a.sql");
+  });
+
+  it("keeps a quoted mixed-case name apart from the unquoted one", () => {
+    const quoted = { file: "0001_a.sql", sql: `create or replace function public."F"(p_a text)\nreturns void\nlanguage sql\nsecurity definer\nas $$ select 1 $$;` };
+    expect(unsafeDefiners(functionsAfter([quoted, definer("f", "public, pg_temp")]))).toEqual(['public."F"(text) (last changed in 0001_a.sql)']);
   });
 
   it("treats SET search_path FROM CURRENT as unsafe, since the migration's path can't be known", () => {
