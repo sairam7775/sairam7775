@@ -106,7 +106,9 @@ export function TripChat({ children }: { children: ReactNode }) {
         aria-labelledby="bento-man-title"
         aria-hidden={phone && !open ? true : undefined}
         onKeyDown={mobileOpen ? keepFocusIn : undefined}
-        className={`tile up relative scroll-mt-4 bg-surface! flex-col overflow-hidden lg:sticky lg:top-6 lg:flex lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px] lg:rounded-tile ${mobileOpen ? "fixed inset-x-0 bottom-0 z-40 flex h-[85dvh] rounded-t-box" : "hidden"}`}
+        // One position class at a time: with `relative` beside `fixed`, the
+        // stylesheet's order decides, and the sheet ended up in the page flow.
+        className={`tile up scroll-mt-4 bg-surface! flex-col overflow-hidden lg:sticky lg:top-6 lg:flex lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px] lg:rounded-tile ${mobileOpen ? "fixed inset-x-0 bottom-0 z-40 flex h-[85dvh] rounded-t-box" : "hidden"}`}
         style={{ animationDelay: ".15s" }}
       >
         <button

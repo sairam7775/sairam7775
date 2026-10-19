@@ -29,7 +29,7 @@ export function DayStrip({ label, selected, children }: { label: string; selecte
     <nav
       ref={strip}
       aria-label={label}
-      className="up sticky top-0 z-20 -mx-4 mt-5 overflow-x-auto bg-paper px-4 pt-[env(safe-area-inset-top)] pb-2 sm:mx-0 sm:px-0 lg:static lg:z-auto lg:bg-transparent lg:pt-0 lg:pb-0"
+      className="up sticky top-0 z-20 -mx-4 mt-5 overflow-x-auto bg-paper px-4 pt-[calc(env(safe-area-inset-top)+0.5rem)] pb-2 sm:mx-0 sm:px-0 lg:static lg:z-auto lg:bg-transparent lg:pt-0 lg:pb-0"
       style={{ animationDelay: ".1s" }}
     >
       {children}

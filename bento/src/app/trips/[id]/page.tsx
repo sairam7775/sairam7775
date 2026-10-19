@@ -160,8 +160,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     ? [...(gaps?.gaps ?? []), ...(gaps?.dismissed ?? [])].find((g) => g.key === askKey)?.actions.find((a) => a.kind === "ask_bento_man")?.hint
     : undefined;
 
+  // Room at the bottom on a phone, so the floating Ask Bento Man button
+  // never covers the end of the plan.
   return (
-    <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
+    <main className="mx-auto w-full max-w-[1680px] px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pb-6">
       {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
       <Tour id="trip" seen={await tourSeen("trip")} />
       <AnalyticsUser id={user.id} />
