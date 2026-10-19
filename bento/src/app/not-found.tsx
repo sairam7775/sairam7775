@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { StatusPage, primaryButton, secondaryButton } from "@/components/status-page";
 import { copy } from "@/copy";
-import { BentoManFigure } from "@/components/mascot/figure";
+import { LazyBentoManFigure } from "@/components/mascot/lazy-figure";
 
 export default function NotFound() {
   return (
-    <StatusPage kicker={copy.status.notFound.kicker} title={copy.status.notFound.title} figure={<BentoManFigure figure="full-lost" size={120} />}>
+    <StatusPage kicker={copy.status.notFound.kicker} title={copy.status.notFound.title} figure={<LazyBentoManFigure figure="full-lost" size={120} />}>
       <p>{copy.status.notFound.body}</p>
       <div className="mt-6 flex flex-wrap gap-3">
         <Link href="/trips" className={primaryButton}>{copy.common.yourTrips}</Link>
