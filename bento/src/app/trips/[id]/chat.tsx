@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { BentoMark } from "@/components/logo";
 import { BentoManFigure } from "@/components/mascot/figure";
+import { newlyAccepted } from "@/components/mascot/playback";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
@@ -43,6 +43,17 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
     if (busyRef.current) return;
     setMessages(initial);
   }, [initial]);
+  // Replies whose proposal the traveller accepted while the chat is open:
+  // Bento Man cheers on those once. A reload starts with none.
+  const [celebrating, setCelebrating] = useState<Set<string>>(() => new Set());
+  const lastStatus = useRef<Map<string, string | undefined> | null>(null);
+  useEffect(() => {
+    const now = messages.map((m) => ({ id: m.id, status: m.status ?? undefined }));
+    const prev = lastStatus.current;
+    lastStatus.current = new Map(now.map((m) => [m.id, m.status]));
+    const ids = prev ? newlyAccepted(prev, now) : [];
+    if (ids.length) setCelebrating((s) => new Set([...s, ...ids]));
+  }, [messages]);
   const [input, setInput] = useState(ask ?? "");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -179,7 +190,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-rule px-4 py-3">
-        <BentoMark size={28} />
+        <BentoManFigure figure="head-rest" size={28} />
         <div className="min-w-0">
           <h2 className="text-[1rem] font-bold leading-tight">{t.name}</h2>
           <p className="truncate text-[0.8rem] text-ink-3">{t.tagline}</p>
@@ -197,7 +208,10 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
       >
         {messages.length === 0 && (
           <div className="up rounded-tile bg-sunk px-5 py-5 text-[0.95rem] leading-relaxed text-ink-2">
-            <p>{t.intro}</p>
+            <div className="flex items-start gap-4">
+              <BentoManFigure figure="full-hello" size={88} />
+              <p>{t.intro}</p>
+            </div>
             <p className="mt-4 text-[0.8rem] font-medium text-ink-3">{t.tryThese}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {examples.map((x) => (
@@ -224,7 +238,13 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
             </div>
           ) : (
             <div key={m.id} className="flex gap-3">
-              <span className="mt-0.5 shrink-0"><BentoMark size={24} /></span>
+              <span className="mt-0.5 shrink-0">
+                {celebrating.has(m.id) ? (
+                  <BentoManFigure key="happy" figure="head-happy" size={24} />
+                ) : (
+                  <BentoManFigure key="rest" figure="head-rest" size={24} />
+                )}
+              </span>
               <div className="min-w-0 flex-1">
                 {m.content ? (
                   <p className="whitespace-pre-wrap break-words text-[0.95rem] leading-relaxed">{m.content}</p>
