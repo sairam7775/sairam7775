@@ -124,8 +124,18 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
         </p>
       )}
 
-      <section data-tour="new-trip" className="tile up mt-10 p-6" style={{ animationDelay: ".15s" }}>
-        <h2 className="text-lg font-bold">{t.new.title}</h2>
+      {/* The guided way in first, for someone with an idea but not the
+          details; the blank form stays below it. */}
+      <section data-tour="new-trip" className="tile up mt-10 p-6" style={{ animationDelay: ".12s" }}>
+        <h2 className="text-lg font-bold">{t.guided.cardTitle}</h2>
+        <p className="mt-1 max-w-[60ch] text-[0.9rem] text-ink-2">{t.guided.cardBody}</p>
+        <Link href="/trips/plan" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-sm font-medium text-on-accent hover:bg-accent-deep">
+          {t.guided.cardCta}
+        </Link>
+      </section>
+
+      <section className="tile up mt-4 p-6" style={{ animationDelay: ".15s" }}>
+        <h2 className="text-lg font-bold">{t.guided.blankTitle}</h2>
         <p className="mt-1 text-[0.9rem] text-ink-2">{t.new.body}</p>
         <form action={createTrip} className="mt-5 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">

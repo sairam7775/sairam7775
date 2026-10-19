@@ -6,9 +6,51 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/friendly-errors";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
+import { guidedTitle, parseGuidedStart, starterMessage } from "@/lib/trips/guided-start";
+import type { PrefsPatch } from "@/lib/bento-man/store";
 import { copy } from "@/copy";
 
 const e = copy.trips.errors;
+
+export type GuidedStartState = { ok: true; tripId: string; starter: string } | { ok: false; error: string } | null;
+
+/** "Plan a Japan trip". Creates the trip from the answers, saves the pace and
+ *  interests as the traveller's preferences (so Bento Man doesn't ask them
+ *  again), and hands back a first message for the chat box. Nothing is sent
+ *  to Bento Man here: the traveller presses Send themselves. */
+export async function startGuidedTrip(_prev: GuidedStartState, formData: FormData): Promise<GuidedStartState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in");
+
+  const parsed = parseGuidedStart(formData);
+  if (!parsed.ok) return parsed;
+  const g = parsed.value;
+
+  const { data: trip, error } = await supabase.from("trips").insert({
+    user_id: user.id,
+    title: guidedTitle(g),
+    start_date: g.startDate,
+    end_date: g.endDate,
+    party_size: g.people,
+  }).select("id").single();
+  if (error || !trip) return { ok: false, error: dbErrorMessage(error, e.create) };
+
+  // Preferences are a help, not the trip: if they don't save, Bento Man
+  // simply asks about them, so a failure here doesn't stop anything.
+  const prefs: PrefsPatch = {
+    ...(g.pace ? { pace: g.pace } : {}),
+    ...(g.interests.length ? { interestTags: g.interests } : {}),
+  };
+  if (Object.keys(prefs).length) {
+    await new SupabaseStore(supabase, trip.id, user.id).savePreferences(prefs).catch((err) => {
+      console.error("Saving guided-start preferences failed:", err instanceof Error ? err.message : err);
+    });
+  }
+
+  revalidatePath("/trips");
+  return { ok: true, tripId: trip.id, starter: starterMessage(g) };
+}
 
 const newTrip = z.object({
   title: z.string().trim().max(120, e.longTitle).optional(),
