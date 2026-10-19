@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { ConfirmButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
-import { isAdmin } from "@/lib/admin";
+import { hasTwoFactorSession, isAdmin } from "@/lib/admin";
 import { adminOverview } from "@/lib/admin-overview";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { copy } from "@/copy";
@@ -18,6 +18,8 @@ import { SettingsPage, signedIn } from "../ui";
 export default async function Admin({ searchParams }: PageProps<"/settings/admin">) {
   const { supabase, user } = await signedIn(SETTINGS.admin);
   if (!(await isAdmin(supabase, user.id))) redirect(SETTINGS.home);
+  // An admin without a second factor this session sets one up or enters it first.
+  if (!(await hasTwoFactorSession(supabase))) redirect(SETTINGS.twoFactor);
   // Read with the service role, so only once the viewer is known to be an admin.
   const o = await adminOverview(createAdminClient());
   const sp = await searchParams;

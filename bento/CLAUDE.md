@@ -291,6 +291,13 @@ Practically:
   admin, and removal refuses yourself and the last admin, so admins acting
   at once can't leave none or act after losing access. Only existing
   accounts can be made admin.
+- Admin pages and actions also need a second factor this session
+  (Supabase MFA, TOTP, `aal2`): `requireAdmin()` and Settings → Admin send
+  an admin without one to `/settings/admin/two-factor`, which sets up an
+  authenticator app once and asks for its code after that. A new admin
+  page or action goes through `requireAdmin()`, never `isAdmin()` alone.
+  An admin who loses their phone is recovered by removing their factor in
+  the Supabase dashboard (Authentication → Users → the user → MFA).
 
 ## Legal pages
 
