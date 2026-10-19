@@ -39,17 +39,19 @@ const PHONE_INTERNATIONAL = /\+\d[\d \t().-]{7,}\d/g;
 const LONG_NUMBER = /\b\d(?:[ -]?\d){11,18}\b/g;
 
 /** A value after a label is a reference only if it looks like one: it has a
- *  digit, or it is a run of capitals (a PNR such as QWERTY). "Confirmation
- *  of your booking" has neither. */
-function looksLikeReference(value: string): boolean {
+ *  digit, or it is a run of capitals (a PNR such as QWERTY), or it is a
+ *  lowercase code standing alone at the end of its line ("abcdef"). An
+ *  ordinary word mid-sentence ("please see below") is none of these. */
+function looksLikeReference(value: string, endsLine: boolean): boolean {
   if (value.replace(/[^A-Z0-9]/gi, "").length < 4) return false;
-  return /\d/.test(value) || /^[A-Z]{5,8}$/.test(value);
+  return /\d/.test(value) || /^[A-Z]{5,8}$/.test(value) || (endsLine && /^[a-z]{5,8}$/.test(value));
 }
 
 export function redactConfirmation(input: string): { text: string; reference: string | null } {
   let reference: string | null = null;
-  let text = input.replace(REFERENCE, (whole, label: string, gap: string, value: string) => {
-    if (!looksLikeReference(value)) return whole;
+  let text = input.replace(REFERENCE, (whole, label: string, gap: string, value: string, at: number, all: string) => {
+    const endsLine = /^[ \t.]*(\r?\n|$)/.test(all.slice(at + whole.length));
+    if (!looksLikeReference(value, endsLine)) return whole;
     if (value.length <= REFERENCE_MAX) reference ??= value;
     return `${label}${gap}${REMOVED.reference}`;
   });

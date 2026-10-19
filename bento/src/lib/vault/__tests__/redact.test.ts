@@ -47,6 +47,18 @@ describe("redactConfirmation", () => {
     expect(r.text).toContain("for your stay");
   });
 
+  it("takes a lowercase reference that stands alone at the end of its line", () => {
+    const r = redactConfirmation("Booking reference: abcdef\nArrive 2026-11-20");
+    expect(r.reference).toBe("abcdef");
+    expect(r.text).not.toContain("abcdef");
+  });
+
+  it("leaves an ordinary lowercase word after a label in a sentence", () => {
+    const r = redactConfirmation("Booking reference: please see the attached PDF.");
+    expect(r.reference).toBeNull();
+    expect(r.text).toContain("please see the attached PDF.");
+  });
+
   it("doesn't read a word that only contains a label, such as Preference", () => {
     const r = redactConfirmation("Preference: 2 single beds, room 1204");
     expect(r.reference).toBeNull();
