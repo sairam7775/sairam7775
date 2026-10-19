@@ -7,6 +7,7 @@ import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
 import { reasonOf, track } from "@/lib/analytics/client";
+import { starterKey } from "@/lib/trips/guided-start";
 
 const t = copy.chat;
 
@@ -58,6 +59,42 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
     const el = list.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [messages, activity, error]);
+
+  // A trip started from "Plan a Japan trip" leaves its first message in the
+  // tab's session storage (lib/trips/guided-start.ts): it goes in the box,
+  // once, ready to send or edit, never sent for the traveller. Set in a
+  // frame, not the effect body; storage can be off, which just skips it.
+  useEffect(() => {
+    if (ask || initial.length > 0) return;
+    // Read and removed together in the frame, so an effect run twice in
+    // development doesn't lose it.
+    const frame = requestAnimationFrame(() => {
+      try {
+        const text = sessionStorage.getItem(starterKey(tripId));
+        if (!text) return;
+        setInput(text);
+        sessionStorage.removeItem(starterKey(tripId));
+      } catch {
+        // Storage off (a private window): the box simply starts empty.
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+    // Only on arrival: a later re-render must not put it back.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A conversation mounted out of sight (the phone's closed sheet) has no
+  // height to scroll to the bottom of. When it appears, or its box changes
+  // size, show the latest message, unless the traveller had scrolled up.
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const resized = new ResizeObserver(() => {
+      if (pinned.current) el.scrollTop = el.scrollHeight;
+    });
+    resized.observe(el);
+    return () => resized.disconnect();
+  }, []);
 
   // The box grows with what's typed, up to a few lines, then scrolls.
   useEffect(() => {
@@ -177,10 +214,10 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-rule px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-rule px-4 py-3 pr-20 lg:pr-4">
         <BentoManFigure figure="head-rest" size={28} />
         <div className="min-w-0">
-          <h2 className="text-[1rem] font-bold leading-tight">{t.name}</h2>
+          <h2 id="bento-man-title" className="text-[1rem] font-bold leading-tight">{t.name}</h2>
           <p className="truncate text-[0.8rem] text-ink-3">{t.tagline}</p>
         </div>
       </div>
