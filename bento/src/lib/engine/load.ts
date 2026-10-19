@@ -26,6 +26,7 @@ export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
     id: r.id,
     cityId: r.city_id,
     name: r.name,
+    nameJa: r.name_ja ?? null,
     category: r.category,
     interestTags: r.interest_tags ?? [],
     energy: num(r.energy),

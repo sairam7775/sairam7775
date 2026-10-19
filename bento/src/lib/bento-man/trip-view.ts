@@ -30,7 +30,23 @@ export function buildTripView(state: TripState, requested: string | null) {
   const statsByDate = new Map(state.days.map((d) => [d.date, dayStats(d.items, state.prefs.pace)]));
   const selected = requested && dates.has(requested) ? requested : dayList[0]?.[0] ?? null;
   const selectedDay = selected ? daysByDate.get(selected) : undefined;
+  // Keep the public place names paired with the saved day data. A missing
+  // mapName means the place is no longer in places_public, so the box hides its link.
+  const dayItems = selectedDay?.items.map((item) => ({
+    placeId: item.placeId,
+    name: item.name,
+    mapName: item.mapName ?? null,
+    nameJa: item.nameJa ?? null,
+    startMin: item.startMin,
+    durationMin: item.durationMin,
+    locked: item.locked,
+    reason: item.reason,
+    reasonTerms: item.reasonTerms,
+    arriveMode: item.arriveMode,
+    arriveMinutes: item.arriveMinutes,
+    arriveDetail: item.arriveDetail,
+  }));
   const selectedMeta = selected ? dates.get(selected)! : null;
   const stats = selectedDay ? statsByDate.get(selectedDay.date)! : null;
-  return { dayList, statsByDate, selected, selectedDay, selectedMeta, stats };
+  return { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats };
 }

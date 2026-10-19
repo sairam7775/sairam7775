@@ -57,7 +57,7 @@ describe("buildTripView", () => {
     const state = await new MemoryStore({
       trip, prefs: { pace: "relaxed" }, cities: [{ cityId: "kyoto-city", nights: 3 }],
       days: [{ date: "2026-11-21", cityId: "nara-city", items: [
-        item({ startMin: 600, durationMin: 90, arriveMinutes: 40 }),
+        item({ startMin: 600, durationMin: 90, arriveMinutes: 40, mapName: "Stop", nameJa: "停止" }),
         item({ placeId: "second", sortOrder: 1, startMin: 780, durationMin: 300, arriveMinutes: 15 }),
       ] }],
     }).state();
@@ -65,6 +65,7 @@ describe("buildTripView", () => {
     // A city absent from the accepted route keeps the page's id/stub fallback.
     expect(view.selectedMeta).toEqual({ cityId: "nara-city", cityName: "nara-city", tier: "stub" });
     expect(view.selectedDay).toBe(state.days[0]);
+    expect(view.dayItems?.[0]).toMatchObject({ mapName: "Stop", nameJa: "停止" });
     expect(view.stats).toEqual({ budgetMin: 360, activeMin: 405, overBy: 45, overFromIndex: 1, lunch: { startMin: 690, endMin: 750 } });
     expect(view.stats).toBe(view.statsByDate.get("2026-11-21"));
   });

@@ -7,6 +7,8 @@ export interface PlaceInput {
   id: string;
   cityId: string;
   name: string;
+  /** Japanese display name from places_public, when the curator has one. */
+  nameJa?: string | null;
   /** Drives redundancy: the fourth shrine of a day scores lower than the first. */
   category: string;
   interestTags: InterestTag[];

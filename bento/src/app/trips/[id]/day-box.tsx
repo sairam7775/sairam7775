@@ -8,6 +8,7 @@ import { ConfirmButton } from "@/components/form-controls";
 import { bookingSlot, canPlanOn, clashingBookings } from "@/lib/vault/plan-day";
 import { copy } from "@/copy";
 import { track } from "@/lib/analytics/client";
+import { placeMapUrl } from "@/lib/maps/links";
 
 const t = copy.day;
 const bk = copy.bookings;
@@ -15,6 +16,9 @@ const bk = copy.bookings;
 export interface DayBoxItem {
   placeId: string;
   name: string;
+  /** Null when the place is no longer present in places_public. */
+  mapName?: string | null;
+  nameJa?: string | null;
   startMin: number | null;
   durationMin: number | null;
   locked: boolean;
@@ -268,6 +272,22 @@ export function DayBox(p: DayBoxProps) {
                       {clash.length > 0 && <span className="mono rounded-full bg-ume-soft px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.1em] text-ume">{t.clashesWith(clash.join(", "))}</span>}
                       {it.durationMin != null && <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(it.durationMin)}</span>}
                     </div>
+                    {it.mapName && (
+                      <a
+                        href={placeMapUrl({ name: it.mapName, nameJa: it.nameJa, cityName: p.cityName })}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        draggable={false}
+                        onDragStart={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                        }}
+                        aria-label={t.openMap(it.mapName)}
+                        className="mt-1 inline-block text-[0.82rem] font-medium text-accent-ink hover:underline"
+                      >
+                        {t.map}
+                      </a>
+                    )}
                     {it.reason && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{it.reason}</p>}
                     {it.reasonTerms.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">

@@ -91,10 +91,10 @@ export class SupabaseStore implements TripStore {
 
     // Item names come from the gate, not a join on places (no user grant).
     const placeIds = [...new Set((days.data ?? []).flatMap((d) => (d.itinerary_items ?? []).map((i) => i.place_id)).filter(Boolean))] as string[];
-    const names = new Map<string, string>();
+    const names = new Map<string, { name: string; nameJa: string | null }>();
     if (placeIds.length) {
-      const { data } = await this.db.from("places_public").select("id, name").in("id", placeIds);
-      for (const p of data ?? []) names.set(p.id, p.name);
+      const { data } = await this.db.from("places_public").select("id, name, name_ja").in("id", placeIds);
+      for (const p of data ?? []) names.set(p.id, { name: p.name, nameJa: p.name_ja ?? null });
     }
 
     const p = prefs.data;
@@ -107,7 +107,9 @@ export class SupabaseStore implements TripStore {
         .map((i) => ({
           id: i.id,
           placeId: i.place_id,
-          name: names.get(i.place_id) ?? i.place_id,
+          name: names.get(i.place_id)?.name ?? i.place_id,
+          mapName: names.get(i.place_id)?.name ?? null,
+          nameJa: names.get(i.place_id)?.nameJa ?? null,
           sortOrder: i.sort_order,
           startMin: toMin(i.start_time),
           durationMin: i.duration_min,

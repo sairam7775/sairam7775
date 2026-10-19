@@ -71,6 +71,9 @@ export interface ItemRow {
   id?: string;
   placeId: string;
   name: string;
+  /** The current public place name used for a map link; null if it left the public view. */
+  mapName?: string | null;
+  nameJa?: string | null;
   sortOrder: number;
   startMin: number | null;
   durationMin: number | null;

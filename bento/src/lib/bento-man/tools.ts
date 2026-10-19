@@ -499,7 +499,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     dayStartMin,
     bookedPlaceIds: bookedPlaceIds(bookings, pool, date),
   });
-  return { diff: computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan) };
+  return { diff: computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan, pool) };
 }
 
 // ------------------------------------------------------------------ run
@@ -706,7 +706,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
         });
         for (const it of plan.items) used.add(it.placeId);
-        days.push(computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan));
+        days.push(computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan, places));
       }
       if (!days.length) return fail(skipped.join("; ") || "nothing to plan");
       ctx.proposal = mergeProposals(ctx.proposal, { summary: `${days.length} day${days.length === 1 ? "" : "s"}`, days });
