@@ -607,8 +607,9 @@ export const en = {
     // Under a route whose stays include places Bento can't plan yet. What
     // works comes first; `cities` arrives already joined ("Osaka or Kyoto").
     // `dated`: the trip has dates, so accepting also sets each stop's days.
-    limits: (cities: string, all: boolean, dated: boolean) =>
-      `Accepting sets your route${dated ? " and dates" : ""}, with the trains between each stop. Bento can't plan days in ${all ? "any of these places" : cities} yet, so ${dated ? "those days stay" : "your days there will stay"} open for you to fill.`,
+    // `trains`: Bento's train data has at least one journey on this route.
+    limits: (cities: string, all: boolean, dated: boolean, trains: boolean) =>
+      `Accepting sets your route${dated ? " and dates" : ""}${trains ? ", with the trains Bento knows between your stops" : ""}. Bento can't plan days in ${all ? "any of these places" : cities} yet, so ${dated ? "those days stay" : "your days there will stay"} open for you to fill.`,
     change: {
       kept: "kept",
       added: "new",

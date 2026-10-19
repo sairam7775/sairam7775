@@ -36,6 +36,13 @@ export function coverageShown(cities: { tier: CoverageTier }[]): { perCity: bool
   return tiers.size === 1 ? { perCity: false, everywhere: [...tiers][0] } : { perCity: true, everywhere: null };
 }
 
+/** Whether Bento's train data has any journey on this route: a leg it can't
+ *  route (outside the corridor) or a route with no legs at all has none, so
+ *  the card mustn't promise trains for it. */
+export function hasKnownTrains(legs: Pick<Leg, "lines">[] | undefined): boolean {
+  return (legs ?? []).some((l) => l.lines.length > 0);
+}
+
 /** The one coverage line for a route whose stops are all known equally well,
  *  or null. Not covered anywhere is already said by the note above Accept
  *  when the route has places to sleep; a route of day trips only has no

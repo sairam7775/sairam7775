@@ -9,7 +9,7 @@ import { track } from "@/lib/analytics/client";
 import { BentoManFigure } from "@/components/mascot/figure";
 import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
-import { coverageShown, routeWideCoverage, trainRows, uncoveredStays } from "@/lib/trips/route-card";
+import { coverageShown, hasKnownTrains, routeWideCoverage, trainRows, uncoveredStays } from "@/lib/trips/route-card";
 
 const t = copy.proposal;
 
@@ -146,6 +146,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
                 uncovered.all,
                 // A route proposed for a trip with no dates sets the route only.
                 Boolean(proposal.dates) || proposal.route.after.some((c) => c.arriveDate),
+                hasKnownTrains(proposal.route.legs),
               )}
             </p>
           )}

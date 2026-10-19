@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageShown, routeWideCoverage, trainRows, uncoveredStays } from "../route-card";
+import { coverageShown, hasKnownTrains, routeWideCoverage, trainRows, uncoveredStays } from "../route-card";
 import { copy } from "@/copy";
 
 const leg = (from: string, to: string, movingTo: string | null, summary = `${from} → ${to}`) => ({ fromCityId: from, toCityId: to, movingTo, summary, lines: [`${summary} line`] });
@@ -55,9 +55,22 @@ describe("routeWideCoverage", () => {
 
 describe("the note above Accept", () => {
   it("promises dates only when the route has them", () => {
-    expect(copy.proposal.limits("Kyoto", false, true)).toMatch(/route and dates/);
-    expect(copy.proposal.limits("Kyoto", false, false)).not.toMatch(/dates/);
-    expect(copy.proposal.limits("Kyoto", false, false)).toMatch(/sets your route/);
+    expect(copy.proposal.limits("Kyoto", false, true, true)).toMatch(/route and dates/);
+    expect(copy.proposal.limits("Kyoto", false, false, true)).not.toMatch(/dates/);
+    expect(copy.proposal.limits("Kyoto", false, false, true)).toMatch(/sets your route/);
+  });
+
+  it("promises trains only when Bento knows a journey on the route", () => {
+    expect(copy.proposal.limits("Kyoto", false, true, true)).toMatch(/train/);
+    expect(copy.proposal.limits("Kyoto", false, true, false)).not.toMatch(/train/);
+  });
+});
+
+describe("hasKnownTrains", () => {
+  it("is true only when a leg has lines from Bento's train data", () => {
+    expect(hasKnownTrains([leg("kyoto-city", "nara-city", null)])).toBe(true);
+    expect(hasKnownTrains([{ ...leg("takayama", "kyoto-city", "kyoto-city"), lines: [] }])).toBe(false);
+    expect(hasKnownTrains(undefined)).toBe(false);
   });
 });
 
