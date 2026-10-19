@@ -177,7 +177,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
 
           <SubmitButton
             pending={t.new.pending}
-            className="mt-1 self-start rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-deep"
+            className="mt-1 self-start rounded-full border border-rule bg-surface px-5 py-2.5 text-sm font-medium hover:bg-sunk"
           >
             {t.new.submit}
           </SubmitButton>

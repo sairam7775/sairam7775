@@ -15,7 +15,7 @@ const PACES = ["relaxed", "standard", "packed"] as const;
 
 // A pill that is really a radio or a checkbox: the input is hidden but
 // keeps the keyboard and screen readers; the span shows its state.
-const pill = "inline-flex min-h-10 cursor-pointer items-center rounded-full border border-rule px-4 text-[0.92rem] text-ink-2 peer-checked:border-lacquer peer-checked:bg-lacquer peer-checked:text-rice peer-focus-visible:ring-2 peer-focus-visible:ring-accent hover:bg-sunk";
+const pill = "inline-flex min-h-10 cursor-pointer items-center rounded-full border border-rule px-4 text-[0.92rem] text-ink-2 peer-checked:border-accent peer-checked:bg-lacquer peer-checked:text-rice peer-focus-visible:ring-2 peer-focus-visible:ring-accent hover:bg-sunk";
 
 export function GuidedForm({ months }: { months: { value: string; label: string }[] }) {
   const [state, action] = useActionState<GuidedStartState, FormData>(startGuidedTrip, null);
@@ -79,7 +79,7 @@ export function GuidedForm({ months }: { months: { value: string; label: string 
           {PACES.map((p) => (
             <label key={p}>
               <input type="radio" name="pace" value={p} className="peer sr-only" />
-              <span className="flex h-full cursor-pointer flex-col rounded-tile border border-rule px-4 py-3 peer-checked:border-lacquer peer-checked:bg-lacquer peer-checked:text-rice peer-focus-visible:ring-2 peer-focus-visible:ring-accent hover:bg-sunk">
+              <span className="flex h-full cursor-pointer flex-col rounded-tile border border-rule px-4 py-3 peer-checked:border-accent peer-checked:bg-lacquer peer-checked:text-rice peer-focus-visible:ring-2 peer-focus-visible:ring-accent hover:bg-sunk">
                 <span className="font-medium">{t.pace[p]}</span>
                 <span className="text-[0.84rem] opacity-80">{t.paceHints[p]}</span>
               </span>
