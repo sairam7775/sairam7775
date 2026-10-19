@@ -206,7 +206,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                     </div>
                     <div className="grid gap-4 sm:grid-cols-3">
                       <DateRangeInputs startLabel={copy.trips.new.arrive} endLabel={copy.trips.new.leave} defaultStart={state.trip.startDate} defaultEnd={state.trip.endDate} labelClass={fieldLabel} inputClass={fieldInput} />
-                      <div className="flex flex-col gap-1.5">
+                      <div className="flex flex-col gap-1.5 sm:col-start-3 sm:row-start-1">
                         <label htmlFor="partySize" className={fieldLabel}>{copy.trips.new.people}</label>
                         <input id="partySize" name="partySize" type="number" min={1} max={20} defaultValue={state.trip.partySize} className={fieldInput} />
                       </div>
