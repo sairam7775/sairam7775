@@ -7,6 +7,7 @@ import { TOURS, type TourId } from "./steps";
 import { copy } from "@/copy";
 import { PAD, placeCard, type Box } from "./place";
 import { BentoManFigure } from "@/components/mascot/figure";
+import { firstVisibleTarget } from "./visible-target";
 
 const CARD_W = 360;
 const noSubscribe = () => () => {};
@@ -37,10 +38,12 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
   // inside callbacks (a frame, an event), never in the effect body.
   useEffect(() => {
     if (!open) return;
-    const el = step.target ? document.querySelector<HTMLElement>(`[data-tour="${step.target}"]`) : null;
+    const targets = step.target ? Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`)) : [];
+    const findTarget = () => firstVisibleTarget(targets, (target) => target.getBoundingClientRect());
     let frame = 0;
     const measure = () => {
       frame = 0;
+      const el = findTarget();
       const r = el?.getBoundingClientRect();
       setBox(r && r.width > 0 && r.height > 0 ? { top: r.top, left: r.left, width: r.width, height: r.height } : null);
       if (card.current) setCardH(card.current.offsetHeight);
@@ -48,7 +51,7 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(measure);
     };
-    el?.scrollIntoView({ block: "center", inline: "nearest" });
+    findTarget()?.scrollIntoView({ block: "center", inline: "nearest" });
     schedule();
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", schedule, true);

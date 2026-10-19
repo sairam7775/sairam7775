@@ -177,10 +177,10 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-center gap-3 border-b border-rule px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-rule px-4 py-3 pr-20 lg:pr-4">
         <BentoManFigure figure="head-rest" size={28} />
         <div className="min-w-0">
-          <h2 className="text-[1rem] font-bold leading-tight">{t.name}</h2>
+          <h2 id="bento-man-title" className="text-[1rem] font-bold leading-tight">{t.name}</h2>
           <p className="truncate text-[0.8rem] text-ink-3">{t.tagline}</p>
         </div>
       </div>
