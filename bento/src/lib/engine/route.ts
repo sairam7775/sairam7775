@@ -25,6 +25,9 @@ export interface CityFacts {
 export interface RouteLegAssessment {
   fromCityId: string;
   toCityId: string;
+  /** The stay this journey ends at, so it can be shown on the day you
+   *  arrive there. Null for a day trip there and back. */
+  movingTo: string | null;
   /** Null when the graph has no route between the hubs. */
   minutes: number | null;
   fareJpy: number | null;
@@ -115,14 +118,14 @@ export function assessRoute(
     return ha && hb ? route(graph, ha, hb) : null;
   };
   const legs: RouteLegAssessment[] = [];
-  const leg = (a: string, b: string) => {
+  const leg = (a: string, b: string, movingTo: string | null) => {
     const r = between(a, b);
     if (r) {
       const d = describeRoute(r);
-      legs.push({ fromCityId: a, toCityId: b, minutes: r.minutes, fareJpy: r.fareJpy, fareKind: r.fareKind, summary: d.summary, lines: d.lines });
+      legs.push({ fromCityId: a, toCityId: b, movingTo, minutes: r.minutes, fareJpy: r.fareJpy, fareKind: r.fareKind, summary: d.summary, lines: d.lines });
     } else {
       legs.push({
-        fromCityId: a, toCityId: b, minutes: null, fareJpy: null, fareKind: "estimate",
+        fromCityId: a, toCityId: b, movingTo, minutes: null, fareJpy: null, fareKind: "estimate",
         summary: copy.plan.route.noLeg(nameOf(a), nameOf(b)), lines: [],
       });
     }
@@ -142,20 +145,20 @@ export function assessRoute(
   let base: string | null = null; // where they last slept
   input.forEach((c, i) => {
     if (c.nights > 0) {
-      if (at && at !== c.cityId) leg(at, c.cityId);
+      if (at && at !== c.cityId) leg(at, c.cityId, c.cityId);
       at = base = c.cityId;
       return;
     }
     const next = input.slice(i + 1).find((x) => x.nights > 0)?.cityId ?? null;
     if (at && next && at !== next && onTheWay(at, c.cityId, next)) {
-      leg(at, c.cityId);
+      leg(at, c.cityId, next);
       at = c.cityId;
       return;
     }
     const home = base ?? next;
     if (home && home !== c.cityId) {
-      leg(home, c.cityId);
-      leg(c.cityId, home);
+      leg(home, c.cityId, null);
+      leg(c.cityId, home, null);
     }
   });
 

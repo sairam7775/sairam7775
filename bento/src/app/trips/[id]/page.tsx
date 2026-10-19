@@ -11,7 +11,7 @@ import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
-import { buildTripView } from "@/lib/bento-man/trip-view";
+import { buildTripView, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { loadGaps } from "@/lib/vault/store";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
@@ -84,6 +84,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const requested = typeof sp.day === "string" ? sp.day : null;
   const { dayList, statsByDate, selected, selectedDay, selectedMeta, stats } = buildTripView(state, requested);
 
+  // Each travel day's trains. A failure only leaves them off the page.
+  const travel = await tripTravelDays(store, state).catch(() => null);
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
   const today = new Date().toISOString().slice(0, 10);
@@ -289,7 +291,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                         className={`lift flex w-[7.2rem] flex-col gap-1.5 rounded-tile px-3 py-2.5 shadow-tile ${active ? "bg-lacquer text-rice" : "bg-surface text-ink"}`}
                       >
                         <span className="mono text-[0.62rem] uppercase tracking-[0.1em] opacity-70">{t.dayTab(i + 1, fmt(date, { weekday: "short" }))}</span>
-                        <span className="disp text-[0.95rem] font-bold leading-tight">{meta.cityName}</span>
+                        <span className="disp text-[0.95rem] font-bold leading-tight">
+                          {travel?.has(date) && <><span aria-hidden>→ </span><span className="sr-only">{t.travelDay.label}: </span></>}
+                          {meta.cityName}
+                        </span>
                         <span className={`mono text-[0.62rem] ${active ? "text-rice/70" : "text-ink-3"}`}>{fmt(date, { day: "numeric", month: "short" })}</span>
                         <span className={`mt-0.5 h-1.5 w-full overflow-hidden rounded-full ${active ? "bg-rice/20" : "bg-rule"}`} aria-hidden>
                           <span className={`grow block h-full rounded-full ${s && s.overBy > 0 ? "bg-ume" : "bg-accent"}`} style={{ width: `${pct}%` }} />
@@ -307,12 +312,32 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 px-1">
                 <h2 className="text-[1.5rem] font-bold">
                   {fmt(selected, { weekday: "long", day: "numeric", month: "long" })}
-                  <span className="mono ml-3 text-[0.72rem] font-normal text-ink-3">{selectedMeta.cityName} · {coverage(selectedMeta.tier)}</span>
+                  {/* One piece, so a narrow screen moves it down whole rather than splitting it. */}
+                  <span className="mono ml-3 inline-block text-[0.72rem] font-normal text-ink-3">{selectedMeta.cityName} · {coverage(selectedMeta.tier)}</span>
                 </h2>
                 {stats && selectedDay && selectedDay.items.length > 0 && (
                   <span className="mono text-[0.72rem] text-ink-3">{t.dayStats(selectedDay.items.length, dur(stats.activeMin))}</span>
                 )}
               </div>
+              {travel?.get(selected) && (
+                <section aria-label={t.travelDay.label} className="tile up mb-3 px-5 py-4">
+                  <p className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.travelDay.label}</p>
+                  <ul className="mt-2 flex flex-col gap-3">
+                    {travel.get(selected)!.map((l) => (
+                      <li key={`${l.fromCityId}-${l.toCityId}`}>
+                        <p className="text-[0.95rem] font-medium leading-snug">{l.summary}</p>
+                        {l.lines.map((line) => <p key={line} className="mono mt-1 text-[0.76rem] leading-snug text-ink-2">{line}</p>)}
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <Link href={`/trips/${id}/vault`} className="text-[0.86rem] font-medium text-accent-ink hover:underline">{t.travelDay.tickets}</Link>
+                    {travel.get(selected)!.some((l) => l.fareJpy != null && l.fareKind === "estimate") && (
+                      <p className="text-[0.78rem] text-ink-3">{t.travelDay.estimate}</p>
+                    )}
+                  </div>
+                </section>
+              )}
               <DayBox
                 key={selected}
                 tripId={id}
@@ -330,6 +355,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 overFromIndex={stats?.overFromIndex ?? null}
                 lunch={stats?.lunch ?? null}
                 editable={Boolean(selectedMeta.cityId) && selectedMeta.tier !== "stub"}
+                uncovered={selectedMeta.tier === "stub"}
                 bookings={bookings}
                 tripDays={dayList.map(([d]) => d)}
               />

@@ -100,6 +100,21 @@ describe("assessRoute — 0-night cities", () => {
     expect(pairs(a)).toEqual(["kyoto-city>himeji", "himeji>hiroshima-city"]);
   });
 
+  it("says which stay each journey leads to; a there-and-back day trip leads to none", () => {
+    const a = assessRoute(
+      [{ cityId: "kyoto-city", nights: 3 }, { cityId: "nara-city", nights: 0 }, { cityId: "himeji", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }],
+      facts,
+      graph,
+      5,
+    );
+    expect(a.legs.map((l) => `${l.fromCityId}>${l.toCityId}:${l.movingTo}`)).toEqual([
+      "kyoto-city>nara-city:null",
+      "nara-city>kyoto-city:null",
+      "kyoto-city>himeji:hiroshima-city",
+      "himeji>hiroshima-city:hiroshima-city",
+    ]);
+  });
+
   it("a day trip before the first stay goes from the first place you sleep", () => {
     const a = assessRoute([{ cityId: "nara-city", nights: 0 }, { cityId: "kyoto-city", nights: 3 }], facts, graph, 3);
     expect(pairs(a)).toEqual(["kyoto-city>nara-city", "nara-city>kyoto-city"]);

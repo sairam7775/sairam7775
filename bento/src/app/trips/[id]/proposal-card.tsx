@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics/client";
 import { BentoManFigure } from "@/components/mascot/figure";
 import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
+import { coverageShown, hasKnownTrains, routeWideCoverage, trainRows, uncoveredStays } from "@/lib/trips/route-card";
 
 const t = copy.proposal;
 
@@ -52,6 +53,9 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
     if (cheers(seen, status)) setCheer(true);
   }
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
+  const uncovered = proposal.route ? uncoveredStays(proposal.route.after) : null;
+  const coverage = proposal.route ? coverageShown(proposal.route.after) : null;
+  const routeWide = proposal.route ? routeWideCoverage(proposal.route.after) : null;
   return (
     <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-sunk px-4 py-2.5">
@@ -88,17 +92,64 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
                 <span className="mono text-[0.78rem] text-ink-3">{i + 1}.</span>
                 <span className="font-medium">{c.name}</span>
                 <span className="mono text-[0.78rem] text-ink-3">
-                  {c.nights ? copy.trip.nights(c.nights) : t.dayTrip} · {copy.coverage[c.tier as CoverageTier]}
+                  {c.nights ? copy.trip.nights(c.nights) : t.dayTrip}
                   {c.arriveDate ? ` · ${fmtDate(c.arriveDate)}` : ""}
                 </span>
+                {coverage?.perCity && (
+                  <span className={`basis-full text-[0.82rem] ${c.tier === "stub" ? "text-ink-3" : "text-ink-2"}`}>{t.canPlan[c.tier as CoverageTier]}</span>
+                )}
                 {c.reason && <span className="basis-full text-[0.85rem] text-ink-2">{c.reason}</span>}
               </li>
             ))}
           </ol>
+          {routeWide && <p className="mt-2 text-[0.85rem] text-ink-2">{t.canPlanEverywhere[routeWide]}</p>}
           {proposal.route.verdict === "overpacked" && <p className="mt-2 text-[0.85rem] font-medium text-ume">{t.overpacked}</p>}
           <p className={`mt-2 text-[0.85rem] ${proposal.route.verdict === "overpacked" ? "text-ume" : proposal.route.verdict === "tight" ? "text-tamago" : "text-ink-2"}`}>
             {proposal.route.arithmetic}
           </p>
+          {proposal.route.legs && proposal.route.legs.length > 0 && (
+            <div className="mt-3">
+              <p className="mono text-[0.76rem] uppercase tracking-[0.1em] text-ink-3">{t.trains}</p>
+              <ul className="mt-1.5 flex flex-col gap-1.5">
+                {trainRows(proposal.route.legs).map((r, i) => (
+                  <li key={`${i}-${r.summary}`} className="text-[0.86rem]">
+                    {r.lines.length || r.back ? (
+                      <details>
+                        <summary className="cursor-pointer">
+                          {r.summary}
+                          {r.back && <span className="text-ink-3"> · {t.thereAndBack}</span>}
+                        </summary>
+                        <ul className="mt-1 flex flex-col gap-0.5 pl-4">
+                          {r.lines.map((line) => <li key={line} className="mono text-[0.76rem] leading-snug text-ink-2">{line}</li>)}
+                        </ul>
+                        {r.back && (
+                          <>
+                            <p className="mt-1.5 pl-4 text-[0.82rem]">{r.back.summary}</p>
+                            <ul className="mt-0.5 flex flex-col gap-0.5 pl-4">
+                              {r.back.lines.map((line) => <li key={line} className="mono text-[0.76rem] leading-snug text-ink-2">{line}</li>)}
+                            </ul>
+                          </>
+                        )}
+                      </details>
+                    ) : (
+                      <span className="text-ink-2">{r.summary}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {uncovered && uncovered.names.length > 0 && (
+            <p className="mt-3 border-l-[3px] border-tamago bg-tamago-soft px-3 py-2 text-[0.84rem] leading-snug text-ink-2">
+              {t.limits(
+                new Intl.ListFormat(copy.locale, { type: "disjunction" }).format(uncovered.names),
+                uncovered.all,
+                // A route proposed for a trip with no dates sets the route only.
+                Boolean(proposal.dates) || proposal.route.after.some((c) => c.arriveDate),
+                hasKnownTrains(proposal.route.legs),
+              )}
+            </p>
+          )}
         </div>
       )}
 
