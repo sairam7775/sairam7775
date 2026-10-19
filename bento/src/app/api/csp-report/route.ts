@@ -3,6 +3,10 @@
  *  without a session; a report is at most 64 KB and only its directive and
  *  the blocked origin are logged, never a full address. */
 const MAX_REPORT_BYTES = 64 * 1024;
+// A browser sends one or a handful at a time. Anything past this in one
+// request is dropped, so an open endpoint can't turn one small request into
+// thousands of log lines.
+const MAX_LOGGED_PER_REQUEST = 5;
 
 type Report = Record<string, unknown>;
 
@@ -88,7 +92,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const payload: unknown = JSON.parse(body);
-    for (const report of reportsIn(payload)) {
+    for (const report of reportsIn(payload).slice(0, MAX_LOGGED_PER_REQUEST)) {
       // Report URLs can contain share keys and booking ids, so keep only the
       // directive and origin that help identify a policy gap.
       console.warn("CSP violation", {

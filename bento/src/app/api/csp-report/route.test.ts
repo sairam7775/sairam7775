@@ -35,6 +35,14 @@ describe("POST /api/csp-report", () => {
     expect(JSON.stringify(warn.mock.calls)).not.toContain("private-token");
   });
 
+  it("logs at most a few reports from one request, however many it carries", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const many = Array.from({ length: 500 }, () => ({ type: "csp-violation", body: { effectiveDirective: "img-src", blockedURL: "https://x.example/a.png" } }));
+    const response = await POST(new Request("https://bento.test/api/csp-report", { method: "POST", body: JSON.stringify(many) }));
+    expect(response.status).toBe(204);
+    expect(warn).toHaveBeenCalledTimes(5);
+  });
+
   it("accepts legacy CSP reports", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const request = new Request("https://bento.test/api/csp-report", {
