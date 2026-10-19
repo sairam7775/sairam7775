@@ -17,6 +17,7 @@ import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
 import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
 import { ShareLink } from "./share-link";
+import { ShareExpiryField } from "./share-expiry-field";
 import { TripActions } from "./trip-actions";
 import { DayStrip } from "./day-strip";
 import { TripChat } from "./trip-chat";
@@ -115,20 +116,29 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     id: b.id, type: b.type, title: b.title, startsAt: b.starts_at, endsAt: b.ends_at, plannedOn: b.planned_on,
     startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
-  // The companions' link, if the trip is shared (0020).
-  const { data: share } = await db.from("trip_shares").select("token").eq("trip_id", id).maybeSingle();
+  // The companions' link, if the trip is shared (0020/0024).
+  const { data: share } = await db.from("trip_shares").select("token, expires_at").eq("trip_id", id).maybeSingle();
   const shareUrl = share ? `${siteOrigin(await headers())}/shared/${share.token}` : null;
+  const requestTime = new Date().getTime();
+  const shareActive = Boolean(share && (!share.expires_at || Date.parse(share.expires_at) > requestTime));
+  const shareExpiryLabel = share?.expires_at
+    ? copy.share.worksUntil(new Intl.DateTimeFormat(copy.locale, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(share.expires_at)))
+    : copy.share.worksUntilOff;
   // Changing or ending a link is quiet and asks first: whoever has it loses it.
   const quiet = "min-h-9 rounded-full px-3.5 text-[0.84rem] font-medium text-ink-2";
   const sharePanel = (
     <div className="tile flex flex-col gap-3 p-5">
-      {shareUrl ? (
+      {share ? (
         <>
-          <ShareLink url={shareUrl} title={state.trip.title ?? copy.trips.untitled} />
+          {shareActive && shareUrl
+            ? <ShareLink url={shareUrl} title={state.trip.title ?? copy.trips.untitled} />
+            : <p className="text-[0.92rem] leading-relaxed text-ink-2">{copy.share.expired}</p>}
+          {shareActive && <p className="text-[0.86rem] leading-relaxed text-ink-2">{shareExpiryLabel}</p>}
           <p className="text-[0.86rem] leading-relaxed text-ink-2">{copy.share.who}</p>
-          <div className="flex flex-wrap gap-1 border-t border-rule pt-3">
-            <form action={renewShareLink}>
+          <div className="flex flex-col gap-3 border-t border-rule pt-3">
+            <form action={renewShareLink} className="flex w-full flex-wrap items-end gap-3">
               <input type="hidden" name="tripId" value={id} />
+              <ShareExpiryField endDate={state.trip.endDate} />
               <ConfirmButton message={copy.share.renewConfirm} pending={copy.common.saving} className={`${quiet} hover:bg-sunk`}>{copy.share.renew}</ConfirmButton>
             </form>
             <form action={stopSharing}>
@@ -141,8 +151,9 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         <>
           <p className="text-[0.92rem] leading-relaxed text-ink-2">{copy.share.intro}</p>
           <p className="text-[0.86rem] leading-relaxed text-ink-2">{copy.share.who}</p>
-          <form action={shareTrip}>
+          <form action={shareTrip} className="flex flex-col items-start gap-3">
             <input type="hidden" name="tripId" value={id} />
+            <ShareExpiryField endDate={state.trip.endDate} />
             <SubmitButton pending={copy.common.saving} className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-on-accent hover:bg-accent-deep">
               {copy.share.turnOn}
             </SubmitButton>
@@ -196,7 +207,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               editLabel={state.trip.startDate && state.trip.endDate ? t.edit.open : t.edit.addDates}
               initial={!state.trip.startDate || !state.trip.endDate ? "edit" : sp.share === "1" ? "share" : null}
               downloadHref={state.cities.length > 0 ? `/trips/${id}/print` : null}
-              shared={Boolean(shareUrl)}
+              shared={shareActive}
               edit={
                 <>
                   <form

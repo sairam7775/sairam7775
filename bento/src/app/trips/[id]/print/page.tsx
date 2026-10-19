@@ -14,6 +14,7 @@ import { PlanSheet } from "@/components/plan/plan-sheet";
 import { PrintButton } from "@/components/plan/print-button";
 import { copy } from "@/copy";
 import { shareTrip } from "../actions";
+import { ShareExpiryField } from "../share-expiry-field";
 
 const t = copy.print;
 
@@ -78,9 +79,10 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
         <PrintButton days={doc.days.length} bookings={doc.bookings.length} />
         <p className="basis-full text-[0.86rem] text-ink-2">{t.howTo}</p>
         {!share && (
-          <form action={shareTrip} className="flex basis-full flex-wrap items-center gap-x-3 gap-y-2 border-t border-rule pt-3">
+          <form action={shareTrip} className="flex basis-full flex-wrap items-end gap-x-3 gap-y-2 border-t border-rule pt-3">
             <input type="hidden" name="tripId" value={id} />
             <input type="hidden" name="from" value="print" />
+            <ShareExpiryField endDate={state.trip.endDate} />
             <p className="text-[0.86rem] text-ink-2">{copy.share.printHint}</p>
             <SubmitButton pending={copy.common.saving} className="min-h-10 rounded-full border border-rule bg-surface px-4 text-[0.86rem] font-medium hover:bg-sunk">
               {copy.share.turnOn}
