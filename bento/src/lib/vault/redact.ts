@@ -17,14 +17,17 @@ const REMOVED = {
 };
 
 // What comes before a reference in confirmations: English and Japanese.
-const LABEL = String.raw`(?:booking|reservation)(?:\s+(?:reference|ref\.?|number|no\.?|id|code)|\s*#)|confirmation(?:\s+(?:number|no\.?|code|id|#))?|reference(?:\s+(?:number|no\.?|code|id))?|ref\.?|pnr|record\s+locator|(?:e-?ticket|ticket|order|itinerary)\s+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
-// The label must start a word ("Preference" isn't "reference"); a lookbehind
-// rather than \b, which doesn't see the start of a Japanese label. The value
+// A label's words stay on one line, so "Confirmation" over "November" never
+// reads as "Confirmation No".
+const LABEL = String.raw`(?:booking|reservation)(?:[ \t]+(?:reference|ref\.?|number|no\.?|id|code)|[ \t]*#)|confirmation(?:[ \t]+(?:number|no\.?|code|id)|[ \t]*#)?|reference(?:[ \t]+(?:number|no\.?|code|id)|[ \t]*#)?|ref\.?(?:[ \t]*#)?|pnr|record[ \t]+locator|(?:e-?ticket|ticket|order|itinerary)[ \t]+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
+// The label must start and end a word ("Preference" isn't "reference", and
+// "No" in "November" isn't "no"); lookarounds rather than \b, which doesn't
+// see the edges of a Japanese label. The value
 // is taken whole, so a long one never leaves its tail in the text: after a
 // space, slash, dot, underscore or hyphen it goes on only while the next
 // group has a digit ("ABC 123 456", "AB/12345"), so "ABC123 for your stay"
 // stops at the reference.
-const REFERENCE = new RegExp(String.raw`(?<![A-Za-z])(${LABEL})(\s*(?:is|:|：|#|-|–|no\.)?\s*)([A-Z0-9][A-Z0-9_-]*(?:[ /._-][A-Z0-9_]*\d[A-Z0-9_]*)*)(?![A-Z0-9_-])`, "gi");
+const REFERENCE = new RegExp(String.raw`(?<![A-Za-z])(${LABEL})(?!(?<=[A-Za-z])[A-Za-z])(\s*(?:is|:|：|#|-|–|no\.)?\s*)([A-Z0-9][A-Z0-9_-]*(?:[ /._-][A-Z0-9_]*\d[A-Z0-9_]*)*)(?![A-Z0-9_-])`, "gi");
 // The longest reference the booking form keeps (ParsedBookingSchema).
 const REFERENCE_MAX = 60;
 
@@ -42,10 +45,14 @@ const LONG_NUMBER = /\b\d(?:[ -]?\d){11,18}\b/g;
  *  digit, or it is a run of capitals (a PNR such as QWERTY), or it is a
  *  lowercase code standing alone at the end of its line ("abcdef"). An
  *  ordinary word mid-sentence ("please see below") is none of these, and
- *  neither is a date (2026-11-20, 20/11/2026), which the form needs. */
+ *  neither is a date (2026-11-20, 20/11/2026, November 20), which the form
+ *  needs: a value in groups starts with a group that has a digit or is all
+ *  capitals. */
 function looksLikeReference(value: string, endsLine: boolean): boolean {
   if (value.replace(/[^A-Z0-9]/gi, "").length < 4) return false;
   if (/^(?:\d{4}[-/.]\d{1,2}[-/.]\d{1,2}|\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4})$/.test(value)) return false;
+  const first = value.split(/[ /._]/)[0];
+  if (first !== value && !/\d/.test(first) && !/^[A-Z]+$/.test(first)) return false;
   return /\d/.test(value) || /^[A-Z]{5,8}$/.test(value) || (endsLine && /^[a-z]{5,8}$/.test(value));
 }
 

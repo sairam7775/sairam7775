@@ -105,6 +105,26 @@ describe("redactConfirmation", () => {
     }
   });
 
+  it("removes a reference labelled Reference # or Ref #", () => {
+    for (const label of ["Reference #: ", "Ref #", "Ref. # "]) {
+      const r = redactConfirmation(`${label}ABC123\nHotel Kanra Kyoto`);
+      expect(r.reference).toBe("ABC123");
+      expect(r.text).not.toContain("ABC123");
+    }
+  });
+
+  it("doesn't read the start of a word on the next line as part of a label", () => {
+    const r = redactConfirmation("Confirmation\nNovember 20 2026\nBooking reference: ABC123");
+    expect(r.reference).toBe("ABC123");
+    expect(r.text).toBe("Confirmation\nNovember 20 2026\nBooking reference: [reference removed]");
+  });
+
+  it("doesn't take a word and a number after a label for a reference", () => {
+    const r = redactConfirmation("Booking Confirmation November 20, 2026\nBooking reference: ABC123");
+    expect(r.reference).toBe("ABC123");
+    expect(r.text).toContain("Booking Confirmation November 20, 2026");
+  });
+
   it("never takes a date for the reference", () => {
     const r = redactConfirmation("Confirmation\n2026-11-20\nBooking reference: ABC123");
     expect(r.reference).toBe("ABC123");
