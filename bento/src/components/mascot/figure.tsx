@@ -3,15 +3,16 @@
 import type { AnimationItem } from "lottie-web";
 import { useEffect, useRef, useState } from "react";
 import { CANVAS, figureOf } from "./moods";
-import { fileFor, segmentsOf, shouldAnimate } from "./playback";
+import { fileFor, playPlan, segmentsOf, shouldAnimate } from "./playback";
 import { MascotStill } from "./still";
 import type { FigureKey } from "./types";
 
 /** Bento Man. The still pose renders first (on the server too), in a box of
  *  fixed size, so nothing moves when he starts. Once he scrolls into view,
  *  and only if motion is allowed, the Lottie light player and his file load
- *  and the animation takes the still's place: the intro once, then the idle
- *  loop. Off-screen he pauses. If anything fails to load, the still stays.
+ *  and the animation takes the still's place: the intro once, then he rests
+ *  still (only the thinking head loops, while he works). Off-screen he
+ *  pauses. If anything fails to load, the still stays.
  *  He is decoration: hidden from screen readers. */
 export function BentoManFigure({ figure, size, className = "" }: { figure: FigureKey; size: number; className?: string }) {
   const host = useRef<HTMLSpanElement>(null);
@@ -30,6 +31,8 @@ export function BentoManFigure({ figure, size, className = "" }: { figure: Figur
     let cancelled = false;
     let started = false;
     let visible = false;
+    // Once he has settled after his intro he stays still for good.
+    let resting = false;
 
     const start = async () => {
       started = true;
@@ -42,25 +45,30 @@ export function BentoManFigure({ figure, size, className = "" }: { figure: Figur
           }),
         ]);
         if (cancelled) return;
-        const { intro, idle } = segmentsOf(data.markers);
+        const { intro, then } = playPlan(segmentsOf(data.markers));
         const a = lottie.loadAnimation({ container: el, renderer: "svg", loop: false, autoplay: false, animationData: data });
         anim = a;
         a.addEventListener("DOMLoaded", () => {
           if (cancelled) return;
           setPlaying(true);
-          const loopIdle = () => {
-            a.loop = true;
-            a.playSegments(idle, true);
+          const next = () => {
+            if ("rest" in then) {
+              a.goToAndStop(then.rest, true);
+              resting = true;
+            } else {
+              a.loop = true;
+              a.playSegments(then.loop, true);
+            }
           };
           if (intro) {
             const done = () => {
               a.removeEventListener("complete", done);
-              loopIdle();
+              next();
             };
             a.addEventListener("complete", done);
             a.playSegments(intro, true);
-          } else loopIdle();
-          if (!visible) a.pause();
+          } else next();
+          if (!visible && !resting) a.pause();
         });
       } catch {
         // The still stays; nothing else depends on the animation.
@@ -70,7 +78,7 @@ export function BentoManFigure({ figure, size, className = "" }: { figure: Figur
     const io = new IntersectionObserver(([entry]) => {
       visible = entry.isIntersecting;
       if (visible && !started) void start();
-      else if (anim) {
+      else if (anim && !resting) {
         if (visible) anim.play();
         else anim.pause();
       }

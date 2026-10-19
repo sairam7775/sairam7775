@@ -408,6 +408,9 @@ Practically:
   the still first, then lazy-loads `lottie-web/build/player/lottie_light`
   (pinned 5.13.0) only when he is on screen and motion is allowed. Never
   import lottie-web anywhere else, or statically.
+- After its intro a figure rests still on the first idle frame (WCAG 2.2.2:
+  under five seconds of motion that starts on its own; `playback.test.ts`
+  checks every intro's length). Only the thinking head loops, while he works.
 - Frame 0 of every figure is its still pose and every loop is seamless —
   `moods.test.ts` checks both. A part that fades has no children (Lottie
   doesn't pass opacity down).

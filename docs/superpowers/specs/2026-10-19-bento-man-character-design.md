@@ -68,7 +68,7 @@ One component, `<BentoManFigure mood form size />`:
 
 1. The server renders the still pose in a box of fixed size. No layout shift, works without JavaScript.
 2. In the browser, once the figure scrolls into view and the traveller hasn't asked for reduced motion, it loads the Lottie light player (`lottie-web/build/player/lottie_light`, 46 KB compressed, measured; loaded once and shared) and the mood's file, then swaps the still for the animation.
-3. It plays the `intro` segment once, then loops `idle` (thinking loops its whole timeline). It pauses when scrolled off-screen or when the tab is hidden.
+3. It plays the `intro` segment once, then rests still on the first idle frame (the owner's decision after review, 2026-10-19: WCAG 2.2.2, no self-started motion past five seconds). Only the thinking head, which has no intro, loops, and only while Bento Man works. It pauses when scrolled off-screen or when the tab is hidden.
 4. **Reduced motion**: the still pose only. The player is never downloaded.
 5. **Failure**: if the player or a file fails to load, the still pose stays. Nothing else changes.
 6. **Colours**: `globals.css` maps the layer classes (`.bm-line`, `.bm-coat`, …) to `--color-mascot-*` variables, with dark values in the existing dark-theme blocks. lottie-web's SVG renderer writes colours as attributes, which CSS overrides.
