@@ -44,6 +44,16 @@
    date picker's calendar icon, scrollbars, autofill — draw to match. */
 :root {
   color-scheme: light dark;
+
+  /* Bento Man (components/mascot): the colours that change with the theme.
+     Kept out of @theme because nothing should become a utility. */
+  --color-mascot-line: #221c1e;
+  --color-mascot-rim: #221c1e;
+  --color-mascot-sheen: #5a5256;
+  --color-mascot-coat: #2e4a7d;
+  --color-mascot-belt: #1c2e52;
+  --color-mascot-pants: #5a5256;
+  --color-mascot-muted: #6f666b;
 }
 
 /* Dark palette. Overrides the theme variables on :root rather than sitting
@@ -82,6 +92,14 @@
     --color-lavender-soft: #262a3f;
 
     --shadow-tile: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 36px -20px rgba(0, 0, 0, 0.6);
+
+    --color-mascot-line: #fbf8f3;
+    --color-mascot-rim: #4a4145;
+    --color-mascot-sheen: #7a7075;
+    --color-mascot-coat: #5876b5;
+    --color-mascot-belt: #2e4a7d;
+    --color-mascot-pants: #8a8085;
+    --color-mascot-muted: #9a9095;
   }
 }
 
@@ -112,7 +130,31 @@
   --color-lavender-soft: #262a3f;
 
   --shadow-tile: 0 1px 2px rgba(0, 0, 0, 0.3), 0 16px 36px -20px rgba(0, 0, 0, 0.6);
+
+  --color-mascot-line: #fbf8f3;
+  --color-mascot-rim: #4a4145;
+  --color-mascot-sheen: #7a7075;
+  --color-mascot-coat: #5876b5;
+  --color-mascot-belt: #2e4a7d;
+  --color-mascot-pants: #8a8085;
+  --color-mascot-muted: #9a9095;
 }
+
+/* Bento Man's themed colours. Every shape, in the still drawing and in the
+   Lottie player's SVG, carries its role as a class: bm-f-<role> for a fill,
+   bm-s-<role> for a stroke. These override the light colours written into
+   both, so a theme change recolours him at once. The fixed roles (tiles,
+   face, umeboshi, hands, map) need no rule. */
+.mascot .bm-f-line, .mascot .bm-f-line * { fill: var(--color-mascot-line); }
+.mascot .bm-s-line, .mascot .bm-s-line * { stroke: var(--color-mascot-line); }
+.mascot .bm-f-rim, .mascot .bm-f-rim * { fill: var(--color-mascot-rim); }
+.mascot .bm-s-sheen, .mascot .bm-s-sheen * { stroke: var(--color-mascot-sheen); }
+.mascot .bm-f-coat, .mascot .bm-f-coat * { fill: var(--color-mascot-coat); }
+.mascot .bm-s-coat, .mascot .bm-s-coat * { stroke: var(--color-mascot-coat); }
+.mascot .bm-f-belt, .mascot .bm-f-belt * { fill: var(--color-mascot-belt); }
+.mascot .bm-f-pants, .mascot .bm-f-pants * { fill: var(--color-mascot-pants); }
+.mascot .bm-f-muted, .mascot .bm-f-muted * { fill: var(--color-mascot-muted); }
+.mascot .bm-s-muted, .mascot .bm-s-muted * { stroke: var(--color-mascot-muted); }
 
 /* A chosen theme also fixes the browser's own controls to match. */
 :root[data-theme="light"] {
