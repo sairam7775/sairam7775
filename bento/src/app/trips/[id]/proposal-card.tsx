@@ -171,7 +171,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={copy.day.openMap(it.name)}
-                    className="ml-2 inline-block text-[0.82rem] font-medium text-accent-ink hover:underline"
+                    className="ml-2 inline-flex min-h-6 items-center text-[0.82rem] font-medium text-accent-ink hover:underline"
                   >
                     {copy.day.map}
                   </a>

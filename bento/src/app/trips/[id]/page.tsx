@@ -334,7 +334,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={t.travelDay.openDirections(l.fromStation.name, l.toStation.name)}
-                            className="mt-1 inline-block text-[0.82rem] font-medium text-accent-ink hover:underline"
+                            className="mt-0.5 inline-flex min-h-6 items-center text-[0.82rem] font-medium text-accent-ink hover:underline"
                           >
                             {t.travelDay.directions}
                           </a>
