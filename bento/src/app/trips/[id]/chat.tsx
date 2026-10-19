@@ -7,6 +7,7 @@ import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
 import { reasonOf, track } from "@/lib/analytics/client";
+import { starterKey } from "@/lib/trips/guided-start";
 
 const t = copy.chat;
 
@@ -58,6 +59,29 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
     const el = list.current;
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [messages, activity, error]);
+
+  // A trip started from "Plan a Japan trip" leaves its first message in the
+  // tab's session storage (lib/trips/guided-start.ts): it goes in the box,
+  // once, ready to send or edit, never sent for the traveller. Set in a
+  // frame, not the effect body; storage can be off, which just skips it.
+  useEffect(() => {
+    if (ask || initial.length > 0) return;
+    // Read and removed together in the frame, so an effect run twice in
+    // development doesn't lose it.
+    const frame = requestAnimationFrame(() => {
+      try {
+        const text = sessionStorage.getItem(starterKey(tripId));
+        if (!text) return;
+        setInput(text);
+        sessionStorage.removeItem(starterKey(tripId));
+      } catch {
+        // Storage off (a private window): the box simply starts empty.
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+    // Only on arrival: a later re-render must not put it back.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // A conversation mounted out of sight (the phone's closed sheet) has no
   // height to scroll to the bottom of. When it appears, or its box changes

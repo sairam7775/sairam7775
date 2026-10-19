@@ -299,7 +299,6 @@ export const en = {
     deleteConfirm: (title: string) => `Delete “${title}”? Its route, days, chat and bookings go with it. This can’t be undone.`,
     empty: "No trips yet. Start one below — dates can come later.",
     new: {
-      title: "Start a trip",
       body: "Everything here is optional and can be changed later — you can also just tell Bento Man.",
       name: "Name it",
       namePlaceholder: "Kansai, autumn",
@@ -313,6 +312,53 @@ export const en = {
       },
       submit: "Create trip",
       pending: "Creating…",
+    },
+    // The guided way in: a few questions, then Bento Man with a first
+    // message written from the answers. The blank form stays beside it.
+    guided: {
+      cardTitle: "Plan a Japan trip",
+      cardBody: "Not sure of dates or places yet? Answer a few questions — roughly when, who, your pace and what you like — and Bento Man suggests a route. Nothing is fixed until you accept it.",
+      cardCta: "Plan a Japan trip →",
+      blankTitle: "Or start a blank trip",
+      title: "Plan a Japan trip",
+      intro: "Answer what you can. All of it is optional and can change later.",
+      when: {
+        legend: "When are you going?",
+        dates: "I know my dates",
+        rough: "Roughly",
+        unsure: "Not sure yet",
+        month: "Month",
+        nights: "About how many nights",
+        nightsPlaceholder: "e.g. 10",
+      },
+      people: "How many of you?",
+      pace: { legend: "Your pace", relaxed: "Relaxed", standard: "Standard", packed: "Packed" },
+      paceHints: { relaxed: "Fewer stops, long lunches", standard: "A full day with breaks", packed: "As much as fits" },
+      interests: "What do you like?",
+      places: "Places you have in mind",
+      placesPlaceholder: "Kyoto, Hiroshima…",
+      avoid: "Anything you'd rather avoid?",
+      avoidPlaceholder: "Long hikes, crowds…",
+      submit: "Start planning with Bento Man",
+      pending: "Starting…",
+      // A rough trip's name, so the trips list still says when.
+      roughTitle: (month: string, nights: number | null) => (nights ? `${month}, about ${nightCount(nights)}` : month),
+      // The first message, put in Bento Man's box for the traveller to send.
+      starter: {
+        aboutNights: (nights: number, month: string) => `About ${nightCount(nights)} in ${month}`,
+        inMonth: (month: string) => `Sometime in ${month}`,
+        unsure: "We don't know our dates yet",
+        dates: "Our dates are in the trip",
+        people: (n: number) => (n === 1 ? "just me" : `${n} of us`),
+        places: (places: string) => `Places in mind: ${places}.`,
+        avoid: (avoid: string) => `We'd rather avoid: ${avoid}.`,
+        ask: "Can you suggest a route?",
+      },
+      errors: {
+        month: "Pick a month, or choose another answer for when.",
+        nights: "Nights should be between 1 and 30.",
+        failed: "That didn't start. Try again in a moment.",
+      },
     },
     errors: {
       longTitle: "Keep the trip name under 120 characters.",
@@ -602,7 +648,9 @@ export const en = {
     canPlan: {
       deep: "Well covered: Bento can build full days here.",
       outline: "Main sights only: Bento can suggest places here, but won't call a day complete.",
-      stub: "Not covered yet: Bento can't plan days here, only the trains in and out.",
+      // No train promise here: a stop outside Bento's train data has none,
+      // and the Trains list below says which journeys Bento knows.
+      stub: "Not covered yet: Bento can't plan days here yet.",
     },
     // When every stop is known equally well: said once, under the route. A
     // route Bento knows none of is explained by `limits` instead.
@@ -1029,6 +1077,7 @@ export const en = {
   // Messages from the servers behind the chat and the confirmation reader.
   server: {
     signInFirst: "Sign in first.",
+    bodyTooLarge: "That's too much text to send at once.",
     chatEmpty: "Say something, up to 2000 characters.",
     slowDown: "Slow down a little — try again in a moment.",
     chatOff: "Bento Man isn't available on this site yet.",
@@ -1445,7 +1494,7 @@ export const en = {
       },
       newTrip: {
         title: "Start a trip here",
-        body: "Give it a name, dates and who is going. All of it is optional and can change later — or just tell Bento Man.",
+        body: "Plan a Japan trip asks roughly when, who, your pace and what you like, then hands over to Bento Man. Or start a blank trip below with a name and dates. All of it can change later.",
       },
       open: {
         title: "Then open it",
