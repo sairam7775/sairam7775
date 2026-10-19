@@ -28,3 +28,10 @@ export function shareExpiresAt(option: ShareExpiryOption, endDate: string | null
     }
   }
 }
+
+/** Whether a companions' link still opens, by the same rule as
+ *  `shared_trip()`: no expiry, or an expiry still ahead. */
+export function shareIsActive(share: { expires_at: string | null } | null, now: Date): boolean {
+  if (!share) return false;
+  return share.expires_at === null || Date.parse(share.expires_at) > now.getTime();
+}

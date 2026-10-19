@@ -8,6 +8,7 @@ import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import type { TripState } from "@/lib/bento-man/store";
 import { buildTripView } from "@/lib/bento-man/trip-view";
 import { planDocument, type DocBooking } from "@/lib/trips/plan-document";
+import { shareIsActive } from "@/lib/trips/share-expiry";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { SubmitButton } from "@/components/form-controls";
 import { PlanSheet } from "@/components/plan/plan-sheet";
@@ -52,7 +53,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
     store.graph(),
     // Never the reference.
     db.from("bookings").select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on").eq("trip_id", id),
-    db.from("trip_shares").select("token").eq("trip_id", id).maybeSingle(),
+    db.from("trip_shares").select("token, expires_at").eq("trip_id", id).maybeSingle(),
   ]);
   if (bookingsError || !bookingRows) throw new Error(t.loadFailed);
   const places = new Map(placeLists.flat().map((p) => [p.id, p]));
@@ -63,9 +64,9 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
   const doc = planDocument(state, dayList, bookings, places, graph.stations);
   const today = new Date().toISOString().slice(0, 10);
   // Shared: the companions' link, so the copy they're sent opens for them.
-  // Not shared (or unknown): the trip page, which opens only for its owner.
+  // Not shared, expired (or unknown): the trip page, which opens only for its owner.
   const origin = siteOrigin(await headers());
-  const link = share
+  const link = share && shareIsActive(share, new Date())
     ? { label: t.linkShared, url: `${origin}/shared/${share.token}` }
     : { label: t.link, url: `${origin}/trips/${id}` };
 

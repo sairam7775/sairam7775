@@ -1194,7 +1194,7 @@ export const en = {
 
   privacy: {
     title: "How Bento uses data",
-    updated: "Last updated 18 October 2026",
+    updated: "Last updated 20 October 2026",
     intro: "Bento is a trip planner. This page says what it keeps about you, who else handles it, and what you can do about it. In short: your plan stays yours, booking references are encrypted, and usage analytics only run if you say yes.",
     // Links shown under a section, by the section's key.
     links: {
@@ -1287,7 +1287,7 @@ export const en = {
 
   terms: {
     title: "Terms of use",
-    updated: "Last updated 18 October 2026",
+    updated: "Last updated 20 October 2026",
     intro: "The agreement between you and Bento when you use it. It's written to be read: if anything here is unclear, write to us and we'll explain.",
     sections: {
       service: {

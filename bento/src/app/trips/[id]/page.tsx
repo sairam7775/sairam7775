@@ -18,6 +18,7 @@ import { updateTrip } from "../actions";
 import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
 import { ShareLink } from "./share-link";
 import { ShareExpiryField } from "./share-expiry-field";
+import { shareIsActive } from "@/lib/trips/share-expiry";
 import { TripActions } from "./trip-actions";
 import { DayStrip } from "./day-strip";
 import { TripChat } from "./trip-chat";
@@ -119,8 +120,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   // The companions' link, if the trip is shared (0020/0024).
   const { data: share } = await db.from("trip_shares").select("token, expires_at").eq("trip_id", id).maybeSingle();
   const shareUrl = share ? `${siteOrigin(await headers())}/shared/${share.token}` : null;
-  const requestTime = new Date().getTime();
-  const shareActive = Boolean(share && (!share.expires_at || Date.parse(share.expires_at) > requestTime));
+  const shareActive = shareIsActive(share, new Date());
   const shareExpiryLabel = share?.expires_at
     ? copy.share.worksUntil(new Intl.DateTimeFormat(copy.locale, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(share.expires_at)))
     : copy.share.worksUntilOff;
