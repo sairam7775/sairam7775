@@ -7,6 +7,7 @@ import { inPasswordReset, PASSWORD_RESET_COOKIE } from "@/lib/auth-config";
 import { updatePassword } from "@/app/(auth)/actions";
 import { ErrorNote, Field, Submit } from "@/app/(auth)/ui";
 import { copy } from "@/copy";
+import { SETTINGS } from "../paths";
 
 export default async function ChangePassword({ searchParams }: PageProps<"/settings/password">) {
   const supabase = await createClient();
@@ -18,7 +19,7 @@ export default async function ChangePassword({ searchParams }: PageProps<"/setti
 
   return (
     <main className="mx-auto w-full max-w-xl px-5 py-10 sm:py-14">
-      <AppHeader back={{ href: "/settings", label: copy.common.settings }} />
+      <AppHeader back={{ href: SETTINGS.personal, label: copy.settings.personal.title }} />
       <section className="tile up mt-8 p-6 sm:p-8">
         <h1 className="text-[1.8rem] font-bold leading-tight">{reset ? t.resetTitle : t.changeTitle}</h1>
         <p className="mt-2 text-[0.95rem] leading-relaxed text-ink-2">{reset ? t.resetSubtitle : t.changeSubtitle}</p>

@@ -194,7 +194,7 @@ The page is warm rice white (`{colors.paper}`), never pure white; tiles are whit
 - Soft geometry throughout: 20px tiles, 30px boxes, pill buttons and chips. No hard corners on anything you can touch.
 - One elevation tier (`{elevation.tile}`). Depth comes from the lacquer frame, not stacked shadows.
 - Proposals, never silent edits: anything Bento Man suggests arrives as a card with Accept / Reject.
-- Light and dark follow the system unless the traveller picks one in Settings → Theme. Dark mode is a palette swap on the same variables, not a separate design.
+- Light and dark follow the system unless the traveller picks one in Settings → Appearance → Theme. Dark mode is a palette swap on the same variables, not a separate design.
 
 ## Colors
 
@@ -248,6 +248,7 @@ One shadow (`{elevation.tile}`) for tiles and floating pills. The lacquer box ha
 - **Bento Man panel** — header (Bento Man's head + name + "Nothing changes until you accept it"), scrolling conversation, input pinned to the bottom. User messages are lacquer bubbles; Bento Man's are plain text beside his head. Empty state offers example prompts as chips.
 - **Proposal card** — paper card with a sunk header ("**Proposal** · summary"), the route or days as they would be, change tags (new / moved / out), warnings in tamago, and Accept / Reject.
 - **Trip actions** — one row of secondary pills under the trip's route: Edit trip, Download plan, Share plan (a green dot while a link is out), and Ask Bento Man ↓ on a phone. The open one's panel sits below the whole row, one at a time, never between the pills. Changing or ending a share link is a quiet button that confirms.
+- **Settings list** — Settings is a short list of rows in tiles, not a page of forms. A row is a title, what's set now in ink-2 under it, and a › chevron; it opens that group's page (Personal information, Appearance, Privacy & data, Admin), whose back link returns to the list. A row that acts at once (Show the tour again) has no chevron. Delete account is an ume row on Privacy & data that opens its own page: a destructive form is never left open on a list.
 - **Gap ribbon** — one bar per night, solid edamame where covered, ume where not; the worst gap as a sentence; links to Bookings.
 
 ## Motion
@@ -279,7 +280,7 @@ Behind every page sits a blurred Japanese scene for the season (`src/components/
 | Autumn (Sep–Nov) | Maple tree, Kyoto pagoda on the hills | Momiji leaves falling and spinning |
 | Winter (Dec–Feb) | Snowy Alps, cedars, the Jigokudani onsen with a snow monkey (Nagano) | Snowfall, onsen steam, the monkey bobs and blinks |
 
-- Settings → Background chooses the season: **Automatic** (the default) or one season everywhere (the `bento_season` cookie). Automatic is today's season, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`). A chosen season wins over both, trip pages included. `?season=winter` previews any season on any page and wins over everything.
+- Settings → Appearance → Background chooses the season: **Automatic** (the default) or one season everywhere (the `bento_season` cookie). Automatic is today's season, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`). A chosen season wins over both, trip pages included. `?season=winter` previews any season on any page and wins over everything.
 - Layers: far scene blurred 10px (static, so it rasterises once), near scene unfiltered (it animates), then a **veil** of paper — densest over the centre column where content sits, lighter at the edges where the tree / onsen / bamboo are — then particles. Tiles are 90% surface, so the scene only tints them and text contrast is unchanged. No `backdrop-filter`: over a moving scene it re-blurs every frame.
 - The scenes use their own illustration palette (hex), the one exception to tokens-only colour.
 - Drawn in SVG and CSS — no image downloads. Particle positions are deterministic (`noise()`), so renders are stable; fewer particles on phones.

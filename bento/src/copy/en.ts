@@ -1016,19 +1016,44 @@ export const en = {
 
   settings: {
     title: "Settings",
+    // The main page is a short list: each row says what's set now and opens
+    // its group's own page.
+    rows: {
+      personal: "Personal information",
+      appearance: "Appearance",
+      privacy: "Privacy & data",
+      admin: "Admin",
+      adminSummary: "Curation, review queue, AI spend and admins",
+      tourSummary: "See the short walkthrough again, from your trips.",
+    },
+    summary: {
+      personal: (name: string, email: string) => (name ? `${name} · ${email}` : email),
+      appearance: (theme: string, background: string) => `${theme} theme · ${background} background`,
+      // Analytics is mentioned only where it can run (null: no key).
+      privacy: (analytics: boolean | null) =>
+        analytics === null ? "Your data, Bento's terms, delete account" : `Usage analytics ${analytics ? "on" : "off"} · your data · delete account`,
+    },
     passwordChanged: "Your password was changed.",
-    account: "Account",
+    personal: {
+      title: "Personal information",
+      email: "Email",
+      viaGoogle: "You sign in with Google.",
+      viaPassword: "You sign in with this email and a password.",
+    },
     name: {
       heading: "Your name",
       body: "What Bento calls you when you come back. Optional, and never sent to Bento Man or analytics. Leave it empty for none.",
       label: "Name",
       save: "Save name",
+      saved: "Saved.",
       failed: "Your name wasn't saved. Try again in a moment.",
     },
-    // Only admin accounts see this section.
+    appearance: { title: "Appearance" },
+    privacy: { title: "Privacy & data" },
+    // Only admin accounts see this page, or its row on the list.
     admin: {
       heading: "Admin",
-      body: "Only admin accounts see this section.",
+      body: "Only admin accounts see this page.",
       tools: {
         heading: "Tools",
         curation: "Curation: cities and coverage",
@@ -1110,7 +1135,9 @@ export const en = {
     },
     deleteAccount: {
       heading: "Delete account",
-      body: "Deletes your account and everything in it: trips, day plans, bookings and your conversations with Bento Man. This can't be undone.",
+      // Its row on Privacy & data, which opens the page with the form.
+      summary: "Removes your account and everything in it.",
+      body:"Deletes your account and everything in it: trips, day plans, bookings and your conversations with Bento Man. This can't be undone.",
       password: "Your password, to confirm",
       email: "Type your email address to confirm",
       submit: "Delete my account",

@@ -8,6 +8,7 @@ import { ANALYTICS_COOKIE } from "@/lib/analytics/consent";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { cleanName } from "@/lib/account/name";
+import { SETTINGS } from "./paths";
 
 const KEEP = { httpOnly: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 365 } as const;
 
@@ -44,16 +45,20 @@ export async function setAnalytics(formData: FormData) {
   (await cookies()).set(ANALYTICS_COOKIE, parsed.data, { ...KEEP, secure: process.env.NODE_ENV === "production" });
 }
 
-/** Settings → Your name. Kept in the account's own metadata. An empty name
- *  is saved too, so a Google first name doesn't come back once cleared
- *  (lib/account/name.ts). */
-export async function setDisplayName(formData: FormData) {
+/** How saving a name went, for the form to say so; null before the first try. */
+export type NameState = "saved" | "failed" | null;
+
+/** Settings → Personal information → Your name. Kept in the account's own
+ *  metadata. An empty name is saved too, so a Google first name doesn't come
+ *  back once cleared (lib/account/name.ts). */
+export async function setDisplayName(_prev: NameState, formData: FormData): Promise<NameState> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/settings");
+  if (!user) redirect(`/sign-in?next=${SETTINGS.personal}`);
   const { error } = await supabase.auth.updateUser({ data: { display_name: cleanName(formData.get("name")) } });
   if (error) {
     console.error("Saving a name failed:", error.message);
-    redirect("/settings?nameError=1#name");
+    return "failed";
   }
+  return "saved";
 }

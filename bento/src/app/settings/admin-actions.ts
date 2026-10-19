@@ -5,10 +5,11 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { findUserByEmail } from "@/lib/admin-overview";
 import type { AdminError } from "./admin-errors";
+import { SETTINGS } from "./paths";
 
-// Back to the admin section, with what happened. The page turns the key into words.
+// Back to the Admin page, with what happened. The page turns the key into words.
 function back(outcome: { admin: "added" | "removed" } | { adminError: AdminError }): never {
-  redirect(`/settings?${new URLSearchParams(outcome)}#admin`);
+  redirect(`${SETTINGS.admin}?${new URLSearchParams(outcome)}`);
 }
 
 /** Settings → Admin → give an existing account admin access. Only an admin

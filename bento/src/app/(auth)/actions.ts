@@ -14,6 +14,7 @@ import { copy } from "@/copy";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteAccountData, postHogDeleter } from "@/lib/account/delete";
 import { googleOnly } from "@/lib/account/identity";
+import { SETTINGS } from "@/app/settings/paths";
 
 const credentials = z.object({
   email: z.email(copy.auth.errors.badEmail),
@@ -193,7 +194,7 @@ export async function updatePassword(formData: FormData) {
   const { error } = await supabase.auth.updateUser({ password: parsed.data!.password });
   if (error) back(authErrorMessage(error));
   jar.delete(PASSWORD_RESET_COOKIE);
-  redirect("/settings?updated=password");
+  redirect(`${SETTINGS.personal}?updated=password`);
 }
 
 export async function signOut() {
@@ -203,17 +204,17 @@ export async function signOut() {
   redirect("/");
 }
 
-/** Settings → Delete account. Confirmed with the password (or, for a
- *  Google-only account, the email address typed out), so a session left
- *  open on someone else's computer can't erase an account. Admins are
- *  refused, so curation is never left without one by accident. */
+/** Settings → Privacy & data → Delete account. Confirmed with the password
+ *  (or, for a Google-only account, the email address typed out), so a
+ *  session left open on someone else's computer can't erase an account.
+ *  Admins are refused, so curation is never left without one by accident. */
 export async function deleteAccount(formData: FormData) {
   const t = copy.settings.deleteAccount;
-  const back = (message: string) => redirect(`/settings?${new URLSearchParams({ error: message })}#delete-account`);
+  const back = (message: string) => redirect(`${SETTINGS.deleteAccount}?${new URLSearchParams({ error: message })}`);
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/sign-in?next=/settings");
+  if (!user) redirect(`/sign-in?next=${SETTINGS.deleteAccount}`);
 
   const { data: isAdmin } = await supabase.from("app_admins").select("user_id").eq("user_id", user.id).maybeSingle();
   if (isAdmin) back(t.admin);

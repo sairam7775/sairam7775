@@ -3,6 +3,7 @@
 import { useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { copy } from "@/copy";
+import { confirmSubmit } from "./confirm-submit";
 
 /** Opens the browser's calendar on a click anywhere in the field, not just
  *  on the small icon (Chrome only opens it from the icon). */
@@ -107,8 +108,9 @@ export function ChoiceButton({ name, value, pressed, className, children }: { na
   );
 }
 
-/** A submit button that asks first. For things that can't be undone. With
- *  `pending`, it says it's working once confirmed, like SubmitButton. */
+/** A submit button that asks first. For things that can't be undone. It asks
+ *  only once the form is filled in (confirmSubmit). With `pending`, it says
+ *  it's working once confirmed, like SubmitButton. */
 export function ConfirmButton({ children, message, pending: pendingLabel, className, ...rest }: ComponentProps<"button"> & { message: string; pending?: ReactNode }) {
   const { pending } = useFormStatus();
   return (
@@ -119,7 +121,7 @@ export function ConfirmButton({ children, message, pending: pendingLabel, classN
       aria-busy={pending}
       className={`${className ?? ""} disabled:opacity-50`}
       onClick={(e) => {
-        if (!window.confirm(message)) e.preventDefault();
+        if (!confirmSubmit(e.currentTarget.form, () => window.confirm(message))) e.preventDefault();
       }}
     >
       {pending && pendingLabel ? pendingLabel : children}

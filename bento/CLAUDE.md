@@ -45,8 +45,9 @@ Practically:
   dates. Autocapture keeps no element text; replays mask all text and
   inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
-- **Deleting an account removes everything of theirs** (Settings →
-  `deleteAccount` → `lib/account/delete.ts`): every user table cascades
+- **Deleting an account removes everything of theirs** (Settings → Privacy
+  & data → Delete account, `settings/delete` → `deleteAccount` →
+  `lib/account/delete.ts`): every user table cascades
   from `auth.users` or from `trips`, so a new user table needs
   `on delete cascade` too. `api_usage` is the exception: it is unlinked
   (user_id = null) first, because the global spending cap sums it. PostHog
@@ -226,7 +227,7 @@ Practically:
   exception to "tokens, not hex": they are illustration with their own
   palette, like the logo. Keep them behind the veil, `aria-hidden`, and
   out of anything a traveller reads.
-- Which season shows: `?season=` preview, then Settings → Background (the
+- Which season shows: `?season=` preview, then Settings → Appearance → Background (the
   `bento_season` cookie, passed from the root layout as `chosen`), then a
   trip page's `<UseSeason>`, then today's date in the browser.
 - No `backdrop-filter` or `filter` on anything that animates or sits over
@@ -236,7 +237,7 @@ Practically:
 - The dark palette overrides variables on `:root` inside the media query.
   Never nest `@theme` in `@media`: Tailwind v4 hoists it and the dark
   values apply in light mode too.
-- Settings → Theme (System / Light / Dark) is the `bento_theme` cookie
+- Settings → Appearance → Theme (System / Light / Dark) is the `bento_theme` cookie
   (`lib/theme.ts`). The root layout puts `data-theme` on `<html>` and picks
   the browser-bar colour; `globals.css` has the dark values twice — under
   the media query for `:root:not([data-theme="light"])` and under
@@ -266,15 +267,22 @@ Practically:
 
 ## Names and admins
 
-- A traveller's name is optional (sign-up, Settings → Your name) and lives in
+- Settings is a short list (`settings/page.tsx`): each row says what's set
+  now (`settings/summary.ts`) and opens its group's own page — Personal
+  information (email, name, password), Appearance, Privacy & data (with
+  Delete account on a page of its own, so its form is never left open),
+  and Admin for admins. The paths are in `settings/paths.ts`; every action
+  sends the traveller back to the page they were on, with what happened.
+- A traveller's name is optional (sign-up, Settings → Personal information) and lives in
   the account's own metadata, `user_metadata.display_name`; no table, no
   migration. Read it only through `displayName()` (`lib/account/name.ts`):
   the account can write its own metadata, so the name is cleaned on the way
   out too. A saved empty name is an answer, so Google's first name doesn't
   come back. It greets on the trips and home pages and goes nowhere else:
   never to Bento Man, analytics or admin pages.
-- Settings shows an Admin section to admins only (`isAdmin` in
-  `lib/admin.ts`): links to the curation tools, this month's AI spend
+- Settings → Admin (`settings/admin`) is for admins only (`isAdmin` in
+  `lib/admin.ts`; anyone else is sent back to the list): links to the
+  curation tools, this month's AI spend
   (`spend_since_month_start`, the cap's own sum) and the live model, and the
   admin list (`lib/admin-overview.ts`). `addAdmin` / `removeAdmin`
   (`settings/admin-actions.ts`) call `requireAdmin()` themselves and write
