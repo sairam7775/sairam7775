@@ -83,6 +83,26 @@ describe("redactConfirmation", () => {
     expect(r.text).toContain("\n2026-11-20\nCheck-in 15:00");
   });
 
+  it("removes a reference labelled with ID", () => {
+    for (const label of ["Confirmation ID", "Reference ID"]) {
+      const r = redactConfirmation(`${label}: ABC123\nHotel Kanra Kyoto`);
+      expect(r.reference).toBe("ABC123");
+      expect(r.text).not.toContain("ABC123");
+    }
+  });
+
+  it("doesn't take a heading under a bare Confirmation for the reference", () => {
+    const r = redactConfirmation("CONFIRMATION\nDETAILS\nBooking reference: ABC123");
+    expect(r.reference).toBe("ABC123");
+    expect(r.text).toBe("CONFIRMATION\nDETAILS\nBooking reference: [reference removed]");
+  });
+
+  it("still takes a reference on the line under a bare label when it has a digit", () => {
+    const r = redactConfirmation("Reference\nABC123\nHotel Kanra Kyoto");
+    expect(r.reference).toBe("ABC123");
+    expect(r.text).not.toContain("ABC123");
+  });
+
   it("doesn't take an ordinary word after a label for a reference", () => {
     const r = redactConfirmation("Confirmation of your booking at Hotel Kanra Kyoto");
     expect(r.reference).toBeNull();

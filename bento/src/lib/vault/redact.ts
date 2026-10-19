@@ -17,7 +17,7 @@ const REMOVED = {
 };
 
 // What comes before a reference in confirmations: English and Japanese.
-const LABEL = String.raw`(?:booking|reservation)\s+(?:reference|ref\.?|number|no\.?|id|code)|confirmation(?:\s+(?:number|no\.?|code|#))?|reference(?:\s+(?:number|no\.?|code))?|ref\.?|pnr|record\s+locator|(?:e-?ticket|ticket|order|itinerary)\s+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
+const LABEL = String.raw`(?:booking|reservation)\s+(?:reference|ref\.?|number|no\.?|id|code)|confirmation(?:\s+(?:number|no\.?|code|id|#))?|reference(?:\s+(?:number|no\.?|code|id))?|ref\.?|pnr|record\s+locator|(?:e-?ticket|ticket|order|itinerary)\s+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
 // The label must start a word ("Preference" isn't "reference"); a lookbehind
 // rather than \b, which doesn't see the start of a Japanese label. The value
 // is taken whole, so a long one never leaves its tail in the text: after a
@@ -47,10 +47,15 @@ function looksLikeReference(value: string, endsLine: boolean): boolean {
   return /\d/.test(value) || /^[A-Z]{5,8}$/.test(value) || (endsLine && /^[a-z]{5,8}$/.test(value));
 }
 
+// A label of one word can be a heading ("CONFIRMATION" over "DETAILS"), so
+// a value on the line under it counts only when it has a digit.
+const BARE_LABEL = /^(?:confirmation|reference|ref\.?)$/i;
+
 export function redactConfirmation(input: string): { text: string; reference: string | null } {
   let reference: string | null = null;
   let text = input.replace(REFERENCE, (whole, label: string, gap: string, value: string, at: number, all: string) => {
     const endsLine = /^[ \t.]*(\r?\n|$)/.test(all.slice(at + whole.length));
+    if (BARE_LABEL.test(label) && /\n/.test(gap) && !/\d/.test(value)) return whole;
     if (!looksLikeReference(value, endsLine)) return whole;
     if (value.length <= REFERENCE_MAX) reference ??= value;
     return `${label}${gap}${REMOVED.reference}`;
