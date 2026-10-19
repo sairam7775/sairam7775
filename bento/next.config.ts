@@ -1,4 +1,10 @@
 import type { NextConfig } from "next";
+import { buildCspReportOnly } from "./src/lib/security/csp";
+
+const cspReportOnly = buildCspReportOnly({
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  isDevelopment: process.env.NODE_ENV === "development",
+});
 
 /** Security headers live here rather than in vercel.json so they apply in
  *  development and on any host, not just one. They matter more than usual
@@ -10,6 +16,7 @@ const securityHeaders = [
   // A page showing a PNR must not be frameable by anyone.
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
   { key: "X-Content-Type-Options", value: "nosniff" },
   // Never leak a trip id or a reveal parameter to another origin.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
