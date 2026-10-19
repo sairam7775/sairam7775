@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { coverageShown, trainRows, uncoveredStays } from "../route-card";
+import { copy } from "@/copy";
 
 const leg = (from: string, to: string, movingTo: string | null, summary = `${from} → ${to}`) => ({ fromCityId: from, toCityId: to, movingTo, summary, lines: [`${summary} line`] });
 const city = (name: string, nights: number, tier: "deep" | "outline" | "stub") => ({ name, nights, tier });
@@ -35,6 +36,14 @@ describe("coverageShown", () => {
   it("says it once when every stop is the same", () => {
     expect(coverageShown([city("Kyoto", 5, "deep"), city("Nara", 0, "deep")])).toEqual({ perCity: false, everywhere: "deep" });
     expect(coverageShown([city("Osaka", 2, "stub"), city("Kyoto", 5, "stub")])).toEqual({ perCity: false, everywhere: "stub" });
+  });
+});
+
+describe("the note above Accept", () => {
+  it("promises dates only when the route has them", () => {
+    expect(copy.proposal.limits("Kyoto", false, true)).toMatch(/route and dates/);
+    expect(copy.proposal.limits("Kyoto", false, false)).not.toMatch(/dates/);
+    expect(copy.proposal.limits("Kyoto", false, false)).toMatch(/sets your route/);
   });
 });
 

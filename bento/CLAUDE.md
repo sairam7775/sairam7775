@@ -382,7 +382,8 @@ Practically:
 - Travellers see the trains between stops twice: on a route proposal
   (`RouteDiff.legs`, saved with it) and on each travel day of the plan,
   worked out again from the accepted route on every render
-  (`assessRoute` → `travelDays`), so they always match it. A leg's
+  (`tripTravelDays` in `trip-view.ts`, which keeps the engine out of the
+  page), so they always match it. A leg's
   `movingTo` is the stay it ends at; day trips there and back have none
   and no travel day.
 - `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.

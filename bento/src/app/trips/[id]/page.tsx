@@ -11,7 +11,7 @@ import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
-import { buildTripView } from "@/lib/bento-man/trip-view";
+import { buildTripView, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { loadGaps } from "@/lib/vault/store";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
@@ -28,8 +28,6 @@ import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
 import { datesBetween, reviewFromRow, reviewOpen, snapshotCities, snapshotFromRow } from "@/lib/trips/review";
 import { TripReviewCard } from "./trip-review";
 import type { CoverageTier } from "@/lib/types";
-import { assessRoute } from "@/lib/engine/route";
-import { travelDays } from "@/lib/trips/travel-days";
 
 const t = copy.trip;
 
@@ -84,18 +82,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const requested = typeof sp.day === "string" ? sp.day : null;
   const { dayList, statsByDate, selected, selectedDay, selectedMeta, stats } = buildTripView(state, requested);
 
-  // Each moving day's trains, from Bento's own train data. Worked out again
-  // from the accepted route rather than stored, so it always matches it. A
-  // failure here only leaves the trains off the page.
-  const sortedCities = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
-  const travel = sortedCities.length > 1
-    ? await Promise.all([store.cities(), store.graph()])
-        .then(([facts, graph]) => {
-          const a = assessRoute(sortedCities.map((c) => ({ cityId: c.cityId, nights: c.nights })), new Map(facts.map((f) => [f.id, f])), graph);
-          return travelDays(sortedCities, a.legs);
-        })
-        .catch(() => null)
-    : null;
+  // Each travel day's trains. A failure only leaves them off the page.
+  const travel = await tripTravelDays(store, state).catch(() => null);
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
   const today = new Date().toISOString().slice(0, 10);

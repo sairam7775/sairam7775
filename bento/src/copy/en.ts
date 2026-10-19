@@ -603,8 +603,9 @@ export const en = {
     thereAndBack: "there and back",
     // Under a route whose stays include places Bento can't plan yet. What
     // works comes first; `cities` arrives already joined ("Osaka or Kyoto").
-    limits: (cities: string, all: boolean) =>
-      `Accepting sets your route and dates, with the trains between each stop. Bento can't plan days in ${all ? "any of these places" : cities} yet, so those days stay open for you to fill.`,
+    // `dated`: the trip has dates, so accepting also sets each stop's days.
+    limits: (cities: string, all: boolean, dated: boolean) =>
+      `Accepting sets your route${dated ? " and dates" : ""}, with the trains between each stop. Bento can't plan days in ${all ? "any of these places" : cities} yet, so ${dated ? "those days stay" : "your days there will stay"} open for you to fill.`,
     change: {
       kept: "kept",
       added: "new",

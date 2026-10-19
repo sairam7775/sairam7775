@@ -142,7 +142,12 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
           )}
           {uncovered && uncovered.names.length > 0 && (
             <p className="mt-3 border-l-[3px] border-tamago bg-tamago-soft px-3 py-2 text-[0.84rem] leading-snug text-ink-2">
-              {t.limits(new Intl.ListFormat(copy.locale, { type: "disjunction" }).format(uncovered.names), uncovered.all)}
+              {t.limits(
+                new Intl.ListFormat(copy.locale, { type: "disjunction" }).format(uncovered.names),
+                uncovered.all,
+                // A route proposed for a trip with no dates sets the route only.
+                Boolean(proposal.dates) || proposal.route.after.some((c) => c.arriveDate),
+              )}
             </p>
           )}
         </div>
