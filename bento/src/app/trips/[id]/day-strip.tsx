@@ -8,21 +8,35 @@ export function DayStrip({ label, selected, children }: { label: string; selecte
 
   useEffect(() => {
     const el = strip.current;
-    const chip = el?.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!el || !chip || !selected) return;
+    if (!el || !selected) return;
 
-    const stripRect = el.getBoundingClientRect();
-    const chipRect = chip.getBoundingClientRect();
-    const left = centeredDayScrollLeft({
-      stripLeft: stripRect.left,
-      stripScrollLeft: el.scrollLeft,
-      stripClientWidth: el.clientWidth,
-      stripScrollWidth: el.scrollWidth,
-      chipLeft: chipRect.left,
-      chipWidth: chipRect.width,
+    const centre = () => {
+      const chip = el.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!chip) return;
+      const stripRect = el.getBoundingClientRect();
+      const chipRect = chip.getBoundingClientRect();
+      // Assign only the strip's horizontal offset: scrolling a chip into view also moves the page.
+      el.scrollLeft = centeredDayScrollLeft({
+        stripLeft: stripRect.left,
+        stripScrollLeft: el.scrollLeft,
+        stripClientWidth: el.clientWidth,
+        stripScrollWidth: el.scrollWidth,
+        chipLeft: chipRect.left,
+        chipWidth: chipRect.width,
+      });
+    };
+    centre();
+
+    // Turning a phone or resizing the window changes the strip's width, which
+    // can leave the selected day outside it: centre it again when that happens.
+    let width = el.clientWidth;
+    const resized = new ResizeObserver(() => {
+      if (el.clientWidth === width) return;
+      width = el.clientWidth;
+      centre();
     });
-    // Assign only the strip's horizontal offset: scrolling a chip into view also moves the page.
-    el.scrollLeft = left;
+    resized.observe(el);
+    return () => resized.disconnect();
   }, [selected]);
 
   return (

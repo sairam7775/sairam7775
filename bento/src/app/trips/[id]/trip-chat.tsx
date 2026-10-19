@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { copy } from "@/copy";
 
-const PHONE_QUERY = "(max-width: 1023px)";
+// The exact opposite of Tailwind's `lg` (min-width: 64rem), so the script and
+// the classes always agree on whether this is the phone layout: a fixed pixel
+// width drifts from a rem breakpoint when the browser's font size is larger.
+const PHONE_QUERY = "not all and (min-width: 64rem)";
 
 /** One chat instance stays mounted while its phone presentation changes. */
 export function TripChat({ children }: { children: ReactNode }) {
