@@ -97,6 +97,21 @@ describe("redactConfirmation", () => {
     expect(r.text).toBe("CONFIRMATION\nDETAILS\nBooking reference: [reference removed]");
   });
 
+  it("removes a reference labelled Booking # or Reservation #", () => {
+    for (const label of ["Booking #: ", "Booking # ", "Reservation #"]) {
+      const r = redactConfirmation(`${label}ABC123\nHotel Kanra Kyoto`);
+      expect(r.reference).toBe("ABC123");
+      expect(r.text).not.toContain("ABC123");
+    }
+  });
+
+  it("never takes a date for the reference", () => {
+    const r = redactConfirmation("Confirmation\n2026-11-20\nBooking reference: ABC123");
+    expect(r.reference).toBe("ABC123");
+    expect(r.text).toBe("Confirmation\n2026-11-20\nBooking reference: [reference removed]");
+    expect(redactConfirmation("Confirmation\n20/11/2026\nRef: ABC123").reference).toBe("ABC123");
+  });
+
   it("still takes a reference on the line under a bare label when it has a digit", () => {
     const r = redactConfirmation("Reference\nABC123\nHotel Kanra Kyoto");
     expect(r.reference).toBe("ABC123");
