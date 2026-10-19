@@ -98,7 +98,7 @@ function parseCreateFunction(statement: string): FunctionState | null {
 
 function parseAlterFunction(
   statement: string,
-): (Pick<FunctionState, "name" | "argumentTypes"> & { searchPath?: string; securityDefiner?: boolean }) | null {
+): (Pick<FunctionState, "name" | "argumentTypes"> & { searchPath?: string | null; securityDefiner?: boolean }) | null {
   const alter = /^alter\s+function\s+((?:"[^"]+"|[\w$]+)(?:\s*\.\s*(?:"[^"]+"|[\w$]+))?)\s*\(([\s\S]*)\)\s*(.*);$/i.exec(
     statement,
   );
@@ -106,13 +106,15 @@ function parseAlterFunction(
 
   // An ALTER can change the search path, the security mode, or both: a
   // function made SECURITY DEFINER later needs a safe path just the same.
+  // RESET search_path (or RESET ALL) removes the path, so it reads as none.
   const searchPath = configuredSearchPath(alter[3]);
+  const reset = /\breset\s+(?:search_path|all)\b/i.test(alter[3]);
   const mode = /\bsecurity\s+(definer|invoker)\b/i.exec(alter[3])?.[1].toLowerCase();
-  if (searchPath === null && !mode) return null;
+  if (searchPath === null && !reset && !mode) return null;
   return {
     name: functionName(alter[1]),
     argumentTypes: splitArguments(alter[2]).map(normalizeType),
-    ...(searchPath !== null ? { searchPath } : {}),
+    ...(searchPath !== null ? { searchPath } : reset ? { searchPath: null } : {}),
     ...(mode ? { securityDefiner: mode === "definer" } : {}),
   };
 }
@@ -151,7 +153,7 @@ function functionsAfter(migrations: { file: string; sql: string }[]): Map<string
         if (!existing) throw new Error(`${file} alters unknown function ${key}`);
         functions.set(key, {
           ...existing,
-          searchPath: altered.searchPath ?? existing.searchPath,
+          searchPath: altered.searchPath !== undefined ? altered.searchPath : existing.searchPath,
           securityDefiner: altered.securityDefiner ?? existing.securityDefiner,
           migration: file,
         });
@@ -181,5 +183,14 @@ describe("SECURITY DEFINER function search paths", () => {
     const fixed = { file: "0003_c.sql", sql: "alter function public.f(text) set search_path = public, pg_temp;" };
     expect(unsafeDefiners(functionsAfter([created, promoted]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
     expect(unsafeDefiners(functionsAfter([created, promoted, fixed]))).toEqual([]);
+  });
+
+  it("catches a later ALTER that resets the search path", () => {
+    const created = { file: "0001_a.sql", sql: "create or replace function public.f(p_a text)\nreturns void\nlanguage sql\nsecurity definer\nset search_path = public, pg_temp\nas $$ select 1 $$;" };
+    const reset = { file: "0002_b.sql", sql: "alter function public.f(text) reset search_path;" };
+    const resetAll = { file: "0002_b.sql", sql: "alter function public.f(text) reset all;" };
+    expect(unsafeDefiners(functionsAfter([created]))).toEqual([]);
+    expect(unsafeDefiners(functionsAfter([created, reset]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
+    expect(unsafeDefiners(functionsAfter([created, resetAll]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
   });
 });
