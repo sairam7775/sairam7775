@@ -81,6 +81,14 @@ describe("verifyTwoFactor", () => {
     expect(r).toEqual({ step: "start", error: t.setupExpired });
   });
 
+  it("keeps the setup when the setup can't be looked up either", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.listFactors.mockResolvedValue({ data: null, error: { message: "Auth unavailable" } });
+    mocks.challengeAndVerify.mockResolvedValue({ error: { code: "unexpected_failure", message: "Auth unavailable" } });
+    const r = await verifyTwoFactor({ step: "verify", factorId: "f1", qr: "q", secret: "s" }, form({ factorId: "f1", code: "123456" }));
+    expect(r).toEqual({ step: "verify", factorId: "f1", qr: "q", secret: "s", error: t.verifyFailed });
+  });
+
   it("keeps the setup and asks to try again when the check itself failed", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     mocks.listFactors.mockResolvedValue({ data: { all: [{ id: "f1", factor_type: "totp", status: "unverified" }] }, error: null });

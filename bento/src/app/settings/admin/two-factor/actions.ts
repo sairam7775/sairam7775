@@ -55,8 +55,9 @@ export async function verifyTwoFactor(prev: TwoFactorState, form: FormData): Pro
   if (!parsed.success) return { ...keep, error: t.badCode };
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: parsed.data.factorId, code: parsed.data.code });
   if (error) {
-    const { data: factors } = await supabase.auth.mfa.listFactors();
-    const stillThere = (factors?.all ?? []).some((f) => f.id === parsed.data.factorId);
+    // Only a lookup that worked can say the setup is gone; otherwise keep it.
+    const { data: factors, error: lookupError } = await supabase.auth.mfa.listFactors();
+    const stillThere = Boolean(lookupError) || (factors?.all ?? []).some((f) => f.id === parsed.data.factorId);
     switch (afterVerifyError(error.code, stillThere)) {
       case "wrong":
         return { ...keep, error: t.wrongCode };
