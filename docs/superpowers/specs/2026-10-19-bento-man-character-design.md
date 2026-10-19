@@ -73,7 +73,7 @@ One component, `<BentoManFigure mood form size />`:
 5. **Failure**: if the player or a file fails to load, the still pose stays. Nothing else changes.
 6. **Colours**: `globals.css` maps the layer classes (`.bm-line`, `.bm-coat`, …) to `--color-mascot-*` variables, with dark values in the existing dark-theme blocks. lottie-web's SVG renderer writes colours as attributes, which CSS overrides.
 7. **Accessibility**: the figure is decoration (`aria-hidden`). Every message it accompanies stays as text. Nothing flashes.
-8. **Once per visit**: *hello* on a given page plays at most once per browser session (remembered in `sessionStorage`, wrapped in try/catch); later visits show resting.
+8. **Every visit**: *hello* plays each time its page loads, then settles into resting. (Owner's decision at the plan stage, 2026-10-19: remembering a visit would need device storage the cookie policy would then have to list; a 2–3 second wave per visit is the simpler choice.)
 
 No new Content-Security-Policy is needed (the app sets only `frame-ancestors`, and the light player doesn't use `eval`).
 
@@ -95,7 +95,7 @@ No new Content-Security-Policy is needed (the app sets only `frame-ancestors`, a
 
 ## Checks
 
-- **Unit tests**: generator staleness; Lottie sanity (version, frame rate, size, markers, every layer's class is a known role); play rules (the once-per-session memory, the proposed → accepted trigger, the reduced-motion and visibility gate as pure functions).
+- **Unit tests**: generator staleness; Lottie sanity (version, frame rate, size, markers, every layer's class is a known role); play rules (the proposed → accepted trigger, the reduced-motion gate, which figures have a file, the intro/idle segments).
 - **Browser**, at 390 px and desktop, light and dark: each placement plays and settles; reduced motion shows stills and downloads no player; a blocked player leaves the stills.
 - **Accessibility**: axe (WCAG 2.2 AA) on chat, trips, home and 404, light and dark: no new findings.
 - **Performance**: Lighthouse on home and trips before and after. Layout shift stays 0; Largest Contentful Paint no worse than 100 ms; the player is absent from the first-load bundle.
