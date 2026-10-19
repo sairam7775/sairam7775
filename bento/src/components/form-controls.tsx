@@ -3,6 +3,7 @@
 import { useState, type ComponentProps, type MouseEvent, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { copy } from "@/copy";
+import { summariseDateRange } from "@/lib/trips/date-range-summary";
 import { confirmSubmit } from "./confirm-submit";
 
 /** Opens the browser's calendar on a click anywhere in the field, not just
@@ -42,6 +43,21 @@ export function DateRangeInputs({
 }) {
   const [start, setStart] = useState(defaultStart ?? "");
   const [end, setEnd] = useState(defaultEnd ?? "");
+  const summary = summariseDateRange(start, end);
+  const summaryId = `${startName}-date-words`;
+  const summaryText = summary?.kind === "arrival"
+    ? copy.trips.new.datesInWords.arrival(formatDateInWords(summary.date))
+    : summary?.kind === "departure"
+      ? copy.trips.new.datesInWords.departure(formatDateInWords(summary.date))
+      : summary?.kind === "range"
+        ? copy.trips.new.datesInWords.range(
+          formatDateInWords(summary.start),
+          formatDateInWords(summary.end),
+          summary.nights,
+        )
+        : summary?.kind === "endBeforeStart"
+          ? copy.trips.errors.endBeforeStart
+          : "";
   return (
     <>
       <div className="flex flex-col gap-1.5">
@@ -50,8 +66,11 @@ export function DateRangeInputs({
           id={startName}
           name={startName}
           value={start}
+          aria-describedby={summaryId}
           onChange={(e) => {
             setStart(e.target.value);
+            // A later arrival carries the departure with it, so the range is
+            // never backwards; the warning below is only for a typed date.
             if (end && e.target.value && end < e.target.value) setEnd(e.target.value);
           }}
           className={inputClass}
@@ -59,10 +78,32 @@ export function DateRangeInputs({
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor={endName} className={labelClass}>{endLabel}</label>
-        <DateInput id={endName} name={endName} value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} className={inputClass} />
+        <DateInput id={endName} name={endName} value={end} min={start || undefined} aria-describedby={summaryId} onChange={(e) => setEnd(e.target.value)} className={inputClass} />
       </div>
+      <p
+        id={summaryId}
+        aria-live="polite"
+        hidden={!summaryText}
+        className={`col-span-full text-[0.85rem] ${summary?.kind === "endBeforeStart" ? "text-ume" : "text-ink-2"}`}
+      >
+        {summaryText}
+      </p>
     </>
   );
+}
+
+function formatDateInWords(date: string) {
+  return new Intl.DateTimeFormat(copy.locale, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  })
+    .formatToParts(new Date(`${date}T00:00:00Z`))
+    .filter((part) => part.type !== "literal")
+    .map((part) => part.value)
+    .join(" ");
 }
 
 /** A password field with a Show / Hide toggle, so a typo can be checked
