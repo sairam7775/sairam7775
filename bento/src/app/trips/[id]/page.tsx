@@ -18,6 +18,8 @@ import { updateTrip } from "../actions";
 import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
 import { ShareLink } from "./share-link";
 import { TripActions } from "./trip-actions";
+import { DayStrip } from "./day-strip";
+import { TripChat } from "./trip-chat";
 import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
 import { Chat, type ChatMessage } from "./chat";
@@ -158,8 +160,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     ? [...(gaps?.gaps ?? []), ...(gaps?.dismissed ?? [])].find((g) => g.key === askKey)?.actions.find((a) => a.kind === "ask_bento_man")?.hint
     : undefined;
 
+  // Room at the bottom on a phone, so the floating Ask Bento Man button
+  // never covers the end of the plan.
   return (
-    <main className="mx-auto w-full max-w-[1680px] px-4 py-6 sm:px-6 lg:px-10">
+    <main className="mx-auto w-full max-w-[1680px] px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pb-6">
       {state.trip.startDate && <UseSeason season={seasonOf(state.trip.startDate)} />}
       <Tour id="trip" seen={await tourSeen("trip")} />
       <AnalyticsUser id={user.id} />
@@ -230,12 +234,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               }
               /* Shown while shared even with no route, so a link can always be switched off. */
               share={state.cities.length > 0 || shareUrl ? sharePanel : null}
-            >
-              {/* On a phone the conversation sits below the whole plan. */}
-              <a href="#bento-man" className="inline-flex min-h-10 items-center rounded-full bg-accent px-4 text-[0.88rem] font-medium text-on-accent hover:bg-accent-deep lg:hidden">
-                {t.askBentoMan}
-              </a>
-            </TripActions>
+            />
           </header>
 
           <div className="mt-4"><ErrorNote message={error} /></div>
@@ -276,7 +275,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           )}
 
           {dayList.length > 0 && (
-            <nav aria-label={t.daysLabel} className="up mt-5 -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0" style={{ animationDelay: ".1s" }}>
+            <DayStrip label={t.daysLabel} selected={selected}>
               <ol className="flex w-max gap-2 pb-1">
                 {dayList.map(([date, meta], i) => {
                   const s = statsByDate.get(date) ?? null;
@@ -300,7 +299,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                   );
                 })}
               </ol>
-            </nav>
+            </DayStrip>
           )}
 
           {selected && selectedMeta ? (
@@ -347,9 +346,9 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
           )}
         </section>
 
-        <section id="bento-man" data-tour="chat" aria-label={copy.chat.name} className="tile up flex scroll-mt-4 bg-surface! h-[min(80dvh,720px)] flex-col overflow-hidden lg:sticky lg:top-6 lg:h-[calc(100dvh-8.5rem)] lg:min-h-[520px]" style={{ animationDelay: ".15s" }}>
+        <TripChat>
           <Chat tripId={id} cityNames={cityNames} initial={messages} ask={ask} />
-        </section>
+        </TripChat>
       </div>
     </main>
   );

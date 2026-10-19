@@ -413,7 +413,8 @@ export const en = {
       dontAsk: "Don't ask",
       settingFailed: "That setting didn't save. Try again.",
     },
-    askBentoMan: "Ask Bento Man ↓",
+    askBentoMan: "Ask Bento Man",
+    closeBentoMan: "Close",
     bookingsBar: {
       blocking: (n: number) => `${n} blocking`,
       label: "Bookings",

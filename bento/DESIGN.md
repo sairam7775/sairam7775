@@ -229,7 +229,7 @@ Text: `{colors.ink}` for headings and body, `{colors.ink-2}` for secondary copy,
 
 ## Layout
 
-- **Trip page:** two columns on desktop — the plan (fluid) and Bento Man (`minmax(380px, 34%)`). The chat is sticky and sized to the viewport so its input is always visible. On a phone the chat follows the plan, with an "Ask Bento Man ↓" jump link near the top.
+- **Trip page:** two columns on desktop — the plan (fluid) and Bento Man (`minmax(380px, 34%)`). The chat is sticky and sized to the viewport so its input is always visible. On a phone, the day selector sticks below the safe area with a paper background; the floating "Ask Bento Man" button opens the chat as a bottom sheet over the day.
 - **Header:** one row — logo (→ your trips), back link, page badges, sign out.
 - **Lists and forms:** a single readable column, 768–1152px.
 - Spacing is a 4px grid; 16px between related blocks, 24px between sections.
@@ -247,7 +247,7 @@ One shadow (`{elevation.tile}`) for tiles and floating pills. The lacquer box ha
 - **The day box** — lacquer frame; compartments sized by duration; pin / ↑ / ↓ / remove on each stop.
 - **Bento Man panel** — header (Bento Man's head + name + "Nothing changes until you accept it"), scrolling conversation, input pinned to the bottom. User messages are lacquer bubbles; Bento Man's are plain text beside his head. Empty state offers example prompts as chips.
 - **Proposal card** — paper card with a sunk header ("**Proposal** · summary"), the route or days as they would be, change tags (new / moved / out), warnings in tamago, and Accept / Reject.
-- **Trip actions** — one row of secondary pills under the trip's route: Edit trip, Download plan, Share plan (a green dot while a link is out), and Ask Bento Man ↓ on a phone. The open one's panel sits below the whole row, one at a time, never between the pills. Changing or ending a share link is a quiet button that confirms.
+- **Trip actions** — one row of secondary pills under the trip's route: Edit trip, Download plan and Share plan (a green dot while a link is out). The open one's panel sits below the whole row, one at a time, never between the pills. Changing or ending a share link is a quiet button that confirms. On a phone, "Ask Bento Man" is a floating button above the bottom safe area; it opens the single chat panel as an 85dvh sheet over the day, with a dim backdrop and a close button.
 - **Settings list** — Settings is a short list of rows in tiles, not a page of forms. A row is a title, what's set now in ink-2 under it, and a › chevron; it opens that group's page (Personal information, Appearance, Privacy & data, Admin), whose back link returns to the list. A row that acts at once (Show the tour again) has no chevron. Delete account is an ume row on Privacy & data that opens its own page: a destructive form is never left open on a list.
 - **Gap ribbon** — one bar per night, solid edamame where covered, ume where not; the worst gap as a sentence; links to Bookings.
 
