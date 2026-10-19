@@ -12,16 +12,18 @@ describe("trainRows", () => {
       leg("kyoto-city", "himeji", "hiroshima-city", "Kyoto → Himeji"),
       leg("himeji", "hiroshima-city", "hiroshima-city", "Himeji → Hiroshima"),
     ]);
-    expect(rows.map((r) => [r.summary, r.back])).toEqual([
-      ["Kyoto → Nara", true],
-      ["Kyoto → Himeji", false],
-      ["Himeji → Hiroshima", false],
+    expect(rows.map((r) => [r.summary, r.back?.summary ?? null])).toEqual([
+      ["Kyoto → Nara", "Nara → Kyoto"],
+      ["Kyoto → Himeji", null],
+      ["Himeji → Hiroshima", null],
     ]);
+    // The way back keeps its own lines: it can be a different service.
     expect(rows[0].lines).toEqual(["Kyoto → Nara line"]);
+    expect(rows[0].back?.lines).toEqual(["Nara → Kyoto line"]);
   });
 
   it("keeps a one-way leg with no way back as it is", () => {
-    expect(trainRows([leg("kyoto-city", "nara-city", null)]).map((r) => r.back)).toEqual([false]);
+    expect(trainRows([leg("kyoto-city", "nara-city", null)]).map((r) => r.back)).toEqual([null]);
   });
 });
 
@@ -44,6 +46,11 @@ describe("uncoveredStays", () => {
 
   it("says when it is every place you sleep", () => {
     expect(uncoveredStays([city("Osaka", 2, "stub"), city("Kyoto", 5, "stub")])).toEqual({ names: ["Osaka", "Kyoto"], all: true });
+  });
+
+  it("names the stays, not 'any of these places', when a day-trip stop can be planned", () => {
+    expect(uncoveredStays([city("Osaka", 2, "stub"), city("Nara", 0, "deep"), city("Kyoto", 5, "stub")]))
+      .toEqual({ names: ["Osaka", "Kyoto"], all: false });
   });
 
   it("is empty when every stay can be planned", () => {

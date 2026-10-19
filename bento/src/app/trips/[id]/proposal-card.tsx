@@ -114,7 +114,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
               <ul className="mt-1.5 flex flex-col gap-1.5">
                 {trainRows(proposal.route.legs).map((r, i) => (
                   <li key={`${i}-${r.summary}`} className="text-[0.86rem]">
-                    {r.lines.length ? (
+                    {r.lines.length || r.back ? (
                       <details>
                         <summary className="cursor-pointer">
                           {r.summary}
@@ -123,6 +123,14 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
                         <ul className="mt-1 flex flex-col gap-0.5 pl-4">
                           {r.lines.map((line) => <li key={line} className="mono text-[0.76rem] leading-snug text-ink-2">{line}</li>)}
                         </ul>
+                        {r.back && (
+                          <>
+                            <p className="mt-1.5 pl-4 text-[0.82rem]">{r.back.summary}</p>
+                            <ul className="mt-0.5 flex flex-col gap-0.5 pl-4">
+                              {r.back.lines.map((line) => <li key={line} className="mono text-[0.76rem] leading-snug text-ink-2">{line}</li>)}
+                            </ul>
+                          </>
+                        )}
                       </details>
                     ) : (
                       <span className="text-ink-2">{r.summary}</span>

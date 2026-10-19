@@ -12,14 +12,18 @@ interface Leg {
   lines: string[];
 }
 
-export function trainRows(legs: Leg[]): { summary: string; lines: string[]; back: boolean }[] {
-  const rows: { summary: string; lines: string[]; back: boolean }[] = [];
+type TrainRow = { summary: string; lines: string[]; back: { summary: string; lines: string[] } | null };
+
+/** One row per journey; a day trip's way back rides in its row with its
+ *  own summary and lines, since it can be a different service. */
+export function trainRows(legs: Leg[]): TrainRow[] {
+  const rows: TrainRow[] = [];
   for (let i = 0; i < legs.length; i++) {
     const l = legs[i];
     const n = legs[i + 1];
-    const back = l.movingTo === null && n != null && n.movingTo === null && n.fromCityId === l.toCityId && n.toCityId === l.fromCityId;
-    rows.push({ summary: l.summary, lines: l.lines, back });
-    if (back) i++;
+    const folds = l.movingTo === null && n != null && n.movingTo === null && n.fromCityId === l.toCityId && n.toCityId === l.fromCityId;
+    rows.push({ summary: l.summary, lines: l.lines, back: folds ? { summary: n.summary, lines: n.lines } : null });
+    if (folds) i++;
   }
   return rows;
 }
@@ -32,8 +36,10 @@ export function coverageShown(cities: { tier: CoverageTier }[]): { perCity: bool
   return tiers.size === 1 ? { perCity: false, everywhere: [...tiers][0] } : { perCity: true, everywhere: null };
 }
 
+/** The places you sleep that Bento can't plan days in yet. `all` only when
+ *  no stop on the route can be planned, day trips included, so the card
+ *  never says "any of these places" beside a stop that can. */
 export function uncoveredStays(cities: { name: string; nights: number; tier: CoverageTier }[]): { names: string[]; all: boolean } {
-  const stays = cities.filter((c) => c.nights > 0);
-  const names = stays.filter((c) => c.tier === "stub").map((c) => c.name);
-  return { names, all: names.length > 0 && names.length === stays.length };
+  const names = cities.filter((c) => c.nights > 0 && c.tier === "stub").map((c) => c.name);
+  return { names, all: names.length > 0 && cities.every((c) => c.tier === "stub") };
 }
