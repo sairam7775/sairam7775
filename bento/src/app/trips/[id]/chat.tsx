@@ -59,6 +59,19 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [messages, activity, error]);
 
+  // A conversation mounted out of sight (the phone's closed sheet) has no
+  // height to scroll to the bottom of. When it appears, or its box changes
+  // size, show the latest message, unless the traveller had scrolled up.
+  useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const resized = new ResizeObserver(() => {
+      if (pinned.current) el.scrollTop = el.scrollHeight;
+    });
+    resized.observe(el);
+    return () => resized.disconnect();
+  }, []);
+
   // The box grows with what's typed, up to a few lines, then scrolls.
   useEffect(() => {
     const el = field.current;
