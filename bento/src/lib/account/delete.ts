@@ -12,29 +12,43 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *     rate limits and admin access.
  *
  *  `admin` is the service-role client: only it can delete an auth user. */
+// Pauses between tries of the PostHog deletion: three tries in about two
+// seconds rides out a blip without holding the person on the page for long.
+const RETRY_WAITS_MS = [500, 1500];
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 export async function deleteAccountData(
   admin: Pick<SupabaseClient, "from" | "auth">,
   userId: string,
   deleteAnalytics: ((userId: string) => Promise<void>) | null,
-): Promise<{ analyticsDeleted: boolean }> {
+  { wait = sleep }: { wait?: (ms: number) => Promise<void> } = {},
+): Promise<{ analyticsDeleted: boolean; analyticsPending: boolean }> {
   const unlink = await admin.from("api_usage").update({ user_id: null }).eq("user_id", userId);
   if (unlink.error) throw new Error(`api_usage: ${unlink.error.message}`);
 
   // Analytics never blocks the deletion: a PostHog outage must not keep
-  // someone's account alive. A failure is logged for a manual follow-up.
+  // someone's account alive. It is tried three times; if it still fails, it
+  // is logged for a manual follow-up and the person is told it is pending,
+  // never that it is done.
   let analyticsDeleted = false;
   if (deleteAnalytics) {
-    try {
-      await deleteAnalytics(userId);
-      analyticsDeleted = true;
-    } catch (e) {
-      console.error(`PostHog deletion failed for a deleted account (${userId}); delete it by hand.`, e instanceof Error ? e.message : e);
+    for (let attempt = 0; !analyticsDeleted; attempt++) {
+      try {
+        await deleteAnalytics(userId);
+        analyticsDeleted = true;
+      } catch (e) {
+        if (attempt >= RETRY_WAITS_MS.length) {
+          console.error(`PostHog deletion failed for a deleted account (${userId}); delete it by hand.`, e instanceof Error ? e.message : e);
+          break;
+        }
+        await wait(RETRY_WAITS_MS[attempt]);
+      }
     }
   }
 
   const gone = await admin.auth.admin.deleteUser(userId);
   if (gone.error) throw new Error(`auth: ${gone.error.message}`);
-  return { analyticsDeleted };
+  return { analyticsDeleted, analyticsPending: deleteAnalytics !== null && !analyticsDeleted };
 }
 
 /** Deletes the PostHog person whose distinct id is this account's id, and
