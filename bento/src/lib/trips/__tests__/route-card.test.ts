@@ -50,6 +50,9 @@ describe("routeWideCoverage", () => {
     expect(routeWideCoverage([city("Nara", 0, "stub"), city("Himeji", 0, "stub")])).toBe("stub");
     // With nowhere to sleep the engine builds no journeys, so no trains are promised.
     expect(copy.proposal.canPlanEverywhere.stub).not.toMatch(/train/i);
+    // Nor per city: a stop outside Bento's train data has none. The trains
+    // list says which journeys Bento knows.
+    expect(copy.proposal.canPlan.stub).not.toMatch(/train/i);
   });
 });
 

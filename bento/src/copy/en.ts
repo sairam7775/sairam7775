@@ -598,7 +598,9 @@ export const en = {
     canPlan: {
       deep: "Well covered: Bento can build full days here.",
       outline: "Main sights only: Bento can suggest places here, but won't call a day complete.",
-      stub: "Not covered yet: Bento can't plan days here, only the trains in and out.",
+      // No train promise here: a stop outside Bento's train data has none,
+      // and the Trains list below says which journeys Bento knows.
+      stub: "Not covered yet: Bento can't plan days here yet.",
     },
     // When every stop is known equally well: said once, under the route. A
     // route Bento knows none of is explained by `limits` instead.
