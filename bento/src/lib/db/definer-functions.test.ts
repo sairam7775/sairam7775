@@ -98,18 +98,22 @@ function parseCreateFunction(statement: string): FunctionState | null {
 
 function parseAlterFunction(
   statement: string,
-): Pick<FunctionState, "name" | "argumentTypes" | "searchPath"> | null {
+): (Pick<FunctionState, "name" | "argumentTypes"> & { searchPath?: string; securityDefiner?: boolean }) | null {
   const alter = /^alter\s+function\s+((?:"[^"]+"|[\w$]+)(?:\s*\.\s*(?:"[^"]+"|[\w$]+))?)\s*\(([\s\S]*)\)\s*(.*);$/i.exec(
     statement,
   );
   if (!alter) return null;
 
+  // An ALTER can change the search path, the security mode, or both: a
+  // function made SECURITY DEFINER later needs a safe path just the same.
   const searchPath = configuredSearchPath(alter[3]);
-  if (searchPath === null) return null;
+  const mode = /\bsecurity\s+(definer|invoker)\b/i.exec(alter[3])?.[1].toLowerCase();
+  if (searchPath === null && !mode) return null;
   return {
     name: functionName(alter[1]),
     argumentTypes: splitArguments(alter[2]).map(normalizeType),
-    searchPath,
+    ...(searchPath !== null ? { searchPath } : {}),
+    ...(mode ? { securityDefiner: mode === "definer" } : {}),
   };
 }
 
@@ -128,36 +132,54 @@ function hasSafeSearchPath(path: string | null): boolean {
   return entries.at(-1)?.toLowerCase() === "pg_temp";
 }
 
+/** Every function as it stands after these migrations, in order. */
+function functionsAfter(migrations: { file: string; sql: string }[]): Map<string, FunctionState> {
+  const functions = new Map<string, FunctionState>();
+  for (const { file, sql } of migrations) {
+    for (const statement of migrationFunctionStatements(sql)) {
+      const created = parseCreateFunction(statement);
+      if (created) {
+        created.migration = file;
+        functions.set(identity(created), created);
+        continue;
+      }
+
+      const altered = parseAlterFunction(statement);
+      if (altered) {
+        const key = identity(altered);
+        const existing = functions.get(key);
+        if (!existing) throw new Error(`${file} alters unknown function ${key}`);
+        functions.set(key, {
+          ...existing,
+          searchPath: altered.searchPath ?? existing.searchPath,
+          securityDefiner: altered.securityDefiner ?? existing.securityDefiner,
+          migration: file,
+        });
+      }
+    }
+  }
+  return functions;
+}
+
+const unsafeDefiners = (functions: Map<string, FunctionState>) =>
+  [...functions.entries()]
+    .filter(([, fn]) => fn.securityDefiner && !hasSafeSearchPath(fn.searchPath))
+    .map(([signature, fn]) => `${signature} (last changed in ${fn.migration})`);
+
 describe("SECURITY DEFINER function search paths", () => {
   it("leaves pg_temp last (or uses an empty path) after all migrations", () => {
     const files = readdirSync(migrationsDirectory)
       .filter((file) => /^\d{4}_.*\.sql$/.test(file))
       .sort((left, right) => left.localeCompare(right));
-    const functions = new Map<string, FunctionState>();
+    const migrations = files.map((file) => ({ file, sql: readFileSync(join(migrationsDirectory, file), "utf8") }));
+    expect(unsafeDefiners(functionsAfter(migrations))).toEqual([]);
+  });
 
-    for (const file of files) {
-      const sql = readFileSync(join(migrationsDirectory, file), "utf8");
-      for (const statement of migrationFunctionStatements(sql)) {
-        const created = parseCreateFunction(statement);
-        if (created) {
-          created.migration = file;
-          functions.set(identity(created), created);
-          continue;
-        }
-
-        const altered = parseAlterFunction(statement);
-        if (altered) {
-          const key = identity(altered);
-          const existing = functions.get(key);
-          if (!existing) throw new Error(`${file} alters unknown function ${key}`);
-          functions.set(key, { ...existing, searchPath: altered.searchPath, migration: file });
-        }
-      }
-    }
-
-    const unsafe = [...functions.entries()]
-      .filter(([, fn]) => fn.securityDefiner && !hasSafeSearchPath(fn.searchPath))
-      .map(([signature, fn]) => `${signature} (last changed in ${fn.migration})`);
-    expect(unsafe).toEqual([]);
+  it("catches a function made SECURITY DEFINER by a later ALTER without a safe path", () => {
+    const created = { file: "0001_a.sql", sql: "create or replace function public.f(p_a text)\nreturns void\nlanguage sql\nas $$ select 1 $$;" };
+    const promoted = { file: "0002_b.sql", sql: "alter function public.f(text) security definer;" };
+    const fixed = { file: "0003_c.sql", sql: "alter function public.f(text) set search_path = public, pg_temp;" };
+    expect(unsafeDefiners(functionsAfter([created, promoted]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
+    expect(unsafeDefiners(functionsAfter([created, promoted, fixed]))).toEqual([]);
   });
 });
