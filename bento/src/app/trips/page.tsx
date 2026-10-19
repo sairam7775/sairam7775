@@ -11,6 +11,7 @@ import { copy } from "@/copy";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { reviewOpen } from "@/lib/trips/review";
 import { displayName } from "@/lib/account/name";
+import { BentoManFigure } from "@/components/mascot/figure";
 
 const t = copy.trips;
 
@@ -65,11 +66,16 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
       {user && <AnalyticsUser id={user.id} />}
       <Tour id="trips" seen={await tourSeen("trips")} />
 
-      <p className="up mt-8 flex flex-wrap items-baseline gap-x-2.5 text-[1.05rem]">
-        <span lang="ja" className="disp font-bold text-accent-ink">{hello.ja}</span>
-        <span className="text-ink-2">{name ? hello.named(name) : hello.plain}</span>
-      </p>
-      <h1 className="mt-1 text-3xl font-bold tracking-tight">{t.title}</h1>
+      <div className="up mt-8 flex items-center gap-4">
+        <BentoManFigure figure="full-hello" size={72} />
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-baseline gap-x-2.5 text-[1.05rem]">
+            <span lang="ja" className="disp font-bold text-accent-ink">{hello.ja}</span>
+            <span className="text-ink-2">{name ? hello.named(name) : hello.plain}</span>
+          </p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight">{t.title}</h1>
+        </div>
+      </div>
       <p className="mt-2 text-[0.95rem] text-ink-2">
         {t.signedInAs} <span className="mono break-all text-[0.85rem]">{user?.email}</span>
       </p>

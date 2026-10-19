@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { BentoMark } from "@/components/logo";
-import { BentoLoader } from "@/components/loading";
+import { BentoManFigure } from "@/components/mascot/figure";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
@@ -179,7 +178,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-3 border-b border-rule px-4 py-3">
-        <BentoMark size={28} />
+        <BentoManFigure figure="head-rest" size={28} />
         <div className="min-w-0">
           <h2 className="text-[1rem] font-bold leading-tight">{t.name}</h2>
           <p className="truncate text-[0.8rem] text-ink-3">{t.tagline}</p>
@@ -197,7 +196,10 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
       >
         {messages.length === 0 && (
           <div className="up rounded-tile bg-sunk px-5 py-5 text-[0.95rem] leading-relaxed text-ink-2">
-            <p>{t.intro}</p>
+            <div className="flex items-start gap-4">
+              <BentoManFigure figure="full-hello" size={88} />
+              <p>{t.intro}</p>
+            </div>
             <p className="mt-4 text-[0.8rem] font-medium text-ink-3">{t.tryThese}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {examples.map((x) => (
@@ -224,7 +226,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
             </div>
           ) : (
             <div key={m.id} className="flex gap-3">
-              <span className="mt-0.5 shrink-0"><BentoMark size={24} /></span>
+              <span className="mt-0.5 shrink-0"><BentoManFigure figure="head-rest" size={24} /></span>
               <div className="min-w-0 flex-1">
                 {m.content ? (
                   <p className="whitespace-pre-wrap break-words text-[0.95rem] leading-relaxed">{m.content}</p>
@@ -274,11 +276,12 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
   );
 }
 
-/** What Bento Man is doing right now, in words. */
+/** What Bento Man is doing right now, in words, with him thinking beside it.
+ *  The words are the live region; the figure is decoration. */
 function Working({ label, className = "" }: { label: string; className?: string }) {
   return (
-    <p className={`flex items-center gap-2 text-[0.85rem] text-ink-3 ${className}`}>
-      <BentoLoader size={18} label={label} />
+    <p role="status" aria-live="polite" className={`flex items-center gap-2 text-[0.85rem] text-ink-3 ${className}`}>
+      <BentoManFigure figure="head-think" size={20} />
       {label}…
     </p>
   );

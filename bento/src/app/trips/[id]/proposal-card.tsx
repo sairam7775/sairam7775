@@ -4,8 +4,10 @@ import { clock, describeDates, type DayDiff, type Proposal } from "@/lib/bento-m
 import { SubmitButton } from "@/components/form-controls";
 import { acceptProposal, rejectProposal } from "./actions";
 import { copy } from "@/copy";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics/client";
+import { BentoManFigure } from "@/components/mascot/figure";
+import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.proposal;
@@ -40,6 +42,15 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
     }
     was.current = status;
   }, [status, proposal, messageId]);
+  // Accepted while the card was open: Bento Man cheers where the buttons
+  // were, which is where the traveller is looking. A reload doesn't replay
+  // it. (Compared during render, React's way to respond to a changed prop.)
+  const [seen, setSeen] = useState(status);
+  const [cheer, setCheer] = useState(false);
+  if (status !== seen) {
+    setSeen(status);
+    if (cheers(seen, status)) setCheer(true);
+  }
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
   return (
     <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">
@@ -154,6 +165,12 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
             <input type="hidden" name="messageId" value={messageId} />
             <SubmitButton className="min-h-10 rounded-full border border-rule bg-surface px-5 text-[0.9rem] font-medium" pending={t.rejecting}>{t.reject}</SubmitButton>
           </form>
+        </div>
+      )}
+      {cheer && status === "accepted" && (
+        <div className="flex items-center gap-3 bg-sunk px-4 py-2.5">
+          <BentoManFigure figure="head-happy" size={32} />
+          <p className="text-[0.9rem] text-ink-2">{t.inPlan}</p>
         </div>
       )}
     </div>

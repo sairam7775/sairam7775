@@ -245,7 +245,7 @@ One shadow (`{elevation.tile}`) for tiles and floating pills. The lacquer box ha
 - **Inputs** — paper background, rule border, 12px radius, 44px tall. Date fields open the calendar on a click anywhere in the field; an end date can't precede its start.
 - **Day chips** — horizontal strip, one per date; the active day is lacquer with rice text; a thin bar fills with the day's active time, ume when over budget.
 - **The day box** — lacquer frame; compartments sized by duration; pin / ↑ / ↓ / remove on each stop.
-- **Bento Man panel** — header (mark + name + "Nothing changes until you accept it"), scrolling conversation, input pinned to the bottom. User messages are lacquer bubbles; Bento Man's are plain text beside the mark. Empty state offers example prompts as chips.
+- **Bento Man panel** — header (Bento Man's head + name + "Nothing changes until you accept it"), scrolling conversation, input pinned to the bottom. User messages are lacquer bubbles; Bento Man's are plain text beside his head. Empty state offers example prompts as chips.
 - **Proposal card** — paper card with a sunk header ("**Proposal** · summary"), the route or days as they would be, change tags (new / moved / out), warnings in tamago, and Accept / Reject.
 - **Trip actions** — one row of secondary pills under the trip's route: Edit trip, Download plan, Share plan (a green dot while a link is out), and Ask Bento Man ↓ on a phone. The open one's panel sits below the whole row, one at a time, never between the pills. Changing or ending a share link is a quiet button that confirms.
 - **Gap ribbon** — one bar per night, solid edamame where covered, ume where not; the worst gap as a sentence; links to Bookings.
@@ -253,8 +253,20 @@ One shadow (`{elevation.tile}`) for tiles and floating pills. The lacquer box ha
 ## Motion
 
 - Tiles **rise** into place on load (`.up`, 620ms, staggered with `animation-delay`); bars **grow**; badges **pop**; rings fill.
-- **Loading** is the Bento mark with the umeboshi hopping clockwise between compartments (`<BentoLoader>`), with a skeleton of the page's real shape on the trip page so nothing jumps when data arrives. In chat, the mini loader sits beside what Bento Man is doing ("Checking the route…").
+- **Loading** is the Bento mark with the umeboshi hopping clockwise between compartments (`<BentoLoader>`), with a skeleton of the page's real shape on the trip page so nothing jumps when data arrives. The loader stays the plain mark. In chat, Bento Man's thinking head sits beside what he is doing ("Checking the route…").
 - Everything stops under `prefers-reduced-motion`; the loader falls back to a gentle pulse.
+
+## Bento Man, the figure
+
+The guide who makes Bento Man someone to meet, not only a voice. His look was chosen by the owner on 2026-10-19 (`docs/superpowers/specs/2026-10-19-bento-man-character-design.md`); the art lives in `src/components/mascot/` as data.
+
+- **Anatomy** — the head is the Bento box as lacquer: dark rim with a thin highlight, four white compartments, the umeboshi top-left, two eyes in the lower compartments. No mouth, no food. The body is an indigo happi coat with wide sleeves, a white collar band and a tied belt; peach mitten hands; grey trousers, white socks, sandals; and the folded map he always carries.
+- **Two forms** — the *full* guide for big moments; the *head* alone where space is tight (20–40px). His eyes stay readable at 20px.
+- **Colours** — illustration, like the logo and the seasonal scenes, so the art keeps its own palette. The parts that must follow the theme are CSS variables (`--color-mascot-line`, `rim`, `sheen`, `coat`, `belt`, `pants`, `muted`) with dark values in both dark blocks. The head looks the same in both themes: white compartments, ink eyes.
+- **Moods** — *resting* (blinks, sways), *thinking* (the umeboshi hops to the empty compartment, eyes up), *happy* (the box bounces, eyes ^ ^, twinkles), *hello* (waves or winks), *lost* (scratches his head over the map, eyes searching, a "?").
+- **Where** — chat header and replies (head, 24–28px), a proposal you just accepted (his happy head where its buttons were, beside "It's in your plan."), the "Working…" line (thinking head, 20px), the empty chat (full, 88px), the trips greeting (full, 72px), the home page's sample note (full, 64px), the tour's first card (head, 36px), the 404 and error pages (lost, 120px).
+- **Still first** — every figure renders its still pose on the server in a fixed box; the animation's first frame is that pose, so nothing jumps when it starts. The player loads only when he is on screen and motion is allowed; under `prefers-reduced-motion` he stays still and no player is downloaded. He is decoration: `aria-hidden`, never the only carrier of a message.
+- **Not changed by him** — the logo, favicons and the page loader stay the plain mark. His voice is unchanged (see Voice).
 
 ## Seasonal backdrop
 

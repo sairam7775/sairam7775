@@ -6,6 +6,7 @@ import { markTourSeen } from "./actions";
 import { TOURS, type TourId } from "./steps";
 import { copy } from "@/copy";
 import { PAD, placeCard, type Box } from "./place";
+import { BentoManFigure } from "@/components/mascot/figure";
 
 const CARD_W = 360;
 const noSubscribe = () => () => {};
@@ -136,6 +137,11 @@ export function Tour({ id, seen }: { id: TourId; seen: boolean }) {
         className="pop fixed z-50 rounded-tile bg-surface p-5 shadow-tile outline-none"
         style={style}
       >
+        {i === 0 ? (
+          <BentoManFigure key="hello" figure="head-hello" size={36} className="mb-2" />
+        ) : (
+          <BentoManFigure key="rest" figure="head-rest" size={36} className="mb-2" />
+        )}
         <p className="mono text-[0.7rem] uppercase tracking-[0.1em] text-ink-3">
           {copy.tour.stepOf(i + 1, steps.length)}
         </p>
