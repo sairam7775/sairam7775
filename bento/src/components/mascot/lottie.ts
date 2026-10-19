@@ -1,4 +1,4 @@
-import { CANVAS, drawOrder, FIGURES, figureOf } from "./moods";
+import { CANVAS, drawOrder, figureOf } from "./moods";
 import { toContours } from "./path";
 import { ROLE_COLOR, type Figure, type FigureKey, type Part, type Prop, type Role, type Shape, type Track, type Value } from "./types";
 
@@ -8,11 +8,7 @@ import { ROLE_COLOR, type Figure, type FigureKey, type Part, type Prop, type Rol
  *  `bm-s-<role>` so globals.css can recolour them. Opacity is set on the
  *  shape layers, because Lottie doesn't pass a parent's opacity down. */
 
-/** Figures that move, and so get a file in public/mascot/. */
-export const FILES: FigureKey[] = (Object.keys(FIGURES) as FigureKey[]).filter((k) => {
-  const f = FIGURES[k]!;
-  return f.intro + f.idle > 0;
-});
+export { FILES } from "./moods";
 
 type Json = Record<string, unknown>;
 

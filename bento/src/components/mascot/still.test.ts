@@ -22,6 +22,10 @@ describe("MascotStill", () => {
     expect(html).toContain('fill="#FF7757"');
   });
 
+  it("follows the theme even outside the figure wrapper", () => {
+    expect(draw("head-rest", 24)).toMatch(/^<svg[^>]* class="mascot"/);
+  });
+
   it("places a part where its figure puts it", () => {
     expect(draw("head-think", 40)).toContain('transform="translate(1.6 -1.8)"');
   });

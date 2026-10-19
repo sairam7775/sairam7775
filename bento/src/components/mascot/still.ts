@@ -22,7 +22,7 @@ export function MascotStill({ figure, size }: { figure: FigureKey; size: number 
 
   return h(
     "svg",
-    { viewBox: `${-c.offset[0]} ${-c.offset[1]} ${c.w} ${c.h}`, width, height: size, "aria-hidden": "true", focusable: "false" },
+    { className: "mascot", viewBox: `${-c.offset[0]} ${-c.offset[1]} ${c.w} ${c.h}`, width, height: size, "aria-hidden": "true", focusable: "false" },
     ...childrenOf(undefined).map(part),
   );
 }

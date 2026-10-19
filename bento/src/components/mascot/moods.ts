@@ -42,6 +42,12 @@ export const FIGURES = {
   "head-think": headThink,
 } satisfies Partial<Record<FigureKey, Figure>> as Partial<Record<FigureKey, Figure>>;
 
+/** Figures that move, and so get a file in public/mascot/. */
+export const FILES: FigureKey[] = (Object.keys(FIGURES) as FigureKey[]).filter((k) => {
+  const f = FIGURES[k]!;
+  return f.intro + f.idle > 0;
+});
+
 /** The figure for a key; throws for one not drawn yet. */
 export function figureOf(key: FigureKey): Figure {
   const f = FIGURES[key];

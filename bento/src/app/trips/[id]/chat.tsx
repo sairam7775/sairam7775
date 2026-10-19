@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { BentoMark } from "@/components/logo";
-import { BentoLoader } from "@/components/loading";
+import { BentoManFigure } from "@/components/mascot/figure";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
@@ -274,11 +274,12 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
   );
 }
 
-/** What Bento Man is doing right now, in words. */
+/** What Bento Man is doing right now, in words, with him thinking beside it.
+ *  The words are the live region; the figure is decoration. */
 function Working({ label, className = "" }: { label: string; className?: string }) {
   return (
-    <p className={`flex items-center gap-2 text-[0.85rem] text-ink-3 ${className}`}>
-      <BentoLoader size={18} label={label} />
+    <p role="status" aria-live="polite" className={`flex items-center gap-2 text-[0.85rem] text-ink-3 ${className}`}>
+      <BentoManFigure figure="head-think" size={20} />
       {label}…
     </p>
   );
