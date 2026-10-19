@@ -13,6 +13,7 @@
 const OPERATOR = "Bento Man";
 const CONTACT = "bentoman.me@gmail.com";
 const MIN_AGE = 16;
+const nightCount = (n: number) => `${n} night${n === 1 ? "" : "s"}`;
 
 export const en = {
   /** How dates and numbers are written (a BCP 47 tag, for toLocaleDateString). */
@@ -305,6 +306,11 @@ export const en = {
       arrive: "Arrive in Japan",
       leave: "Leave Japan",
       people: "People travelling",
+      datesInWords: {
+        arrival: (date: string) => `Arrive ${date}`,
+        departure: (date: string) => `Leave ${date}`,
+        range: (from: string, to: string, nights: number) => `${from} → ${to} · ${nightCount(nights)}`,
+      },
       submit: "Create trip",
       pending: "Creating…",
     },
@@ -381,7 +387,7 @@ export const en = {
   trip: {
     planLabel: "The plan",
     daysLabel: "Days",
-    nights: (n: number) => `${n} night${n === 1 ? "" : "s"}`,
+    nights: nightCount,
     dateRange: (from: string, to: string, nights: number) => `${from} – ${to} · ${nights} night${nights === 1 ? "" : "s"}`,
     // The line under the title: "Kyoto, 4 nights → Nara, day trip. 2 travelling. Relaxed pace."
     cityNights: (city: string, nights: number) => `${city}, ${nights} night${nights === 1 ? "" : "s"}`,

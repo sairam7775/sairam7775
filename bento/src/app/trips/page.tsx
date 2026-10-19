@@ -146,7 +146,7 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
 
           <div className="grid gap-4 sm:grid-cols-3">
             <DateRangeInputs startLabel={t.new.arrive} endLabel={t.new.leave} labelClass={fieldLabel} inputClass={fieldInput} />
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-1.5 sm:col-start-3 sm:row-start-1">
               <label
                 htmlFor="partySize"
                 className={fieldLabel}
