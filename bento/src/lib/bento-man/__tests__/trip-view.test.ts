@@ -10,6 +10,19 @@ const item = (patch: Partial<ItemRow>): ItemRow => ({
   arriveMode: null, arriveMinutes: null, arriveDetail: null, ...patch,
 });
 
+describe("a pending proposal in a test history", () => {
+  it("shows in the trip state as waiting for an answer", async () => {
+    const store = new MemoryStore({
+      trip,
+      history: [
+        { role: "user", content: "Kyoto for three nights." },
+        { role: "assistant", content: "Here it is.", proposal: { summary: "Kyoto, 3 nights", days: [] }, status: "proposed" },
+      ],
+    });
+    expect((await store.state()).pendingProposal?.summary).toBe("Kyoto, 3 nights");
+  });
+});
+
 describe("tripTravelDays", () => {
   it("gives each travel day the trains of that move, from the accepted route", async () => {
     const store = new MemoryStore({ trip: { startDate: "2026-11-20", endDate: "2026-11-25" }, cities: [{ cityId: "kyoto-city", nights: 3 }, { cityId: "hiroshima-city", nights: 2 }] });
