@@ -39,6 +39,9 @@ export interface DayBoxProps {
   overFromIndex: number | null;
   lunch: { startMin: number; endMin: number } | null;
   editable: boolean;
+  /** A city Bento can't plan days in yet: the box says so, rather than
+   *  inviting the traveller to ask for stops that can't come. */
+  uncovered?: boolean;
   /** Every booking in the trip, for the Bookings column; the ones planned
    *  on this date also sit in the box. */
   bookings: PlanBooking[];
@@ -197,9 +200,11 @@ export function DayBox(p: DayBoxProps) {
           {allDay.map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
           {items.length === 0 && (
             <div className="tile px-5 py-8 text-center text-[0.92rem] text-ink-2">
-              {blocks.length
-                ? t.emptyWithBookings(p.cityName)
-                : t.empty(p.cityName)}
+              {p.uncovered
+                ? t.uncovered(p.cityName)
+                : blocks.length
+                  ? t.emptyWithBookings(p.cityName)
+                  : t.empty(p.cityName)}
             </div>
           )}
 
@@ -334,7 +339,7 @@ export function DayBox(p: DayBoxProps) {
             <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{p.cityName} · {p.tier}</span>
             <p className="mt-2 text-[0.85rem] leading-snug text-ink-2">
               {items.filter((i) => i.locked).length ? t.pinnedCount(items.filter((i) => i.locked).length) : ""}
-              {t.howTo}
+              {p.uncovered ? t.uncoveredHowTo : t.howTo}
             </p>
             {p.editable && (
               <form action={replanDayAction} className="mt-3">

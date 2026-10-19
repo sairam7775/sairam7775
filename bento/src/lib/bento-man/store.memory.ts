@@ -49,7 +49,9 @@ export interface MemorySetup {
   bookings?: TicketLike[];
   /** Override a city's tier — e.g. make Kyoto a stub to test the refusal. */
   tiers?: Record<string, CoverageTier>;
-  history?: ChatTurn[];
+  /** Earlier turns. An assistant turn may carry a proposal and its status,
+   *  so a scenario can start with a proposal waiting for an answer. */
+  history?: (ChatTurn & { proposal?: Proposal; status?: "proposed" | "accepted" | "rejected" })[];
 }
 
 export class MemoryStore implements TripStore {
@@ -71,7 +73,7 @@ export class MemoryStore implements TripStore {
     if (setup.cities) this.setRoute(setup.cities.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason ?? null, budgetBand: c.budgetBand ?? null })));
     this.days = setup.days ? setup.days.map((d) => ({ ...d, items: d.items.map((i) => ({ ...i })) })) : [];
     this.ticketRows = setup.bookings ? setup.bookings.map((b) => ({ ...b })) : [];
-    for (const h of setup.history ?? []) this.messages.push({ ...h, id: `m${++this.seq}`, proposal: null, status: null });
+    for (const h of setup.history ?? []) this.messages.push({ role: h.role, content: h.content, id: `m${++this.seq}`, proposal: h.proposal ?? null, status: h.status ?? null });
   }
 
   private cityName(id: string) {

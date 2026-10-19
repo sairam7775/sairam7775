@@ -10,6 +10,7 @@
  *  These are the regression check for prompt edits and for the Sonnet 5
  *  test (D8). They are deliberately checkable without a judge model. */
 import type { MemorySetup } from "../store.memory";
+import type { Proposal, RouteCity } from "../diff";
 
 export interface Scenario {
   id: string;
@@ -40,6 +41,17 @@ const owner: MemorySetup["prefs"] = {
   displayCurrency: "GBP",
 };
 const nov = { title: "Kansai, autumn", startDate: "2026-11-20", endDate: "2026-11-29", partySize: 2 };
+// A route proposal waiting for an answer, as a proposal card saves it.
+const pendingCities: RouteCity[] = [
+  { cityId: "osaka-city", name: "Osaka", nights: 2, reason: null, budgetBand: null, arriveDate: "2026-11-20", departDate: "2026-11-22", tier: "deep" },
+  { cityId: "kyoto-city", name: "Kyoto", nights: 5, reason: null, budgetBand: null, arriveDate: "2026-11-22", departDate: "2026-11-27", tier: "deep" },
+  { cityId: "hiroshima-city", name: "Hiroshima", nights: 2, reason: null, budgetBand: null, arriveDate: "2026-11-27", departDate: "2026-11-29", tier: "deep" },
+];
+const pendingRoute: Proposal = {
+  summary: "Osaka, 2 nights → Kyoto, 5 nights → Hiroshima, 2 nights",
+  route: { kind: "route", before: [], after: pendingCities, summary: "Osaka, 2 nights → Kyoto, 5 nights → Hiroshima, 2 nights", verdict: "fine", arithmetic: "3 cities in 9 nights is 3.0 nights per city." },
+  days: [],
+};
 const routed: MemorySetup = {
   trip: nov,
   prefs: owner,
@@ -111,6 +123,25 @@ export const SCENARIOS: Scenario[] = [
     },
     user: "I understand. We still want all five, exactly as I said.",
     expect: { tools: ["propose_route"], proposal: "route" },
+  },
+  {
+    id: "route-pending-proposal",
+    intent: "A route waiting for the traveller's answer is talked about as waiting, never as already in the plan.",
+    setup: {
+      trip: nov,
+      prefs: owner,
+      history: [
+        { role: "user", content: "Osaka for two nights, Kyoto for five, Hiroshima for two, please." },
+        { role: "assistant", content: "I've put that route up as a proposal: Osaka, Kyoto, then Hiroshima. Accept it below if it looks right.", proposal: pendingRoute, status: "proposed" },
+      ],
+    },
+    user: "Is that route already in my plan?",
+    expect: {
+      notTools: ["propose_route"],
+      proposal: "none",
+      mustMatch: [/accept|proposal|waiting|not yet/i],
+      mustNotMatch: [/(is|are) (now|already) (set|in (your|the) plan)/i],
+    },
   },
   {
     id: "route-suggest",

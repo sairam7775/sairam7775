@@ -45,6 +45,10 @@ Practically:
   dates. Autocapture keeps no element text; replays mask all text and
   inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
+- **CSP is report-only for now.** The policy lives in `src/lib/security/csp.ts`;
+  add any new third-party origin there after checking that the app really uses
+  it. Per-request nonces through Proxy are the next step before removing
+  `'unsafe-inline'`.
 - **Deleting an account removes everything of theirs** (Settings → Privacy
   & data → Delete account, `settings/delete` → `deleteAccount` →
   `lib/account/delete.ts`): every user table cascades
@@ -186,6 +190,7 @@ Practically:
   `reservation.settle()` after, with `costUsd` from `cost.ts` — keep the price
   table current or the cap lies. A call that never reached the model settles
   with `null`.
+- "Plan a Japan trip" (`trips/plan`, `startGuidedTrip`, `lib/trips/guided-start.ts`) never talks to Bento Man itself: it saves preferences and leaves a first message in the tab's session storage (never the address), which the chat puts in the box once. Nothing is sent or spent until the traveller presses Send.
 - `mock.ts` is a fake client for local work without a key
   (`BENTO_MAN_MOCK=1`, never in production). It replaces only the model —
   keyword → tool, canned prose, zero usage — so tools, engine and
@@ -384,6 +389,13 @@ Practically:
 
 ## Transit (P3)
 
+- Travellers see the trains between stops twice: on a route proposal
+  (`RouteDiff.legs`, saved with it) and on each travel day of the plan,
+  worked out again from the accepted route on every render
+  (`tripTravelDays` in `trip-view.ts`, which keeps the engine out of the
+  page), so they always match it. A leg's
+  `movingTo` is the stay it ends at; day trips there and back have none
+  and no travel day.
 - `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.
   Search state is (station, line); a line change pays `transferPenaltyMin`
   (default 5). Walks never pay it — the walk is the transfer.

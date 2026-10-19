@@ -1,6 +1,37 @@
 import { describe, expect, it } from "vitest";
-import { computeDayDiff, mergeProposals, parseProposal } from "../diff";
+import { computeDayDiff, mergeProposals, parseProposal, routeDiffFrom, type RouteCity } from "../diff";
 import type { DayPlan } from "@/lib/engine/types";
+import { assessRoute, type CityFacts } from "@/lib/engine/route";
+import { buildGraph } from "@/lib/transit/graph";
+import { edges, stations } from "@/lib/transit/seed/kansai-sanyo";
+
+describe("routeDiffFrom", () => {
+  const graph = buildGraph(stations, edges);
+  const fact = (id: string, name: string): [string, CityFacts] => [id, { id, name, tier: "stub", verifiedPlaces: 0, transitNote: null, hubStation: null }];
+  const facts = new Map([fact("kyoto-city", "Kyoto"), fact("nara-city", "Nara"), fact("hiroshima-city", "Hiroshima")]);
+  const input = [{ cityId: "kyoto-city", nights: 3 }, { cityId: "nara-city", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }];
+  const after: RouteCity[] = input.map((c) => ({
+    cityId: c.cityId, name: facts.get(c.cityId)!.name, nights: c.nights, reason: null, budgetBand: null, arriveDate: null, departDate: null, tier: "stub",
+  }));
+
+  it("names the route without the engine's verdict word, and carries its trains", () => {
+    const d = routeDiffFrom([], after, assessRoute(input, facts, graph, 5));
+    expect(d.summary).toBe("Kyoto, 3 nights → Nara, day trip → Hiroshima, 2 nights");
+    expect(d.legs?.map((l) => [l.fromCityId, l.toCityId, l.movingTo])).toEqual([
+      ["kyoto-city", "nara-city", null],
+      ["nara-city", "kyoto-city", null],
+      ["kyoto-city", "hiroshima-city", "hiroshima-city"],
+    ]);
+    expect(d.legs?.[2].summary).toMatch(/Kyoto → Hiroshima/);
+    expect(parseProposal({ summary: d.summary, route: d, days: [] })?.route?.legs).toHaveLength(3);
+  });
+
+  it("still reads a route proposal saved before it carried trains", () => {
+    const old = routeDiffFrom([], after, assessRoute(input, facts, graph, 5));
+    delete old.legs;
+    expect(parseProposal({ summary: old.summary, route: old, days: [] })?.route?.legs).toBeUndefined();
+  });
+});
 
 const item = (placeId: string, startMin: number, locked = false): DayPlan["items"][number] => ({
   placeId, name: placeId, category: "temple", startMin, endMin: startMin + 60, durationMin: 60, locked,

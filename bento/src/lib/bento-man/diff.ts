@@ -60,6 +60,15 @@ export const RouteCitySchema = z.object({
 });
 export type RouteCity = z.infer<typeof RouteCitySchema>;
 
+/** A train journey between two stops, as the engine described it. */
+export const RouteLegSchema = z.object({
+  fromCityId: z.string(),
+  toCityId: z.string(),
+  movingTo: z.string().nullable(),
+  summary: z.string(),
+  lines: z.array(z.string()),
+});
+
 export const RouteDiffSchema = z.object({
   kind: z.literal("route"),
   before: z.array(RouteCitySchema),
@@ -67,6 +76,8 @@ export const RouteDiffSchema = z.object({
   summary: z.string(),
   verdict: z.enum(["fine", "tight", "overpacked"]),
   arithmetic: z.string(),
+  // Proposals saved before the trains were shown have none.
+  legs: z.array(RouteLegSchema).optional(),
 });
 export type RouteDiff = z.infer<typeof RouteDiffSchema>;
 
@@ -177,14 +188,17 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan): DayDiff
 }
 
 export function routeDiffFrom(before: RouteCity[], after: RouteCity[], a: RouteAssessment): RouteDiff {
-  const names = after.map((c) => (c.nights ? copy.plan.route.summaryCity(c.name, c.nights) : copy.plan.route.summaryDayTrip(c.name))).join(copy.trip.routeJoin);
+  // The cities only: the verdict is shown in words under the route (the
+  // arithmetic, coloured by how tight it is), never as the engine's label.
+  const summary = after.map((c) => (c.nights ? copy.plan.route.summaryCity(c.name, c.nights) : copy.plan.route.summaryDayTrip(c.name))).join(copy.trip.routeJoin);
   return {
     kind: "route",
     before,
     after,
-    summary: copy.plan.route.summary(names, copy.plan.route.verdict[a.verdict]),
+    summary,
     verdict: a.verdict,
     arithmetic: a.arithmetic,
+    legs: a.legs.map((l) => ({ fromCityId: l.fromCityId, toCityId: l.toCityId, movingTo: l.movingTo, summary: l.summary, lines: l.lines })),
   };
 }
 

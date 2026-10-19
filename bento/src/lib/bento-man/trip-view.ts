@@ -1,8 +1,19 @@
 /** Prepare the accepted itinerary for the trip page, keeping engine calls
  *  outside components. Stored days override the route's date allocation. */
-import { allocateDates } from "@/lib/engine/route";
+import { allocateDates, assessRoute } from "@/lib/engine/route";
 import { dayStats } from "@/lib/engine/day-stats";
-import type { TripState } from "./store";
+import { travelDays } from "@/lib/trips/travel-days";
+import type { TripState, TripStore } from "./store";
+
+/** Each travel day's trains, from Bento's own train data, worked out again
+ *  from the accepted route so they always match it. */
+export async function tripTravelDays(store: Pick<TripStore, "cities" | "graph">, state: TripState) {
+  const sorted = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
+  if (sorted.length < 2) return new Map<string, never>();
+  const [facts, graph] = await Promise.all([store.cities(), store.graph()]);
+  const a = assessRoute(sorted.map((c) => ({ cityId: c.cityId, nights: c.nights })), new Map(facts.map((f) => [f.id, f])), graph);
+  return travelDays(sorted, a.legs);
+}
 
 export function buildTripView(state: TripState, requested: string | null) {
   const cityById = new Map(state.cities.map((c) => [c.cityId, c]));
