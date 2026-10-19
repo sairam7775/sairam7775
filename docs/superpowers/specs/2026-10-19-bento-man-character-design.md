@@ -82,7 +82,8 @@ No new Content-Security-Policy is needed (the app sets only `frame-ancestors`, a
 | Place | Form, size | Behaviour |
 |---|---|---|
 | Chat header | head, 28 px | still resting (replaces the logo mark) |
-| Beside each reply | head, 24 px | still; plays **happy** once on the reply whose proposal the traveller accepts (the card already detects proposed → accepted) |
+| Beside each reply | head, 24 px | still |
+| A proposal just accepted | head, 32 px | **happy** once, where the card's buttons were, beside "It's in your plan." (changed during the build: the reply's avatar is often scrolled out of view by then) |
 | "Working…" line | head, 20 px | **thinking** while Bento Man works, replacing the mini loader; the visible label and its live region stay |
 | Empty chat | full, ~104 px | **hello** beside the intro and example prompts |
 | Trips page | full, ~72 px | **hello** beside はじめまして / おかえりなさい |

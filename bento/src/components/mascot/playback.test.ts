@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fileFor, newlyAccepted, segmentsOf, shouldAnimate } from "./playback";
+import { fileFor, segmentsOf, shouldAnimate } from "./playback";
 
 describe("fileFor", () => {
   it("names the file of a figure that moves", () => {
@@ -32,17 +32,5 @@ describe("segmentsOf", () => {
 
   it("has no intro when it lasts no frames", () => {
     expect(segmentsOf([{ cm: "intro", tm: 0, dr: 0 }, { cm: "idle", tm: 0, dr: 144 }])).toEqual({ intro: null, idle: [0, 144] });
-  });
-});
-
-describe("newlyAccepted", () => {
-  it("names only replies that just went from proposed to accepted", () => {
-    const prev = new Map<string, string | undefined>([["a", "proposed"], ["b", "accepted"]]);
-    const next = [{ id: "a", status: "accepted" }, { id: "b", status: "accepted" }, { id: "c", status: "accepted" }];
-    expect(newlyAccepted(prev, next)).toEqual(["a"]);
-  });
-
-  it("ignores a rejection", () => {
-    expect(newlyAccepted(new Map([["a", "proposed"]]), [{ id: "a", status: "rejected" }])).toEqual([]);
   });
 });

@@ -24,8 +24,3 @@ export function segmentsOf(markers: { cm: string; tm: number; dr: number }[]): {
     idle: [idle.tm, idle.tm + idle.dr],
   };
 }
-
-/** Replies whose proposal went from proposed to accepted since `prev`. */
-export function newlyAccepted(prev: Map<string, string | undefined>, next: { id: string; status?: string }[]): string[] {
-  return next.filter((m) => prev.get(m.id) === "proposed" && m.status === "accepted").map((m) => m.id);
-}

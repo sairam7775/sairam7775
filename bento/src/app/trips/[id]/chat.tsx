@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { BentoManFigure } from "@/components/mascot/figure";
-import { newlyAccepted } from "@/components/mascot/playback";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
@@ -43,17 +42,6 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
     if (busyRef.current) return;
     setMessages(initial);
   }, [initial]);
-  // Replies whose proposal the traveller accepted while the chat is open:
-  // Bento Man cheers on those once. A reload starts with none.
-  const [celebrating, setCelebrating] = useState<Set<string>>(() => new Set());
-  const lastStatus = useRef<Map<string, string | undefined> | null>(null);
-  useEffect(() => {
-    const now = messages.map((m) => ({ id: m.id, status: m.status ?? undefined }));
-    const prev = lastStatus.current;
-    lastStatus.current = new Map(now.map((m) => [m.id, m.status]));
-    const ids = prev ? newlyAccepted(prev, now) : [];
-    if (ids.length) setCelebrating((s) => new Set([...s, ...ids]));
-  }, [messages]);
   const [input, setInput] = useState(ask ?? "");
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
@@ -238,13 +226,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
             </div>
           ) : (
             <div key={m.id} className="flex gap-3">
-              <span className="mt-0.5 shrink-0">
-                {celebrating.has(m.id) ? (
-                  <BentoManFigure key="happy" figure="head-happy" size={24} />
-                ) : (
-                  <BentoManFigure key="rest" figure="head-rest" size={24} />
-                )}
-              </span>
+              <span className="mt-0.5 shrink-0"><BentoManFigure figure="head-rest" size={24} /></span>
               <div className="min-w-0 flex-1">
                 {m.content ? (
                   <p className="whitespace-pre-wrap break-words text-[0.95rem] leading-relaxed">{m.content}</p>

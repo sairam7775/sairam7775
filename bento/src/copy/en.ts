@@ -590,6 +590,8 @@ export const en = {
     accept: "Accept",
     acceptAnyway: "Accept anyway",
     accepting: "Applying…",
+    /** Under a proposal the traveller has just accepted, beside Bento Man cheering. */
+    inPlan: "It's in your plan.",
     remember: "Change dates without asking next time",
     reject: "Reject",
     rejecting: "Rejecting…",
