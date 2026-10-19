@@ -190,6 +190,7 @@ Practically:
   `reservation.settle()` after, with `costUsd` from `cost.ts` — keep the price
   table current or the cap lies. A call that never reached the model settles
   with `null`.
+- "Plan a Japan trip" (`trips/plan`, `startGuidedTrip`, `lib/trips/guided-start.ts`) never talks to Bento Man itself: it saves preferences and leaves a first message in the tab's session storage (never the address), which the chat puts in the box once. Nothing is sent or spent until the traveller presses Send.
 - `mock.ts` is a fake client for local work without a key
   (`BENTO_MAN_MOCK=1`, never in production). It replaces only the model —
   keyword → tool, canned prose, zero usage — so tools, engine and
