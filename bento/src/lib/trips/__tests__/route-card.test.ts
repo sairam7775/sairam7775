@@ -48,6 +48,8 @@ describe("routeWideCoverage", () => {
 
   it("still says it for a route of day trips only, which the note doesn't cover", () => {
     expect(routeWideCoverage([city("Nara", 0, "stub"), city("Himeji", 0, "stub")])).toBe("stub");
+    // With nowhere to sleep the engine builds no journeys, so no trains are promised.
+    expect(copy.proposal.canPlanEverywhere.stub).not.toMatch(/train/i);
   });
 });
 
