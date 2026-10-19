@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
+import { readJsonLimited } from "@/lib/guards/read-json";
 import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
 import { runBentoMan } from "@/lib/bento-man/chat";
 import { chainBoundUsd, configuredEffort, configuredFallbacks, configuredModel } from "@/lib/bento-man/cost";
@@ -22,6 +23,8 @@ const Body = z.object({
   tripId: z.string().uuid(),
   message: z.string().trim().min(1).max(2000),
 });
+// 16 KiB fits a 2,000-unit message even when JSON escapes every unit.
+const MAX_BODY_BYTES = 16 * 1024;
 
 export const maxDuration = 120;
 
@@ -30,14 +33,18 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await db.auth.getUser();
   if (!user) return NextResponse.json({ error: copy.server.signInFirst }, { status: 401 });
 
-  const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: copy.server.chatEmpty }, { status: 400 });
-  const { tripId, message } = parsed.data;
-
   const limit = await rateLimit(db, "chat");
   if (!limit.allowed) {
     return NextResponse.json({ error: copy.server.slowDown }, { status: 429, headers: { "Retry-After": String(Math.ceil(limit.retryAfterMs / 1000)) } });
   }
+
+  const body = await readJsonLimited(req, MAX_BODY_BYTES);
+  if (!body.ok && body.reason === "too-large") {
+    return NextResponse.json({ error: copy.server.bodyTooLarge }, { status: 413 });
+  }
+  const parsed = Body.safeParse(body.ok ? body.value : null);
+  if (!parsed.success) return NextResponse.json({ error: copy.server.chatEmpty }, { status: 400 });
+  const { tripId, message } = parsed.data;
 
   const mock = mockModeEnabled();
   const providerName = configuredProvider();

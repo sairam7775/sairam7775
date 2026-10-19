@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
+import { readJsonLimited } from "@/lib/guards/read-json";
 import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
 import { callBoundUsd, costUsd, type Usage } from "@/lib/bento-man/cost";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
@@ -15,6 +16,8 @@ import { copy } from "@/copy";
  *  nothing to steer (§15). Nothing is written: the traveller reviews every
  *  field and presses Save themselves. */
 const Body = z.object({ text: z.string().min(8).max(12_000) });
+// 80 KiB fits 12,000 UTF-16 units even when JSON escapes every unit.
+const MAX_BODY_BYTES = 80 * 1024;
 
 export const maxDuration = 60;
 
@@ -23,13 +26,17 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await db.auth.getUser();
   if (!user) return NextResponse.json({ error: copy.server.signInFirst }, { status: 401 });
 
-  const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: copy.server.pasteFirst }, { status: 400 });
-
   const limit = await rateLimit(db, "parse");
   if (!limit.allowed) {
     return NextResponse.json({ error: copy.server.tooManyPastes }, { status: 429 });
   }
+
+  const body = await readJsonLimited(req, MAX_BODY_BYTES);
+  if (!body.ok && body.reason === "too-large") {
+    return NextResponse.json({ error: copy.server.bodyTooLarge }, { status: 413 });
+  }
+  const parsed = Body.safeParse(body.ok ? body.value : null);
+  if (!parsed.success) return NextResponse.json({ error: copy.server.pasteFirst }, { status: 400 });
 
   const mock = mockModeEnabled();
   if (!mock && !process.env.ANTHROPIC_API_KEY) {

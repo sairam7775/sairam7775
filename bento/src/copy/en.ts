@@ -994,6 +994,7 @@ export const en = {
   // Messages from the servers behind the chat and the confirmation reader.
   server: {
     signInFirst: "Sign in first.",
+    bodyTooLarge: "That's too much text to send at once.",
     chatEmpty: "Say something, up to 2000 characters.",
     slowDown: "Slow down a little — try again in a moment.",
     chatOff: "Bento Man isn't available on this site yet.",
