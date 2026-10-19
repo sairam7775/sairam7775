@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { cheers, fileFor, segmentsOf, shouldAnimate } from "./playback";
+import { FIGURES } from "./moods";
+import { cheers, fileFor, playPlan, segmentsOf, shouldAnimate } from "./playback";
+
+describe("playPlan", () => {
+  it("plays an intro once, then rests still on the first idle frame", () => {
+    // WCAG 2.2.2: nothing that starts on its own keeps moving past 5 seconds.
+    expect(playPlan({ intro: [0, 90], idle: [90, 210] })).toEqual({ intro: [0, 90], then: { rest: 90 } });
+  });
+
+  it("loops a figure with no intro: the thinking head, shown only while he works", () => {
+    expect(playPlan({ intro: null, idle: [0, 144] })).toEqual({ intro: null, then: { loop: [0, 144] } });
+  });
+
+  it("keeps every figure's intro, his only motion that starts on its own, under five seconds", () => {
+    for (const f of Object.values(FIGURES)) expect(f.intro / 30, f.key).toBeLessThan(5);
+  });
+});
 
 describe("cheers", () => {
   it("cheers when a proposal goes from proposed to accepted", () => {

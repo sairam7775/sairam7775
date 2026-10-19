@@ -20,6 +20,17 @@ export function cheers(prev: string, next: string): boolean {
   return prev === "proposed" && next === "accepted";
 }
 
+/** How a figure plays: its intro once, then, if it had one, he rests still on
+ *  the first idle frame (nothing that starts on its own keeps moving past
+ *  five seconds: WCAG 2.2.2). A figure with no intro, the thinking head,
+ *  loops its idle; it shows only while Bento Man is working. */
+export function playPlan({ intro, idle }: { intro: [number, number] | null; idle: [number, number] }): {
+  intro: [number, number] | null;
+  then: { rest: number } | { loop: [number, number] };
+} {
+  return intro ? { intro, then: { rest: idle[0] } } : { intro: null, then: { loop: idle } };
+}
+
 /** The intro (null when it has no frames) and the idle loop, as frame ranges. */
 export function segmentsOf(markers: { cm: string; tm: number; dr: number }[]): { intro: [number, number] | null; idle: [number, number] } {
   const intro = markers.find((m) => m.cm === "intro");
