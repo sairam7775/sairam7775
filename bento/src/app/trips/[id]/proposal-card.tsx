@@ -9,7 +9,7 @@ import { track } from "@/lib/analytics/client";
 import { BentoManFigure } from "@/components/mascot/figure";
 import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
-import { coverageShown, trainRows, uncoveredStays } from "@/lib/trips/route-card";
+import { coverageShown, routeWideCoverage, trainRows, uncoveredStays } from "@/lib/trips/route-card";
 
 const t = copy.proposal;
 
@@ -55,6 +55,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
   const uncovered = proposal.route ? uncoveredStays(proposal.route.after) : null;
   const coverage = proposal.route ? coverageShown(proposal.route.after) : null;
+  const routeWide = proposal.route ? routeWideCoverage(proposal.route.after) : null;
   return (
     <div className="mt-3 overflow-hidden rounded-tile border border-rule bg-paper pop">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-rule bg-sunk px-4 py-2.5">
@@ -101,9 +102,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
               </li>
             ))}
           </ol>
-          {coverage?.everywhere && coverage.everywhere !== "stub" && (
-            <p className="mt-2 text-[0.85rem] text-ink-2">{t.canPlanEverywhere[coverage.everywhere]}</p>
-          )}
+          {routeWide && <p className="mt-2 text-[0.85rem] text-ink-2">{t.canPlanEverywhere[routeWide]}</p>}
           {proposal.route.verdict === "overpacked" && <p className="mt-2 text-[0.85rem] font-medium text-ume">{t.overpacked}</p>}
           <p className={`mt-2 text-[0.85rem] ${proposal.route.verdict === "overpacked" ? "text-ume" : proposal.route.verdict === "tight" ? "text-tamago" : "text-ink-2"}`}>
             {proposal.route.arithmetic}

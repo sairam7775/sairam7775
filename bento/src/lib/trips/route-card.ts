@@ -36,6 +36,16 @@ export function coverageShown(cities: { tier: CoverageTier }[]): { perCity: bool
   return tiers.size === 1 ? { perCity: false, everywhere: [...tiers][0] } : { perCity: true, everywhere: null };
 }
 
+/** The one coverage line for a route whose stops are all known equally well,
+ *  or null. Not covered anywhere is already said by the note above Accept
+ *  when the route has places to sleep; a route of day trips only has no
+ *  note, so it gets the line instead. */
+export function routeWideCoverage(cities: { name: string; nights: number; tier: CoverageTier }[]): CoverageTier | null {
+  const { everywhere } = coverageShown(cities);
+  if (everywhere !== "stub") return everywhere;
+  return uncoveredStays(cities).names.length ? null : "stub";
+}
+
 /** The places you sleep that Bento can't plan days in yet. `all` only when
  *  no stop on the route can be planned, day trips included, so the card
  *  never says "any of these places" beside a stop that can. */

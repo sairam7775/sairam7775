@@ -598,6 +598,8 @@ export const en = {
     canPlanEverywhere: {
       deep: "Every stop is well covered: Bento can build full days in each.",
       outline: "Main sights only, at every stop: Bento can suggest places, but won't call a day complete.",
+      // A route of day trips only, none of them covered (no note above Accept).
+      stub: "Not covered yet, at every stop: Bento can give you the trains, but can't plan days at any of them.",
     },
     trains: "Trains",
     thereAndBack: "there and back",

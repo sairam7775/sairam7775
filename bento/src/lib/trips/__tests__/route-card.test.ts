@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageShown, trainRows, uncoveredStays } from "../route-card";
+import { coverageShown, routeWideCoverage, trainRows, uncoveredStays } from "../route-card";
 import { copy } from "@/copy";
 
 const leg = (from: string, to: string, movingTo: string | null, summary = `${from} → ${to}`) => ({ fromCityId: from, toCityId: to, movingTo, summary, lines: [`${summary} line`] });
@@ -36,6 +36,18 @@ describe("coverageShown", () => {
   it("says it once when every stop is the same", () => {
     expect(coverageShown([city("Kyoto", 5, "deep"), city("Nara", 0, "deep")])).toEqual({ perCity: false, everywhere: "deep" });
     expect(coverageShown([city("Osaka", 2, "stub"), city("Kyoto", 5, "stub")])).toEqual({ perCity: false, everywhere: "stub" });
+  });
+});
+
+describe("routeWideCoverage", () => {
+  it("says it once for a route that is all the same, unless the note above Accept already does", () => {
+    expect(routeWideCoverage([city("Kyoto", 5, "deep"), city("Nara", 0, "deep")])).toBe("deep");
+    expect(routeWideCoverage([city("Osaka", 2, "stub"), city("Nara", 0, "stub")])).toBeNull();
+    expect(routeWideCoverage([city("Kyoto", 5, "deep"), city("Himeji", 0, "stub")])).toBeNull();
+  });
+
+  it("still says it for a route of day trips only, which the note doesn't cover", () => {
+    expect(routeWideCoverage([city("Nara", 0, "stub"), city("Himeji", 0, "stub")])).toBe("stub");
   });
 });
 
