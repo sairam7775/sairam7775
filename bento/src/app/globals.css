@@ -152,6 +152,7 @@
 .mascot .bm-f-coat, .mascot .bm-f-coat * { fill: var(--color-mascot-coat); }
 .mascot .bm-s-coat, .mascot .bm-s-coat * { stroke: var(--color-mascot-coat); }
 .mascot .bm-f-belt, .mascot .bm-f-belt * { fill: var(--color-mascot-belt); }
+.mascot .bm-s-belt, .mascot .bm-s-belt * { stroke: var(--color-mascot-belt); }
 .mascot .bm-f-pants, .mascot .bm-f-pants * { fill: var(--color-mascot-pants); }
 .mascot .bm-f-muted, .mascot .bm-f-muted * { fill: var(--color-mascot-muted); }
 .mascot .bm-s-muted, .mascot .bm-s-muted * { stroke: var(--color-mascot-muted); }

@@ -11,9 +11,8 @@ const committed = (key: string) => readFileSync(fileURLToPath(new URL(`../../../
 const ROLE = /^bm-[fs]-(line|rim|sheen|coat|belt|pants|muted|tile|face|ume|white|skin|paper|spark)$/;
 
 describe("Bento Man's Lottie files", () => {
-  it("covers every animated figure", () => {
-    expect(FILES).toContain("head-think");
-    expect(FILES).not.toContain("head-rest");
+  it("covers exactly the figures a screen animates", () => {
+    expect([...FILES].sort()).toEqual(["full-hello", "full-lost", "head-happy", "head-hello", "head-think"]);
   });
 
   for (const key of FILES) {
@@ -29,8 +28,14 @@ describe("Bento Man's Lottie files", () => {
       expect(j.markers[0].tm).toBe(0);
       expect(j.markers[1].tm).toBe(j.markers[0].dr);
       expect(j.op).toBe(j.markers[1].tm + j.markers[1].dr);
-      for (const l of j.layers) if (l.ty === 4) expect(l.cl).toMatch(ROLE);
       expect(JSON.stringify(j).length).toBeLessThan(25_000);
+    });
+
+    it(`${key} classes every fill and stroke by its colour role`, () => {
+      const j = buildLottie(key) as { layers: { shapes?: { it: { ty: string; cl?: string }[] }[] }[] };
+      const paints = j.layers.flatMap((l) => l.shapes ?? []).flatMap((g) => g.it).filter((i) => i.ty === "fl" || i.ty === "st");
+      expect(paints.length).toBeGreaterThan(0);
+      for (const p of paints) expect(p.cl).toMatch(ROLE);
     });
 
     it(`${key} parents every layer to a layer that exists`, () => {

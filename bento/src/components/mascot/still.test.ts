@@ -22,6 +22,18 @@ describe("MascotStill", () => {
     expect(html).toContain('fill="#FF7757"');
   });
 
+  it("sizes the full figure by its height", () => {
+    const html = draw("full-hello", 132);
+    expect(html).toContain('viewBox="0 -10 96 132"');
+    expect(html).toContain('height="132"');
+    expect(html).toContain('width="96"');
+  });
+
+  it("hides a part that rests invisible", () => {
+    // head-hello's open right eye waits, hidden, for the wink to end.
+    expect(draw("head-hello", 40)).toContain('opacity="0"');
+  });
+
   it("follows the theme even outside the figure wrapper", () => {
     expect(draw("head-rest", 24)).toMatch(/^<svg[^>]* class="mascot"/);
   });

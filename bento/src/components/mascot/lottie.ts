@@ -3,10 +3,11 @@ import { toContours } from "./path";
 import { ROLE_COLOR, type Figure, type FigureKey, type Part, type Prop, type Role, type Shape, type Track, type Value } from "./types";
 
 /** Figure → Lottie JSON, for the light SVG player. Each part is a null layer
- *  carrying its placement and motion; its shapes are shape layers parented
- *  to it, one per run of the same colour role, classed `bm-f-<role>` or
- *  `bm-s-<role>` so globals.css can recolour them. Opacity is set on the
- *  shape layers, because Lottie doesn't pass a parent's opacity down. */
+ *  carrying its placement and motion, with one shape layer parented to it
+ *  for its shapes. Every fill and stroke item carries its colour role as a
+ *  class (`bm-f-<role>`, `bm-s-<role>`), which the player puts on that
+ *  item's path, so globals.css can recolour it. Opacity is set on the
+ *  shape layer, because Lottie doesn't pass a parent's opacity down. */
 
 export { FILES } from "./moods";
 
@@ -69,9 +70,10 @@ function shapeItem(s: Shape): Json[] {
 
 function paintItem(s: Shape, kind: "fl" | "st"): Json {
   const o = still(s.opacity ?? 100);
-  if (kind === "fl") return { ty: "fl", c: still(color(s.fill!)), o, r: 1 };
+  if (kind === "fl") return { ty: "fl", cl: `bm-f-${s.fill}`, c: still(color(s.fill!)), o, r: 1 };
   return {
     ty: "st",
+    cl: `bm-s-${s.stroke}`,
     c: still(color(s.stroke!)),
     o,
     w: still(s.width ?? 1),
@@ -84,20 +86,27 @@ function paintItem(s: Shape, kind: "fl" | "st"): Json {
 
 const GROUP_TR = { ty: "tr", p: still([0, 0]), a: still([0, 0]), s: still([100, 100]), r: still(0), o: still(100), sk: still(0), sa: still(0) };
 
-/** A part's shapes as runs of one paint each, in drawing order. */
-function runs(p: Part): { cl: string; groups: Json[] }[] {
-  const out: { cl: string; groups: Json[] }[] = [];
-  for (const s of p.shapes)
-    for (const kind of ["fl", "st"] as const) {
-      const role = kind === "fl" ? s.fill : s.stroke;
-      if (!role) continue;
-      const cl = `bm-${kind === "fl" ? "f" : "s"}-${role}`;
-      const group = { ty: "gr", it: [...shapeItem(s), paintItem(s, kind), GROUP_TR] };
-      const last = out.at(-1);
-      if (last && last.cl === cl) last.groups.push(group);
-      else out.push({ cl, groups: [group] });
-    }
-  return out;
+/** A part's shapes as Lottie groups, top first. Consecutive shapes with the
+ *  same single paint (fill only, or stroke only) share a group; a shape with
+ *  both keeps its own, so a later shape still covers its outline. Within a
+ *  group the stroke is listed before the fill so it draws on top, as in SVG. */
+function groups(p: Part): Json[] {
+  const paintKey = (s: Shape) => JSON.stringify([s.fill, s.stroke, s.width, s.cap, s.join, s.dash, s.opacity]);
+  const single = (s: Shape) => !(s.fill && s.stroke);
+  const runs: Shape[][] = [];
+  for (const s of p.shapes) {
+    const last = runs.at(-1);
+    if (last && single(s) && paintKey(last[0]) === paintKey(s)) last.push(s);
+    else runs.push([s]);
+  }
+  return runs
+    .map((run) => {
+      const s = run[0];
+      // Lottie draws the first item of a group on top: later shapes first.
+      const shapes = [...run].reverse().flatMap(shapeItem);
+      return { ty: "gr", it: [...shapes, ...(s.stroke ? [paintItem(s, "st")] : []), ...(s.fill ? [paintItem(s, "fl")] : []), GROUP_TR] };
+    })
+    .reverse();
 }
 
 export function buildLottie(key: FigureKey): object {
@@ -107,11 +116,11 @@ export function buildLottie(key: FigureKey): object {
   const common = { ddd: 0, sr: 1, ao: 0, ip: 0, op, st: 0, bm: 0 };
 
   // Bottom to top first; Lottie wants the top layer first.
-  type Layer = { part: Part; kind: "null" } | { part: Part; kind: "shapes"; cl: string; groups: Json[] };
+  type Layer = { part: Part; kind: "null" | "shapes" };
   const layers: Layer[] = [];
   for (const p of drawOrder(f)) {
     layers.push({ part: p, kind: "null" });
-    for (const r of runs(p)) layers.push({ part: p, kind: "shapes", ...r });
+    if (p.shapes.length) layers.push({ part: p, kind: "shapes" });
   }
   layers.reverse();
   const nullInd = new Map(layers.flatMap((l, i) => (l.kind === "null" ? [[l.part.id, i + 1] as const] : [])));
@@ -127,8 +136,7 @@ export function buildLottie(key: FigureKey): object {
       ...common,
       ind,
       ty: 4,
-      nm: `${l.part.id} ${l.cl}`,
-      cl: l.cl,
+      nm: `${l.part.id} shapes`,
       parent: nullInd.get(l.part.id),
       ks: {
         a: still([0, 0, 0]),
@@ -137,8 +145,7 @@ export function buildLottie(key: FigureKey): object {
         r: still(0),
         o: opacity ? animated(opacity.keys.map(([t, v]) => [t, [v as number]]), opacity.hold) : still(l.part.opacity ?? 100),
       },
-      // Within a layer, too, Lottie draws the first shape on top.
-      shapes: [...l.groups].reverse(),
+      shapes: groups(l.part),
     };
   });
 
