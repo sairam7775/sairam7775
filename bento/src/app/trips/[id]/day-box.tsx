@@ -277,7 +277,8 @@ export function DayBox(p: DayBoxProps) {
                         href={placeMapUrl({ name: it.mapName, nameJa: it.nameJa, cityName: p.cityName })}
                         target="_blank"
                         rel="noopener noreferrer"
-                        draggable={false}
+                        // A link is its own drag source, so a drag that starts
+                        // here is cancelled instead of moving the stop.
                         onDragStart={(event) => {
                           event.preventDefault();
                           event.stopPropagation();
