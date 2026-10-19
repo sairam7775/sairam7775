@@ -17,14 +17,21 @@ const REMOVED = {
 };
 
 // What comes before a reference in confirmations: English and Japanese.
-const LABEL = String.raw`(?:booking|reservation)\s+(?:reference|ref\.?|number|no\.?|id|code)|confirmation(?:\s+(?:number|no\.?|code|#))?|pnr|record\s+locator|(?:e-?ticket|ticket|order|itinerary)\s+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
-const REFERENCE = new RegExp(String.raw`(${LABEL})(\s*(?:is|:|：|#|-|–|no\.)?\s*)([A-Z0-9][A-Z0-9-]{3,24})`, "gi");
+const LABEL = String.raw`(?:booking|reservation)\s+(?:reference|ref\.?|number|no\.?|id|code)|confirmation(?:\s+(?:number|no\.?|code|#))?|reference(?:\s+(?:number|no\.?|code))?|ref\.?|pnr|record\s+locator|(?:e-?ticket|ticket|order|itinerary)\s+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
+// The label must start a word ("Preference" isn't "reference"); a lookbehind
+// rather than \b, which doesn't see the start of a Japanese label. The value
+// is taken whole, up to 100 characters, so a long one never leaves its tail
+// in the text.
+const REFERENCE = new RegExp(String.raw`(?<![A-Za-z])(${LABEL})(\s*(?:is|:|：|#|-|–|no\.)?\s*)([A-Z0-9][A-Z0-9-]{3,99})(?![A-Z0-9-])`, "gi");
+// The longest reference the booking form keeps (ParsedBookingSchema).
+const REFERENCE_MAX = 60;
 
 const EMAIL = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 // A phone number only where it is labelled, or written internationally:
-// unlabelled digit runs are too often dates, times or prices.
-const PHONE_LABELLED = /((?:tel|phone|telephone|mobile|電話|TEL)\.?\s*[:：]?\s*)(\+?\d[\d\s().-]{6,}\d)/gi;
-const PHONE_INTERNATIONAL = /\+\d[\d\s().-]{7,}\d/g;
+// unlabelled digit runs are too often dates, times or prices. Spaces only,
+// never a line break, so the date on the next line stays.
+const PHONE_LABELLED = /((?:tel|phone|telephone|mobile|電話|TEL)\.?[ \t]*[:：]?[ \t]*)(\+?\d[\d \t().-]{6,}\d)/gi;
+const PHONE_INTERNATIONAL = /\+\d[\d \t().-]{7,}\d/g;
 // Card and e-ticket numbers: 12 or more digits, in groups or not. Dates
 // (2026-11-20) and times never get that far.
 const LONG_NUMBER = /\b\d(?:[ -]?\d){11,18}\b/g;
@@ -40,7 +47,7 @@ export function redactConfirmation(input: string): { text: string; reference: st
   let reference: string | null = null;
   let text = input.replace(REFERENCE, (whole, label: string, gap: string, value: string) => {
     if (!looksLikeReference(value)) return whole;
-    reference ??= value;
+    if (value.length <= REFERENCE_MAX) reference ??= value;
     return `${label}${gap}${REMOVED.reference}`;
   });
   text = text

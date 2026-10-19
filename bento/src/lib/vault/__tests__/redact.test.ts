@@ -26,6 +26,40 @@ describe("redactConfirmation", () => {
     expect(r.text).toContain("Check-in 2026-11-20");
   });
 
+  it.each([
+    ["Reference number: ABC123", "ABC123"],
+    ["Reference: ZX81-4402", "ZX81-4402"],
+    ["Ref. 99812733", "99812733"],
+  ])("recognises a reference labelled on its own: %s", (text, ref) => {
+    const r = redactConfirmation(`${text}\nArrive 2026-11-20`);
+    expect(r.reference).toBe(ref);
+    expect(r.text).not.toContain(ref);
+  });
+
+  it("doesn't read a word that only contains a label, such as Preference", () => {
+    const r = redactConfirmation("Preference: 2 single beds, room 1204");
+    expect(r.reference).toBeNull();
+  });
+
+  it("takes a long reference out whole, and only keeps one that fits the form", () => {
+    const long = "ORD-2026-11-20-KYOTO-4F7A9C21B";
+    const r = redactConfirmation(`Order number: ${long}\nArrive 2026-11-20`);
+    expect(r.reference).toBe(long);
+    expect(r.text).not.toContain("4F7A9C21B");
+
+    const tooLong = `ORD-${"A1".repeat(40)}`;
+    const t = redactConfirmation(`Order number: ${tooLong}`);
+    expect(t.text).not.toContain("A1A1");
+    // Longer than the form's 60 characters: taken out, but not offered.
+    expect(t.reference).toBeNull();
+  });
+
+  it("never takes the next line along with a phone number", () => {
+    const r = redactConfirmation("Tel: +81 75 123 4567\n2026-11-20\nCheck-in 15:00");
+    expect(r.text).not.toContain("123 4567");
+    expect(r.text).toContain("\n2026-11-20\nCheck-in 15:00");
+  });
+
   it("doesn't take an ordinary word after a label for a reference", () => {
     const r = redactConfirmation("Confirmation of your booking at Hotel Kanra Kyoto");
     expect(r.reference).toBeNull();
