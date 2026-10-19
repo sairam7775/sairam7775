@@ -67,6 +67,9 @@ function configuredSearchPath(header: string): string | null {
   const withoutComments = header
     .replace(/--[^\r\n]*/g, " ")
     .replace(/\/\*[\s\S]*?\*\//g, " ");
+  // FROM CURRENT takes whatever path the migration ran with, which can't be
+  // checked here, so it is kept as written and counts as unsafe.
+  if (/\bset\s+search_path\s+from\s+current\b/i.test(withoutComments)) return "from current";
   const match = /\bset\s+search_path\s*(?:=|to)\s*([\s\S]*?)(?=\s+\bset\s+[\w]+\s*(?:=|to)(?:\s|$)|$)/i.exec(
     withoutComments,
   );
@@ -192,5 +195,13 @@ describe("SECURITY DEFINER function search paths", () => {
     expect(unsafeDefiners(functionsAfter([created]))).toEqual([]);
     expect(unsafeDefiners(functionsAfter([created, reset]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
     expect(unsafeDefiners(functionsAfter([created, resetAll]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
+  });
+
+  it("treats SET search_path FROM CURRENT as unsafe, since the migration's path can't be known", () => {
+    const created = { file: "0001_a.sql", sql: "create or replace function public.f(p_a text)\nreturns void\nlanguage sql\nsecurity definer\nset search_path = public, pg_temp\nas $$ select 1 $$;" };
+    const fromCurrent = { file: "0002_b.sql", sql: "alter function public.f(text) set search_path from current;" };
+    const createdFromCurrent = { file: "0001_a.sql", sql: "create or replace function public.f(p_a text)\nreturns void\nlanguage sql\nsecurity definer\nset search_path from current\nas $$ select 1 $$;" };
+    expect(unsafeDefiners(functionsAfter([created, fromCurrent]))).toEqual(["public.f(text) (last changed in 0002_b.sql)"]);
+    expect(unsafeDefiners(functionsAfter([createdFromCurrent]))).toEqual(["public.f(text) (last changed in 0001_a.sql)"]);
   });
 });
