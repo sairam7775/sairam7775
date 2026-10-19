@@ -105,6 +105,14 @@ describe("redactConfirmation", () => {
     }
   });
 
+  it("removes a reference after PNR or Ref with No. or number", () => {
+    for (const label of ["PNR No.: ", "PNR number: ", "Ref No.: ", "Ref. number: "]) {
+      const r = redactConfirmation(`${label}ABC123\nHotel Kanra Kyoto`);
+      expect(r.reference).toBe("ABC123");
+      expect(r.text).not.toContain("ABC123");
+    }
+  });
+
   it("removes a reference labelled Reference # or Ref #", () => {
     for (const label of ["Reference #: ", "Ref #", "Ref. # "]) {
       const r = redactConfirmation(`${label}ABC123\nHotel Kanra Kyoto`);

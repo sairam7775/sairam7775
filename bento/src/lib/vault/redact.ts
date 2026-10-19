@@ -19,7 +19,7 @@ const REMOVED = {
 // What comes before a reference in confirmations: English and Japanese.
 // A label's words stay on one line, so "Confirmation" over "November" never
 // reads as "Confirmation No".
-const LABEL = String.raw`(?:booking|reservation)(?:[ \t]+(?:reference|ref\.?|number|no\.?|id|code)|[ \t]*#)|confirmation(?:[ \t]+(?:number|no\.?|code|id)|[ \t]*#)?|reference(?:[ \t]+(?:number|no\.?|code|id)|[ \t]*#)?|ref\.?(?:[ \t]*#)?|pnr|record[ \t]+locator|(?:e-?ticket|ticket|order|itinerary)[ \t]+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
+const LABEL = String.raw`(?:booking|reservation)(?:[ \t]+(?:reference|ref\.?|number|no\.?|id|code)|[ \t]*#)|confirmation(?:[ \t]+(?:number|no\.?|code|id)|[ \t]*#)?|reference(?:[ \t]+(?:number|no\.?|code|id)|[ \t]*#)?|(?:ref\.?|pnr)(?:[ \t]+(?:number|no\.?|code)|[ \t]*#)?|record[ \t]+locator|(?:e-?ticket|ticket|order|itinerary)[ \t]+(?:number|no\.?|id)|予約確認番号|予約番号|確認番号|予約コード|予約ID`;
 // The label must start and end a word ("Preference" isn't "reference", and
 // "No" in "November" isn't "no"); lookarounds rather than \b, which doesn't
 // see the edges of a Japanese label. The value
