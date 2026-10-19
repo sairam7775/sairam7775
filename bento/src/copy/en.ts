@@ -417,6 +417,12 @@ export const en = {
     },
     dayTab: (n: number, weekday: string) => `Day ${n} · ${weekday}`,
     dayStats: (stops: number, active: string) => `${stops} stop${stops === 1 ? "" : "s"} · ${active} active`,
+    // A moving day's trains, above its box: from Bento's own train data.
+    travelDay: {
+      label: "Travel day",
+      estimate: "A ~ before a fare means it's an estimate.",
+      tickets: "Keep the tickets in Bookings →",
+    },
     emptyBox: {
       title: "An empty box.",
       body: "Give Bento Man the dates and a route and each day gets a compartment here, sized to the time it takes.",
@@ -455,6 +461,10 @@ export const en = {
     removeConfirm: (name: string) => `Remove ${name} from this day?`,
     emptyWithBookings: (city: string) => `No planned stops yet. Ask Bento Man to plan ${city} around your bookings.`,
     empty: (city: string) => `Nothing in this box yet. Ask Bento Man to plan ${city}, or re-plan the day.`,
+    // A day in a city Bento can't plan yet: what still works here, then why
+    // the box stays empty. Never "drag to reorder" on stops that can't come.
+    uncovered: (city: string) => `Your bookings for this day go here. Bento can't plan days in ${city} yet, so it won't add stops.`,
+    uncoveredHowTo: "Drag your bookings for the day in from Bookings, and ask Bento Man about the trains.",
     budget: "Day budget",
     of: (budget: string) => `of ${budget}`,
     overBy: (over: string) => `${over} over`,
@@ -577,6 +587,24 @@ export const en = {
     datesNote: "Your route and planned days move with the dates.",
     route: "Route",
     dayTrip: "day trip",
+    // What Bento can plan in each city of a route, said in full.
+    canPlan: {
+      deep: "Well covered: Bento can build full days here.",
+      outline: "Main sights only: Bento can suggest places here, but won't call a day complete.",
+      stub: "Not covered yet: Bento can't plan days here, only the trains in and out.",
+    },
+    // When every stop is known equally well: said once, under the route. A
+    // route Bento knows none of is explained by `limits` instead.
+    canPlanEverywhere: {
+      deep: "Every stop is well covered: Bento can build full days in each.",
+      outline: "Main sights only, at every stop: Bento can suggest places, but won't call a day complete.",
+    },
+    trains: "Trains",
+    thereAndBack: "there and back",
+    // Under a route whose stays include places Bento can't plan yet. What
+    // works comes first; `cities` arrives already joined ("Osaka or Kyoto").
+    limits: (cities: string, all: boolean) =>
+      `Accepting sets your route and dates, with the trains between each stop. Bento can't plan days in ${all ? "any of these places" : cities} yet, so those days stay open for you to fill.`,
     change: {
       kept: "kept",
       added: "new",
@@ -883,11 +911,9 @@ export const en = {
         `${cities} cities in ${nights} nights is ${perCity} nights per city. ` +
         `${changes} city change${changes === 1 ? "" : "s"} at about ${changeHours} hours each (check out, station, check in) ` +
         `plus ${train} on trains is ${moving} moving — about ${pct}% of your waking time.`,
-      // The proposal header: "Kyoto, 4 nights → Nara, day trip · tight".
+      // The proposal header: "Kyoto, 4 nights → Nara, day trip".
       summaryCity: (city: string, nights: number) => `${city}, ${nights} night${nights === 1 ? "" : "s"}`,
       summaryDayTrip: (city: string) => `${city}, day trip`,
-      verdict: { fine: "fine", tight: "tight", overpacked: "overpacked" },
-      summary: (cities: string, verdict: string) => `${cities} · ${verdict}`,
       suggestions: {
         kyoto: "The reason most people come. Temples, gardens, and the two mornings that make the trip.",
         osaka: "Where the airport is, and the food. Two nights is enough; it is a base, not a sight.",
