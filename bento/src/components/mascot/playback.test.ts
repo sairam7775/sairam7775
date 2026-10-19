@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { fileFor, segmentsOf, shouldAnimate } from "./playback";
+import { cheers, fileFor, segmentsOf, shouldAnimate } from "./playback";
+
+describe("cheers", () => {
+  it("cheers when a proposal goes from proposed to accepted", () => {
+    expect(cheers("proposed", "accepted")).toBe(true);
+  });
+
+  it("doesn't cheer for a rejection, or for one already answered", () => {
+    expect(cheers("proposed", "rejected")).toBe(false);
+    expect(cheers("accepted", "accepted")).toBe(false);
+    expect(cheers("rejected", "accepted")).toBe(false);
+  });
+});
 
 describe("fileFor", () => {
   it("names the file of a figure that moves", () => {

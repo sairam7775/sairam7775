@@ -14,6 +14,12 @@ export function shouldAnimate({ reducedMotion, file }: { reducedMotion: boolean;
   return !reducedMotion && file !== null;
 }
 
+/** Whether a proposal card's status change is the traveller accepting it —
+ *  the moment Bento Man cheers. */
+export function cheers(prev: string, next: string): boolean {
+  return prev === "proposed" && next === "accepted";
+}
+
 /** The intro (null when it has no frames) and the idle loop, as frame ranges. */
 export function segmentsOf(markers: { cm: string; tm: number; dr: number }[]): { intro: [number, number] | null; idle: [number, number] } {
   const intro = markers.find((m) => m.cm === "intro");

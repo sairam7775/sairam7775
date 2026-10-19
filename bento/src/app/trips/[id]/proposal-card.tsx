@@ -7,6 +7,7 @@ import { copy } from "@/copy";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics/client";
 import { BentoManFigure } from "@/components/mascot/figure";
+import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
 
 const t = copy.proposal;
@@ -48,7 +49,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
   const [cheer, setCheer] = useState(false);
   if (status !== seen) {
     setSeen(status);
-    if (seen === "proposed" && status === "accepted") setCheer(true);
+    if (cheers(seen, status)) setCheer(true);
   }
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
   return (
