@@ -7,6 +7,7 @@ import { AnalyticsSignedOut } from "@/components/analytics/analytics";
 import { Notice } from "@/app/(auth)/ui";
 import { LegalNav } from "@/components/legal/legal-page";
 import { displayName } from "@/lib/account/name";
+import { BentoManFigure } from "@/components/mascot/figure";
 
 const t = copy.home;
 
@@ -199,7 +200,7 @@ function DayPreview() {
           </div>
         </div>
         <div className="tile up ml-6 flex gap-3 p-4 sm:ml-10" style={{ animationDelay: ".6s" }}>
-          <span className="mt-0.5 shrink-0"><BentoMark size={22} /></span>
+          <span className="-mt-1 shrink-0"><BentoManFigure figure="full-hello" size={64} /></span>
           <p className="text-[0.9rem] leading-relaxed text-ink">
             {p.bentoMan}
           </p>

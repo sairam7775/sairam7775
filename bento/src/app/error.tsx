@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { StatusPage, primaryButton, secondaryButton } from "@/components/status-page";
 import { trackError } from "@/lib/analytics/client";
 import { copy } from "@/copy";
+import { BentoManFigure } from "@/components/mascot/figure";
 
 /** Any page that throws lands here instead of a bare error screen. The
  *  digest lets a reported problem be matched to the server log. */
@@ -15,7 +16,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   }, [error]);
 
   return (
-    <StatusPage kicker={copy.status.error.kicker} title={copy.status.error.title}>
+    <StatusPage kicker={copy.status.error.kicker} title={copy.status.error.title} figure={<BentoManFigure figure="full-lost" size={120} />}>
       <p>{copy.status.error.body}</p>
       {error.digest && <p className="mono mt-3 text-[0.75rem] text-ink-3">{copy.common.reference(error.digest)}</p>}
       <div className="mt-6 flex flex-wrap gap-3">

@@ -396,6 +396,28 @@ Practically:
   in); the tour only points and never changes data. Copy follows the voice
   rule below.
 
+## Bento Man's figure
+
+- `src/components/mascot/`: the animated guide (DESIGN.md → "Bento Man, the
+  figure"). `parts.ts` and `moods.ts` are the art as data — shapes, colour
+  roles, pivots, keyframes — and the only source: `still.ts` draws a pose as
+  inline SVG, `lottie.ts` turns a figure into Lottie JSON. After changing
+  the art run `npm run mascot`; `lottie.test.ts` fails while
+  `public/mascot/*.json` is stale. Never edit those files by hand.
+- Use `<BentoManFigure figure="…" size={…} />` (`figure.tsx`). It renders
+  the still first, then lazy-loads `lottie-web/build/player/lottie_light`
+  (pinned 5.13.0) only when he is on screen and motion is allowed. Never
+  import lottie-web anywhere else, or statically.
+- Frame 0 of every figure is its still pose and every loop is seamless —
+  `moods.test.ts` checks both. A part that fades has no children (Lottie
+  doesn't pass opacity down).
+- His art is illustration with its own palette, like the logo and the
+  seasonal scenes. Colours that follow the theme are roles mapped to
+  `--color-mascot-*` in globals.css (both dark blocks); `theme.test.ts`
+  fails if the art uses a themed role with no rule.
+- He is decoration (`aria-hidden`); what he goes with stays as text. The
+  figure doesn't change his voice: the rules below still hold.
+
 ## Voice
 
 Bento Man is a local friend who knows the place and will tell you the truth

@@ -1352,7 +1352,7 @@ export const en = {
     },
     credits: {
       heading: "Fonts and images",
-      body: "Text is set in Zen Maru Gothic (© The Zen Maru Gothic Authors), Zen Kaku Gothic New (© The Zen Project Authors) and DM Mono (© The DM Mono Project Authors). The Bento wordmark is drawn from Bricolage Grotesque (© The Bricolage Grotesque Project Authors). All four are used under the SIL Open Font License 1.1. The fonts are served by Bento itself, so no font service sees your visit.\n\nThe logo, icons and seasonal illustrations were made for Bento. Bento uses no stock photos or other people's images.",
+      body: "Text is set in Zen Maru Gothic (© The Zen Maru Gothic Authors), Zen Kaku Gothic New (© The Zen Project Authors) and DM Mono (© The DM Mono Project Authors). The Bento wordmark is drawn from Bricolage Grotesque (© The Bricolage Grotesque Project Authors). All four are used under the SIL Open Font License 1.1. The fonts are served by Bento itself, so no font service sees your visit.\n\nThe logo, icons, Bento Man and the seasonal illustrations were made for Bento. Bento uses no stock photos or other people's images.",
       licence: "Read the SIL Open Font License",
     },
   },
