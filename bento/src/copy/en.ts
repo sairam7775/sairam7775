@@ -1158,6 +1158,8 @@ export const en = {
       badCode: "The code is six digits.",
       wrongCode: "That code didn't match. Codes change every 30 seconds; try the one showing now.",
       setupFailed: "Two-factor sign-in couldn't be started just now. Try again in a moment.",
+      setupExpired: "That setup has expired. Start again for a new code to scan.",
+      verifyFailed: "Bento couldn't check the code just now. Try again in a moment.",
       lost: "Lost your phone? Ask another admin, or the operator, to remove your two-factor setting; then set it up again.",
       factorName: "Bento admin",
     },

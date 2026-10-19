@@ -69,8 +69,23 @@ describe("verifyTwoFactor", () => {
   });
 
   it("says the code was wrong, and keeps the setup on screen", async () => {
-    mocks.challengeAndVerify.mockResolvedValue({ error: { message: "Invalid TOTP code entered" } });
+    mocks.listFactors.mockResolvedValue({ data: { all: [{ id: "f1", factor_type: "totp", status: "unverified" }] }, error: null });
+    mocks.challengeAndVerify.mockResolvedValue({ error: { code: "mfa_verification_failed", message: "Invalid TOTP code entered" } });
     const r = await verifyTwoFactor({ step: "verify", factorId: "f1", qr: "q", secret: "s" }, form({ factorId: "f1", code: "123456" }));
     expect(r).toEqual({ step: "verify", factorId: "f1", qr: "q", secret: "s", error: t.wrongCode });
+  });
+
+  it("offers to start again when the setup has expired", async () => {
+    mocks.challengeAndVerify.mockResolvedValue({ error: { code: "mfa_factor_not_found", message: "Factor not found" } });
+    const r = await verifyTwoFactor({ step: "verify", factorId: "f1", qr: "q", secret: "s" }, form({ factorId: "f1", code: "123456" }));
+    expect(r).toEqual({ step: "start", error: t.setupExpired });
+  });
+
+  it("keeps the setup and asks to try again when the check itself failed", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.listFactors.mockResolvedValue({ data: { all: [{ id: "f1", factor_type: "totp", status: "unverified" }] }, error: null });
+    mocks.challengeAndVerify.mockResolvedValue({ error: { code: "over_request_rate_limit", message: "Too many requests" } });
+    const r = await verifyTwoFactor({ step: "verify", factorId: "f1", qr: "q", secret: "s" }, form({ factorId: "f1", code: "123456" }));
+    expect(r).toEqual({ step: "verify", factorId: "f1", qr: "q", secret: "s", error: t.verifyFailed });
   });
 });

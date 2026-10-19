@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isAdmin } from "@/lib/admin";
 import { copy } from "@/copy";
 import { SETTINGS } from "../../paths";
+import { afterVerifyError } from "./verify-error";
 
 const t = copy.settings.twoFactor;
 
@@ -53,6 +54,18 @@ export async function verifyTwoFactor(prev: TwoFactorState, form: FormData): Pro
   const parsed = Code.safeParse({ factorId: form.get("factorId"), code: String(form.get("code") ?? "") });
   if (!parsed.success) return { ...keep, error: t.badCode };
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: parsed.data.factorId, code: parsed.data.code });
-  if (error) return { ...keep, error: t.wrongCode };
+  if (error) {
+    const { data: factors } = await supabase.auth.mfa.listFactors();
+    const stillThere = (factors?.all ?? []).some((f) => f.id === parsed.data.factorId);
+    switch (afterVerifyError(error.code, stillThere)) {
+      case "wrong":
+        return { ...keep, error: t.wrongCode };
+      case "restart":
+        return { step: "start", error: t.setupExpired };
+      case "retry":
+        console.error("Checking a two-factor code failed:", error.code ?? error.message);
+        return { ...keep, error: t.verifyFailed };
+    }
+  }
   redirect(SETTINGS.admin);
 }
