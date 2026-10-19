@@ -46,6 +46,14 @@ describe("Bento Man's figures", () => {
           expect(f.parts.find((p) => p.id === t.part)!.pivot, `${f.key} ${t.part}`).toBeDefined();
   });
 
+  it("fades only parts without children (Lottie opacity doesn't pass to children)", () => {
+    for (const f of figures)
+      for (const p of f.parts) {
+        const fades = (p.opacity ?? 100) !== 100 || f.tracks.some((t) => t.part === p.id && t.prop === "opacity");
+        if (fades) expect(f.parts.some((c) => c.parent === p.id), `${f.key} ${p.id}`).toBe(false);
+      }
+  });
+
   it("draws every part once, parents before their children", () => {
     for (const f of figures) {
       const order = drawOrder(f).map((p) => p.id);
