@@ -2,10 +2,14 @@ import { describe, expect, it, vi } from "vitest";
 import { deleteAccountData, postHogDeleter } from "./delete";
 
 /** A stand-in for the service-role client that records what was asked. */
-function fakeAdmin(opts: { unlinkError?: string; deleteError?: string } = {}) {
+function fakeAdmin(opts: { unlinkError?: string; deleteError?: string; queueError?: string } = {}) {
   const calls: string[] = [];
   const admin = {
     from: (table: string) => ({
+      insert: async (values: Record<string, unknown>) => {
+        calls.push(`insert ${table} ${JSON.stringify(values)}`);
+        return { error: opts.queueError ? { message: opts.queueError } : null };
+      },
       update: (values: Record<string, unknown>) => ({
         eq: async (col: string, val: string) => {
           calls.push(`update ${table} ${JSON.stringify(values)} where ${col}=${val}`);
@@ -36,15 +40,32 @@ describe("deleteAccountData", () => {
     expect(r.analyticsDeleted).toBe(true);
   });
 
-  it("still deletes the account when analytics deletion fails, and says it is pending", async () => {
+  it("still deletes the account when analytics deletion keeps failing, and queues it for the daily retry", async () => {
     const { admin, calls } = fakeAdmin();
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = await deleteAccountData(admin, "u1", async () => {
       throw new Error("down");
     }, { wait: async () => {} });
-    expect(calls.at(-1)).toBe("deleteUser u1");
-    expect(r).toEqual({ analyticsDeleted: false, analyticsPending: true });
+    expect(calls).toEqual([
+      'update api_usage {"user_id":null} where user_id=u1',
+      'insert analytics_deletions {"user_id":"u1","last_error":"PostHog deletion failed"}',
+      "deleteUser u1",
+    ]);
+    expect(r).toEqual({ analyticsDeleted: false, analyticsPending: "retrying" });
     expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it("still deletes the account when the queue can't be written, and says it will be done by hand", async () => {
+    const { admin, calls } = fakeAdmin({ queueError: "unavailable" });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const r = await deleteAccountData(admin, "u1", async () => {
+      throw new Error("down");
+    }, { wait: async () => {} });
+    expect(calls.at(-1)).toBe("deleteUser u1");
+    expect(r).toEqual({ analyticsDeleted: false, analyticsPending: "by-hand" });
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("delete it by hand"), "unavailable");
+    log.mockRestore();
   });
 
   it("tries the analytics deletion again before giving up", async () => {
@@ -56,12 +77,12 @@ describe("deleteAccountData", () => {
     }, { wait: async (ms) => { waits.push(ms); } });
     expect(tries).toBe(3);
     expect(waits).toEqual([500, 1500]);
-    expect(r).toEqual({ analyticsDeleted: true, analyticsPending: false });
+    expect(r).toEqual({ analyticsDeleted: true, analyticsPending: null });
   });
 
   it("has nothing pending where analytics deletion isn't set up", async () => {
     const { admin } = fakeAdmin();
-    expect(await deleteAccountData(admin, "u1", null)).toEqual({ analyticsDeleted: false, analyticsPending: false });
+    expect(await deleteAccountData(admin, "u1", null)).toEqual({ analyticsDeleted: false, analyticsPending: null });
   });
 
   it("stops before deleting anything if costs can't be unlinked", async () => {

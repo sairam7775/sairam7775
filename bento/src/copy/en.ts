@@ -1239,6 +1239,7 @@ export const en = {
       failed: `Your account wasn't deleted. Try again, or write to ${CONTACT}.`,
       done: "Your account and everything in it has been deleted.",
       // PostHog couldn't be reached after three tries. What is done comes first.
+      doneAnalyticsRetrying: `Your account and everything in it has been deleted. Your usage analytics couldn't be deleted just now; Bento will try again once a day, and delete them by hand if that doesn't work. Write to ${CONTACT} if you'd like to know when.`,
       doneAnalyticsPending: `Your account and everything in it has been deleted. Your usage analytics couldn't be deleted just now; they will be deleted by hand. Write to ${CONTACT} if you'd like to know when.`,
     },
     legal: {
@@ -1358,7 +1359,7 @@ export const en = {
         body: (chat: "gemini" | "anthropic", googleSignIn: boolean, analyticsDeletion: boolean) =>
           "You can delete a trip from your trips list, or your whole account in Settings, at any time. Deleting your account removes your trips, day plans, bookings, shared links, conversations with Bento Man, trip reviews and preferences straight away. " +
           (analyticsDeletion
-            ? "Analytics linked to your account are deleted from PostHog at the same time. If PostHog can't be reached, you're told so when your account is deleted, and they are deleted by hand. "
+            ? "Analytics linked to your account are deleted from PostHog at the same time. If PostHog can't be reached, you're told so when your account is deleted, and Bento tries again once a day for up to ten days, keeping only your account's internal number until it works. If it still can't, they are deleted by hand. "
             : "To have analytics linked to your account deleted too, write to the address below. ") +
           "Records of what Bento's AI calls cost (Bento Man and the confirmation reader) are kept without any link to you, because they enforce the spending limit.\n\nIf you can't sign in, write to us from the email address on the account and we will delete it within 30 days.\n\nYou can also ask for a copy of your data, ask us to correct it or stop using it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nIf you're unhappy with how Bento handles your data, please tell us first. You can also complain to Japan's Personal Information Protection Commission, or to the data protection authority where you live.",
       },
