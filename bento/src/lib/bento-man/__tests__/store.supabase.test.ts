@@ -14,9 +14,11 @@ function fixture() {
     places_public: [],
   };
   const errors: Record<string, Error | null> = {};
+  const selectCalls: [string, string][] = [];
   const from = vi.fn((table: string) => {
     const query = Object.assign(Promise.resolve({ data: structuredClone(rows[table]), error: errors[table] ?? null }), {
-      select: () => query, eq: () => query, order: () => query, limit: () => query,
+      select: (columns: string) => { selectCalls.push([table, columns]); return query; },
+      eq: () => query, in: () => query, order: () => query, limit: () => query,
       maybeSingle: () => query, single: () => query,
       upsert: async (row: Record<string, unknown>) => {
         rows[table] = row;
@@ -38,7 +40,7 @@ function fixture() {
   const db = { from, rpc } as unknown as SupabaseClient;
   const store = new SupabaseStore(db, "trip", "user");
   const count = (table: string) => from.mock.calls.filter(([t]) => t === table).length;
-  return { store, db, rows, errors, count };
+  return { store, db, rows, errors, count, selectCalls };
 }
 
 describe("request-local SupabaseStore reads", () => {
@@ -59,6 +61,23 @@ describe("request-local SupabaseStore reads", () => {
     const { store, count } = fixture();
     await Promise.all([store.places("kyoto-city"), store.places("osaka-city"), store.cities()]);
     expect(count("city_coverage")).toBe(1);
+  });
+
+  it("loads planned map names only from places_public", async () => {
+    const { store, rows, selectCalls } = fixture();
+    rows.itinerary_days = [{
+      date: "2026-11-21",
+      city_id: "kyoto-city",
+      itinerary_items: [
+        { id: "item", place_id: "temple", sort_order: 0, start_time: null, duration_min: 60, locked: false },
+        { id: "removed", place_id: "not-public", sort_order: 1, start_time: null, duration_min: 60, locked: false },
+      ],
+    }];
+    rows.places_public = [{ id: "temple", name: "Temple", name_ja: "寺" }];
+    const state = await store.state();
+    expect(selectCalls).toContainEqual(["places_public", "id, name, name_ja"]);
+    expect(state.days[0].items[0]).toMatchObject({ name: "Temple", mapName: "Temple", nameJa: "寺" });
+    expect(state.days[0].items[1]).toMatchObject({ name: "not-public", mapName: null, nameJa: null });
   });
 
   it("retries failed reads", async () => {

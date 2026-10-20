@@ -63,6 +63,11 @@ describe("computeDayDiff", () => {
     expect(d.after.every((i) => i.change === "added")).toBe(true);
     expect(d.summary).toMatch(/^2 stops/);
   });
+
+  it("stores the planner's Japanese place name when the place data has one", () => {
+    const d = computeDayDiff([], plan([item("himeji-castle", 540)]), [{ id: "himeji-castle", nameJa: "姫路城" }]);
+    expect(d.after[0].nameJa).toBe("姫路城");
+  });
 });
 
 describe("proposals", () => {
@@ -72,6 +77,11 @@ describe("proposals", () => {
     expect(parseProposal(JSON.parse(JSON.stringify(p)))).toEqual(p);
     expect(parseProposal({ summary: "x", days: [{ kind: "day" }] })).toBeNull();
     expect(parseProposal("nope")).toBeNull();
+  });
+
+  it("still reads day proposals saved before they carried Japanese names", () => {
+    const day = computeDayDiff([], plan([item("a", 540)]));
+    expect(parseProposal({ summary: "1 day", days: [day] })?.days[0].after[0].nameJa).toBeUndefined();
   });
   it("merge keeps one diff per date, later wins", () => {
     const a = { summary: "a", days: [computeDayDiff([], plan([item("a", 540)]))] };

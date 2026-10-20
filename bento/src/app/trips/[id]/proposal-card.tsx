@@ -10,6 +10,7 @@ import { BentoManFigure } from "@/components/mascot/figure";
 import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
 import { coverageShown, hasKnownTrains, routeWideCoverage, trainRows, uncoveredStays } from "@/lib/trips/route-card";
+import { placeMapUrl } from "@/lib/maps/links";
 
 const t = copy.proposal;
 
@@ -165,6 +166,15 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
                 <span className="mono pt-0.5 text-[0.78rem] text-ink-3">{clock(it.startMin)}</span>
                 <div>
                   <span className="font-medium">{it.name}</span>
+                  <a
+                    href={placeMapUrl({ name: it.name, nameJa: it.nameJa, cityName: cityName(d.cityId) ?? d.cityId })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={copy.day.openMap(it.name)}
+                    className="ml-2 inline-flex min-h-6 items-center text-[0.82rem] font-medium text-accent-ink hover:underline"
+                  >
+                    {copy.day.map}
+                  </a>
                   {it.locked && <span className="mono ml-2 text-[0.74rem] uppercase tracking-[0.1em] text-accent-ink">{t.pinned}</span>}
                   <span className={`mono ml-2 rounded-full px-1.5 py-0.5 text-[0.74rem] uppercase tracking-[0.1em] ${CHANGE[it.change].cls}`}>{CHANGE[it.change].label}</span>
                   <p className="text-[0.82rem] leading-snug text-ink-2">{it.reason}</p>

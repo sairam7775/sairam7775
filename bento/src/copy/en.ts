@@ -475,6 +475,8 @@ export const en = {
       label: "Travel day",
       estimate: "A ~ before a fare means it's an estimate.",
       tickets: "Keep the tickets in Bookings →",
+      directions: "Directions",
+      openDirections: (from: string, to: string) => `Open directions from ${from} to ${to} in Google Maps`,
     },
     emptyBox: {
       title: "An empty box.",
@@ -498,6 +500,8 @@ export const en = {
   day: {
     lunch: "Lunch",
     lunchNote: "Nothing booked, and nothing needs to be. Bring cash.",
+    map: "Map",
+    openMap: (name: string) => `Open ${name} in Google Maps`,
     budgetEndsLabel: "Day budget ends here",
     budgetEnds: (budget: string) => `${budget} day ends here`,
     pinned: "pinned",
@@ -1266,7 +1270,7 @@ export const en = {
 
   privacy: {
     title: "How Bento uses data",
-    updated: "Last updated 18 October 2026",
+    updated: "Last updated 20 October 2026",
     intro: "Bento is a trip planner. This page says what it keeps about you, who else handles it, and what you can do about it. In short: your plan stays yours, booking references are encrypted, and usage analytics only run if you say yes.",
     // Links shown under a section, by the section's key.
     links: {
@@ -1323,6 +1327,10 @@ export const en = {
             ? " Apart from Google's use of Bento Man messages described above, each handles data only to provide its service to Bento."
             : " Each handles data only to provide its service to Bento."),
       },
+      maps: {
+        heading: "Map and directions links",
+        body: "Map and Directions links open Google Maps in a new tab, with the place's name and city, or the locations of the two stations, in the link. Bento sends Google nothing until you open one. What you do in Google Maps is then handled by Google under its own privacy policy.",
+      },
       where: {
         heading: "Where it's handled",
         body: (chat: "gemini" | "anthropic") =>
@@ -1359,7 +1367,7 @@ export const en = {
 
   terms: {
     title: "Terms of use",
-    updated: "Last updated 18 October 2026",
+    updated: "Last updated 20 October 2026",
     intro: "The agreement between you and Bento when you use it. It's written to be read: if anything here is unclear, write to us and we'll explain.",
     sections: {
       service: {

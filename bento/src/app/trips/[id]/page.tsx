@@ -12,6 +12,7 @@ import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
 import { buildTripView, tripTravelDays } from "@/lib/bento-man/trip-view";
+import { journeyMapUrl } from "@/lib/maps/links";
 import { loadGaps } from "@/lib/vault/store";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
@@ -82,7 +83,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   ]);
 
   const requested = typeof sp.day === "string" ? sp.day : null;
-  const { dayList, statsByDate, selected, selectedDay, selectedMeta, stats } = buildTripView(state, requested);
+  const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested);
 
   // Each travel day's trains. A failure only leaves them off the page.
   const travel = await tripTravelDays(store, state).catch(() => null);
@@ -327,6 +328,17 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                       <li key={`${l.fromCityId}-${l.toCityId}`}>
                         <p className="text-[0.95rem] font-medium leading-snug">{l.summary}</p>
                         {l.lines.map((line) => <p key={line} className="mono mt-1 text-[0.76rem] leading-snug text-ink-2">{line}</p>)}
+                        {l.fromStation && l.toStation && (
+                          <a
+                            href={journeyMapUrl({ from: l.fromStation, to: l.toStation })}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={t.travelDay.openDirections(l.fromStation.name, l.toStation.name)}
+                            className="mt-0.5 inline-flex min-h-6 items-center text-[0.82rem] font-medium text-accent-ink hover:underline"
+                          >
+                            {t.travelDay.directions}
+                          </a>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -345,10 +357,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 cityId={selectedMeta.cityId ?? ""}
                 cityName={selectedMeta.cityName}
                 tier={coverage(selectedMeta.tier)}
-                items={(selectedDay?.items ?? []).map((it) => ({
-                  placeId: it.placeId, name: it.name, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked,
-                  reason: it.reason, reasonTerms: it.reasonTerms, arriveMode: it.arriveMode, arriveMinutes: it.arriveMinutes, arriveDetail: it.arriveDetail,
-                }))}
+                items={dayItems ?? []}
                 budgetMin={stats?.budgetMin ?? 480}
                 activeMin={stats?.activeMin ?? 0}
                 overBy={stats?.overBy ?? 0}

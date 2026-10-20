@@ -43,6 +43,10 @@ describe("assessRoute", () => {
     const a = assessRoute([{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 4 }], facts, graph, 6);
     expect(a.verdict).toBe("fine");
     expect(a.legs[0].summary).toMatch(/Shin-Osaka → Kyoto/);
+    expect(a.legs[0]).toMatchObject({
+      fromStation: { name: "Shin-Osaka", lat: 34.7335, lon: 135.5 },
+      toStation: { name: "Kyoto", lat: 34.9858, lon: 135.7588 },
+    });
   });
 
   it("ignores day trips when counting city changes", () => {

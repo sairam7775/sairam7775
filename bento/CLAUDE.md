@@ -227,6 +227,12 @@ Practically:
   chooses, and it always returns a proposal.
 - `engine/day-stats.ts` sums what is stored for the view (active time,
   over-budget index, the lunch gap). It must not invent times.
+- Map and Directions links (`lib/maps/links.ts`) are plain Google Maps
+  links: a place's name (Japanese when known) and city, or a train
+  journey's two station points. Nothing reaches Google until the traveller
+  opens one; `copy.privacy.sections.maps` says so. A day's stop has a link
+  only while its place is still in `places_public`. Station points come
+  from the database as hex EWKB (`readPoint` in `transit/load.ts`).
 - Palette and motion live in `globals.css`: `paper`/`surface`/`sunk`/
   `lacquer`/`rice`, ink levels, `accent` (salmon), `ume`, `edamame`,
   `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.pop`, `.grow`,

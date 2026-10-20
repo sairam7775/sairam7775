@@ -34,6 +34,9 @@ export interface RouteLegAssessment {
   fareKind: "exact" | "estimate";
   summary: string;
   lines: string[];
+  /** Graph endpoints for a directions link; absent when Bento has no route. */
+  fromStation?: { name: string; lat?: number | null; lon?: number | null };
+  toStation?: { name: string; lat?: number | null; lon?: number | null };
 }
 
 export type RouteVerdict = "fine" | "tight" | "overpacked";
@@ -122,7 +125,18 @@ export function assessRoute(
     const r = between(a, b);
     if (r) {
       const d = describeRoute(r);
-      legs.push({ fromCityId: a, toCityId: b, movingTo, minutes: r.minutes, fareJpy: r.fareJpy, fareKind: r.fareKind, summary: d.summary, lines: d.lines });
+      legs.push({
+        fromCityId: a,
+        toCityId: b,
+        movingTo,
+        minutes: r.minutes,
+        fareJpy: r.fareJpy,
+        fareKind: r.fareKind,
+        summary: d.summary,
+        lines: d.lines,
+        fromStation: { name: r.from.name, lat: r.from.lat, lon: r.from.lon },
+        toStation: { name: r.to.name, lat: r.to.lat, lon: r.to.lon },
+      });
     } else {
       legs.push({
         fromCityId: a, toCityId: b, movingTo, minutes: null, fareJpy: null, fareKind: "estimate",

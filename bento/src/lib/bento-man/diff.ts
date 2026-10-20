@@ -14,6 +14,8 @@ import { copy } from "@/copy";
 export const DiffItemSchema = z.object({
   placeId: z.string(),
   name: z.string(),
+  // Older proposals have no Japanese name, so keep this optional on read.
+  nameJa: z.string().nullable().optional(),
   startMin: z.number().int(),
   endMin: z.number().int(),
   durationMin: z.number().int(),
@@ -125,7 +127,7 @@ export interface ExistingItem {
   locked: boolean;
 }
 
-export function computeDayDiff(existing: ExistingItem[], plan: DayPlan): DayDiff {
+export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: { id: string; nameJa?: string | null }[] = []): DayDiff {
   const afterIds = new Set(plan.items.map((it) => it.placeId));
   // "Moved" means its place in the sequence changed relative to the other
   // stops that survived — not that the clock shifted because something
@@ -134,6 +136,7 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan): DayDiff
   const survivorsAfter = plan.items.filter((it) => survivorsBefore.includes(it.placeId)).map((it) => it.placeId);
   const rankBefore = new Map(survivorsBefore.map((id, i) => [id, i]));
   const rankAfter = new Map(survivorsAfter.map((id, i) => [id, i]));
+  const nameJaById = new Map(places.map((place) => [place.id, place.nameJa ?? null]));
 
   const after: DiffItem[] = plan.items.map((it) => {
     let change: DiffItem["change"] = "kept";
@@ -142,6 +145,7 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan): DayDiff
     return {
       placeId: it.placeId,
       name: it.name,
+      ...(nameJaById.has(it.placeId) ? { nameJa: nameJaById.get(it.placeId)! } : {}),
       startMin: it.startMin,
       endMin: it.endMin,
       durationMin: it.durationMin,
