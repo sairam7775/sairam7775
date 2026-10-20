@@ -1,13 +1,20 @@
 -- Bento · 0024 · optional expiry for companions' links
 --
 -- NULL keeps today's behaviour: the owner turns the link off or replaces it.
+-- A fixed expiry (7 or 30 days) is an instant. "Until the trip ends" is
+-- stored as the choice, not a time, so it follows the trip's end date when
+-- the dates change: the link works through the last day (UTC, like the
+-- database's current_date).
 alter table trip_shares add column expires_at timestamptz null;
+alter table trip_shares add column until_trip_end boolean not null default false;
+alter table trip_shares add constraint trip_shares_one_expiry
+  check (not (until_trip_end and expires_at is not null));
 
 -- The existing own-trip-shares policy already checks ownership for every
--- command. Let travellers write only this new column when creating or
+-- command. Let travellers write only these new columns when creating or
 -- changing their own row; the token and trip id stay protected by 0020's grants.
-grant insert (expires_at) on trip_shares to authenticated;
-grant update (expires_at) on trip_shares to authenticated;
+grant insert (expires_at, until_trip_end) on trip_shares to authenticated;
+grant update (expires_at, until_trip_end) on trip_shares to authenticated;
 
 -- Expired and unknown tokens both return null, so the public page cannot tell
 -- whether a link used to exist. Keep the result shape and grants from 0020.
@@ -26,7 +33,9 @@ begin
     return null;
   end if;
   select tr.* into t from trip_shares s join trips tr on tr.id = s.trip_id
-    where s.token = p_token and (s.expires_at is null or s.expires_at > now());
+    where s.token = p_token
+      and (s.expires_at is null or s.expires_at > now())
+      and (not s.until_trip_end or (tr.end_date is not null and now() < (tr.end_date + 1)::timestamp at time zone 'UTC'));
   if not found then
     return null;
   end if;

@@ -120,12 +120,15 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
   // The companions' link, if the trip is shared (0020/0024).
-  const { data: share } = await db.from("trip_shares").select("token, expires_at").eq("trip_id", id).maybeSingle();
+  const { data: share } = await db.from("trip_shares").select("token, expires_at, until_trip_end").eq("trip_id", id).maybeSingle();
   const shareUrl = share ? `${siteOrigin(await headers())}/shared/${share.token}` : null;
-  const shareActive = shareIsActive(share, new Date());
-  const shareExpiryLabel = share?.expires_at
-    ? copy.share.worksUntil(new Intl.DateTimeFormat(copy.locale, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(share.expires_at)))
-    : copy.share.worksUntilOff;
+  const shareActive = shareIsActive(share, state.trip.endDate, new Date());
+  const shareDay = (at: string) => new Intl.DateTimeFormat(copy.locale, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(at));
+  const shareExpiryLabel = share?.until_trip_end && state.trip.endDate
+    ? copy.share.worksUntilTripEnd(shareDay(`${state.trip.endDate}T00:00:00Z`))
+    : share?.expires_at
+      ? copy.share.worksUntil(shareDay(share.expires_at))
+      : copy.share.worksUntilOff;
   // Changing or ending a link is quiet and asks first: whoever has it loses it.
   const quiet = "min-h-9 rounded-full px-3.5 text-[0.84rem] font-medium text-ink-2";
   const sharePanel = (

@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseReview, reviewOpen, snapshotFromRow } from "@/lib/trips/review";
-import { SHARE_EXPIRY_OPTIONS, shareExpiresAt, type ShareExpiryOption } from "@/lib/trips/share-expiry";
+import { SHARE_EXPIRY_OPTIONS, shareExpiry, type ShareExpiry, type ShareExpiryOption } from "@/lib/trips/share-expiry";
 import type { TripState } from "@/lib/bento-man/store";
 
 const Ids = z.object({ tripId: z.string().uuid(), messageId: z.string().uuid() });
@@ -116,14 +116,14 @@ async function changeShare(formData: FormData, how: "on" | "renew" | "off") {
   const { data: { user } } = await db.auth.getUser();
   if (!user) redirect("/sign-in");
   const failed = `/trips/${tripId}?error=${encodeURIComponent(copy.share.failed)}#share`;
-  let expiresAt: string | null = null;
+  let expiry: ShareExpiry = { expires_at: null, until_trip_end: false };
   if (how !== "off") {
     const { data: trip, error } = await db.from("trips").select("end_date").eq("id", tripId).maybeSingle();
     if (error) redirect(failed);
     if (!trip) redirect("/trips");
     if (!expiryOption) redirect("/trips");
     try {
-      expiresAt = shareExpiresAt(expiryOption, trip.end_date, new Date());
+      expiry = shareExpiry(expiryOption, trip.end_date, new Date());
     } catch {
       // A forged trip-end choice without a stored end date is refused before
       // it can delete or create a share row.
@@ -135,7 +135,7 @@ async function changeShare(formData: FormData, how: "on" | "renew" | "off") {
     if (error) redirect(failed);
   }
   if (how !== "off") {
-    const { error } = await db.from("trip_shares").insert({ trip_id: tripId, expires_at: expiresAt });
+    const { error } = await db.from("trip_shares").insert({ trip_id: tripId, ...expiry });
     // Already shared (a second tap): the link there is stays.
     if (error && error.code !== "23505") redirect(failed);
   }

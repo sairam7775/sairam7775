@@ -47,7 +47,14 @@ describe("sharing a trip", () => {
     await expect(shareTrip(form({ tripId: TRIP_ID, expiryOption: "7-days", expires_at: "1999-01-01T00:00:00Z" })))
       .rejects.toThrow(`redirect:/trips/${TRIP_ID}?share=1#share`);
 
-    expect(mocks.shareInsert).toHaveBeenCalledWith({ trip_id: TRIP_ID, expires_at: "2026-11-27T12:30:00.000Z" });
+    expect(mocks.shareInsert).toHaveBeenCalledWith({ trip_id: TRIP_ID, expires_at: "2026-11-27T12:30:00.000Z", until_trip_end: false });
+  });
+
+  it("stores until the trip ends as the choice, so it follows later date changes", async () => {
+    await expect(shareTrip(form({ tripId: TRIP_ID, expiryOption: "trip-end" })))
+      .rejects.toThrow(`redirect:/trips/${TRIP_ID}?share=1#share`);
+
+    expect(mocks.shareInsert).toHaveBeenCalledWith({ trip_id: TRIP_ID, expires_at: null, until_trip_end: true });
   });
 
   it("refuses an unknown expiry option", async () => {

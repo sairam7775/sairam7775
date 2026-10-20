@@ -700,6 +700,8 @@ export const en = {
     },
     worksUntilOff: "Works until you turn it off",
     worksUntil: (date: string) => `Works until ${date}`,
+    // The trip's last day; it moves if the trip's dates change.
+    worksUntilTripEnd: (lastDay: string) => `Works until the trip ends, through ${lastDay}`,
     expired: "This link has expired.",
     turnOn: "Share with companions",
     linkLabel: "Link for your companions",

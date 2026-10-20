@@ -53,7 +53,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
     store.graph(),
     // Never the reference.
     db.from("bookings").select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on").eq("trip_id", id),
-    db.from("trip_shares").select("token, expires_at").eq("trip_id", id).maybeSingle(),
+    db.from("trip_shares").select("token, expires_at, until_trip_end").eq("trip_id", id).maybeSingle(),
   ]);
   if (bookingsError || !bookingRows) throw new Error(t.loadFailed);
   const places = new Map(placeLists.flat().map((p) => [p.id, p]));
@@ -66,7 +66,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
   // Shared: the companions' link, so the copy they're sent opens for them.
   // Not shared, expired (or unknown): the trip page, which opens only for its owner.
   const origin = siteOrigin(await headers());
-  const link = share && shareIsActive(share, new Date())
+  const link = share && shareIsActive(share, state.trip.endDate, new Date())
     ? { label: t.linkShared, url: `${origin}/shared/${share.token}` }
     : { label: t.link, url: `${origin}/trips/${id}` };
 
