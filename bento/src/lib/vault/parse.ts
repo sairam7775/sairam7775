@@ -12,6 +12,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import type { BookingKind } from "@/lib/types";
 import { addUsage, ZERO_USAGE, type Usage } from "@/lib/bento-man/cost";
+import { redactConfirmation } from "./redact";
 import { copy } from "@/copy";
 
 export const PARSE_MODEL = "claude-haiku-4-5";
@@ -32,7 +33,7 @@ type must be one of: flight, accommodation, transport, activity, restaurant, oth
 
 Dates are YYYY-MM-DD. Times are 24-hour local time at the place. For accommodation, starts_on is the check-in date and ends_on the check-out date.
 
-reference is the booking reference, confirmation number or PNR exactly as written.
+reference is the booking reference, confirmation number or PNR exactly as written. Some values have already been taken out and replaced with markers in square brackets, such as [reference removed]; never return a marker as a value, and leave the field null instead.
 
 cost_amount is the number only; cost_currency its ISO code.`;
 
@@ -94,10 +95,13 @@ export class ParseFailed extends Error {
   }
 }
 
-/** The pasted text, as JSON. No tools, no trip state, no history. */
+/** The pasted text, as JSON. No tools, no trip state, no history, and no
+ *  booking reference: those are taken out first (redact.ts) and the form's
+ *  reference is filled from what was taken out. */
 export async function parseConfirmation(client: Anthropic, text: string): Promise<ParseResult> {
   const trimmed = text.trim().slice(0, 12_000);
   if (trimmed.length < 8) throw new ParseFailed(copy.server.readTooShort);
+  const { text: safe, reference } = redactConfirmation(trimmed);
 
   const response = await client.messages.create({
     model: PARSE_MODEL,
@@ -107,7 +111,7 @@ export async function parseConfirmation(client: Anthropic, text: string): Promis
     messages: [
       {
         role: "user",
-        content: `<confirmation>\n${trimmed}\n</confirmation>\n\nReturn the JSON.`,
+        content: `<confirmation>\n${safe}\n</confirmation>\n\nReturn the JSON.`,
       },
     ],
   });
@@ -136,8 +140,11 @@ export async function parseConfirmation(client: Anthropic, text: string): Promis
   const parsed = ParsedBookingSchema.safeParse(raw);
   if (!parsed.success) throw fail(copy.server.readNotBookingShape);
 
+  // The reference taken out before sending wins. Failing that, one the model
+  // found unlabelled in the text, unless it is only one of the markers.
+  const modelReference = parsed.data.reference && !/^\[.*removed\]$/.test(parsed.data.reference) ? parsed.data.reference : null;
   return {
-    booking: parsed.data,
+    booking: { ...parsed.data, reference: reference ?? modelReference },
     model: response.model,
     usage,
   };

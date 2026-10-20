@@ -818,7 +818,7 @@ export const en = {
       pastePlaceholder: "Paste the whole email. It fills the form in below; nothing is saved until you press Save.",
       read: "Read it",
       reading: "Reading…",
-      readNote: "Read in a separate call with no access to your trip. Check every field before saving.",
+      readNote: "Read in a separate call with no access to your trip. Booking references, email addresses and phone numbers are taken out before it's sent. Check every field before saving.",
       readFailed: "Couldn't read that.",
       kind: "What is it",
       kinds: {
@@ -1234,6 +1234,8 @@ export const en = {
       emailMismatch: "That isn't the email address this account uses.",
       failed: `Your account wasn't deleted. Try again, or write to ${CONTACT}.`,
       done: "Your account and everything in it has been deleted.",
+      // PostHog couldn't be reached after three tries. What is done comes first.
+      doneAnalyticsPending: `Your account and everything in it has been deleted. Your usage analytics couldn't be deleted just now; they will be deleted by hand. Write to ${CONTACT} if you'd like to know when.`,
     },
     legal: {
       heading: "Your data and Bento's terms",
@@ -1291,7 +1293,7 @@ export const en = {
         body: (chat: "gemini" | "anthropic") => (chat === "gemini"
           ? "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Google (Gemini). On the plan Bento currently uses, Google may use this text to improve its products, so don't write anything to Bento Man you wouldn't want stored by Google."
           : "What you write to Bento Man is sent to an AI model provider to produce the reply, together with your trip's dates, route and plan. Today that provider is Anthropic (Claude), which does not use it to train its models.") +
-          "\n\nWhen you paste a confirmation email into the booking form, its text, including any booking reference in it, goes to Anthropic (Claude) only to fill in the form. Nothing is saved until you press Save. Booking references are never sent to Bento Man.",
+          "\n\nWhen you paste a confirmation email into the booking form, Bento first takes out the booking references, email addresses, phone numbers and long card or ticket numbers it recognises, and fills the reference in for you itself. The rest of the text, including names, goes to Anthropic (Claude) only to fill in the form. Nothing is saved until you press Save. Booking references are never sent to Bento Man.",
       },
       analytics: {
         heading: "Usage analytics (only if you say yes)",
@@ -1340,7 +1342,7 @@ export const en = {
       },
       children: {
         heading: "Children",
-        body: `Bento is for people aged ${MIN_AGE} and over. Sign-up asks for a date of birth and won't create an account for anyone younger, and Bento doesn't knowingly keep data about children under ${MIN_AGE}. If you think a child has an account, write to us and we'll delete it.`,
+        body: `Bento is for people aged ${MIN_AGE} and over. Sign-up asks for your date of birth and won't go on if it is under ${MIN_AGE}; by creating an account you confirm the date you gave is yours. Bento doesn't check it further and doesn't knowingly keep data about children under ${MIN_AGE}. If you think a child has an account, write to us and we'll delete it.`,
       },
       rights: {
         heading: "Your rights",
@@ -1348,7 +1350,7 @@ export const en = {
         body: (chat: "gemini" | "anthropic", googleSignIn: boolean, analyticsDeletion: boolean) =>
           "You can delete a trip from your trips list, or your whole account in Settings, at any time. Deleting your account removes your trips, day plans, bookings, shared links, conversations with Bento Man, trip reviews and preferences straight away. " +
           (analyticsDeletion
-            ? "Analytics linked to your account are deleted from PostHog at the same time. "
+            ? "Analytics linked to your account are deleted from PostHog at the same time. If PostHog can't be reached, you're told so when your account is deleted, and they are deleted by hand. "
             : "To have analytics linked to your account deleted too, write to the address below. ") +
           "Records of what Bento's AI calls cost (Bento Man and the confirmation reader) are kept without any link to you, because they enforce the spending limit.\n\nIf you can't sign in, write to us from the email address on the account and we will delete it within 30 days.\n\nYou can also ask for a copy of your data, ask us to correct it or stop using it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nIf you're unhappy with how Bento handles your data, please tell us first. You can also complain to Japan's Personal Information Protection Commission, or to the data protection authority where you live.",
       },
@@ -1370,7 +1372,7 @@ export const en = {
       },
       account: {
         heading: "Your account",
-        body: `You need to be ${MIN_AGE} or older to create an account. If you're under 18, check that a parent or guardian is happy for you to use Bento.\n\nAn account is for one person. Keep your password to yourself: you're responsible for what's done with your account. If you think someone else has used it, change your password and write to us.`,
+        body: `You need to be ${MIN_AGE} or older to create an account, and by creating one you confirm that you are. If you're under 18, check that a parent or guardian is happy for you to use Bento.\n\nAn account is for one person. Keep your password to yourself: you're responsible for what's done with your account. If you think someone else has used it, change your password and write to us.`,
       },
       yours: {
         heading: "Your plans stay yours",

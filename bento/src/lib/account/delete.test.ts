@@ -36,15 +36,32 @@ describe("deleteAccountData", () => {
     expect(r.analyticsDeleted).toBe(true);
   });
 
-  it("still deletes the account when analytics deletion fails", async () => {
+  it("still deletes the account when analytics deletion fails, and says it is pending", async () => {
     const { admin, calls } = fakeAdmin();
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = await deleteAccountData(admin, "u1", async () => {
       throw new Error("down");
-    });
+    }, { wait: async () => {} });
     expect(calls.at(-1)).toBe("deleteUser u1");
-    expect(r.analyticsDeleted).toBe(false);
+    expect(r).toEqual({ analyticsDeleted: false, analyticsPending: true });
     expect(log).toHaveBeenCalled();
+  });
+
+  it("tries the analytics deletion again before giving up", async () => {
+    const { admin } = fakeAdmin();
+    let tries = 0;
+    const waits: number[] = [];
+    const r = await deleteAccountData(admin, "u1", async () => {
+      if (++tries < 3) throw new Error("busy");
+    }, { wait: async (ms) => { waits.push(ms); } });
+    expect(tries).toBe(3);
+    expect(waits).toEqual([500, 1500]);
+    expect(r).toEqual({ analyticsDeleted: true, analyticsPending: false });
+  });
+
+  it("has nothing pending where analytics deletion isn't set up", async () => {
+    const { admin } = fakeAdmin();
+    expect(await deleteAccountData(admin, "u1", null)).toEqual({ analyticsDeleted: false, analyticsPending: false });
   });
 
   it("stops before deleting anything if costs can't be unlinked", async () => {

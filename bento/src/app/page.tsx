@@ -15,7 +15,10 @@ const primary = "inline-flex min-h-11 items-center rounded-full bg-accent px-6 t
 const secondary = "inline-flex min-h-11 items-center rounded-full border border-rule bg-surface px-6 text-[0.95rem] font-medium text-ink hover:bg-sunk";
 
 export default async function Home({ searchParams }: PageProps<"/">) {
-  const deleted = (await searchParams).deleted === "1";
+  const sp = await searchParams;
+  const deleted = sp.deleted === "1";
+  // Account deleted, but PostHog couldn't be reached to delete its analytics.
+  const analyticsPending = deleted && sp.analytics === "pending";
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,7 +40,11 @@ export default async function Home({ searchParams }: PageProps<"/">) {
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8">
       {!user && <AnalyticsSignedOut />}
-      {deleted && !user && <div className="mt-4"><Notice>{copy.settings.deleteAccount.done}</Notice></div>}
+      {deleted && !user && (
+        <div className="mt-4">
+          <Notice>{analyticsPending ? copy.settings.deleteAccount.doneAnalyticsPending : copy.settings.deleteAccount.done}</Notice>
+        </div>
+      )}
       <header className="up flex items-center justify-between gap-3">
         <Link href="/" aria-label={copy.common.homeLabel} className="inline-flex"><BentoLogo /></Link>
         <nav className="flex items-center gap-1">

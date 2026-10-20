@@ -56,8 +56,11 @@ Practically:
   `on delete cascade` too. `api_usage` is the exception: it is unlinked
   (user_id = null) first, because the global spending cap sums it. PostHog
   data is deleted too when `POSTHOG_PERSONAL_API_KEY` and
-  `POSTHOG_PROJECT_ID` are set; the privacy page says which. Admins can't
-  delete themselves from the UI.
+  `POSTHOG_PROJECT_ID` are set; the privacy page says which. That deletion
+  is tried three times and never blocks the account's; if it still fails,
+  the person is told it is pending (`/?deleted=1&analytics=pending`) and
+  the log says to delete it by hand. Never say it is done when it isn't.
+  Admins can't delete themselves from the UI.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
 - **Costs are stored in JPY.** Conversion happens on read, so a stale rate can
@@ -381,6 +384,11 @@ Practically:
   history — that is the whole mitigation for prompt injection via an
   upload (§15). Never add a tool to that call. The output is schema-
   validated and only ever fills a form the traveller reviews.
+- Before that call, `redact.ts` takes out labelled booking references,
+  email addresses, phone numbers and long card or ticket numbers, and the
+  form's reference is filled from what it took out: the model never needs
+  a reference. Names stay (they can't be told from places). The privacy
+  page says exactly this; change both together.
 
 ## Transit (P3)
 
