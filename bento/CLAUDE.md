@@ -63,6 +63,9 @@ Practically:
   Admins can't delete themselves from the UI.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
+- **Every new `SECURITY DEFINER` function sets `search_path = public, pg_temp`
+  (or `''`); `lib/db/definer-functions.test.ts` checks the effective
+  definitions across migrations.**
 - **Costs are stored in JPY.** Conversion happens on read, so a stale rate can
   never be baked into stored data.
 - **Budget lives on `trip_cities`, not `trips`** — a ryokan night in Hakone
