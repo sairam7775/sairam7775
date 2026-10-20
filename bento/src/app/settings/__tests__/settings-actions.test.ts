@@ -3,7 +3,7 @@ import { copy } from "@/copy";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), updateUser: vi.fn(), signInWithPassword: vi.fn(), maybeSingle: vi.fn(),
-  requireAdmin: vi.fn(), cookieGet: vi.fn(), cookieDelete: vi.fn(),
+  requireAdmin: vi.fn(), cookieGet: vi.fn(), cookieDelete: vi.fn(), deleteAccountData: vi.fn(), signOut: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
 vi.mock("next/headers", () => ({
@@ -12,12 +12,12 @@ vi.mock("next/headers", () => ({
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
-    auth: { getUser: mocks.getUser, updateUser: mocks.updateUser, signInWithPassword: mocks.signInWithPassword },
+    auth: { getUser: mocks.getUser, updateUser: mocks.updateUser, signInWithPassword: mocks.signInWithPassword, signOut: mocks.signOut },
     from: () => ({ select: () => ({ eq: () => ({ maybeSingle: mocks.maybeSingle }) }) }),
   }),
 }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
-vi.mock("@/lib/account/delete", () => ({ deleteAccountData: vi.fn(), postHogDeleter: vi.fn() }));
+vi.mock("@/lib/account/delete", () => ({ deleteAccountData: mocks.deleteAccountData, postHogDeleter: vi.fn() }));
 vi.mock("@/lib/admin", () => ({ requireAdmin: mocks.requireAdmin }));
 
 import { setDisplayName } from "../actions";
@@ -66,6 +66,20 @@ describe("where Settings actions return to", () => {
     mocks.signInWithPassword.mockResolvedValue({ error: { status: 400 } });
     const expected = `redirect:/settings/delete?${new URLSearchParams({ error: copy.auth.errors.wrongCurrent })}`;
     await expect(deleteAccount(form({ password: "wrong-password" }))).rejects.toThrow(expected);
+  });
+
+  it("a deletion whose analytics are still pending says so on the way out", async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: null });
+    mocks.signOut.mockResolvedValue({});
+    mocks.deleteAccountData.mockResolvedValue({ analyticsDeleted: false, analyticsPending: true });
+    await expect(deleteAccount(form({ password: "right-password" }))).rejects.toThrow("redirect:/?deleted=1&analytics=pending");
+  });
+
+  it("a finished deletion just says it is done", async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: null });
+    mocks.signOut.mockResolvedValue({});
+    mocks.deleteAccountData.mockResolvedValue({ analyticsDeleted: true, analyticsPending: false });
+    await expect(deleteAccount(form({ password: "right-password" }))).rejects.toThrow(/^redirect:\/\?deleted=1$/);
   });
 
   it("an admin change goes back to the Admin page", async () => {

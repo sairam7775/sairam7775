@@ -227,15 +227,18 @@ export async function deleteAccount(formData: FormData) {
     if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : copy.auth.errors.wrongCurrent);
   }
 
+  let analyticsPending = false;
   try {
-    await deleteAccountData(createAdminClient(), user.id, postHogDeleter());
+    ({ analyticsPending } = await deleteAccountData(createAdminClient(), user.id, postHogDeleter()));
   } catch (e) {
     console.error("Account deletion failed:", e instanceof Error ? e.message : e);
     back(t.failed);
   }
 
-  // The user is gone; clear this browser's session cookies too.
+  // The user is gone; clear this browser's session cookies too. If their
+  // analytics couldn't be deleted yet, the home page says so, rather than
+  // implying it was all done.
   (await cookies()).delete(PASSWORD_RESET_COOKIE);
   await supabase.auth.signOut().catch(() => undefined);
-  redirect("/?deleted=1");
+  redirect(analyticsPending ? "/?deleted=1&analytics=pending" : "/?deleted=1");
 }

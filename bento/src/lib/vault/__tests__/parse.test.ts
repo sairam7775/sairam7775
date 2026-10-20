@@ -17,6 +17,33 @@ function clientReturning(text: string, stop = "end_turn"): Anthropic {
   } as unknown as Anthropic;
 }
 
+describe("what the confirmation reader sends", () => {
+  it("never sends a recognisable reference, and fills the form's reference itself", async () => {
+    const sent: string[] = [];
+    const client = {
+      messages: {
+        create: async (req: { messages: { content: string }[] }) => {
+          sent.push(req.messages[0].content);
+          return {
+            model: "claude-haiku-4-5",
+            stop_reason: "end_turn",
+            content: [{ type: "text", text: JSON.stringify({
+              type: "flight", title: "Tokyo → Osaka", provider: "ANA", reference: null, starts_on: "2026-11-20", starts_at_time: "10:30",
+              ends_on: null, ends_at_time: null, from_place: "Tokyo", to_place: "Osaka", cost_amount: null, cost_currency: null, notes: null,
+            }) }],
+            usage: { input_tokens: 10, output_tokens: 10, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+          };
+        },
+      },
+    } as unknown as Anthropic;
+    const r = await parseConfirmation(client, "ANA booking reference: ABC123. Contact sai@example.com. Flight NH 846 Tokyo → Osaka, 2026-11-20 10:30.");
+    expect(sent[0]).not.toContain("ABC123");
+    expect(sent[0]).not.toContain("sai@example.com");
+    expect(sent[0]).toContain("NH 846");
+    expect(r.booking.reference).toBe("ABC123");
+  });
+});
+
 describe("parseConfirmation failures carry their cost", () => {
   it.each([
     ["not JSON", "this is not json"],
