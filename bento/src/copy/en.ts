@@ -1367,7 +1367,7 @@ export const en = {
 
   terms: {
     title: "Terms of use",
-    updated: "Last updated 18 October 2026",
+    updated: "Last updated 20 October 2026",
     intro: "The agreement between you and Bento when you use it. It's written to be read: if anything here is unclear, write to us and we'll explain.",
     sections: {
       service: {
