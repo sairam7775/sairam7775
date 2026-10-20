@@ -16,7 +16,7 @@ export function ShareExpiryField({ endDate, id = "share-expiry" }: { endDate: st
     <label htmlFor={id} className={`block w-full max-w-xs ${fieldLabel}`}>
       {copy.share.expiry.label}
       <select id={id} name="expiryOption" defaultValue="never" className={`${fieldInput} mt-1`}>
-        {shareExpiryOptions(endDate).map((option) => <option key={option} value={option}>{labels[option]}</option>)}
+        {shareExpiryOptions(endDate, new Date()).map((option) => <option key={option} value={option}>{labels[option]}</option>)}
       </select>
     </label>
   );

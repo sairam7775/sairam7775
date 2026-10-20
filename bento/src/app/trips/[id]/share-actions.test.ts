@@ -51,10 +51,24 @@ describe("sharing a trip", () => {
   });
 
   it("stores until the trip ends as the choice, so it follows later date changes", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-20T12:30:00.000Z"));
+
     await expect(shareTrip(form({ tripId: TRIP_ID, expiryOption: "trip-end" })))
       .rejects.toThrow(`redirect:/trips/${TRIP_ID}?share=1#share`);
 
     expect(mocks.shareInsert).toHaveBeenCalledWith({ trip_id: TRIP_ID, expires_at: null, until_trip_end: true });
+  });
+
+  it("refuses until the trip ends for a trip that is over, before touching the link", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-11-28T00:00:00.000Z"));
+
+    await expect(shareTrip(form({ tripId: TRIP_ID, expiryOption: "trip-end" })))
+      .rejects.toThrow(`redirect:/trips/${TRIP_ID}?error=`);
+
+    expect(mocks.shareInsert).not.toHaveBeenCalled();
+    expect(mocks.shareDeleteEq).not.toHaveBeenCalled();
   });
 
   it("refuses an unknown expiry option", async () => {

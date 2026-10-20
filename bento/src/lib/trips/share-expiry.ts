@@ -12,9 +12,15 @@ export interface ShareExpiry {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Choices that can be honoured from the trip's stored dates. */
-export function shareExpiryOptions(endDate: string | null): ShareExpiryOption[] {
-  return endDate ? [...SHARE_EXPIRY_OPTIONS] : SHARE_EXPIRY_OPTIONS.filter((option) => option !== "trip-end");
+/** Choices that can be honoured from the trip's stored dates: "until the
+ *  trip ends" only while it hasn't, or the new link would never open. */
+export function shareExpiryOptions(endDate: string | null, now: Date): ShareExpiryOption[] {
+  return tripStillOn(endDate, now) ? [...SHARE_EXPIRY_OPTIONS] : SHARE_EXPIRY_OPTIONS.filter((option) => option !== "trip-end");
+}
+
+function tripStillOn(endDate: string | null, now: Date): boolean {
+  const after = endDate ? afterTrip(endDate) : null;
+  return after !== null && now.getTime() < after;
 }
 
 /** The first instant after the trip: trip dates are UTC calendar dates, so a
@@ -27,7 +33,7 @@ function afterTrip(endDate: string): number | null {
 }
 
 /** What to store for a validated option. "Until the trip ends" needs a
- *  valid end date now, but stores the choice, not a time. */
+ *  trip that hasn't ended yet, but stores the choice, not a time. */
 export function shareExpiry(option: ShareExpiryOption, endDate: string | null, now: Date): ShareExpiry {
   switch (option) {
     case "never":
@@ -37,7 +43,7 @@ export function shareExpiry(option: ShareExpiryOption, endDate: string | null, n
     case "30-days":
       return { expires_at: new Date(now.getTime() + 30 * DAY_MS).toISOString(), until_trip_end: false };
     case "trip-end":
-      if (!endDate || afterTrip(endDate) === null) throw new RangeError("A valid trip end date is required");
+      if (!tripStillOn(endDate, now)) throw new RangeError("A trip that hasn't ended is required");
       return { expires_at: null, until_trip_end: true };
   }
 }
@@ -48,7 +54,5 @@ export function shareExpiry(option: ShareExpiryOption, endDate: string | null, n
 export function shareIsActive(share: ShareExpiry | null, endDate: string | null, now: Date): boolean {
   if (!share) return false;
   if (share.expires_at !== null && Date.parse(share.expires_at) <= now.getTime()) return false;
-  if (!share.until_trip_end) return true;
-  const after = endDate ? afterTrip(endDate) : null;
-  return after !== null && now.getTime() < after;
+  return !share.until_trip_end || tripStillOn(endDate, now);
 }

@@ -12,8 +12,14 @@ describe("companions' link expiry", () => {
     expect(shareExpiry("trip-end", "2026-11-27", NOW)).toEqual({ expires_at: null, until_trip_end: true });
   });
 
+  it("does not offer or accept trip end once the trip is over", () => {
+    expect(shareExpiryOptions("2026-11-20", NOW)).toContain("trip-end");
+    expect(shareExpiryOptions("2026-11-19", NOW)).toEqual(["never", "7-days", "30-days"]);
+    expect(() => shareExpiry("trip-end", "2026-11-19", NOW)).toThrow(RangeError);
+  });
+
   it("does not offer or accept trip end without an end date", () => {
-    expect(shareExpiryOptions(null)).toEqual(["never", "7-days", "30-days"]);
+    expect(shareExpiryOptions(null, NOW)).toEqual(["never", "7-days", "30-days"]);
     expect(() => shareExpiry("trip-end", null, NOW)).toThrow(RangeError);
     expect(() => shareExpiry("trip-end", "2026-02-30", NOW)).toThrow(RangeError);
   });
