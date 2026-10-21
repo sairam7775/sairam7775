@@ -15,14 +15,20 @@ function fakeAdmin(rows: Row[]) {
   const admin = {
     from: (table: string) => ({
       select: (columns: string) => ({
-        lt: (column: string, value: number) => ({
-          order: (orderColumn: string, options: { ascending: boolean }) => ({
+        lt: (column: string, value: number) => {
+          const orders: { column: string; ascending: boolean }[] = [];
+          const chain = {
+            order: (orderColumn: string, options: { ascending: boolean }) => {
+              orders.push({ column: orderColumn, ascending: options.ascending });
+              return chain;
+            },
             limit: async (limit: number) => {
-              selected.push({ table, columns, column, value, orderColumn, options, limit });
+              selected.push({ table, columns, column, value, orders, limit });
               return { data: rows, error: null };
             },
-          }),
-        }),
+          };
+          return chain;
+        },
       }),
       update: (values: Record<string, unknown>) => ({
         eq: async (column: string, userId: string) => {
@@ -115,9 +121,8 @@ describe("GET /api/cron/analytics-deletions", () => {
       columns: "user_id, attempts",
       column: "attempts",
       value: 10,
-      orderColumn: "queued_at",
-      options: { ascending: true },
-      limit: 20,
+      orders: [{ column: "attempts", ascending: true }, { column: "queued_at", ascending: true }],
+      limit: 200,
     }]);
     expect(db.deleted).toEqual(["u-done"]);
     expect(db.updated).toEqual([
@@ -126,6 +131,27 @@ describe("GET /api/cron/analytics-deletions", () => {
     ]);
     expect(manualFollowUpLog).toHaveBeenCalledWith(
       "Analytics deletion reached 10 attempts; manual follow-up is needed.",
+    );
+  });
+
+  it("stops when the time budget is used and leaves the rest for the next run", async () => {
+    const db = fakeAdmin([
+      { user_id: "u-first", attempts: 0 },
+      { user_id: "u-later", attempts: 0 },
+    ]);
+    const deleteAnalytics = vi.fn(async () => {});
+    vi.mocked(postHogDeleter).mockReturnValue(deleteAnalytics);
+    vi.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValueOnce(1_000).mockReturnValue(46_000);
+    const outOfTimeLog = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await GET(request("Bearer cron-secret"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ done: 1, failed: 0, given_up: 0 });
+    expect(deleteAnalytics).toHaveBeenCalledTimes(1);
+    expect(db.deleted).toEqual(["u-first"]);
+    expect(outOfTimeLog).toHaveBeenCalledWith(
+      "Analytics deletion retries ran out of time; the rest wait for the next run.",
     );
   });
 });

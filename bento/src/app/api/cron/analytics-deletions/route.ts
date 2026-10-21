@@ -7,6 +7,14 @@ type QueuedDeletion = { user_id: string; attempts: number };
 
 const emptyCounts = (): Counts => ({ done: 0, failed: 0, given_up: 0 });
 
+export const maxDuration = 60;
+
+// Fewest tries first, so a batch that keeps failing can't hold back rows
+// that haven't had a try yet. The time budget leaves room to answer before
+// maxDuration; any row not reached goes first next run.
+const BATCH = 200;
+const TIME_BUDGET_MS = 45_000;
+
 function errorMessage(error: unknown) {
   return (error instanceof Error ? error.message : String(error)).slice(0, 200);
 }
@@ -23,18 +31,24 @@ export async function GET(request: Request) {
   const deleteAnalytics = postHogDeleter();
   if (!deleteAnalytics) return NextResponse.json(counts);
 
+  const started = Date.now();
   try {
     const admin = createAdminClient();
     const { data, error } = await admin
       .from("analytics_deletions")
       .select("user_id, attempts")
       .lt("attempts", 10)
+      .order("attempts", { ascending: true })
       .order("queued_at", { ascending: true })
-      .limit(20);
+      .limit(BATCH);
 
     if (error) throw new Error(`analytics_deletions read: ${error.message}`);
 
     for (const row of (data ?? []) as QueuedDeletion[]) {
+      if (Date.now() - started > TIME_BUDGET_MS) {
+        console.error("Analytics deletion retries ran out of time; the rest wait for the next run.");
+        break;
+      }
       try {
         await deleteAnalytics(row.user_id);
       } catch (error) {
