@@ -134,6 +134,12 @@ Practically:
   `missingForVerify`: a typical duration, a tag, a source), re-checked on the
   server for every id, and only flips rows still in draft. Verifying never
   changes a city's coverage tier; that stays a separate step on the city page.
+- Where the AI reviewers (Codex and Gemini) disagree about a drafted field,
+  the point is a row in `place_review_notes` (0025): service role only, never
+  read by traveller code. The review card, the editor and the bulk list show
+  them; `/admin/review?notes=1` lists only places with open ones, and
+  `settleReviewNote` records the admin's call. A note never changes the
+  place: the fix goes into the seed or the editor.
 
 ## Bento Man (P6)
 

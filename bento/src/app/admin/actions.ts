@@ -288,3 +288,38 @@ export async function verifyPlaces(formData: FormData) {
   revalidatePath("/admin/review/bulk");
   redirect(to({ bulkVerified: String(ready.length), ...(notReady.length ? { notReady: notReady.join(",") } : {}) }));
 }
+
+const settle = z.object({
+  id: z.coerce.number().int().positive(),
+  decision: z.string().trim().max(2000),
+});
+
+/** Marks one reviewer disagreement (0025) as settled, with the admin's
+ *  call. Only an open note is settled, so a second click can't overwrite
+ *  who decided or what they said. */
+export async function settleReviewNote(formData: FormData) {
+  const { user, db } = await requireAdmin();
+  const rawBack = String(formData.get("back") ?? "");
+  const back = rawBack.startsWith("/admin/") ? rawBack : "/admin/review";
+  const to = (params: Record<string, string>) => `${back}${back.includes("?") ? "&" : "?"}${new URLSearchParams(params)}`;
+
+  const parsed = settle.safeParse({ id: formData.get("id"), decision: String(formData.get("decision") ?? "") });
+  if (!parsed.success) redirect(to({ error: "That note couldn't be settled. Keep your call under 2,000 characters." }));
+
+  const { data: settled, error } = await db
+    .from("place_review_notes")
+    .update({
+      decision: parsed.data.decision || null,
+      settled_by: user.email ?? user.id,
+      settled_at: new Date().toISOString(),
+    })
+    .eq("id", parsed.data.id)
+    .is("settled_at", null)
+    .select("id");
+  if (error) redirect(to({ error: `Couldn't settle that note: ${error.message}` }));
+  if (!settled?.length) redirect(to({ error: "That note was already settled." }));
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/review");
+  redirect(to({ settled: "1" }));
+}
