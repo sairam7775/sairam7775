@@ -6,7 +6,7 @@ const c = "miyajima";
 export const miyajima: PlaceSeed[] = [
   draft({ id: "miy-itsukushima", city: c, name: "Itsukushima Shrine", nameJa: "厳島神社", category: "shrine", lat: 34.2960, lon: 132.3198,
     station: "miyajima-pier", walk: 12, tags: ["shrines", "nature"], energy: 0.2, crowd: 0.85, discovery: 0.05, signature: 0.95,
-    taste: 30, typical: 60, full: 90, window: ["before 09:00", "after 16:30"], opens: "06:30", closes: "18:00",
+    taste: 30, typical: 60, full: 90, window: ["before 09:00", "after 16:30"], opens: "06:30", closes: "17:00", hoursVary: true,
     crowdNote: "A one-way boardwalk that moves at the pace of the slowest group. First thing and last thing it is yours.",
     tip: "Built over the water, so the tide decides what you see: at high tide the shrine floats, at low tide you can walk out to the torii. Check the tide table before you choose the day. The 6:30 opening is the one to make.",
     cost: 300, pairs: ["miy-great-torii", "miy-daishoin"], seasons: ["koyo"], sources: ["itsukushimajinja.jp"] }),

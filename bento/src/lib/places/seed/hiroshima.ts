@@ -20,7 +20,7 @@ export const hiroshima: PlaceSeed[] = [
 
   draft({ id: "hir-peace-museum", city: c, name: "Peace Memorial Museum", nameJa: "広島平和記念資料館", category: "museum", lat: 34.3915, lon: 132.4530,
     station: "genbaku-domu-mae", walk: 8, tags: ["history"], energy: 0.15, crowd: 0.85, discovery: 0.05, signature: 0.95,
-    taste: 60, typical: 100, full: 150, window: ["before 09:00"], opens: "08:30", closes: "18:00",
+    taste: 60, typical: 100, full: 150, window: ["before 09:00"], opens: "08:30", closes: "18:00", hoursVary: true,
     crowdNote: "The queue to get in can be an hour by late morning; the exhibits inside are shoulder to shoulder. At 8:30 you walk straight in.",
     tip: "Two hundred yen and the reason to come to Hiroshima. It is hard. Go first thing, before you are tired, and give yourself the rest of the morning to sit by the river afterwards.",
     cost: 200, pairs: ["hir-peace-park"], sources: ["hpmmuseum.jp"] }),
@@ -34,7 +34,7 @@ export const hiroshima: PlaceSeed[] = [
 
   draft({ id: "hir-memorial-hall", city: c, name: "Peace Memorial Hall for the Victims", nameJa: "国立広島原爆死没者追悼平和祈念館", category: "museum", lat: 34.3920, lon: 132.4520,
     station: "genbaku-domu-mae", walk: 6, tags: ["history"], energy: 0.1, crowd: 0.3, discovery: 0.5, signature: 0.6,
-    taste: 20, typical: 40, full: 60, opens: "08:30", closes: "18:00",
+    taste: 20, typical: 40, full: 60, opens: "08:30", closes: "17:00", hoursVary: true,
     crowdNote: "Quiet — most people go to the museum and miss this.",
     tip: "Free, underground, and a different register from the museum: a single circular room and the names. If the museum was too much, this is where to sit.",
     cost: 0, pairs: ["hir-peace-museum"], sources: ["hiro-tsuitokinenkan.go.jp"] }),
@@ -48,10 +48,10 @@ export const hiroshima: PlaceSeed[] = [
 
   draft({ id: "hir-castle", city: c, name: "Hiroshima Castle", nameJa: "広島城", category: "castle", lat: 34.4027, lon: 132.4593,
     station: "kamiyacho-nishi", walk: 12, tags: ["history"], energy: 0.3, crowd: 0.4, discovery: 0.3, signature: 0.5,
-    taste: 30, typical: 60, full: 90, opens: "09:00", closes: "18:00",
+    taste: 30, typical: 60, full: 90, opens: "09:00", closes: "16:30", hoursVary: true,
     crowdNote: "Comfortable. Locals walk the moat path; visitors are few.",
     tip: "A 1958 reconstruction — the original was destroyed by the bomb — with a modest museum and a good view from the top. The grounds and moat are free and the better part. Twenty minutes from the Peace Park on foot.",
-    cost: 370, pairs: ["hir-gokoku-shrine"], seasons: ["sakura"], sources: ["rijo-castle.jp"] }),
+    cost: 0, pairs: ["hir-gokoku-shrine"], seasons: ["sakura"], sources: ["rijo-castle.jp"] }),
 
   draft({ id: "hir-gokoku-shrine", city: c, name: "Hiroshima Gokoku Shrine", nameJa: "広島護国神社", category: "shrine", lat: 34.4010, lon: 132.4590,
     station: "kamiyacho-nishi", walk: 12, tags: ["shrines"], energy: 0.1, crowd: 0.3, discovery: 0.5, signature: 0.3,
@@ -62,7 +62,7 @@ export const hiroshima: PlaceSeed[] = [
 
   draft({ id: "hir-shukkeien", city: c, name: "Shukkeien Garden", nameJa: "縮景園", category: "garden", lat: 34.4000, lon: 132.4680,
     station: "shukkeien-mae", walk: 2, tags: ["nature"], energy: 0.2, crowd: 0.3, discovery: 0.5, signature: 0.6,
-    taste: 30, typical: 50, full: 80, opens: "09:00", closes: "18:00",
+    taste: 30, typical: 50, full: 80, opens: "09:00", closes: "17:00", hoursVary: true,
     crowdNote: "Calm. Busiest for the maples in late November and still not crowded.",
     tip: "A 1620 stroll garden, rebuilt after the bomb, with a pond you cross on a rainbow-arched bridge. The best hour of quiet in Hiroshima. The prefectural art museum is next door.",
     cost: 260, seasons: ["koyo", "sakura"], pairs: ["hir-prefectural-art"], sources: ["shukkeien.jp"] }),
@@ -93,14 +93,14 @@ export const hiroshima: PlaceSeed[] = [
     taste: 40, typical: 60, full: 90, opens: "11:00", closes: "22:00",
     crowdNote: "Twenty-five stalls on three floors; at peak hours you wait for a counter seat, then it is fast.",
     tip: "Hiroshima okonomiyaki is layered, not mixed, with noodles inside — a different dish from Osaka's. Pick any stall with a free seat; they are all decent. Cash.",
-    cost: 1200, pairs: ["hir-hondori"], sources: ["okonomimura.jp"] }),
+    cost: 0, pairs: ["hir-hondori"], sources: ["okonomimura.jp"] }),
 
   draft({ id: "hir-ekie", city: c, name: "Ekie okonomiyaki floor", nameJa: "エキエ", category: "food", lat: 34.3978, lon: 132.4750,
     station: "hiroshima", walk: 1, tags: ["food"], energy: 0.05, crowd: 0.6, discovery: 0.3, signature: 0.4,
     taste: 30, typical: 45, full: 60, opens: "11:00", closes: "22:00",
     crowdNote: "Queues at lunchtime, quick turnover.",
     tip: "Inside the station: a floor of okonomiyaki counters, good ones, ten metres from the Shinkansen gate. The practical answer when you have forty minutes before a train.",
-    cost: 1100, sources: ["wikivoyage"] }),
+    cost: 0, sources: ["wikivoyage"] }),
 
   draft({ id: "hir-mazda-museum", city: c, name: "Mazda Museum", nameJa: "マツダミュージアム", category: "museum", lat: 34.3690, lon: 132.5000,
     station: null, walk: null, tags: ["popculture", "history"], energy: 0.1, crowd: 0.3, discovery: 0.6, signature: 0.5,
@@ -111,7 +111,7 @@ export const hiroshima: PlaceSeed[] = [
 
   draft({ id: "hir-mitaki-dera", city: c, name: "Mitaki-dera", nameJa: "三瀧寺", category: "temple", lat: 34.4140, lon: 132.4390,
     station: null, walk: null, tags: ["shrines", "nature"], energy: 0.5, crowd: 0.15, discovery: 0.85, signature: 0.6, physical: 0.5,
-    taste: 30, typical: 60, full: 90, opens: "08:00", closes: "17:00",
+    taste: 30, typical: 60, full: 90, opens: "08:00", closes: "17:00", hoursVary: true,
     crowdNote: "A handful of locals. On November weekends, a few more.",
     tip: "A temple on a wooded hillside with three waterfalls and a pagoda moved here from Wakayama as a memorial. The best maples in Hiroshima and almost nobody knows. Fifteen minutes' walk uphill from Mitaki station.",
     cost: 0, skipIf: ["limited_mobility"], seasons: ["koyo"], sources: ["wikivoyage"] }),
@@ -149,7 +149,7 @@ export const hiroshima: PlaceSeed[] = [
     taste: 60, typical: 75, full: 90, window: ["after 17:30"], opens: "19:00", closes: "20:30", closedWeekdays: [0, 1, 2, 4, 5, 6],
     crowdNote: "A few hundred seats and rarely full on an ordinary Wednesday.",
     tip: "Every Wednesday evening at the Prefectural Culture Centre: masked, drum-driven mythological dance from the mountain villages — a hero, a serpent, a great deal of smoke. Hiroshima's own tradition and the best-value ticket in the city. English synopsis on the sheet.",
-    cost: 1200, booking: "recommended", lead: 7, sources: ["hiroshima-kankou.com"] }),
+    cost: 1500, booking: "recommended", lead: 7, sources: ["hiroshima-kankou.com"] }),
 
   draft({ id: "hir-nagarekawa", city: c, name: "Nagarekawa", nameJa: "流川", category: "district", lat: 34.3905, lon: 132.4665,
     station: "hatchobori", walk: 5, tags: ["nightlife", "food"], energy: 0.15, crowd: 0.6, discovery: 0.3, signature: 0.5,

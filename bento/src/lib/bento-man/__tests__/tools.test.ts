@@ -246,6 +246,13 @@ describe("facts", () => {
     expect(r.matches[0].duration_min.typical).toBe(90);
     expect(r.matches[0].crowd_note).toMatch(/shuffling queue/);
   });
+
+  it("get_place gives a price band and never promises seasonal hours", async () => {
+    const r = parse(await runTool("get_place", { query: "ginkaku" }, ctxFor(new MemoryStore())));
+    expect(r.matches[0]).toMatchObject({ id: "kyt-ginkakuji", cost: "¥500–1,500" });
+    expect(r.matches[0].hours).toMatch(/^at least 09:00–16:50; hours change with the season/);
+  });
+
   it("get_place says when nothing matches", async () => {
     const r = parse(await runTool("get_place", { query: "Skytree" }, ctxFor(new MemoryStore())));
     expect(r.matches).toEqual([]);
