@@ -72,7 +72,7 @@ describe("savePlace validation", () => {
       energy: 0, crowd_level: null, discovery: null, signature: 0.5, physical_demand: null,
       duration_taste_min: null, duration_typical_min: 90, duration_full_min: null,
       best_window: [], crowd_note: null, worth_it_if: [], skip_if: [], local_tip: "Keep this text. ",
-      cost_jpy: 500, booking_lead_days: 0, conflicts_with: [], pairs_with: [],
+      cost_jpy: 500, hours_vary: false, booking_lead_days: 0, conflicts_with: [], pairs_with: [],
       sources: ["first", "second"], seasons: ["koyo", "sakura"],
       verification_status: "draft", verified_by: null, last_verified: null,
     });

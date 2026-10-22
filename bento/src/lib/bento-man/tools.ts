@@ -9,6 +9,7 @@ import type { ModelTool } from "./provider";
 import { z } from "zod";
 import { planDay } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
+import { costBandWords } from "@/lib/engine/cost-band";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
 import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types";
 import { placeRoute, route } from "@/lib/transit/graph";
@@ -377,8 +378,11 @@ function placeFacts(p: PlaceInput) {
     tags: p.interestTags,
     city_coverage: coverageWords(p.coverageTier),
     verified,
-    cost_jpy: p.costJpy,
-    hours: p.opensAt ? `${p.opensAt}–${p.closesAt}` : "no fixed hours on record (open ground, a street, or open all hours)",
+    // A band, never a figure: prices change more often than the record does.
+    cost: costBandWords(p.costJpy) ?? "no price on record",
+    hours: !p.opensAt ? "no fixed hours on record (open ground, a street, or open all hours)"
+      : p.hoursVary ? `at least ${p.opensAt}–${p.closesAt}; hours change with the season, so check before going`
+      : `${p.opensAt}–${p.closesAt}`,
     closed: p.closedWeekdays.length ? p.closedWeekdays.map((d) => WEEKDAY[d]).join(", ") : null,
     booking: p.bookingReq === "none" ? null : `${p.bookingReq}${p.bookingLeadDays ? `, about ${p.bookingLeadDays} days ahead` : ""}`,
     station: p.nearestStation ? `${p.nearestStation} · ${p.stationWalkMin ?? "?"} min walk` : "no station on record",
@@ -427,7 +431,7 @@ function dayNarration(d: ReturnType<typeof computeDayDiff>) {
     left_out: d.considered.slice(0, 6).map((c) => `${c.name}: ${c.detail}`),
     warnings: d.warnings,
     active: `${Math.floor(d.activeMin / 60)}h ${d.activeMin % 60}m of ${d.budgetMin / 60}h`,
-    cost: `${d.fareKind === "exact" ? "" : "~"}¥${d.costJpy}`,
+    cost: `${d.fareKind === "exact" && !d.after.some((it) => it.costJpy > 0) ? "" : "~"}¥${d.costJpy}`,
   };
 }
 

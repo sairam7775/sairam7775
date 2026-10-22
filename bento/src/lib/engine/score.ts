@@ -1,6 +1,7 @@
 import { INTEREST_TAGS } from "@/lib/types";
 import type { PlaceInput, ScoreBreakdown, ScoreTerm, TravellerInput, Weights } from "./types";
 import { copy } from "@/copy";
+import { costBandWords } from "./cost-band";
 
 export const DEFAULT_WEIGHTS: Weights = {
   interestMatch: 2.5,
@@ -115,7 +116,7 @@ export function scorePlace(
   const cost = p.costJpy ?? 0;
   const strain = cost > threshold ? Math.min(1, (cost - threshold) / threshold) : 0;
   add("budget_strain", strain, w.budgetStrain, -1,
-    strain > 0 ? copy.plan.reasons.pricey(cost.toLocaleString(copy.locale)) : undefined);
+    strain > 0 ? copy.plan.reasons.pricey(costBandWords(cost)!) : undefined);
 
   const d = chooseDuration(p, t.pace) ?? 0;
   const pace = d > ctx.remainingMin ? 1 : 0.5 * (d / Math.max(1, ctx.remainingMin));

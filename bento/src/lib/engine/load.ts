@@ -45,6 +45,7 @@ export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
     bookingLeadDays: r.booking_lead_days,
     opensAt: r.opens_at ? String(r.opens_at).slice(0, 5) : null,
     closesAt: r.closes_at ? String(r.closes_at).slice(0, 5) : null,
+    hoursVary: r.hours_vary === true,
     closedWeekdays: r.closed_weekdays ?? [],
     closedDates: r.closed_dates ?? [],
     conflictsWith: r.conflicts_with ?? [],

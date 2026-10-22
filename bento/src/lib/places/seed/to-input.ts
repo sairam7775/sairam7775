@@ -32,6 +32,7 @@ export function seedToPlaceInput(
     bookingLeadDays: s.lead ?? null,
     opensAt: s.opens ?? null,
     closesAt: s.closes ?? null,
+    hoursVary: s.hoursVary ?? false,
     closedWeekdays: s.closedWeekdays ?? [],
     closedDates: [],
     conflictsWith: s.conflicts ?? [],

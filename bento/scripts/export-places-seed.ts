@@ -33,7 +33,7 @@ const cols = [
   "interest_tags", "energy", "crowd_level", "discovery", "signature", "physical_demand",
   "duration_taste_min", "duration_typical_min", "duration_full_min", "best_window", "crowd_note",
   "worth_it_if", "skip_if", "local_tip", "cost_jpy", "booking_req", "booking_lead_days",
-  "opens_at", "closes_at", "closed_weekdays", "conflicts_with", "pairs_with", "seasons", "sources",
+  "opens_at", "closes_at", "hours_vary", "closed_weekdays", "conflicts_with", "pairs_with", "seasons", "sources",
   "verification_status",
 ];
 
@@ -44,7 +44,7 @@ const row = (p: PlaceSeed) => [
   arr(p.tags, "interest_tag[]"), q(p.energy), q(p.crowd), q(p.discovery), q(p.signature), q(p.physical ?? null),
   q(p.taste), q(p.typical), q(p.full), arr(p.window, "text[]"), q(p.crowdNote),
   arr(p.worthIf, "text[]"), arr(p.skipIf, "text[]"), q(p.tip), q(p.cost), q(p.booking ?? "none"), q(p.lead ?? null),
-  q(p.opens ?? null), q(p.closes ?? null), arr(p.closedWeekdays, "int[]"), arr(p.conflicts, "text[]"), arr(p.pairs, "text[]"),
+  q(p.opens ?? null), q(p.closes ?? null), p.hoursVary ? "true" : "false", arr(p.closedWeekdays, "int[]"), arr(p.conflicts, "text[]"), arr(p.pairs, "text[]"),
   arr(p.seasons, "text[]"), arr(p.sources, "text[]"),
   "'draft'",
 ];

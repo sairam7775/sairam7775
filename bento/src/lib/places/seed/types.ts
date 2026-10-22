@@ -39,12 +39,18 @@ export interface PlaceSeed {
   worthIf?: string[];
   skipIf?: string[];
   tip: string;
+  /** Adult entry to the main paid part, JPY; 0 when free. Travellers only
+   *  ever see its band (engine/cost-band.ts), so change it when the price
+   *  moves to another band. Other prices (a garden, a hall) go in the tip. */
   cost: number;
   booking?: BookingRequirement;
   lead?: number;
-  /** "HH:MM"; omit for always open */
+  /** "HH:MM"; omit for always open. Seasonal hours: the SHORTEST of the
+   *  year, with hoursVary, so the planner never arrives after closing. */
   opens?: string;
   closes?: string;
+  /** The hours change with the season; travellers are told to check. */
+  hoursVary?: boolean;
   /** 0 = Sunday */
   closedWeekdays?: number[];
   conflicts?: string[];

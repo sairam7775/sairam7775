@@ -241,7 +241,8 @@ describe("days", () => {
 describe("facts", () => {
   it("get_place returns the verified judgement and nothing invented", async () => {
     const r = parse(await runTool("get_place", { query: "fushimi inari" }, ctxFor(new MemoryStore())));
-    expect(r.matches[0]).toMatchObject({ id: "kyt-fushimi-inari", verified: true, cost_jpy: 0 });
+    expect(r.matches[0]).toMatchObject({ id: "kyt-fushimi-inari", verified: true, cost: "free" });
+    expect(r.matches[0]).not.toHaveProperty("cost_jpy");
     expect(r.matches[0].duration_min.typical).toBe(90);
     expect(r.matches[0].crowd_note).toMatch(/shuffling queue/);
   });
