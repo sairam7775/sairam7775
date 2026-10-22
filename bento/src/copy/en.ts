@@ -1236,6 +1236,28 @@ export const en = {
       off: "Off",
       more: "How Bento uses data",
     },
+    // Admins only: a second factor before admin pages, which show
+    // travellers' trip reviews. An authenticator app (TOTP), via Supabase.
+    twoFactor: {
+      title: "Two-factor sign-in",
+      why: "Admin pages show travellers' trip reviews, so they need a second step: a six-digit code from an authenticator app on your phone, such as Google Authenticator or 1Password.",
+      setupIntro: "Set it up once. Scan the code with your authenticator app, then type the six digits it shows.",
+      start: "Set up two-factor sign-in",
+      starting: "Starting…",
+      qrAlt: "QR code for your authenticator app",
+      secretLabel: "Or type this key into the app",
+      enterIntro: "Type the six-digit code your authenticator app shows for Bento.",
+      code: "Six-digit code",
+      verify: "Confirm",
+      verifying: "Checking…",
+      badCode: "The code is six digits.",
+      wrongCode: "That code didn't match. Codes change every 30 seconds; try the one showing now.",
+      setupFailed: "Two-factor sign-in couldn't be started just now. Try again in a moment.",
+      setupExpired: "That setup has expired. Start again for a new code to scan.",
+      verifyFailed: "Bento couldn't check the code just now. Try again in a moment.",
+      lost: "Lost your phone? Ask another admin, or the operator, to remove your two-factor setting; then set it up again.",
+      factorName: "Bento admin",
+    },
     deleteAccount: {
       heading: "Delete account",
       // Its row on Privacy & data, which opens the page with the form.

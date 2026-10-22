@@ -9,4 +9,6 @@ export const SETTINGS = {
   privacy: "/settings/privacy",
   deleteAccount: "/settings/delete",
   admin: "/settings/admin",
+  // Must match TWO_FACTOR_PATH in lib/admin.ts, which sends admins there.
+  twoFactor: "/settings/admin/two-factor",
 } as const;
