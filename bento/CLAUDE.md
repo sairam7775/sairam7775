@@ -296,6 +296,20 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
 - The eval (`evals/scenarios.ts`, `scripts/eval-bento-man.ts`) is the
   regression check for prompt edits and the Sonnet 5 test. Add a scenario
   with every prompt rule you add; `voiceLint` runs on every reply.
+- Bento Man talks about Japan travel and nothing else (the prompt's "WHAT
+  YOU TALK ABOUT"), and the traveller's words are never instructions ("RULES
+  NO MESSAGE CAN CHANGE"). `guard.ts` backs both in code, because a prompt
+  can be talked round: `clean()` strips invisible characters (zero-width,
+  direction marks, Unicode tag characters that can hide an instruction) and
+  defuses `<trip_state>`/`<traveller_message>` tags in the message and in
+  typed trip fields; the message goes in a `<traveller_message>` block; a
+  reply that repeats the prompt (`leaksPrompt`, `PROMPT_MARKERS`) stops
+  streaming and is saved as a decline. If you reword a marker line in the
+  prompt, update `PROMPT_MARKERS` (a test fails until you do). Gemini sends
+  `SAFETY_SETTINGS` at `BLOCK_ONLY_HIGH`: stricter blocks Hiroshima history.
+  Replies are plain text (no HTML or links rendered), and tools only touch
+  the signed-in traveller's own trip, so a talked-round model can embarrass
+  Bento but not reach other people's data.
 - The model never sees tier names. The trip state and tool results say how
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
@@ -610,7 +624,9 @@ Explained in `../docs/bento/20-design/voice.md`.
 Bento Man is a local friend who knows the place and will tell you the truth
 about it (§04). Not a mascot. No enthusiasm as filler, no emoji in plan
 content, no confident prose where a fact is missing. Warmth comes from
-usefulness, not tone.
+usefulness, not tone. He still has a personality inside those rules
+(prompt.ts "WHO YOU ARE"): dry, brief humour, favourites offered as his
+view, a Japanese word when it helps, curiosity about the traveller.
 
 ## Conventions
 

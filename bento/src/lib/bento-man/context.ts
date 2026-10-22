@@ -5,6 +5,7 @@ import type { CityFacts } from "@/lib/engine/route";
 import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
 import { clock } from "./diff";
+import { clean } from "./guard";
 import { nightsBetween, type TripState } from "./store";
 
 /** How well Bento knows a city, in the words the traveller sees on the
@@ -12,11 +13,15 @@ import { nightsBetween, type TripState } from "./store";
  *  repeats is what the page says ("main sights only", not "outline"). */
 export const coverageWords = (tier: CoverageTier) => copy.coverage[tier].toLowerCase();
 
+/** A field the traveller typed (or the model wrote for them) on one line,
+ *  so a trip title can't add lines that look like trip state. */
+const field = (s: string) => clean(s).replace(/\s+/g, " ").trim();
+
 export function buildContext(state: TripState, cities: CityFacts[], today: string): string {
   const { trip, prefs } = state;
   const lines: string[] = [];
   lines.push(`today: ${today}`);
-  lines.push(`trip: ${trip.title ?? "untitled"} · ${trip.startDate ?? "start unset"} → ${trip.endDate ?? "end unset"}` +
+  lines.push(`trip: ${trip.title ? field(trip.title) : "untitled"} · ${trip.startDate ?? "start unset"} → ${trip.endDate ?? "end unset"}` +
     (nightsBetween(trip.startDate, trip.endDate) != null ? ` · ${nightsBetween(trip.startDate, trip.endDate)} nights` : "") +
     ` · ${trip.partySize} travelling · status ${trip.status}`);
 
@@ -37,7 +42,7 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
     lines.push("route:");
     for (const c of state.cities) {
       lines.push(`  ${c.sortOrder + 1}. ${c.name} (${c.cityId}) · ${c.nights} night${c.nights === 1 ? "" : "s"} · ${coverageWords(c.tier)}` +
-        (c.arriveDate ? ` · ${c.arriveDate} → ${c.departDate}` : "") + (c.budgetBand ? ` · budget ${c.budgetBand}` : "") + (c.reason ? ` · ${c.reason}` : ""));
+        (c.arriveDate ? ` · ${c.arriveDate} → ${c.departDate}` : "") + (c.budgetBand ? ` · budget ${c.budgetBand}` : "") + (c.reason ? ` · ${field(c.reason)}` : ""));
     }
   } else {
     lines.push("route: none yet");

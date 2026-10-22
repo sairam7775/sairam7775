@@ -9,6 +9,7 @@ import { addUsage, CHAT_INPUT_BOUND, CHAT_MAX_OUTPUT_TOKENS, costUsd, estimateIn
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResult } from "./provider";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
+import { clean, leaksPrompt, travellerMessage } from "./guard";
 import { SYSTEM_PROMPT } from "./prompt";
 import type { TripStore } from "./store";
 import { runTool, TOOLS, type ToolContext } from "./tools";
@@ -84,10 +85,13 @@ export interface RunResult {
 /** Adaptive thinking comes out of this too, so leave room: a truncated
  *  turn can cut a tool_use block in half. */
 const MAX_TOKENS = CHAT_MAX_OUTPUT_TOKENS;
-const REFUSAL_TEXT = "I can't help with that one. Ask me about the trip and I will.";
+const REFUSAL_TEXT = "That one isn't mine to answer. Ask me about Japan or the trip and I'm all yours.";
+/** Said instead of a reply that repeated the system prompt (guard.ts). */
+const WITHHELD_TEXT = "That stays in the box. Ask me about Japan or the trip instead.";
 
 export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
-  const { store, provider, today, message, events } = opts;
+  const { store, provider, today } = opts;
+  const message = clean(opts.message);
   const maxIterations = opts.maxIterations ?? 8;
   const persist = opts.persist ?? true;
 
@@ -95,7 +99,23 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   if (persist) await store.append("user", message);
 
   const context = buildContext(state, cities, today);
-  const messages = conversation(history, `${context}\n\n${message}`);
+  // Earlier messages were stored before clean() existed, so clean them too.
+  const said = history.map((h) => (h.role === "user" ? { ...h, content: clean(h.content) } : h));
+  const messages = conversation(said, `${context}\n\n${travellerMessage(message)}`);
+
+  // Stop streaming a reply once it starts repeating the system prompt; the
+  // final text below is swapped as a whole.
+  let streamed = "";
+  let withheld = false;
+  const events: ChatEvents | undefined = opts.events && {
+    ...opts.events,
+    onText: (delta) => {
+      if (withheld) return;
+      streamed += delta;
+      if (leaksPrompt(streamed)) withheld = true;
+      else opts.events?.onText?.(delta);
+    },
+  };
 
   const ctx: ToolContext = { store, today, proposal: null };
   const texts: string[] = [];
@@ -188,7 +208,11 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     throw fail(e);
   }
 
-  const text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
+  let text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
+  if (withheld || leaksPrompt(text)) {
+    console.warn("Bento Man: withheld a reply that repeated the system prompt.");
+    text = WITHHELD_TEXT;
+  }
   let assistantMessageId: string | null = null;
   if (persist) {
     // The model has been paid by now: if saving the reply fails, the usage
