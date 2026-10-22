@@ -694,7 +694,19 @@ export const en = {
     open: "Share plan",
     openOn: "Shared",
     intro: "Give the people travelling with you a link to this plan. They can open it without an account, and it always shows the latest version.",
-    who: "Anyone with the link can see the route, the day plans and your bookings' names and times. Booking reference numbers are never shown. You can switch the link off at any time.",
+    who: "Anyone with the link can see the route, the day plans and your bookings' names and times. Booking reference numbers are never shown. You can switch the link off at any time, or choose when it expires.",
+    expiry: {
+      label: "Link works…",
+      never: "Until I turn it off",
+      sevenDays: "For 7 days",
+      thirtyDays: "For 30 days",
+      tripEnd: "Until the trip ends",
+    },
+    worksUntilOff: "Works until you turn it off",
+    worksUntil: (date: string) => `Works until ${date}`,
+    // The trip's last day; it moves if the trip's dates change.
+    worksUntilTripEnd: (lastDay: string) => `Works until the trip ends, through ${lastDay}`,
+    expired: "This link has expired.",
     turnOn: "Share with companions",
     linkLabel: "Link for your companions",
     copy: "Copy",
@@ -717,7 +729,7 @@ export const en = {
     loadFailed: "Bento couldn't load this plan just now. Try again in a moment.",
     gone: {
       title: "This link doesn't open a trip any more",
-      body: "Whoever shared it may have switched it off or made a new one. Ask them for the latest link.",
+      body: "Whoever shared it may have switched it off, made a new one or let it expire. Ask them for the latest link.",
     },
   },
 
@@ -1290,7 +1302,7 @@ export const en = {
       },
       plan: {
         heading: "Your trips",
-        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.\n\nAfter a trip ends you can tell us how the plan held up. That answer is kept with the trip and read by the people who build Bento, to improve the planner.\n\nIf you share a trip with your companions, anyone with its link can see the route, the day plans and your bookings' names and times (never reference numbers) until you switch the link off. Pages opened with a shared link don't run analytics.",
+        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.\n\nAfter a trip ends you can tell us how the plan held up. That answer is kept with the trip and read by the people who build Bento, to improve the planner.\n\nIf you share a trip with your companions, anyone with its link can see the route, the day plans and your bookings' names and times (never reference numbers) until you switch it off, make a new one or its chosen expiry arrives. Pages opened with a shared link don't run analytics.",
       },
       bentoMan: {
         heading: "Bento Man and the confirmation reader",
@@ -1347,7 +1359,7 @@ export const en = {
       },
       keep: {
         heading: "How long it's kept",
-        body: "Your account and trips are kept until you delete them. A shared link works until you switch it off or delete the trip. Analytics events are kept for up to one year.",
+        body: "Your account and trips are kept until you delete them. A shared link works until you switch it off, make a new one, its chosen expiry arrives or you delete the trip. Analytics events are kept for up to one year.",
       },
       children: {
         heading: "Children",
@@ -1393,7 +1405,7 @@ export const en = {
       },
       sharing: {
         heading: "Shared plans",
-        body: "When you share a trip, anyone with its link can see the plan. Share it only with people you want to see it. You can make a new link or switch sharing off at any time.",
+        body: "When you share a trip, anyone with its link can see the plan. Share it only with people you want to see it. You can choose for the link to expire after 7 days, after 30 days or the day after the trip ends, or keep it until you switch it off. Making a new link or switching sharing off ends the old link.",
       },
       use: {
         heading: "Using Bento fairly",

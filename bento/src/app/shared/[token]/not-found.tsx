@@ -2,7 +2,7 @@ import Link from "next/link";
 import { BentoLogo } from "@/components/logo";
 import { copy } from "@/copy";
 
-/** A shared link that opens nothing: switched off, replaced, or mistyped.
+/** A shared link that opens nothing: switched off, replaced, expired, or mistyped.
  *  The same words for each, so a link says nothing about a trip that was. */
 export default function SharedLinkGone() {
   const t = copy.share.gone;

@@ -340,17 +340,27 @@ Practically:
 
 - A traveller can share a trip with their companions by link (0020,
   `trip_shares`). Anyone with the link can read the plan without an account
-  until the traveller switches it off or makes a new one (Trip page → "Share
-  with companions"; `shareTrip` / `renewShareLink` / `stopSharing`).
-- The token is the only key: 32 hex characters made by the database. A
-  traveller can insert a row naming the trip and nothing else; a new link is
-  a delete and an insert, so the old address stops working.
+  until the traveller switches it off, makes a new one, or the chosen expiry
+  arrives (0024; Trip page → "Share with companions";
+  `shareTrip` / `renewShareLink` / `stopSharing`). The default is no expiry;
+  7 days and 30 days are a fixed `expires_at`. "Until the trip ends" is
+  `until_trip_end`, the choice rather than a time, so it follows the trip's
+  current end date (works through that UTC day) whenever the dates change.
+  `shareIsActive` (`lib/trips/share-expiry.ts`) is the same rule as
+  `shared_trip()`; the trip page and the download both use it.
+- The token is the only key: 32 hex characters made by the database. The
+  traveller can write only their own share row's `expires_at` and
+  `until_trip_end` (column grants and the existing own-trip-shares policy);
+  the server derives them from the validated choice, stored trip end date
+  and server clock. A new link is a delete and an insert, so the old
+  address stops working.
 - `/shared/[token]` reads the plan from `shared_trip()` alone (definer
   rights; the visitor may have no account). It returns the route, the days'
   stops with only the facts the sheet shows (through `places_public`), and
   booking names and times — never a reference, note, provider or cost, and
   nothing about the owner except the pace. Places and stations stay closed
-  to anon otherwise. Add a field there only if the sheet shows it.
+  to anon otherwise. Expired and unknown tokens both return nothing. Add a
+  field there only if the sheet shows it.
 - The shared page is the download's sheet (`components/plan/plan-sheet.tsx`,
   read by `lib/trips/shared-plan.ts`), so the two never differ. While a trip
   is shared, the download prints the companions' link.

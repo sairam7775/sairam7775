@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseReview, reviewOpen, snapshotFromRow } from "@/lib/trips/review";
+import { SHARE_EXPIRY_OPTIONS, shareExpiry, type ShareExpiry, type ShareExpiryOption } from "@/lib/trips/share-expiry";
 import type { TripState } from "@/lib/bento-man/store";
 
 const Ids = z.object({ tripId: z.string().uuid(), messageId: z.string().uuid() });
@@ -74,11 +75,17 @@ export async function setDatePermission(formData: FormData) {
   revalidatePath(`/trips/${tripId}`);
 }
 
-const ShareForm = z.object({ tripId: z.string().uuid(), from: z.enum(["trip", "print"]).default("trip") });
+const ShareForm = z.object({
+  tripId: z.string().uuid(),
+  from: z.enum(["trip", "print"]).default("trip"),
+  expiryOption: z.enum(SHARE_EXPIRY_OPTIONS),
+});
+const StopShareForm = z.object({ tripId: z.string().uuid(), from: z.enum(["trip", "print"]).default("trip") });
 
-/** Sharing the plan by link (0020). The database makes the token; a new
+/** Sharing the plan by link (0020/0024). The database makes the token; a new
  *  link is the old row deleted and a fresh one inserted, so the old address
- *  stops working at once. */
+ *  stops working at once. Expiry is derived from a choice and stored trip
+ *  dates, never from a timestamp sent by the browser. */
 export async function shareTrip(formData: FormData) {
   await changeShare(formData, "on");
 }
@@ -92,19 +99,43 @@ export async function stopSharing(formData: FormData) {
 }
 
 async function changeShare(formData: FormData, how: "on" | "renew" | "off") {
-  const parsed = ShareForm.safeParse({ tripId: formData.get("tripId"), from: formData.get("from") ?? undefined });
-  if (!parsed.success) redirect("/trips");
-  const { tripId, from } = parsed.data;
+  const input = { tripId: formData.get("tripId"), from: formData.get("from") ?? undefined };
+  let tripId: string;
+  let from: "trip" | "print";
+  let expiryOption: ShareExpiryOption | null = null;
+  if (how === "off") {
+    const parsed = StopShareForm.safeParse(input);
+    if (!parsed.success) redirect("/trips");
+    ({ tripId, from } = parsed.data);
+  } else {
+    const parsed = ShareForm.safeParse({ ...input, expiryOption: formData.get("expiryOption") });
+    if (!parsed.success) redirect("/trips");
+    ({ tripId, from, expiryOption } = parsed.data);
+  }
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) redirect("/sign-in");
   const failed = `/trips/${tripId}?error=${encodeURIComponent(copy.share.failed)}#share`;
+  let expiry: ShareExpiry = { expires_at: null, until_trip_end: false };
+  if (how !== "off") {
+    const { data: trip, error } = await db.from("trips").select("end_date").eq("id", tripId).maybeSingle();
+    if (error) redirect(failed);
+    if (!trip) redirect("/trips");
+    if (!expiryOption) redirect("/trips");
+    try {
+      expiry = shareExpiry(expiryOption, trip.end_date, new Date());
+    } catch {
+      // A forged trip-end choice without a stored end date is refused before
+      // it can delete or create a share row.
+      redirect(failed);
+    }
+  }
   if (how !== "on") {
     const { error } = await db.from("trip_shares").delete().eq("trip_id", tripId);
     if (error) redirect(failed);
   }
   if (how !== "off") {
-    const { error } = await db.from("trip_shares").insert({ trip_id: tripId });
+    const { error } = await db.from("trip_shares").insert({ trip_id: tripId, ...expiry });
     // Already shared (a second tap): the link there is stays.
     if (error && error.code !== "23505") redirect(failed);
   }
