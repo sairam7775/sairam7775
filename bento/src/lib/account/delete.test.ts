@@ -6,8 +6,8 @@ function fakeAdmin(opts: { unlinkError?: string; deleteError?: string; queueErro
   const calls: string[] = [];
   const admin = {
     from: (table: string) => ({
-      insert: async (values: Record<string, unknown>) => {
-        calls.push(`insert ${table} ${JSON.stringify(values)}`);
+      upsert: async (values: Record<string, unknown>, options: { onConflict: string }) => {
+        calls.push(`upsert ${table} ${JSON.stringify(values)} on ${options.onConflict}`);
         return { error: opts.queueError ? { message: opts.queueError } : null };
       },
       update: (values: Record<string, unknown>) => ({
@@ -30,14 +30,18 @@ function fakeAdmin(opts: { unlinkError?: string; deleteError?: string; queueErro
 }
 
 describe("deleteAccountData", () => {
-  it("unlinks costs, deletes analytics, then deletes the user — in that order", async () => {
+  it("unlinks costs, deletes the user, then deletes analytics — in that order", async () => {
     const { admin, calls } = fakeAdmin();
-    const analytics = vi.fn(async (id: string) => {
+    const signals: (AbortSignal | undefined)[] = [];
+    const analytics = vi.fn(async (id: string, signal?: AbortSignal) => {
       calls.push(`analytics ${id}`);
+      signals.push(signal);
     });
     const r = await deleteAccountData(admin, "u1", analytics);
-    expect(calls).toEqual(['update api_usage {"user_id":null} where user_id=u1', "analytics u1", "deleteUser u1"]);
+    expect(calls).toEqual(['update api_usage {"user_id":null} where user_id=u1', "deleteUser u1", "analytics u1"]);
     expect(r.analyticsDeleted).toBe(true);
+    // Every try carries a time limit, so a stalled PostHog can't hold the page.
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
   });
 
   it("still deletes the account when analytics deletion keeps failing, and queues it for the daily retry", async () => {
@@ -48,8 +52,8 @@ describe("deleteAccountData", () => {
     }, { wait: async () => {} });
     expect(calls).toEqual([
       'update api_usage {"user_id":null} where user_id=u1',
-      'insert analytics_deletions {"user_id":"u1","last_error":"PostHog deletion failed"}',
       "deleteUser u1",
+      'upsert analytics_deletions {"user_id":"u1","last_error":"PostHog deletion failed"} on user_id',
     ]);
     expect(r).toEqual({ analyticsDeleted: false, analyticsPending: "retrying" });
     expect(log).toHaveBeenCalled();
@@ -62,7 +66,7 @@ describe("deleteAccountData", () => {
     const r = await deleteAccountData(admin, "u1", async () => {
       throw new Error("down");
     }, { wait: async () => {} });
-    expect(calls.at(-1)).toBe("deleteUser u1");
+    expect(calls).toContain("deleteUser u1");
     expect(r).toEqual({ analyticsDeleted: false, analyticsPending: "by-hand" });
     expect(log).toHaveBeenCalledWith(expect.stringContaining("delete it by hand"), "unavailable");
     log.mockRestore();
@@ -91,9 +95,14 @@ describe("deleteAccountData", () => {
     expect(calls.some((c) => c.startsWith("deleteUser"))).toBe(false);
   });
 
-  it("reports a failed user deletion", async () => {
-    const { admin } = fakeAdmin({ deleteError: "boom" });
-    await expect(deleteAccountData(admin, "u1", null)).rejects.toThrow(/auth: boom/);
+  it("reports a failed user deletion and leaves analytics and the queue alone", async () => {
+    const { admin, calls } = fakeAdmin({ deleteError: "boom" });
+    const analytics = vi.fn(async () => {
+      throw new Error("down");
+    });
+    await expect(deleteAccountData(admin, "u1", analytics, { wait: async () => {} })).rejects.toThrow(/auth: boom/);
+    expect(analytics).not.toHaveBeenCalled();
+    expect(calls.some((c) => c.startsWith("upsert"))).toBe(false);
   });
 });
 
@@ -117,6 +126,16 @@ describe("postHogDeleter", () => {
       "DELETE https://eu.posthog.com/api/projects/42/persons/p-9/?delete_events=true",
     ]);
     expect((fetcher.mock.calls[0][1] as RequestInit).headers).toEqual({ Authorization: "Bearer k" });
+  });
+
+  it("passes the time limit to both PostHog requests", async () => {
+    const signal = new AbortController().signal;
+    const fetcher = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method ? new Response(null, { status: 204 }) : new Response(JSON.stringify({ results: [{ id: "p-9" }] })),
+    );
+    const del = postHogDeleter({ POSTHOG_PERSONAL_API_KEY: "k", POSTHOG_PROJECT_ID: "42" }, fetcher as unknown as typeof fetch)!;
+    await del("u1", signal);
+    expect(fetcher.mock.calls.map((c) => (c[1] as RequestInit).signal)).toEqual([signal, signal]);
   });
 
   it("throws when PostHog refuses, so the failure is logged", async () => {

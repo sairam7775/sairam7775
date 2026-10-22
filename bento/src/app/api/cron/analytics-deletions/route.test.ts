@@ -134,6 +134,35 @@ describe("GET /api/cron/analytics-deletions", () => {
     );
   });
 
+  it("cuts off a stalled PostHog call and counts it as a failed try", async () => {
+    const db = fakeAdmin([
+      { user_id: "u-stalled", attempts: 0 },
+      { user_id: "u-next", attempts: 0 },
+    ]);
+    const limits: number[] = [];
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+      limits.push(ms);
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(new DOMException("The operation timed out.", "TimeoutError")));
+      return controller.signal;
+    });
+    // The stalled call never answers on its own; only the signal ends it.
+    vi.mocked(postHogDeleter).mockReturnValue((userId, signal) =>
+      userId === "u-stalled"
+        ? new Promise((_, reject) => signal!.addEventListener("abort", () => reject(signal!.reason)))
+        : Promise.resolve(),
+    );
+
+    const response = await GET(request("Bearer cron-secret"));
+
+    expect(await response.json()).toEqual({ done: 1, failed: 1, given_up: 0 });
+    expect(limits).toEqual([10_000, 10_000]);
+    expect(db.updated).toEqual([
+      { values: { attempts: 1, last_error: "The operation timed out.", column: "user_id" }, userId: "u-stalled" },
+    ]);
+    expect(db.deleted).toEqual(["u-next"]);
+  });
+
   it("stops when the time budget is used and leaves the rest for the next run", async () => {
     const db = fakeAdmin([
       { user_id: "u-first", attempts: 0 },

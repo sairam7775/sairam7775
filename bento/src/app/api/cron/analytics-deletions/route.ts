@@ -10,10 +10,14 @@ const emptyCounts = (): Counts => ({ done: 0, failed: 0, given_up: 0 });
 export const maxDuration = 60;
 
 // Fewest tries first, so a batch that keeps failing can't hold back rows
-// that haven't had a try yet. The time budget leaves room to answer before
-// maxDuration; any row not reached goes first next run.
+// that haven't had a try yet. Each PostHog call is cut off at CALL_LIMIT_MS,
+// so a stalled one counts as a failed try and its row moves behind rows not
+// tried yet; a call starts only if it can end inside the time budget, which
+// leaves room to answer before maxDuration. Any row not reached goes first
+// next run.
 const BATCH = 200;
 const TIME_BUDGET_MS = 45_000;
+const CALL_LIMIT_MS = 10_000;
 
 function errorMessage(error: unknown) {
   return (error instanceof Error ? error.message : String(error)).slice(0, 200);
@@ -45,12 +49,12 @@ export async function GET(request: Request) {
     if (error) throw new Error(`analytics_deletions read: ${error.message}`);
 
     for (const row of (data ?? []) as QueuedDeletion[]) {
-      if (Date.now() - started > TIME_BUDGET_MS) {
+      if (Date.now() - started > TIME_BUDGET_MS - CALL_LIMIT_MS) {
         console.error("Analytics deletion retries ran out of time; the rest wait for the next run.");
         break;
       }
       try {
-        await deleteAnalytics(row.user_id);
+        await deleteAnalytics(row.user_id, AbortSignal.timeout(CALL_LIMIT_MS));
       } catch (error) {
         const attempts = row.attempts + 1;
         const { error: updateError } = await admin

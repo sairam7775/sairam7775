@@ -5,19 +5,25 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *  1. Model-call costs (`api_usage`) are unlinked, not deleted: the
  *     project-wide spending cap sums them, and deleting an account must
  *     not hand the budget back. They keep the cost and lose the person.
- *  2. Analytics linked to the account are deleted in PostHog, when this
- *     deployment has a PostHog personal API key (see postHogDeleter). If
- *     that keeps failing, a service-role queue keeps it for the daily retry
- *     (`/api/cron/analytics-deletions`).
- *  3. The auth user is deleted; every user table cascades from it: trips
+ *  2. The auth user is deleted; every user table cascades from it: trips
  *     (and their days, items, bookings, chat, dismissals), preferences,
  *     rate limits and admin access.
+ *  3. Only then are the account's analytics deleted in PostHog, when this
+ *     deployment has a PostHog personal API key (see postHogDeleter). If
+ *     that keeps failing, a service-role queue keeps it for the daily retry
+ *     (`/api/cron/analytics-deletions`). Nothing is queued for an account
+ *     that is still there, so the retry can never act on a live one.
  *
  *  `admin` is the service-role client: only it can delete an auth user. */
 // Pauses between tries of the PostHog deletion: three tries in about two
 // seconds rides out a blip without holding the person on the page for long.
 const RETRY_WAITS_MS = [500, 1500];
+// Each try is cut off after this, so a stalled PostHog can't hold the page.
+const TRY_LIMIT_MS = 5_000;
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** Deletes one account's analytics; `signal` cuts a stalled call off. */
+export type AnalyticsDeleter = (userId: string, signal?: AbortSignal) => Promise<void>;
 
 /** Analytics not deleted yet: queued for the daily retry, or left for a person. */
 export type AnalyticsPending = "retrying" | "by-hand";
@@ -25,11 +31,14 @@ export type AnalyticsPending = "retrying" | "by-hand";
 export async function deleteAccountData(
   admin: Pick<SupabaseClient, "from" | "auth">,
   userId: string,
-  deleteAnalytics: ((userId: string) => Promise<void>) | null,
+  deleteAnalytics: AnalyticsDeleter | null,
   { wait = sleep }: { wait?: (ms: number) => Promise<void> } = {},
 ): Promise<{ analyticsDeleted: boolean; analyticsPending: AnalyticsPending | null }> {
   const unlink = await admin.from("api_usage").update({ user_id: null }).eq("user_id", userId);
   if (unlink.error) throw new Error(`api_usage: ${unlink.error.message}`);
+
+  const gone = await admin.auth.admin.deleteUser(userId);
+  if (gone.error) throw new Error(`auth: ${gone.error.message}`);
 
   // Analytics never blocks the deletion: a PostHog outage must not keep
   // someone's account alive. It is tried three times; if it still fails, it
@@ -41,7 +50,7 @@ export async function deleteAccountData(
   if (deleteAnalytics) {
     for (let attempt = 0; !analyticsDeleted; attempt++) {
       try {
-        await deleteAnalytics(userId);
+        await deleteAnalytics(userId, AbortSignal.timeout(TRY_LIMIT_MS));
         analyticsDeleted = true;
       } catch (e) {
         if (attempt < RETRY_WAITS_MS.length) {
@@ -52,7 +61,10 @@ export async function deleteAccountData(
         let queueError: string | null = null;
         try {
           // A fixed note: the adapter's errors could carry personal data.
-          const { error } = await admin.from("analytics_deletions").insert({ user_id: userId, last_error: "PostHog deletion failed" });
+          // An upsert, so a row left from an earlier try can't refuse it.
+          const { error } = await admin
+            .from("analytics_deletions")
+            .upsert({ user_id: userId, last_error: "PostHog deletion failed" }, { onConflict: "user_id" });
           if (error) queueError = error.message;
         } catch (err) {
           queueError = err instanceof Error ? err.message : String(err);
@@ -64,8 +76,6 @@ export async function deleteAccountData(
     }
   }
 
-  const gone = await admin.auth.admin.deleteUser(userId);
-  if (gone.error) throw new Error(`auth: ${gone.error.message}`);
   return { analyticsDeleted, analyticsPending };
 }
 
@@ -73,18 +83,21 @@ export async function deleteAccountData(
  *  their events. Needs a personal API key with person write access and the
  *  project id; without them there is nothing to call (returns null), and
  *  the privacy page says deletion of analytics happens on request. */
-export function postHogDeleter(env: Record<string, string | undefined> = process.env, fetcher: typeof fetch = fetch) {
+export function postHogDeleter(
+  env: Record<string, string | undefined> = process.env,
+  fetcher: typeof fetch = fetch,
+): AnalyticsDeleter | null {
   const key = env.POSTHOG_PERSONAL_API_KEY;
   const project = env.POSTHOG_PROJECT_ID;
   if (!key || !project) return null;
   const base = `https://eu.posthog.com/api/projects/${encodeURIComponent(project)}/persons`;
   const headers = { Authorization: `Bearer ${key}` };
-  return async (userId: string) => {
-    const found = await fetcher(`${base}/?distinct_id=${encodeURIComponent(userId)}`, { headers });
+  return async (userId, signal) => {
+    const found = await fetcher(`${base}/?distinct_id=${encodeURIComponent(userId)}`, { headers, signal });
     if (!found.ok) throw new Error(`PostHog lookup ${found.status}`);
     const people = ((await found.json()) as { results?: { id: string }[] }).results ?? [];
     for (const p of people) {
-      const del = await fetcher(`${base}/${encodeURIComponent(p.id)}/?delete_events=true`, { method: "DELETE", headers });
+      const del = await fetcher(`${base}/${encodeURIComponent(p.id)}/?delete_events=true`, { method: "DELETE", headers, signal });
       if (!del.ok && del.status !== 404) throw new Error(`PostHog delete ${del.status}`);
     }
   };

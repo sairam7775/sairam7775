@@ -57,10 +57,12 @@ Practically:
   (user_id = null) first, because the global spending cap sums it. PostHog
   data is deleted too when `POSTHOG_PERSONAL_API_KEY` and
   `POSTHOG_PROJECT_ID` are set; the privacy page says which. That deletion
-  is tried three times and never blocks the account's. If it still fails, a
+  runs only after the auth user is gone, is tried three times with a time
+  limit on each call, and never blocks the account's. If it still fails, a
   service-role-only `analytics_deletions` row (no auth foreign key, so it
   outlives the account) is queued, `/api/cron/analytics-deletions` retries
-  it daily up to ten times (Vercel cron, needs `CRON_SECRET`), and the
+  it daily up to ten times (Vercel cron, needs `CRON_SECRET`; a stalled
+  call is cut off and counts as a try), and the
   person is told it will be retried (`/?deleted=1&analytics=retrying`). If
   even the queue can't be written, the log says to delete it by hand and
   the person is told so (`analytics=by-hand`). Never say it is done when
