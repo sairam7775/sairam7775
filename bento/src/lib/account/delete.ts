@@ -9,10 +9,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  *     (and their days, items, bookings, chat, dismissals), preferences,
  *     rate limits and admin access.
  *  3. Only then are the account's analytics deleted in PostHog, when this
- *     deployment has a PostHog personal API key (see postHogDeleter). If
- *     that keeps failing, a service-role queue keeps it for the daily retry
- *     (`/api/cron/analytics-deletions`). Nothing is queued for an account
- *     that is still there, so the retry can never act on a live one.
+ *     deployment has a PostHog personal API key (see postHogDeleter). A
+ *     service-role queue row for the daily retry
+ *     (`/api/cron/analytics-deletions`) is written before the first try and
+ *     taken out when it succeeds. Nothing is queued for an account that is
+ *     still there, so the retry can never act on a live one.
  *
  *  `admin` is the service-role client: only it can delete an auth user. */
 // Pauses between tries of the PostHog deletion: three tries in about two
@@ -40,43 +41,52 @@ export async function deleteAccountData(
   const gone = await admin.auth.admin.deleteUser(userId);
   if (gone.error) throw new Error(`auth: ${gone.error.message}`);
 
+  if (!deleteAnalytics) return { analyticsDeleted: false, analyticsPending: null };
+
   // Analytics never blocks the deletion: a PostHog outage must not keep
-  // someone's account alive. It is tried three times; if it still fails, it
-  // is queued for the daily retry (analytics_deletions has no auth.users
-  // foreign key, so it outlives the account), or, if even that fails, logged
-  // for a manual follow-up. The person is told which, never that it is done.
-  let analyticsDeleted = false;
-  let analyticsPending: AnalyticsPending | null = null;
-  if (deleteAnalytics) {
-    for (let attempt = 0; !analyticsDeleted; attempt++) {
-      try {
-        await deleteAnalytics(userId, AbortSignal.timeout(TRY_LIMIT_MS));
-        analyticsDeleted = true;
-      } catch (e) {
-        if (attempt < RETRY_WAITS_MS.length) {
-          await wait(RETRY_WAITS_MS[attempt]);
-          continue;
-        }
-        console.error("PostHog deletion failed for a deleted account.", e instanceof Error ? e.message : e);
-        let queueError: string | null = null;
-        try {
-          // A fixed note: the adapter's errors could carry personal data.
-          // An upsert, so a row left from an earlier try can't refuse it.
-          const { error } = await admin
-            .from("analytics_deletions")
-            .upsert({ user_id: userId, last_error: "PostHog deletion failed" }, { onConflict: "user_id" });
-          if (error) queueError = error.message;
-        } catch (err) {
-          queueError = err instanceof Error ? err.message : String(err);
-        }
-        if (queueError) console.error(`Could not queue the analytics deletion for account ${userId}; delete it by hand.`, queueError);
-        analyticsPending = queueError ? "by-hand" : "retrying";
-        break;
+  // someone's account alive. The retry is written down before the first try
+  // (analytics_deletions has no auth.users foreign key, so it outlives the
+  // account), so a request cut off from here on still leaves a record for
+  // the daily run. It is tried three times; a success takes the row out
+  // again. If the row couldn't be written and PostHog keeps failing, the log
+  // says to delete it by hand. The person is told which, never that it is
+  // done. An upsert, so a row left from an earlier try can't refuse it.
+  const queueError = await queueWrite(() =>
+    admin.from("analytics_deletions").upsert({ user_id: userId }, { onConflict: "user_id" }),
+  );
+
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await deleteAnalytics(userId, AbortSignal.timeout(TRY_LIMIT_MS));
+      break;
+    } catch (e) {
+      if (attempt < RETRY_WAITS_MS.length) {
+        await wait(RETRY_WAITS_MS[attempt]);
+        continue;
       }
+      console.error("PostHog deletion failed for a deleted account.", e instanceof Error ? e.message : e);
+      if (queueError) console.error(`Could not queue the analytics deletion for account ${userId}; delete it by hand.`, queueError);
+      return { analyticsDeleted: false, analyticsPending: queueError ? "by-hand" : "retrying" };
     }
   }
 
-  return { analyticsDeleted, analyticsPending };
+  // Done: take the retry back out. If that fails, the daily run finds
+  // nothing left in PostHog and clears the row itself.
+  if (!queueError) {
+    const cleared = await queueWrite(() => admin.from("analytics_deletions").delete().eq("user_id", userId));
+    if (cleared) console.error("Could not clear a finished analytics deletion from the queue.", cleared);
+  }
+  return { analyticsDeleted: true, analyticsPending: null };
+}
+
+/** A queue write's error message, or null; a throw counts as an error too. */
+async function queueWrite(write: () => PromiseLike<{ error: { message: string } | null }>) {
+  try {
+    const { error } = await write();
+    return error?.message ?? null;
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
 }
 
 /** Deletes the PostHog person whose distinct id is this account's id, and

@@ -10,6 +10,12 @@ function fakeAdmin(opts: { unlinkError?: string; deleteError?: string; queueErro
         calls.push(`upsert ${table} ${JSON.stringify(values)} on ${options.onConflict}`);
         return { error: opts.queueError ? { message: opts.queueError } : null };
       },
+      delete: () => ({
+        eq: async (col: string, val: string) => {
+          calls.push(`delete ${table} where ${col}=${val}`);
+          return { error: null };
+        },
+      }),
       update: (values: Record<string, unknown>) => ({
         eq: async (col: string, val: string) => {
           calls.push(`update ${table} ${JSON.stringify(values)} where ${col}=${val}`);
@@ -30,7 +36,7 @@ function fakeAdmin(opts: { unlinkError?: string; deleteError?: string; queueErro
 }
 
 describe("deleteAccountData", () => {
-  it("unlinks costs, deletes the user, then deletes analytics — in that order", async () => {
+  it("unlinks costs, deletes the user, queues the retry, deletes analytics, then clears the retry", async () => {
     const { admin, calls } = fakeAdmin();
     const signals: (AbortSignal | undefined)[] = [];
     const analytics = vi.fn(async (id: string, signal?: AbortSignal) => {
@@ -38,13 +44,27 @@ describe("deleteAccountData", () => {
       signals.push(signal);
     });
     const r = await deleteAccountData(admin, "u1", analytics);
-    expect(calls).toEqual(['update api_usage {"user_id":null} where user_id=u1', "deleteUser u1", "analytics u1"]);
-    expect(r.analyticsDeleted).toBe(true);
+    expect(calls).toEqual([
+      'update api_usage {"user_id":null} where user_id=u1',
+      "deleteUser u1",
+      'upsert analytics_deletions {"user_id":"u1"} on user_id',
+      "analytics u1",
+      "delete analytics_deletions where user_id=u1",
+    ]);
+    expect(r).toEqual({ analyticsDeleted: true, analyticsPending: null });
     // Every try carries a time limit, so a stalled PostHog can't hold the page.
     expect(signals[0]).toBeInstanceOf(AbortSignal);
   });
 
-  it("still deletes the account when analytics deletion keeps failing, and queues it for the daily retry", async () => {
+  it("leaves the retry queued before the first try, so a request cut off midway still has a record", async () => {
+    const { admin, calls } = fakeAdmin();
+    // A try that never ends stands for the server stopping during it.
+    void deleteAccountData(admin, "u1", () => new Promise<void>(() => {}));
+    await vi.waitFor(() => expect(calls).toContain('upsert analytics_deletions {"user_id":"u1"} on user_id'));
+    expect(calls.some((c) => c.startsWith("delete analytics_deletions"))).toBe(false);
+  });
+
+  it("still deletes the account when analytics deletion keeps failing, and keeps it queued for the daily retry", async () => {
     const { admin, calls } = fakeAdmin();
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const r = await deleteAccountData(admin, "u1", async () => {
@@ -53,7 +73,7 @@ describe("deleteAccountData", () => {
     expect(calls).toEqual([
       'update api_usage {"user_id":null} where user_id=u1',
       "deleteUser u1",
-      'upsert analytics_deletions {"user_id":"u1","last_error":"PostHog deletion failed"} on user_id',
+      'upsert analytics_deletions {"user_id":"u1"} on user_id',
     ]);
     expect(r).toEqual({ analyticsDeleted: false, analyticsPending: "retrying" });
     expect(log).toHaveBeenCalled();
