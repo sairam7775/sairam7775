@@ -68,17 +68,24 @@ describe("where Settings actions return to", () => {
     await expect(deleteAccount(form({ password: "wrong-password" }))).rejects.toThrow(expected);
   });
 
-  it("a deletion whose analytics are still pending says so on the way out", async () => {
+  it("a deletion whose analytics will be retried says so on the way out", async () => {
     mocks.signInWithPassword.mockResolvedValue({ error: null });
     mocks.signOut.mockResolvedValue({});
-    mocks.deleteAccountData.mockResolvedValue({ analyticsDeleted: false, analyticsPending: true });
-    await expect(deleteAccount(form({ password: "right-password" }))).rejects.toThrow("redirect:/?deleted=1&analytics=pending");
+    mocks.deleteAccountData.mockResolvedValue({ analyticsDeleted: false, analyticsPending: "retrying" });
+    await expect(deleteAccount(form({ password: "right-password" }))).rejects.toThrow("redirect:/?deleted=1&analytics=retrying");
+  });
+
+  it("a deletion whose analytics are left for a person says so on the way out", async () => {
+    mocks.signInWithPassword.mockResolvedValue({ error: null });
+    mocks.signOut.mockResolvedValue({});
+    mocks.deleteAccountData.mockResolvedValue({ analyticsDeleted: false, analyticsPending: "by-hand" });
+    await expect(deleteAccount(form({ password: "right-password" }))).rejects.toThrow("redirect:/?deleted=1&analytics=by-hand");
   });
 
   it("a finished deletion just says it is done", async () => {
     mocks.signInWithPassword.mockResolvedValue({ error: null });
     mocks.signOut.mockResolvedValue({});
-    mocks.deleteAccountData.mockResolvedValue({ analyticsDeleted: true, analyticsPending: false });
+    mocks.deleteAccountData.mockResolvedValue({ analyticsDeleted: true, analyticsPending: null });
     await expect(deleteAccount(form({ password: "right-password" }))).rejects.toThrow(/^redirect:\/\?deleted=1$/);
   });
 

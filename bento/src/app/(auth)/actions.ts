@@ -12,7 +12,7 @@ import { googleSignInEnabled, inPasswordReset, PASSWORD_RESET_COOKIE } from "@/l
 import { AGE_BLOCKED_COOKIE, AGE_OK_COOKIE, AGE_OK_VALUE, MIN_AGE, ageOn, ageStatus, secondsUntilEligible } from "@/lib/age-gate";
 import { copy } from "@/copy";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { deleteAccountData, postHogDeleter } from "@/lib/account/delete";
+import { deleteAccountData, postHogDeleter, type AnalyticsPending } from "@/lib/account/delete";
 import { googleOnly } from "@/lib/account/identity";
 import { SETTINGS } from "@/app/settings/paths";
 
@@ -227,7 +227,7 @@ export async function deleteAccount(formData: FormData) {
     if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : copy.auth.errors.wrongCurrent);
   }
 
-  let analyticsPending = false;
+  let analyticsPending: AnalyticsPending | null = null;
   try {
     ({ analyticsPending } = await deleteAccountData(createAdminClient(), user.id, postHogDeleter()));
   } catch (e) {
@@ -240,5 +240,5 @@ export async function deleteAccount(formData: FormData) {
   // implying it was all done.
   (await cookies()).delete(PASSWORD_RESET_COOKIE);
   await supabase.auth.signOut().catch(() => undefined);
-  redirect(analyticsPending ? "/?deleted=1&analytics=pending" : "/?deleted=1");
+  redirect(analyticsPending ? `/?deleted=1&analytics=${analyticsPending}` : "/?deleted=1");
 }
