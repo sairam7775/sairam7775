@@ -12,6 +12,7 @@ import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
 import { shiftConflicts, shiftRefusal } from "./shift";
 import { DEFAULT_PREFS, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
+import { loadBackgrounds, type PlaceBackground } from "@/lib/places/backgrounds";
 import { copy } from "@/copy";
 
 const toMin = (t: string | null): number | null => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
@@ -309,6 +310,15 @@ export class SupabaseStore implements TripStore {
     const out: PlaceInput[] = [];
     for (const r of data ?? []) out.push(rowToPlace(r, await this.tierOf(r.city_id)));
     return out.sort((a, b) => (a.id === q ? -1 : b.id === q ? 1 : b.signature - a.signature));
+  }
+
+  async background(placeId: string): Promise<PlaceBackground | null> {
+    return (await loadBackgrounds(this.db, [placeId])).get(placeId) ?? null;
+  }
+
+  async noteBackgroundAsk(placeId: string): Promise<void> {
+    const { error } = await this.db.rpc("note_background_ask", { p_place_id: placeId });
+    if (error) console.error("background ask not counted", placeId, error.message);
   }
 
   async bookings(): Promise<TicketLike[]> {
