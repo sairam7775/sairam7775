@@ -223,6 +223,12 @@ Practically:
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
+- `place_background` is the one place general knowledge is allowed, and
+  only for history. With a checked background (0027) Bento Man retells it.
+  Without one it may give two or three sentences of widely known background,
+  said as general, and the tool counts the ask (`noteBackgroundAsk`). Never
+  hours, prices or anything a traveller acts on. Guarded by `tools.test.ts`
+  and the `fact-background-*` eval scenarios.
 - An overpacked route is a conversation before it is a proposal:
   `propose_route` refuses it unless `traveller_insists`, and after a refusal
   it stays refused for the rest of that turn, so the traveller hears the

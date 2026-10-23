@@ -250,6 +250,31 @@ describe("facts", () => {
     expect(r.matches).toEqual([]);
     expect(r.note).toMatch(/don't have it/);
   });
+  const KINKAKU = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
+  it("place_background retells a checked background and counts nothing", async () => {
+    const store = new MemoryStore({ backgrounds: { "kyt-kinkakuji": { body: KINKAKU, sources: ["shokoku-ji.jp"] } } });
+    const r = parse(await runTool("place_background", { query: "kyt-kinkakuji" }, ctxFor(store)));
+    expect(r).toMatchObject({ id: "kyt-kinkakuji", name: "Kinkaku-ji", background: KINKAKU, sources: ["shokoku-ji.jp"], checked: true });
+    expect(store.asks).toEqual([]);
+  });
+  it("place_background with none yet counts the ask and allows general background", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "Kiyomizu" }, ctxFor(store)));
+    expect(r).toMatchObject({ id: "kyt-kiyomizu", background: null });
+    expect(r.note).toMatch(/general background/);
+    expect(r.note).toMatch(/nothing a traveller would act on/);
+    expect(store.asks).toEqual(["kyt-kiyomizu"]);
+  });
+  it("place_background for an unknown place counts nothing", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "Skytree" }, ctxFor(store)));
+    expect(r.matches).toEqual([]);
+    expect(r.note).toMatch(/don't have it/);
+    expect(store.asks).toEqual([]);
+  });
+  it("keeps the tool order stable, with place_background last", () => {
+    expect(TOOLS.at(-1)?.name).toBe("place_background");
+  });
   it("route_between describes a journey a traveller can follow, from places or stations", async () => {
     const r = parse(await runTool("route_between", { from: "kyoto", to: "kyt-fushimi-inari" }, ctxFor(new MemoryStore())));
     expect(r.summary).toMatch(/Kyoto → Inari/);
