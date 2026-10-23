@@ -11,16 +11,23 @@ export interface PlaceBackground {
   sources: string[];
 }
 
-const CLOCK = /\b\d{1,2}[:：]\d{2}\b/;
-const PRICE = /¥|円|\byen\b/i;
+// Checked after NFKC, so full-width digits, colons and ￥ read as their
+// plain forms. A bare 円 is a word (円山公園), so only an amount is a price.
+const CLOCK = [
+  /\b\d{1,2}:\d{2}\b/,
+  /\b\d{1,2}\s*(?:a\.?m\.?|p\.?m\.?)(?![a-z])/i,
+  /\b\d{1,2}\.\d{2}\s*(?:to|until|till|-|–|—)\s*\d{1,2}\.\d{2}\b/i,
+  /\d{1,2}\s*時/,
+];
+const PRICE = /¥\s*\d|\d[\d,]*\s*(?:円|yen\b)|\b(?:JPY|yen)\b/i;
 
 /** Why this text can't be a background, or null when it can. The reasons
  *  are for the admin who wrote or checked it. */
 export function checkBackgroundText(body: string): string | null {
-  const text = body.trim();
+  const text = body.normalize("NFKC").trim();
   if (text.length < 120) return "A background needs at least 120 characters.";
   if (text.length > 900) return "A background is at most 900 characters.";
-  if (CLOCK.test(text)) return "A background can't contain a clock time; opening hours stay on the place.";
+  if (CLOCK.some((r) => r.test(text))) return "A background can't contain a clock time; opening hours stay on the place.";
   if (PRICE.test(text)) return "A background can't contain a price; prices stay on the place.";
   return null;
 }

@@ -51,15 +51,23 @@ describe("saveBackground", () => {
 });
 
 describe("approveBackground", () => {
-  it("approves only a draft, signed by the admin", async () => {
-    await expect(approveBackground(form({ placeId: "kyt-kinkakuji" }))).rejects.toThrow(/redirect:\/admin\/backgrounds\?approved=/);
+  const SEEN = "2026-10-23T10:00:00.123456+00:00";
+
+  it("approves only the draft the admin was shown, signed by them", async () => {
+    await expect(approveBackground(form({ placeId: "kyt-kinkakuji", seen: SEEN }))).rejects.toThrow(/redirect:\/admin\/backgrounds\?approved=/);
     expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ status: "verified", verified_by: "owner@example.com" }));
     expect(mocks.eq).toHaveBeenCalledWith("place_id", "kyt-kinkakuji");
     expect(mocks.eq).toHaveBeenCalledWith("status", "draft");
+    expect(mocks.eq).toHaveBeenCalledWith("updated_at", SEEN);
   });
 
-  it("says so when the background was no longer a draft", async () => {
-    mocks.select.mockResolvedValue({ data: [], error: null });
+  it("refuses an approval that doesn't say which text was shown", async () => {
     await expect(approveBackground(form({ placeId: "kyt-kinkakuji" }))).rejects.toThrow(/error=/);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("says so when the draft changed or was approved since it was shown", async () => {
+    mocks.select.mockResolvedValue({ data: [], error: null });
+    await expect(approveBackground(form({ placeId: "kyt-kinkakuji", seen: SEEN }))).rejects.toThrow(/error=.*changed/);
   });
 });

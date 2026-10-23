@@ -15,14 +15,33 @@ export function askWindowStart(today: Date): string {
   return new Date(today.getTime() - ASK_DAYS * 86400000).toISOString().slice(0, 10);
 }
 
-/** Which places to draft: the ones named, or the most-asked (ties by id).
- *  A place with a checked background is never redrafted. */
-export function pickPlaces(asks: { place_id: string; asks: number }[], checked: Set<string>, limit: number, named?: string[]): string[] {
-  if (named?.length) return named.filter((id) => !checked.has(id)).slice(0, limit);
+/** Drafts the script writes carry the model's id in drafted_by; an admin's
+ *  carry their email. Only the model's own drafts are ever redrafted. */
+export const MODEL_DRAFTED = /^gemini/;
+
+/** The places a run must leave alone: every checked background, and every
+ *  draft unless --redraft, which still never touches an admin's own text. */
+export function notToDraft(rows: { place_id: string; status: string; drafted_by: string }[], redraft: boolean): Set<string> {
+  return new Set(rows.filter((r) => r.status !== "draft" || !redraft || !MODEL_DRAFTED.test(r.drafted_by)).map((r) => r.place_id));
+}
+
+/** A place's sources that are official pages to read. Sources also hold
+ *  provenance tags ("wikivoyage") and encyclopaedias, which are not. */
+export function officialUrls(sources: string[]): string[] {
+  return sources
+    .map((s) => s.trim())
+    .filter((s) => s.includes(".") && !/wiki(voyage|pedia)/i.test(s))
+    .map((s) => (/^https?:\/\//.test(s) ? s : `https://${s}/`));
+}
+
+/** Which places to draft: the ones named, or the most-asked (ties by id),
+ *  never one in `skip` (see notToDraft, and places with no official page). */
+export function pickPlaces(asks: { place_id: string; asks: number }[], skip: Set<string>, limit: number, named?: string[]): string[] {
+  if (named?.length) return named.filter((id) => !skip.has(id)).slice(0, limit);
   const total = new Map<string, number>();
   for (const a of asks) total.set(a.place_id, (total.get(a.place_id) ?? 0) + a.asks);
   return [...total]
-    .filter(([id]) => !checked.has(id))
+    .filter(([id]) => !skip.has(id))
     .sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
     .slice(0, limit)
     .map(([id]) => id);
@@ -30,7 +49,7 @@ export function pickPlaces(asks: { place_id: string; asks: number }[], checked: 
 
 export function draftPrompt(p: { name: string; nameJa: string | null; city: string; urls: string[] }): string {
   const name = p.nameJa ? `${p.name} (${p.nameJa})` : p.name;
-  return `Write the background of ${name} in ${p.city}, Japan, for a first-time visitor, in two to four plain sentences: when and why it was built or founded, what happened to it that matters, and what it is known for. Use only what these official pages say: ${p.urls.join(", ")}. Write it in your own words; do not copy sentences. No opening hours, prices, crowd advice or anything that changes. Do not use Google Maps.
+  return `Write the background of ${name} in ${p.city}, Japan, for a first-time visitor, in two to four plain sentences: when and why it was built or founded, what happened to it that matters, and what it is known for. Use only what these official pages say: ${p.urls.join(", ")}. Write it in your own words; do not copy sentences. No opening hours, prices, crowd advice or anything that changes. Do not use Google Maps. If these pages do not say enough to write it, do not write it from memory: reply {"background": null}.
 Reply with ONLY a JSON object, no code fence: {"background": "..."}`;
 }
 
@@ -56,6 +75,7 @@ export function parseDraft(response: unknown): Draft {
   } catch {
     body = undefined;
   }
+  if (body === null) return { ok: false, reason: "the official pages didn't say enough" };
   if (typeof body !== "string") return { ok: false, reason: "unreadable reply" };
 
   const refused = checkBackgroundText(body);

@@ -39,22 +39,27 @@ export async function saveBackground(formData: FormData) {
   redirect(to({ saved: id }));
 }
 
+const approval = z.object({ placeId, seen: z.string().min(1, "Reload the page and approve again.") });
+
 /** The signature: from here the background reaches travellers (through
- *  place_backgrounds_public, once the place itself is verified). Only a
- *  draft is signed, so an edit saved meanwhile is never signed unseen. */
+ *  place_backgrounds_public, once the place itself is verified). It signs
+ *  only the draft the admin was shown: `seen` is that draft's updated_at,
+ *  so a draft saved or redrafted since is never signed unseen. */
 export async function approveBackground(formData: FormData) {
   const { user, db } = await requireAdmin();
-  const id = placeId.safeParse(formData.get("placeId"));
-  if (!id.success) redirect(to({ error: id.error.issues[0].message }));
+  const parsed = approval.safeParse({ placeId: formData.get("placeId"), seen: formData.get("seen") ?? "" });
+  if (!parsed.success) redirect(to({ error: parsed.error.issues[0].message }));
+  const { placeId: id, seen } = parsed.data;
 
   const { data, error } = await db
     .from("place_backgrounds")
     .update({ status: "verified", verified_by: user.email ?? user.id, verified_on: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() })
-    .eq("place_id", id.data)
+    .eq("place_id", id)
     .eq("status", "draft")
+    .eq("updated_at", seen)
     .select("place_id");
-  if (error) redirect(to({ error: `Couldn't approve ${id.data}: ${error.message}` }));
-  if (!data?.length) redirect(to({ error: `${id.data} wasn't a draft any more. Check it again.` }));
+  if (error) redirect(to({ error: `Couldn't approve ${id}: ${error.message}` }));
+  if (!data?.length) redirect(to({ error: `${id} changed or was approved since you opened the page. Check it again.` }));
   revalidatePath(BACK);
-  redirect(to({ approved: id.data }));
+  redirect(to({ approved: id }));
 }

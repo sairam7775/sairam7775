@@ -746,8 +746,11 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const p = GetPlace.safeParse(rawInput);
       if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
       const matches = await store.searchPlaces(p.data.query, p.data.city_id ?? null);
-      const place = matches.find((m) => m.id === p.data.query.trim().toLowerCase()) ?? matches[0];
-      if (!place) return { result: j({ matches: [], note: "nothing in the database matches — say you don't have it rather than guessing" }) };
+      if (!matches.length) return { result: j({ matches: [], note: "nothing in the database matches — say you don't have it rather than guessing" }) };
+      // The exact place or the only match; never a guess among several.
+      const q = p.data.query.trim().toLowerCase();
+      const place = matches.find((m) => m.id === q || m.name.toLowerCase() === q) ?? (matches.length === 1 ? matches[0] : undefined);
+      if (!place) return { result: j({ matches: matches.slice(0, 5).map((m) => ({ id: m.id, name: m.name, city_id: m.cityId })), note: "several places match — ask the traveller which one, or call again with its id" }) };
       const background = await store.background(place.id);
       if (background) return { result: j({ id: place.id, name: place.name, background: background.body, sources: background.sources, checked: true }) };
       // Counted so the most-asked places get a checked background first.

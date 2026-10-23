@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askWindowStart, draftPrompt, parseDraft, pickPlaces } from "./background-draft";
+import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces } from "./background-draft";
 
 const OK = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 const PAGE = "https://www.shokoku-ji.jp/kinkakuji/";
@@ -64,5 +64,31 @@ describe("draftPrompt", () => {
 describe("askWindowStart", () => {
   it("counts asks from the last 90 days", () => {
     expect(askWindowStart(new Date("2026-10-23T12:00:00Z"))).toBe("2026-07-25");
+  });
+});
+
+describe("officialUrls", () => {
+  it("keeps official pages and drops placeholders and encyclopaedias", () => {
+    expect(officialUrls(["wikivoyage", "kiyomizudera.or.jp", "https://www.shokoku-ji.jp/kinkakuji/", "ja.wikipedia.org", "en.wikivoyage.org"]))
+      .toEqual(["https://kiyomizudera.or.jp/", "https://www.shokoku-ji.jp/kinkakuji/"]);
+  });
+});
+
+describe("notToDraft", () => {
+  const rows = [
+    { place_id: "a", status: "verified", drafted_by: "gemini-3.8-flash" },
+    { place_id: "b", status: "draft", drafted_by: "gemini-3.8-flash" },
+    { place_id: "c", status: "draft", drafted_by: "owner@example.com" },
+  ];
+  it("leaves every written place alone by default", () => expect(notToDraft(rows, false)).toEqual(new Set(["a", "b", "c"])));
+  it("with --redraft, redrafts only the model's own drafts", () => expect(notToDraft(rows, true)).toEqual(new Set(["a", "c"])));
+});
+
+describe("parseDraft when the pages are thin", () => {
+  it("skips when the pages don't say enough", () => {
+    expect(parseDraft(gemini(`{"background":null}`, READ))).toEqual({ ok: false, reason: expect.stringMatching(/didn't say enough/) });
+  });
+  it("tells the model it may say so", () => {
+    expect(draftPrompt({ name: "Gion", nameJa: null, city: "Kyoto", urls: [PAGE] })).toContain(`{"background": null}`);
   });
 });

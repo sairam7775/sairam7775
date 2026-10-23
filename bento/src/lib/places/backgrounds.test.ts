@@ -58,3 +58,17 @@ describe("withBackgrounds", () => {
     ]);
   });
 });
+
+describe("checkBackgroundText, the formats people write", () => {
+  it.each(["Open 9am to 5pm.", "Gates open at 9 a.m. each day.", "Open 8.30 to 17.00.", "開門は9時から17時まで。", "Open ９:００ daily."])(
+    "refuses the clock time in %s",
+    (t) => expect(checkBackgroundText(`${ok} ${t}`)).toMatch(/time/),
+  );
+  it.each(["Entry is ￥500.", "Entry is 500 JPY.", "Entry is 500円."])(
+    "refuses the price in %s",
+    (t) => expect(checkBackgroundText(`${ok} ${t}`)).toMatch(/price/),
+  );
+  it("keeps a Japanese name that contains 円", () => {
+    expect(checkBackgroundText("Maruyama Park (円山公園) opened in 1886 as Kyoto's oldest public park, laid out around a weeping cherry tree that draws crowds every spring.")).toBeNull();
+  });
+});

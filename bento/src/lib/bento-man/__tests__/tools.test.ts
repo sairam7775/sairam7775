@@ -272,6 +272,20 @@ describe("facts", () => {
     expect(r.note).toMatch(/don't have it/);
     expect(store.asks).toEqual([]);
   });
+  it("place_background asks which place when a name matches several, and counts nothing", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "castle" }, ctxFor(store)));
+    expect(r.background).toBeUndefined();
+    expect(r.matches.map((m: { id: string }) => m.id)).toEqual(expect.arrayContaining(["hmj-castle", "hir-castle"]));
+    expect(r.note).toMatch(/several/);
+    expect(store.asks).toEqual([]);
+  });
+  it("place_background takes the place whose name matches exactly", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "Todai-ji" }, ctxFor(store)));
+    expect(r.id).toBe("nra-todaiji");
+    expect(store.asks).toEqual(["nra-todaiji"]);
+  });
   it("keeps the tool order stable, with place_background last", () => {
     expect(TOOLS.at(-1)?.name).toBe("place_background");
   });

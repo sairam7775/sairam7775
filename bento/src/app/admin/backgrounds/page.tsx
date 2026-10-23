@@ -15,6 +15,7 @@ interface BackgroundRow {
   drafted_by: string;
   verified_by: string | null;
   verified_on: string | null;
+  updated_at: string;
 }
 interface PlaceRow { id: string; name: string; city_id: string; sources: string[] | null }
 
@@ -49,7 +50,7 @@ export default async function PlaceBackgrounds({ searchParams }: PageProps<"/adm
   const since = askWindowStart(new Date());
   const [{ data: askRows }, { data: bgRows }] = await Promise.all([
     db.from("place_background_asks").select("place_id, asks").gte("day", since),
-    db.from("place_backgrounds").select("place_id, body, sources, status, drafted_by, verified_by, verified_on").order("place_id"),
+    db.from("place_backgrounds").select("place_id, body, sources, status, drafted_by, verified_by, verified_on, updated_at").order("place_id"),
   ]);
   const asks = new Map<string, number>();
   for (const a of askRows ?? []) asks.set(a.place_id, (asks.get(a.place_id) ?? 0) + a.asks);
@@ -111,6 +112,7 @@ export default async function PlaceBackgrounds({ searchParams }: PageProps<"/adm
             <BackgroundForm placeId={r.place_id} body={r.body} sources={r.sources.join(", ")} />
             <form action={approveBackground} className="mt-2.5 flex flex-wrap items-center gap-3">
               <input type="hidden" name="placeId" value={r.place_id} />
+              <input type="hidden" name="seen" value={r.updated_at} />
               <button className="bg-edamame px-5 py-2 text-sm font-medium text-surface">Approve as saved</button>
               <span className="text-[0.8rem] text-ink-3">Save your edits first: Approve signs the text as it was last saved.</span>
             </form>

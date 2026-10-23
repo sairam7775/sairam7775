@@ -340,14 +340,14 @@ export const SCENARIOS: Scenario[] = [
     intent: "History comes from the checked background, not the model.",
     setup: { ...routed, backgrounds: { "kyt-kinkakuji": { body: KINKAKU, sources: ["shokoku-ji.jp"] } } },
     user: "What's the story behind Kinkaku-ji?",
-    expect: { tools: ["place_background"], mustMatch: [/Yoshimitsu/], mustNotMatch: [/\b\d{1,2}:\d{2}\b/, /¥/] },
+    expect: { tools: ["place_background"], mustMatch: [/Yoshimitsu/], mustNotMatch: [/\b\d{1,2}:\d{2}\b/, /\b\d{1,2}\s*[ap]\.?m\b/i, /¥|\bJPY\b|\byen\b/i] },
   },
   {
     id: "fact-background-general",
     intent: "With no checked background, general background is said as such, with nothing to act on.",
     setup: routed,
     user: "What's the history of Kiyomizu-dera?",
-    expect: { tools: ["place_background"], mustMatch: [/general/i], mustNotMatch: [/\b\d{1,2}:\d{2}\b/, /¥/] },
+    expect: { tools: ["place_background"], mustMatch: [/general/i], mustNotMatch: [/\b\d{1,2}:\d{2}\b/, /\b\d{1,2}\s*[ap]\.?m\b/i, /¥|\bJPY\b|\byen\b/i] },
   },
   {
     id: "fact-hours-monday",
