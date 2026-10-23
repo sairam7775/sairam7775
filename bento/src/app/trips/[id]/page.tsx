@@ -14,6 +14,7 @@ import { nightsBetween, type TripState } from "@/lib/bento-man/store";
 import { buildTripView, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { journeyMapUrl } from "@/lib/maps/links";
 import { loadGaps } from "@/lib/vault/store";
+import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
 import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
@@ -89,6 +90,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
   // Each travel day's trains. A failure only leaves them off the page.
   const travel = await tripTravelDays(store, state).catch(() => null);
+  // The day's checked backgrounds (0027); none shown if they can't be read.
+  const backgrounds = await loadBackgrounds(db, (dayItems ?? []).map((i) => i.placeId));
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
   const today = new Date().toISOString().slice(0, 10);
@@ -371,7 +374,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 cityId={selectedMeta.cityId ?? ""}
                 cityName={selectedMeta.cityName}
                 tier={coverage(selectedMeta.tier)}
-                items={dayItems ?? []}
+                items={withBackgrounds(dayItems ?? [], backgrounds)}
                 budgetMin={stats?.budgetMin ?? 480}
                 activeMin={stats?.activeMin ?? 0}
                 overBy={stats?.overBy ?? 0}

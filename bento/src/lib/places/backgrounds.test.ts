@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { checkBackgroundText, loadBackgrounds } from "./backgrounds";
+import { checkBackgroundText, loadBackgrounds, withBackgrounds } from "./backgrounds";
 
 const ok = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 
@@ -45,5 +45,16 @@ describe("loadBackgrounds", () => {
     await expect(loadBackgrounds(db, ["kyt-kinkakuji"])).resolves.toEqual(new Map());
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+});
+
+describe("withBackgrounds", () => {
+  it("gives each stop its checked background, or null", () => {
+    const map = new Map([["kyt-kinkakuji", { placeId: "kyt-kinkakuji", body: ok, sources: ["shokoku-ji.jp"] }]]);
+    const items = [{ placeId: "kyt-kinkakuji", name: "Kinkaku-ji" }, { placeId: "kyt-kiyomizu", name: "Kiyomizu-dera" }];
+    expect(withBackgrounds(items, map)).toEqual([
+      { placeId: "kyt-kinkakuji", name: "Kinkaku-ji", background: ok },
+      { placeId: "kyt-kiyomizu", name: "Kiyomizu-dera", background: null },
+    ]);
   });
 });

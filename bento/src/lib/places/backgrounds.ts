@@ -39,3 +39,8 @@ export async function loadBackgrounds(db: SupabaseClient, placeIds: string[]): P
   for (const r of data ?? []) out.set(r.place_id, { placeId: r.place_id, body: r.body, sources: r.sources ?? [] });
   return out;
 }
+
+/** A day's stops with their checked backgrounds attached, for the trip page. */
+export function withBackgrounds<T extends { placeId: string }>(items: T[], backgrounds: Map<string, PlaceBackground>): (T & { background: string | null })[] {
+  return items.map((i) => ({ ...i, background: backgrounds.get(i.placeId)?.body ?? null }));
+}
