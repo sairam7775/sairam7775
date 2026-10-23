@@ -16,7 +16,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { draftPrompt, parseDraft, pickPlaces } from "../src/lib/places/background-draft";
+import { askWindowStart, draftPrompt, parseDraft, pickPlaces } from "../src/lib/places/background-draft";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -27,7 +27,6 @@ const named = flag("--places")?.split(",").map((s) => s.trim()).filter(Boolean);
 const limit = Number(flag("--limit") ?? 5);
 const model = flag("--model") ?? "gemini-3.8-flash";
 const write = args.includes("--write");
-const ASK_DAYS = 90;
 const PAUSE_MS = 13000;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -46,7 +45,7 @@ async function main() {
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
 
-  const since = new Date(Date.now() - ASK_DAYS * 86400000).toISOString().slice(0, 10);
+  const since = askWindowStart(new Date());
   const [asks, checked] = await Promise.all([
     named ? Promise.resolve({ data: [], error: null }) : db.from("place_background_asks").select("place_id, asks").gte("day", since),
     db.from("place_backgrounds").select("place_id").eq("status", "verified"),

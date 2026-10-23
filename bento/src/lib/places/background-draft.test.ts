@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftPrompt, parseDraft, pickPlaces } from "./background-draft";
+import { askWindowStart, draftPrompt, parseDraft, pickPlaces } from "./background-draft";
 
 const OK = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 const PAGE = "https://www.shokoku-ji.jp/kinkakuji/";
@@ -58,5 +58,11 @@ describe("draftPrompt", () => {
     expect(text).toContain("Kinkaku-ji (金閣寺) in Kyoto");
     expect(text).toMatch(/No opening hours, prices/);
     expect(text).toMatch(/Do not use Google Maps/);
+  });
+});
+
+describe("askWindowStart", () => {
+  it("counts asks from the last 90 days", () => {
+    expect(askWindowStart(new Date("2026-10-23T12:00:00Z"))).toBe("2026-07-25");
   });
 });

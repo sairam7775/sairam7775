@@ -7,6 +7,14 @@ import { checkBackgroundText } from "./backgrounds";
 
 export type Draft = { ok: true; body: string; sources: string[] } | { ok: false; reason: string };
 
+/** Asks from this many days back decide what gets written first. */
+export const ASK_DAYS = 90;
+
+/** The first day (ISO date) whose asks still count. */
+export function askWindowStart(today: Date): string {
+  return new Date(today.getTime() - ASK_DAYS * 86400000).toISOString().slice(0, 10);
+}
+
 /** Which places to draft: the ones named, or the most-asked (ties by id).
  *  A place with a checked background is never redrafted. */
 export function pickPlaces(asks: { place_id: string; asks: number }[], checked: Set<string>, limit: number, named?: string[]): string[] {
