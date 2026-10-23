@@ -96,7 +96,7 @@ begin
   on conflict (place_id, day) do update set asks = place_background_asks.asks + 1;
 end;
 $$;
-revoke all on function note_background_ask(text) from public;
+revoke all on function note_background_ask(text) from public, anon;
 grant execute on function note_background_ask(text) to authenticated;
 ```
 

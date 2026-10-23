@@ -142,6 +142,13 @@ Practically:
   `missingForVerify`: a typical duration, a tag, a source), re-checked on the
   server for every id, and only flips rows still in draft. Verifying never
   changes a city's coverage tier; that stays a separate step on the city page.
+- Backgrounds (0027) are a place's lasting story: history and what it is
+  known for, 120–900 characters, never a clock time or a price (those stay on
+  `places`). Only the service role writes `place_backgrounds`; an admin checks
+  them in `/admin/backgrounds`; travellers and Bento Man read
+  `place_backgrounds_public` (checked backgrounds of verified places only).
+  `note_background_ask` counts asks per place and day, with no user id or
+  message text.
 
 ## Bento Man (P6)
 
