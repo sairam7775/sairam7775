@@ -54,6 +54,10 @@ export function pickTool(message: string): ToolCall | null {
     return { name: "replan_day", input: { date: dates[0], ops: [{ op: "start_at", time: at }] } };
   }
 
+  // Before the interest tags, which would read "history" as a preference.
+  const story = message.match(/\b(?:history|story|background)\s+(?:of|behind|about)\s+(.+?)[?.!]*$/i);
+  if (story) return { name: "place_background", input: { query: story[1].slice(0, 80) } };
+
   const pace = m.match(/\b(relaxed|standard|packed)\b/)?.[1];
   const tags = INTEREST_TAGS.filter((t) => m.includes(t.id) || m.includes(t.label.toLowerCase())).map((t) => t.id);
   if (pace || tags.length) {

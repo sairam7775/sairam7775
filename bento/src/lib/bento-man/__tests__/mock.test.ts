@@ -35,6 +35,8 @@ describe("pickTool", () => {
     expect(pickTool("suggest a route")?.name).toBe("suggest_route");
     expect(pickTool("plan my days")?.name).toBe("plan_days");
     expect(pickTool("tell me about Fushimi Inari")).toEqual({ name: "get_place", input: { query: "Fushimi Inari" } });
+    expect(pickTool("What's the history of Kiyomizu-dera?")).toEqual({ name: "place_background", input: { query: "Kiyomizu-dera" } });
+    expect(pickTool("what is the story behind Kinkaku-ji")).toEqual({ name: "place_background", input: { query: "Kinkaku-ji" } });
     expect(pickTool("hello")).toBeNull();
   });
 });

@@ -142,6 +142,13 @@ Practically:
   `missingForVerify`: a typical duration, a tag, a source), re-checked on the
   server for every id, and only flips rows still in draft. Verifying never
   changes a city's coverage tier; that stays a separate step on the city page.
+- Backgrounds (0027) are a place's lasting story: history and what it is
+  known for, 120–900 characters, never a clock time or a price (those stay on
+  `places`). Only the service role writes `place_backgrounds`; an admin checks
+  them in `/admin/backgrounds`; travellers and Bento Man read
+  `place_backgrounds_public` (checked backgrounds of verified places only).
+  `note_background_ask` counts asks per place and day, with no user id or
+  message text.
 
 ## Bento Man (P6)
 
@@ -216,6 +223,12 @@ Practically:
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
+- `place_background` is the one place general knowledge is allowed, and
+  only for history. With a checked background (0027) Bento Man retells it.
+  Without one it may give two or three sentences of widely known background,
+  said as general, and the tool counts the ask (`noteBackgroundAsk`). Never
+  hours, prices or anything a traveller acts on. Guarded by `tools.test.ts`
+  and the `fact-background-*` eval scenarios.
 - An overpacked route is a conversation before it is a proposal:
   `propose_route` refuses it unless `traveller_insists`, and after a refusal
   it stays refused for the rest of that turn, so the traveller hears the

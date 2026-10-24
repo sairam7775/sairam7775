@@ -10,6 +10,7 @@ import type { Graph } from "@/lib/transit/graph";
 import type { BudgetBand, CoverageTier, InterestTag, TravelPace, TripStatus } from "@/lib/types";
 import type { Proposal } from "./diff";
 import type { TicketLike } from "@/lib/vault/match";
+import type { PlaceBackground } from "@/lib/places/backgrounds";
 import { copy } from "@/copy";
 
 export interface Prefs {
@@ -126,6 +127,12 @@ export interface TripStore {
   cities(): Promise<CityFacts[]>;
   places(cityId: string): Promise<PlaceInput[]>;
   searchPlaces(query: string, cityId?: string | null): Promise<PlaceInput[]>;
+  /** The place's checked background (0027), or null when it has none yet. */
+  background(placeId: string): Promise<PlaceBackground | null>;
+  /** Counts a traveller asking about a place with no checked background,
+   *  so the most-asked get written first. Never throws: a failed count
+   *  must not cost the traveller their answer. */
+  noteBackgroundAsk(placeId: string): Promise<void>;
   graph(): Promise<Graph>;
   /** The trip's bookings, as much as the planner needs to know a ticket is
    *  held (lib/vault/match.ts). Never the reference. */

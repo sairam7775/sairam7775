@@ -31,7 +31,9 @@ function fixture() {
     });
     return query;
   });
+  const rpcErrors: Record<string, Error> = {};
   const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
+    if (rpcErrors[name]) return { error: rpcErrors[name] };
     if (name === "update_trip_dates") Object.assign(trip, args.p_patch);
     if (name === "replace_day_items") rows.itinerary_days = [{ date: args.p_date, city_id: args.p_city, itinerary_items: [] }];
     if (name === "apply_proposal") rows.chat_messages = null;
@@ -40,7 +42,7 @@ function fixture() {
   const db = { from, rpc } as unknown as SupabaseClient;
   const store = new SupabaseStore(db, "trip", "user");
   const count = (table: string) => from.mock.calls.filter(([t]) => t === table).length;
-  return { store, db, rows, errors, count, selectCalls };
+  return { store, db, rows, errors, count, selectCalls, rpc, rpcErrors };
 }
 
 describe("request-local SupabaseStore reads", () => {
@@ -168,5 +170,32 @@ describe("date proposals (#6)", () => {
     expect(rows.user_preferences).not.toHaveProperty("apply_dates_without_asking");
     await store.setAutoApplyDates(true);
     expect(rows.user_preferences).toMatchObject({ user_id: "user", apply_dates_without_asking: true });
+  });
+});
+
+describe("place backgrounds", () => {
+  const B = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
+
+  it("reads a checked background through the public view", async () => {
+    const { store, rows, selectCalls } = fixture();
+    rows.place_backgrounds_public = [{ place_id: "kyt-kinkakuji", body: B, sources: ["shokoku-ji.jp"] }];
+    expect((await store.background("kyt-kinkakuji"))?.body).toBe(B);
+    expect(selectCalls.some(([t]) => t === "place_backgrounds_public")).toBe(true);
+  });
+
+  it("has no background for a place without a checked one", async () => {
+    const { store } = fixture();
+    expect(await store.background("kyt-kiyomizu")).toBeNull();
+  });
+
+  it("counts an ask and never throws when counting fails", async () => {
+    const { store, rpc, rpcErrors } = fixture();
+    await store.noteBackgroundAsk("kyt-kinkakuji");
+    expect(rpc).toHaveBeenCalledWith("note_background_ask", { p_place_id: "kyt-kinkakuji" });
+    const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+    rpcErrors.note_background_ask = new Error("violates foreign key constraint");
+    await expect(store.noteBackgroundAsk("nope")).resolves.toBeUndefined();
+    expect(logged).toHaveBeenCalled();
+    logged.mockRestore();
   });
 });

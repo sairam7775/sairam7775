@@ -27,6 +27,8 @@ export interface DayBoxItem {
   arriveMode: string | null;
   arriveMinutes: number | null;
   arriveDetail: string | null;
+  /** The place's checked background (0027), when it has one. */
+  background?: string | null;
 }
 
 export interface DayBoxProps {
@@ -290,6 +292,23 @@ export function DayBox(p: DayBoxProps) {
                       </a>
                     )}
                     {it.reason && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{it.reason}</p>}
+                    {it.background && (
+                      <details className="mt-1.5 text-[0.84rem] text-ink-2">
+                        <summary
+                          // Like the map link: a drag that starts here is
+                          // cancelled instead of moving the stop.
+                          draggable
+                          onDragStart={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                          }}
+                          className="inline-flex min-h-6 cursor-pointer items-center font-medium text-accent-ink hover:underline"
+                        >
+                          {t.about}
+                        </summary>
+                        <p className="mt-1 leading-snug">{it.background}</p>
+                      </details>
+                    )}
                     {it.reasonTerms.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {it.reasonTerms.slice(0, 4).map((t) => (

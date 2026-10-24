@@ -502,6 +502,7 @@ export const en = {
     lunchNote: "Nothing booked, and nothing needs to be. Bring cash.",
     map: "Map",
     openMap: (name: string) => `Open ${name} in Google Maps`,
+    about: "About this place",
     budgetEndsLabel: "Day budget ends here",
     budgetEnds: (budget: string) => `${budget} day ends here`,
     pinned: "pinned",

@@ -281,6 +281,17 @@ export const TOOLS: ModelTool[] = [
       additionalProperties: false,
     },
   },
+  {
+    name: "place_background",
+    description:
+      "A place's history and what it is known for, as checked text: the lasting story, never hours or prices. Use when the traveller asks about a place's history, its meaning or what it is known for. Returns the checked text and its sources, or none yet.",
+    input_schema: {
+      type: "object",
+      properties: { query: { type: "string" }, city_id: { type: "string" } },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
 ];
 
 // ---------------------------------------------------------------- helpers
@@ -729,6 +740,22 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const matches = await store.searchPlaces(p.data.query, p.data.city_id ?? null);
       if (!matches.length) return { result: j({ matches: [], note: "nothing in the database matches — say you don't have it rather than guessing" }) };
       return { result: j({ matches: matches.slice(0, 5).map(placeFacts) }) };
+    }
+
+    case "place_background": {
+      const p = GetPlace.safeParse(rawInput);
+      if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
+      const matches = await store.searchPlaces(p.data.query, p.data.city_id ?? null);
+      if (!matches.length) return { result: j({ matches: [], note: "nothing in the database matches — say you don't have it rather than guessing" }) };
+      // The exact place or the only match; never a guess among several.
+      const q = p.data.query.trim().toLowerCase();
+      const place = matches.find((m) => m.id === q || m.name.toLowerCase() === q) ?? (matches.length === 1 ? matches[0] : undefined);
+      if (!place) return { result: j({ matches: matches.slice(0, 5).map((m) => ({ id: m.id, name: m.name, city_id: m.cityId })), note: "several places match — ask the traveller which one, or call again with its id" }) };
+      const background = await store.background(place.id);
+      if (background) return { result: j({ id: place.id, name: place.name, background: background.body, sources: background.sources, checked: true }) };
+      // Counted so the most-asked places get a checked background first.
+      await store.noteBackgroundAsk(place.id);
+      return { result: j({ id: place.id, name: place.name, background: null, note: "no checked background yet: you may give two or three sentences of widely known background from general knowledge, and say it is general background; nothing a traveller would act on" }) };
     }
 
     case "route_between": {
