@@ -9,7 +9,8 @@
  *
  * One Gemini request per place, on the free-tier quota the live site's Bento
  * Man shares (about 20 a day per model), so keep runs small; a 429 stops the
- * run. Gemini reads the official pages with url_context, never Google Maps.
+ * run; a request that fails or times out skips only its place. Gemini reads
+ * the official pages with url_context, never Google Maps.
  * A place with no official page on record costs no request. A place whose
  * pages could not be read, or didn't say enough, is skipped. A place that
  * already has a background is left alone: --redraft replaces only drafts
@@ -19,7 +20,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces } from "../src/lib/places/background-draft";
+import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraft } from "../src/lib/places/background-draft";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -80,18 +81,20 @@ async function main() {
     const city = (p.cities as unknown as { name: string } | null)?.name ?? "";
 
     if (n > 0) await sleep(PAUSE_MS);
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-      body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: draftPrompt({ name: p.name, nameJa: p.name_ja, city, urls: p.urls }) }] }], tools: [{ url_context: {} }] }),
-    });
-    if (res.status === 429) {
+    const reply = await requestDraft(() =>
+      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: draftPrompt({ name: p.name, nameJa: p.name_ja, city, urls: p.urls }) }] }], tools: [{ url_context: {} }] }),
+      }),
+    );
+    if (reply.kind === "quota") {
       console.log(`Out of Gemini quota. Not drafted yet: ${ids.slice(n).join(", ")}`);
       return;
     }
-    if (!res.ok) { console.log(`${id} · skipped: Gemini HTTP ${res.status}`); continue; }
+    if (reply.kind === "skip") { console.log(`${id} · skipped: ${reply.reason}`); continue; }
 
-    const draft = parseDraft(await res.json());
+    const draft = parseDraft(reply.json);
     if (!draft.ok) { console.log(`${id} · skipped: ${draft.reason}`); continue; }
     console.log(`${id} · drafted\n  ${draft.body}\n  from ${draft.sources.join(", ")}`);
     if (write) {

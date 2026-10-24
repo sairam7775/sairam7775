@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces } from "./background-draft";
+import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraft } from "./background-draft";
 
 const OK = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 const PAGE = "https://www.shokoku-ji.jp/kinkakuji/";
@@ -90,5 +90,21 @@ describe("parseDraft when the pages are thin", () => {
   });
   it("tells the model it may say so", () => {
     expect(draftPrompt({ name: "Gion", nameJa: null, city: "Kyoto", urls: [PAGE] })).toContain(`{"background": null}`);
+  });
+});
+
+describe("requestDraft", () => {
+  it("skips the place when Gemini doesn't answer", async () => {
+    const timeout = Object.assign(new TypeError("fetch failed"), { cause: { code: "UND_ERR_HEADERS_TIMEOUT" } });
+    await expect(requestDraft(() => Promise.reject(timeout))).resolves.toEqual({ kind: "skip", reason: "Gemini didn't answer" });
+  });
+  it("stops the run when the quota is spent", async () => {
+    await expect(requestDraft(async () => new Response("", { status: 429 }))).resolves.toEqual({ kind: "quota" });
+  });
+  it("skips the place on another HTTP error", async () => {
+    await expect(requestDraft(async () => new Response("", { status: 503 }))).resolves.toEqual({ kind: "skip", reason: "Gemini HTTP 503" });
+  });
+  it("passes Gemini's reply on", async () => {
+    await expect(requestDraft(async () => Response.json({ candidates: [] }))).resolves.toEqual({ kind: "reply", json: { candidates: [] } });
   });
 });

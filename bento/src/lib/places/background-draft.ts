@@ -53,6 +53,27 @@ export function draftPrompt(p: { name: string; nameJa: string | null; city: stri
 Reply with ONLY a JSON object, no code fence: {"background": "..."}`;
 }
 
+/** One drafting request: Gemini's reply, a spent quota (which stops the
+ *  run), or why this place is skipped. A request that fails or times out
+ *  skips only its place; the run goes on to the next. */
+export type Reply = { kind: "reply"; json: unknown } | { kind: "quota" } | { kind: "skip"; reason: string };
+
+export async function requestDraft(send: () => Promise<Response>): Promise<Reply> {
+  let res: Response;
+  try {
+    res = await send();
+  } catch {
+    return { kind: "skip", reason: "Gemini didn't answer" };
+  }
+  if (res.status === 429) return { kind: "quota" };
+  if (!res.ok) return { kind: "skip", reason: `Gemini HTTP ${res.status}` };
+  try {
+    return { kind: "reply", json: await res.json() };
+  } catch {
+    return { kind: "skip", reason: "unreadable reply" };
+  }
+}
+
 interface GeminiResponse {
   candidates?: {
     content?: { parts?: { text?: string }[] };
