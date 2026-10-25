@@ -5,6 +5,7 @@ const { initFirebase } = require('./firebase');
 const { readWorkbook, PUSH_SHEET, IAM_SHEET } = require('./excelParser');
 const { sendPushNotifications } = require('./push');
 const { publishInAppMessages } = require('./inAppMessage');
+const { failures } = require('./summary');
 
 function parseArgs(argv) {
   const [command, filePath, ...flags] = argv;
@@ -61,9 +62,9 @@ async function main() {
   }
 
   const allResults = [...pushResults, ...iamOutcome.results];
-  const errors = allResults.filter((r) => r.status === 'error');
-  if (errors.length) {
-    console.log(`\n${errors.length} error(s) occurred.`);
+  const failed = failures(allResults);
+  if (failed.length) {
+    console.log(`\n${failed.length} row(s) failed or were skipped.`);
     process.exitCode = 1;
   } else {
     console.log('\nDone.');
