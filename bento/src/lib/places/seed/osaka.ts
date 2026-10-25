@@ -6,7 +6,7 @@ const c = "osaka-city";
 export const osaka: PlaceSeed[] = [
   draft({ id: "osk-osaka-castle", city: c, name: "Osaka Castle", nameJa: "大阪城", category: "castle", lat: 34.6873, lon: 135.5262,
     station: "osakajokoen", walk: 15, tags: ["history"], energy: 0.35, crowd: 0.75, discovery: 0.1, signature: 0.8, physical: 0.4,
-    taste: 45, typical: 90, full: 150, window: ["before 09:30"], opens: "09:00", closes: "17:00",
+    taste: 45, typical: 90, full: 150, window: ["before 09:30"], opens: "09:00", closes: "18:00",
     crowdNote: "The keep is a museum with a lift queue. Weekend afternoons the wait for the lift is longer than the visit.",
     tip: "The keep is a 1931 concrete reconstruction with a museum inside; the view from the top and the walls and moats outside are the real castle. Walk the outer wall before going in.",
     cost: 600, pairs: ["osk-castle-park"], seasons: ["sakura"], sources: ["osakacastle.net"] }),
@@ -48,10 +48,10 @@ export const osaka: PlaceSeed[] = [
 
   draft({ id: "osk-tsutenkaku", city: c, name: "Tsutenkaku Tower", nameJa: "通天閣", category: "viewpoint", lat: 34.6525, lon: 135.5063,
     station: "dobutsuen-mae", walk: 7, tags: ["popculture"], energy: 0.1, crowd: 0.5, discovery: 0.2, signature: 0.4,
-    taste: 20, typical: 40, full: 60, opens: "10:00", closes: "20:00",
+    taste: 20, typical: 40, full: 60, opens: "09:00", closes: "21:45",
     crowdNote: "Short waits; the observation deck is small.",
     tip: "Loved for what it is, not for the view. Rub the Billiken statue's feet for luck and come back down — the neighbourhood around it is the attraction.",
-    cost: 900, pairs: ["osk-shinsekai"], sources: ["tsutenkaku.co.jp"] }),
+    cost: 1500, pairs: ["osk-shinsekai"], sources: ["tsutenkaku.co.jp"] }),
 
   draft({ id: "osk-spa-world", city: c, name: "Spa World", nameJa: "スパワールド", category: "onsen", lat: 34.6510, lon: 135.5050,
     station: "dobutsuen-mae", walk: 5, tags: ["onsen"], energy: 0.1, crowd: 0.5, discovery: 0.3, signature: 0.4,
@@ -62,10 +62,10 @@ export const osaka: PlaceSeed[] = [
 
   draft({ id: "osk-shitennoji", city: c, name: "Shitenno-ji", nameJa: "四天王寺", category: "temple", lat: 34.6537, lon: 135.5164,
     station: "tennoji", walk: 10, tags: ["shrines", "history"], energy: 0.25, crowd: 0.3, discovery: 0.5, signature: 0.5,
-    taste: 30, typical: 60, full: 90, opens: "08:30", closes: "16:30",
+    taste: 30, typical: 60, full: 90, opens: "08:30", closes: "16:00", hoursVary: true,
     crowdNote: "Quiet except on the 21st and 22nd of each month, when the flea market fills the grounds.",
     tip: "Japan's oldest official temple, founded 593 — and rebuilt in concrete after the war, so it is the layout and the ritual that are old. The garden is the calm part.",
-    cost: 300, sources: ["shitennoji.or.jp"] }),
+    cost: 500, sources: ["shitennoji.or.jp"] }),
 
   draft({ id: "osk-abeno-harukas", city: c, name: "Abeno Harukas 300", nameJa: "あべのハルカス", category: "viewpoint", lat: 34.6459, lon: 135.5137,
     station: "tennoji", walk: 3, tags: ["popculture"], energy: 0.1, crowd: 0.6, discovery: 0.1, signature: 0.6,
@@ -97,14 +97,14 @@ export const osaka: PlaceSeed[] = [
 
   draft({ id: "osk-tempozan-wheel", city: c, name: "Tempozan Ferris Wheel", nameJa: "天保山大観覧車", category: "viewpoint", lat: 34.6560, lon: 135.4315,
     station: "osakako", walk: 5, tags: ["popculture"], energy: 0.05, crowd: 0.4, discovery: 0.2, signature: 0.3,
-    taste: 15, typical: 25, full: 35, opens: "10:00", closes: "22:00",
+    taste: 15, typical: 25, full: 35, opens: "10:00", closes: "21:00",
     crowdNote: "Short waits outside holidays.",
     tip: "Fifteen minutes round. Next to the aquarium — worth it only if you are already there, and best after dark when the port is lit.",
     cost: 900, pairs: ["osk-kaiyukan"], sources: ["wikivoyage"] }),
 
   draft({ id: "osk-sumiyoshi-taisha", city: c, name: "Sumiyoshi Taisha", nameJa: "住吉大社", category: "shrine", lat: 34.6125, lon: 135.4930,
     station: null, walk: null, tags: ["shrines", "history"], energy: 0.2, crowd: 0.3, discovery: 0.6, signature: 0.6,
-    taste: 30, typical: 50, full: 80, opens: "06:00", closes: "17:00",
+    taste: 30, typical: 50, full: 80, opens: "06:30", closes: "17:00", hoursVary: true,
     crowdNote: "Quiet on ordinary days; enormous at New Year.",
     tip: "A shrine style older than Buddhism's arrival, with the steeply arched red bridge everyone photographs. Twenty minutes south of Namba on the Nankai line, then a two-minute walk from Sumiyoshi-taisha station.",
     cost: 0, sources: ["sumiyoshitaisha.net"] }),
@@ -195,7 +195,7 @@ export const osaka: PlaceSeed[] = [
 
   draft({ id: "osk-teamlab-botanical", city: c, name: "teamLab Botanical Garden", nameJa: "チームラボ ボタニカルガーデン", category: "garden", lat: 34.6100, lon: 135.5190,
     station: null, walk: null, tags: ["art", "nature", "popculture"], energy: 0.3, crowd: 0.7, discovery: 0.3, signature: 0.6,
-    taste: 60, typical: 90, full: 120, booking: "required", lead: 14, window: ["after 17:30"], opens: "18:00", closes: "21:30",
+    taste: 60, typical: 90, full: 120, booking: "required", lead: 14, window: ["after 17:30"], opens: "19:45", closes: "21:30", hoursVary: true,
     crowdNote: "Timed entry keeps it moving, but weekend slots sell out a week or two ahead.",
     tip: "Light art across a real botanical garden in Nagai Park, after dark. Book a slot online; it is not a walk-up. Thirty minutes south of Namba on the Midosuji line.",
     cost: 1800, sources: ["teamlab.art"] }),

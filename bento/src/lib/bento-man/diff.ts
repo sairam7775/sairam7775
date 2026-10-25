@@ -172,7 +172,9 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: 
     if (moved) parts.push(copy.plan.day.moved(moved));
     if (!parts.length) parts.push(copy.plan.day.noChange);
   }
-  const summary = copy.plan.day.summary(parts.join(", "), copy.time.duration(plan.activeMin), plan.costJpy.toLocaleString(copy.locale), plan.fareKind !== "exact");
+  // Place prices are bands, not promises, so a day with a paid stop is an estimate.
+  const estimate = plan.fareKind !== "exact" || after.some((a) => a.costJpy > 0);
+  const summary = copy.plan.day.summary(parts.join(", "), copy.time.duration(plan.activeMin), plan.costJpy.toLocaleString(copy.locale), estimate);
 
   return {
     kind: "day",

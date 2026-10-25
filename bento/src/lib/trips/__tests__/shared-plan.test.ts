@@ -59,3 +59,15 @@ describe("sharedPlanFromJson", () => {
     expect(sharedPlanFromJson({ ...json, trip: { ...json.trip, status: "secret" } })).toBeNull();
   });
 });
+
+describe("seasonal hours on the shared sheet", () => {
+  it("says the hours change with the season when shared_trip says so, and not otherwise", () => {
+    const seasonal = { ...json, places: json.places.map((p) => (p.id === "kyt-kiyomizu" ? { ...p, hours_vary: true } : p)) };
+    const plan = sharedPlanFromJson(seasonal)!;
+    expect(plan.places.get("kyt-kiyomizu")?.hoursVary).toBe(true);
+    const doc = planDocument(plan.state, buildTripView(plan.state, null).dayList, plan.bookings, plan.places, plan.stations);
+    expect(doc.days[1].entries[0]).toMatchObject({ kind: "stop", hours: { opens: "06:00", closes: "18:00", varies: true } });
+    // A function from before 0026 sends no hours_vary: the hours read as plain.
+    expect(sharedPlanFromJson(json)!.places.get("kyt-kiyomizu")?.hoursVary).toBe(false);
+  });
+});

@@ -123,7 +123,7 @@ function Entry({ e }: { e: DocEntry }) {
   }
   const facts = [
     e.station ? t.station(e.station, e.stationWalkMin) : null,
-    e.hours ? t.hours(e.hours.opens, e.hours.closes) : null,
+    e.hours ? (e.hours.varies ? t.hoursVary : t.hours)(e.hours.opens, e.hours.closes) : null,
   ].filter(Boolean);
   return (
     <li className="flex break-inside-avoid gap-4">

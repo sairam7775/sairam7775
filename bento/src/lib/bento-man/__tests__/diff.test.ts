@@ -43,6 +43,13 @@ const plan = (items: DayPlan["items"]): DayPlan => ({
 });
 
 describe("computeDayDiff", () => {
+  it("reads a day with a paid stop as an estimate, even on exact fares", () => {
+    const exact = (items: DayPlan["items"]) => ({ ...plan(items), fareKind: "exact" as const });
+    expect(computeDayDiff([], exact([item("a", 540)])).summary).toMatch(/~¥1,300/);
+    const free = { ...item("a", 540), costJpy: 0 };
+    expect(computeDayDiff([], exact([free])).summary).toMatch(/ ¥1,300/);
+  });
+
   it("flags kept, added, moved and removed against the existing day", () => {
     const existing = [
       { placeId: "a", name: "a", sortOrder: 0, startMin: 540, locked: false },

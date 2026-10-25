@@ -132,6 +132,17 @@ Practically:
   the exporter fails otherwise.
 - Hours are same-day: `closes` must be after `opens`. An overnight venue
   gets `closes: "23:59"` and the real time in the tip.
+- Seasonal hours are never promised (0026): a place whose hours change
+  with the season stores the SHORTEST hours of its year with
+  `hoursVary: true` (`places.hours_vary`), so the planner never arrives
+  after closing. Travellers read "Usually open … hours change with the
+  season, check before you go" (`copy.print.hoursVary`); Bento Man is
+  told "at least …". Don't add per-season times anywhere.
+- Prices are shown as bands, never figures (`engine/cost-band.ts`: free,
+  under ¥500, ¥500–1,500, ¥1,500–3,000, over ¥3,000). `cost` is adult
+  entry to the main paid part; other prices go in the tip. Change it only
+  when the price moves to another band. The engine still sums the figure
+  for a day's budget, so a day with a paid stop reads as `~¥`.
 - Categories are free text but keep to the list in `seed/types.ts`;
   `closedWeekdays` uses 0 = Sunday.
 - `/admin/review` is the sign-off queue. `verifyPlace` redirects to the

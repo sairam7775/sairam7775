@@ -6,10 +6,10 @@ const c = "himeji";
 export const himeji: PlaceSeed[] = [
   draft({ id: "hmj-castle", city: c, name: "Himeji Castle", nameJa: "姫路城", category: "castle", lat: 34.8394, lon: 134.6939,
     station: "himeji", walk: 15, tags: ["history"], energy: 0.5, crowd: 0.8, discovery: 0.05, signature: 0.95, physical: 0.5,
-    taste: 60, typical: 120, full: 180, window: ["before 09:30"], opens: "09:00", closes: "17:00",
+    taste: 60, typical: 120, full: 180, window: ["before 09:30"], opens: "09:00", closes: "17:00", hoursVary: true,
     crowdNote: "Entry to the keep is capped on busy days and the wait inside on the stairs can be long. At opening you climb freely.",
     tip: "The finest surviving castle in Japan, original not rebuilt, and white enough to hurt your eyes. Six floors of steep wooden stairs in socks. Straight up the main road from the station — you can see it from the platform. Lockers at the station for luggage.",
-    cost: 1000, pairs: ["hmj-kokoen"], seasons: ["sakura"], sources: ["himejicastle.jp"] }),
+    cost: 2500, pairs: ["hmj-kokoen"], seasons: ["sakura"], sources: ["himejicastle.jp"] }),
 
   draft({ id: "hmj-kokoen", city: c, name: "Koko-en Garden", nameJa: "好古園", category: "garden", lat: 34.8375, lon: 134.6890,
     station: "himeji", walk: 15, tags: ["nature"], energy: 0.2, crowd: 0.3, discovery: 0.4, signature: 0.5,
@@ -20,7 +20,7 @@ export const himeji: PlaceSeed[] = [
 
   draft({ id: "hmj-engyoji", city: c, name: "Engyo-ji", nameJa: "圓教寺", category: "temple", lat: 34.8650, lon: 134.6470,
     station: "shosha-ropeway", walk: 5, tags: ["shrines", "nature", "history"], energy: 0.5, crowd: 0.2, discovery: 0.7, signature: 0.7, physical: 0.5,
-    taste: 60, typical: 120, full: 180, opens: "08:30", closes: "17:00",
+    taste: 60, typical: 120, full: 180, opens: "08:30", closes: "17:00", hoursVary: true,
     crowdNote: "A few pilgrims and walkers. The Last Samurai was filmed here and it is still empty.",
     tip: "A mountaintop temple complex reached by bus and ropeway, then a twenty-minute uphill walk through forest. Wooden halls on stilts, nobody about. Half a day from Himeji station; the castle is the morning, this is the afternoon.",
     cost: 500, skipIf: ["limited_mobility"], seasons: ["koyo"], sources: ["shosha.or.jp"] }),

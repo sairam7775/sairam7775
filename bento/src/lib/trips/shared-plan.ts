@@ -53,6 +53,7 @@ export const SharedPlanSchema = z.object({
     station_walk_min: count,
     opens_at: text,
     closes_at: text,
+    hours_vary: z.boolean().nullable().optional(),
     crowd_note: text,
     local_tip: text,
   })),

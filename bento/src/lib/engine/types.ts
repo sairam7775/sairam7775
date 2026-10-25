@@ -30,6 +30,9 @@ export interface PlaceInput {
   /** "HH:MM"; null = always open */
   opensAt: string | null;
   closesAt: string | null;
+  /** The hours change with the season and opensAt/closesAt are the shortest
+   *  of the year, so travellers are told to check, never promised them. */
+  hoursVary?: boolean;
   /** 0 = Sunday */
   closedWeekdays: number[];
   /** "YYYY-MM-DD" */

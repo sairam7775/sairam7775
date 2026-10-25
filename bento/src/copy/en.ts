@@ -621,6 +621,8 @@ export const en = {
     getThere: (how: string) => `Getting there: ${how}`,
     station: (name: string, walk: number | null) => (walk != null ? `Nearest stop: ${name}, ${walk} min walk` : `Nearest stop: ${name}`),
     hours: (opens: string, closes: string) => `Open ${opens}–${closes}`,
+    // Seasonal hours: the stored times are the shortest of the year.
+    hoursVary: (opens: string, closes: string) => `Usually open ${opens}–${closes} · hours change with the season, check before you go`,
     why: (reason: string) => `Why: ${reason}`,
     bookings: "Bookings",
     noBookings: "No bookings added yet.",
@@ -892,6 +894,15 @@ export const en = {
     ordinals: { 1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth" },
     ordinal: (n: number) => `${n}th`,
     seasons: { sakura: "cherry blossom", koyo: "autumn colour" },
+    // What a place costs, as a band (engine/cost-band.ts): prices change too
+    // often to promise a figure.
+    costBand: {
+      free: "free",
+      under500: "under ¥500",
+      to1500: "¥500–1,500",
+      to3000: "¥1,500–3,000",
+      over3000: "over ¥3,000",
+    },
     // What a traveller can say they like. The label also finishes "matches …" under a stop, in lower case.
     interests: {
       shrines: { label: "Shrines & temples", hint: "Fushimi Inari, Todai-ji, Koyasan" },
@@ -920,7 +931,7 @@ export const en = {
       busyAllDay: "busy at any hour",
       effort: "more effort than you said you wanted",
       mightSkip: (why: string) => `you might skip it: ${why}`,
-      pricey: (yen: string) => `pricey for your budget here (¥${yen})`,
+      pricey: (band: string) => `pricey for your budget here (${band})`,
       // Added by the scheduler.
       opensAt: (time: string) => `opens at ${time}`,
       opensAtWait: (time: string) => `opens at ${time}, so a short wait`,
