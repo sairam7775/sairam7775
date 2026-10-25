@@ -71,4 +71,10 @@ describe("spend hold size", () => {
     expect(estimateInputTokens(request("hello ".repeat(1000)))).toBeGreaterThanOrEqual(1500);
     expect(estimateInputTokens(request("a".repeat(8000)))).toBeGreaterThan(estimateInputTokens(request("a".repeat(4000))));
   });
+
+  it("never counts fewer tokens than bytes, so token-dense text can't outgrow its hold (Codex review on #54)", () => {
+    const dense = "鬱鬯龘".repeat(1000) + "x7Qz9K".repeat(1000);
+    const bytes = new TextEncoder().encode(JSON.stringify([{ role: "user", content: dense }])).length;
+    expect(estimateInputTokens({ system: "", tools: [], messages: [{ role: "user", content: dense }] })).toBeGreaterThanOrEqual(bytes);
+  });
 });

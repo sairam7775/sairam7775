@@ -146,6 +146,8 @@ describe("draftRequest (Codex review on #54)", () => {
     expect(body.generationConfig.maxOutputTokens).toBe(DRAFT_MAX_OUTPUT_TOKENS);
     expect(body.tools).toEqual([{ url_context: {} }]);
     expect(body.contents[0].parts[0].text).toContain("https://www.himejicastle.jp/");
-    expect(callBoundUsd("gemini-3.8-flash", "draft")).toBeCloseTo((100_000 * 0.75 + DRAFT_MAX_OUTPUT_TOKENS * 3.75) / 1_000_000);
+    // Retrieved pages count as input and url_context doesn't cap them, so
+    // the hold allows for the model's whole context window.
+    expect(callBoundUsd("gemini-3.8-flash", "draft")).toBeCloseTo((1_048_576 * 0.75 + DRAFT_MAX_OUTPUT_TOKENS * 3.75) / 1_000_000);
   });
 });

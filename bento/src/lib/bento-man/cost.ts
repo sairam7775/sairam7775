@@ -92,10 +92,16 @@ export type CallKind = "chat" | "parse" | "draft";
  *  its output limit (thinking included), so the hold's bound is enforced. */
 export const DRAFT_MAX_OUTPUT_TOKENS = 8_000;
 
+/** The input window of the Gemini models Bento uses: no request is bigger. */
+const GEMINI_CONTEXT_TOKENS = 1_048_576;
+
 const CALL_INPUT_BOUND: Record<CallKind, { input: number; output: number }> = {
   chat: { input: CHAT_INPUT_BOUND, output: CHAT_MAX_OUTPUT_TOKENS },
   parse: { input: 8_000, output: 2_000 },
-  draft: { input: 100_000, output: DRAFT_MAX_OUTPUT_TOKENS },
+  // url_context's retrieved pages count as input and nothing caps them
+  // (up to 20 URLs of 34 MB each), so a draft allows for Gemini's whole
+  // context window. An admin script's hold; it settles at the real cost.
+  draft: { input: GEMINI_CONTEXT_TOKENS, output: DRAFT_MAX_OUTPUT_TOKENS },
 };
 
 /** What ONE model call can cost at most, in USD. A spend hold is this, not
@@ -111,12 +117,13 @@ export function callBoundUsd(model: string, kind: CallKind, inputTokens = 0): nu
   return Math.max(costUsd(model, { ...output, inputTokens: input }), costUsd(model, { ...output, cacheWriteTokens: input }));
 }
 
-/** A generous estimate of a request's input tokens from its UTF-8 size. A
- *  token is about four bytes of English and at least one Japanese
- *  character (three bytes), so a third of the bytes errs high for both. */
+/** An upper bound on a request's input tokens: its UTF-8 size in bytes.
+ *  Every token is at least one byte (byte-level tokenisers fall back to
+ *  single bytes), so no text, however token-dense, has more tokens than
+ *  bytes; typical text has far fewer, and the JSON adds some more. */
 export function estimateInputTokens(request: { system: string; tools: unknown; messages: unknown }): number {
   const text = request.system + JSON.stringify(request.tools) + JSON.stringify(request.messages);
-  return Math.ceil(new TextEncoder().encode(text).length / 3);
+  return new TextEncoder().encode(text).length;
 }
 
 /** D8: Opus 5 first, Sonnet 5 measured against the eval before switching. */
