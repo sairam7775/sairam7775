@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
 import { readJsonLimited } from "@/lib/guards/read-json";
 import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
-import { runBentoMan } from "@/lib/bento-man/chat";
+import { firstHoldThen, runBentoMan } from "@/lib/bento-man/chat";
 import { chainBoundUsd, configuredEffort, configuredFallbacks, configuredModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
@@ -54,29 +54,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: copy.server.chatOff }, { status: 503 });
   }
 
-  // Hold budget for one model call at a time, sized to the most a call can
-  // cost, so parallel turns see each other's holds. The first hold is taken
-  // here, where a refusal can still be a plain 402.
+  // Hold budget for one model call at a time, sized to the most that call
+  // can cost (its request's own size when that is over the usual ceiling),
+  // so parallel turns see each other's holds. The first hold is taken here,
+  // where a refusal can still be a plain 402.
   const model = configuredModel(providerName);
   const fallbacks = mock ? [] : configuredFallbacks(providerName, model);
-  const hold = () => reserveSpend(user.id, "chat", chainBoundUsd([model, ...fallbacks], "chat"));
-  let first: Awaited<ReturnType<typeof hold>> | null;
+  const hold = (inputTokens?: number) => reserveSpend(user.id, "chat", chainBoundUsd([model, ...fallbacks], "chat", inputTokens));
+  let first: Awaited<ReturnType<typeof hold>>;
   try {
     first = await hold();
   } catch (e) {
     if (e instanceof SpendCapExceeded) return NextResponse.json({ error: e.message }, { status: 402 });
     throw e;
   }
-  const spend = {
-    hold: async () => {
-      if (first) {
-        const h = first;
-        first = null;
-        return h;
-      }
-      return hold();
-    },
-  };
+  const spend = firstHoldThen(first, hold);
 
   const store = new SupabaseStore(db, tripId, user.id);
   const provider = mock

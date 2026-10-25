@@ -5,7 +5,7 @@
  *  Prompt caching (§09): the system prompt and tool list are byte-stable;
  *  everything that changes per turn — today's date, the trip state — rides
  *  in the final user message, after the cache breakpoint. */
-import { addUsage, CHAT_MAX_OUTPUT_TOKENS, costUsd, totalUsage, ZERO_USAGE, type Usage, type UsageByModel } from "./cost";
+import { addUsage, CHAT_INPUT_BOUND, CHAT_MAX_OUTPUT_TOKENS, costUsd, estimateInputTokens, totalUsage, ZERO_USAGE, type Usage, type UsageByModel } from "./cost";
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResult } from "./provider";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
@@ -30,14 +30,34 @@ export interface RunOptions {
   historyLimit?: number;
   /** Skip persisting the turn (the eval runner keeps its own record). */
   persist?: boolean;
-  /** Asked for before EVERY model call. It holds budget for that call and
-   *  throws when none is left; the returned hold is settled with what the
-   *  call really cost. Absent in the eval and the tests. */
-  spend?: { hold(): Promise<CallHold> };
+  /** Asked for before EVERY model call, with that request's estimated input
+   *  tokens. It holds budget for that call and throws when none is left;
+   *  the returned hold is settled with what the call really cost. Absent in
+   *  the eval and the tests. */
+  spend?: { hold(inputTokens: number): Promise<CallHold> };
 }
 
 export interface CallHold {
   settle(usage: { model: string; inputTokens: number; outputTokens: number; cachedTokens?: number; costUsd: number } | null): Promise<void>;
+}
+
+/** The route takes the first hold before the turn starts, sized to the
+ *  usual ceiling, so a refusal can still be a plain 402. The first call
+ *  uses it when its request fits; a bigger one gives it back and takes a
+ *  hold its own size. Every later call takes a fresh hold. */
+export function firstHoldThen(first: CallHold, take: (inputTokens: number) => Promise<CallHold>): { hold(inputTokens: number): Promise<CallHold> } {
+  let pending: CallHold | null = first;
+  return {
+    async hold(inputTokens) {
+      const h = pending;
+      pending = null;
+      if (h) {
+        if (inputTokens <= CHAT_INPUT_BOUND) return h;
+        await h.settle(null);
+      }
+      return take(inputTokens);
+    },
+  };
 }
 
 const isSpendCap = (e: unknown) => e instanceof Error && e.name === "SpendCapExceeded";
@@ -105,7 +125,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     let hold: CallHold | undefined;
     if (opts.spend) {
       try {
-        hold = await opts.spend.hold();
+        hold = await opts.spend.hold(estimateInputTokens({ system: SYSTEM_PROMPT, tools: TOOLS, messages }));
       } catch (e) {
         // Out of budget before the first call is the caller's to report;
         // out of budget between tool rounds just ends the turn here.
