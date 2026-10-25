@@ -33,6 +33,10 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
   const remoteConfig = admin.remoteConfig();
   const template = await remoteConfig.getTemplate();
   const knownConditions = new Set(template.conditions.map((c) => c.name));
+  // This run's campaigns: which workbook key owns each parameter, and the
+  // conditions its rows set, so earlier runs' targeting can be told apart.
+  const owners = new Map();
+  const setThisRun = new Map();
 
   for (const row of rowsToPublish) {
     const { Key, Title, Body, ImageURL, CTAText, CTAUrl, Condition, Active } = row;
@@ -48,7 +52,24 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
       continue;
     }
 
-    const paramKey = `iam_${slugify(Key)}`;
+    const slug = slugify(Key);
+    if (!slug) {
+      results.push({ status: 'error', reason: `Key "${Key}" needs at least one letter or number (a–z, 0–9) to name its Remote Config parameter.`, row });
+      continue;
+    }
+    const paramKey = `iam_${slug}`;
+    const owner = String(Key).trim().toLowerCase();
+    if (owners.has(paramKey) && owners.get(paramKey) !== owner) {
+      results.push({
+        status: 'error',
+        reason: `Key "${Key}" becomes ${paramKey}, the same parameter as "${owners.get(paramKey)}" in this workbook. Give one of them a different key.`,
+        row,
+      });
+      continue;
+    }
+    owners.set(paramKey, owner);
+    if (!setThisRun.has(paramKey)) setThisRun.set(paramKey, new Set());
+
     const payload = JSON.stringify({
       title: String(Title),
       body: String(Body),
@@ -62,18 +83,26 @@ async function publishInAppMessages(admin, rows, { dryRun = false } = {}) {
     const existingParam = template.parameters[paramKey] || {};
 
     if (Condition) {
+      const condition = String(Condition).trim();
+      setThisRun.get(paramKey).add(condition);
       template.parameters[paramKey] = {
         ...existingParam,
         defaultValue: existingParam.defaultValue || { value: JSON.stringify({ active: false }) },
         conditionalValues: {
           ...(existingParam.conditionalValues || {}),
-          [String(Condition).trim()]: { value: payload },
+          [condition]: { value: payload },
         },
       };
     } else {
+      // A row for everyone replaces the campaign: targeted values left from
+      // earlier runs would otherwise still win for their audience. Targeting
+      // set by this workbook's own rows stays.
+      const { conditionalValues = {}, ...rest } = existingParam;
+      const kept = Object.fromEntries(Object.entries(conditionalValues).filter(([name]) => setThisRun.get(paramKey).has(name)));
       template.parameters[paramKey] = {
-        ...existingParam,
+        ...rest,
         defaultValue: { value: payload },
+        ...(Object.keys(kept).length ? { conditionalValues: kept } : {}),
       };
     }
 
