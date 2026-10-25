@@ -8,7 +8,7 @@ export const nara: PlaceSeed[] = [
     station: "kintetsu-nara", walk: 20, tags: ["shrines", "history"], energy: 0.3, crowd: 0.9, discovery: 0.05, signature: 0.95,
     taste: 30, typical: 60, full: 100, window: ["before 09:00"], opens: "08:00", closes: "17:00", hoursVary: true,
     crowdNote: "School groups from mid-morning; the hall is big enough that it never quite feels full, but the approach does.",
-    tip: "The largest bronze Buddha in Japan in one of the largest wooden buildings in the world. Come at 7:30 when it opens and you get the hall almost alone. The pillar with a hole in it is for children.",
+    tip: "The largest bronze Buddha in Japan in one of the largest wooden buildings in the world. Come as it opens and you get the hall almost alone. The pillar with a hole in it is for children.",
     cost: 800, pairs: ["nra-nara-park", "nra-nigatsudo"], sources: ["todaiji.or.jp"] }),
 
   draft({ id: "nra-nara-park", city: c, name: "Nara Park & the deer", nameJa: "奈良公園", category: "park", lat: 34.6851, lon: 135.8430,
