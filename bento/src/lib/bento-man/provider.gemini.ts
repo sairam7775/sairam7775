@@ -1,6 +1,6 @@
 /** Gemini Developer API, streamed with REST/SSE; no SDK dependency.
  *  https://ai.google.dev/api/generate-content#method:-models.streamgeneratecontent */
-import { configuredFallbacks, DEFAULT_GEMINI_MODEL, ZERO_USAGE, type Usage } from "./cost";
+import { configuredFallbacks, DEFAULT_GEMINI_MODEL, estimateInputTokens, ZERO_USAGE, type Usage } from "./cost";
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ModelRequest, type ModelResult, type ToolCall } from "./provider";
 
 type Part = {
@@ -71,7 +71,7 @@ async function* events(body: ReadableStream<Uint8Array>): AsyncGenerator<Chunk> 
   }
 }
 
-function usageFromMetadata(metadata: NonNullable<Chunk["usageMetadata"]>): Usage {
+export function usageFromMetadata(metadata: NonNullable<Chunk["usageMetadata"]>): Usage {
   const cacheReadTokens = metadata.cachedContentTokenCount ?? 0;
   return {
     // Gemini promptTokenCount includes cached input; neutral input is uncached.
@@ -135,6 +135,10 @@ export class GeminiProvider implements ChatProvider {
       })) };
     }
     return { role: "user", parts: [{ text: message.content }] };
+  }
+
+  inputTokens(request: Pick<ModelRequest, "system" | "messages" | "tools">): number {
+    return estimateInputTokens({ system: request.system, tools: request.tools, messages: request.messages.map((message) => this.content(message)) });
   }
 
   async call(request: ModelRequest): Promise<ModelResult> {

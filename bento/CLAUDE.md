@@ -84,7 +84,10 @@ Practically:
   placed in a model prompt.** A PNR plus a surname can cancel a flight.
 - **Reserve spend before every model call** (`reserveSpend`, 0014), sized to
   the most one call can cost (`callBoundUsd`), and settle it with what the
-  call really cost. A chat turn takes a hold per model call and ends
+  call really cost. The chat loop passes each request's own size
+  (`estimateInputTokens`): a request over the usual 40k-token ceiling gets
+  a hold its size, never a smaller one, and input is priced at the dearer of
+  the input and cache-write rates. A chat turn takes a hold per model call and ends
   politely when none is left. It throws rather than returning a flag so a forgotten check
   cannot spend money. The hold is taken under a database lock, so parallel
   requests see each other; there is a per-user cap and a project-wide cap.
@@ -159,7 +162,9 @@ Practically:
   them in `/admin/backgrounds`; travellers and Bento Man read
   `place_backgrounds_public` (checked backgrounds of verified places only).
   `note_background_ask` counts asks per place and day, with no user id or
-  message text.
+  message text. `scripts/draft-backgrounds.ts` holds every Gemini request,
+  dry runs included, against the project-wide cap (`reserveProjectSpend`,
+  kind `draft`) and records it in `api_usage`.
 
 ## Bento Man (P6)
 

@@ -78,19 +78,52 @@ export function costUsd(model: string, u: Usage): number {
  *  the figure a spend hold is sized from. */
 export const CHAT_MAX_OUTPUT_TOKENS = 24_000;
 
-/** A generous ceiling on one call's input, uncached: system prompt, tools,
- *  thirty messages of history and the trip state. */
-const CALL_INPUT_BOUND: Record<"chat" | "parse", { input: number; output: number }> = {
-  chat: { input: 40_000, output: CHAT_MAX_OUTPUT_TOKENS },
+/** The usual ceiling on one chat call's input: system prompt, tools, thirty
+ *  messages of history and the trip state. A request can be longer (long
+ *  replies, tool results piling up in a turn), so a hold is sized to the
+ *  request's own estimate whenever that is bigger. */
+export const CHAT_INPUT_BOUND = 40_000;
+
+/** What a call is for: Bento Man's chat, the booking reader, or drafting a
+ *  place background (whose input includes the official pages it reads). */
+export type CallKind = "chat" | "parse" | "draft";
+
+/** A drafted background is two to four sentences; the request sets this as
+ *  its output limit (thinking included), so the hold's bound is enforced. */
+export const DRAFT_MAX_OUTPUT_TOKENS = 8_000;
+
+/** The input window of the Gemini models Bento uses: no request is bigger. */
+const GEMINI_CONTEXT_TOKENS = 1_048_576;
+
+const CALL_INPUT_BOUND: Record<CallKind, { input: number; output: number }> = {
+  chat: { input: CHAT_INPUT_BOUND, output: CHAT_MAX_OUTPUT_TOKENS },
   parse: { input: 8_000, output: 2_000 },
+  // url_context's retrieved pages count as input and nothing caps them
+  // (up to 20 URLs of 34 MB each), so a draft allows for Gemini's whole
+  // context window. An admin script's hold; it settles at the real cost.
+  draft: { input: GEMINI_CONTEXT_TOKENS, output: DRAFT_MAX_OUTPUT_TOKENS },
 };
 
 /** What ONE model call can cost at most, in USD. A spend hold is this, not
  *  a typical cost: a hold smaller than the spend lets parallel turns
- *  overshoot the cap together. */
-export function callBoundUsd(model: string, kind: "chat" | "parse"): number {
+ *  overshoot the cap together. `inputTokens` is the request's estimate
+ *  (`estimateInputTokens`); the hold never drops below the usual ceiling.
+ *  Input is priced at the dearer of the input and cache-write rates, since
+ *  a call may write its prompt to the cache. */
+export function callBoundUsd(model: string, kind: CallKind, inputTokens = 0): number {
   const b = CALL_INPUT_BOUND[kind];
-  return costUsd(model, { inputTokens: b.input, outputTokens: b.output, cacheWriteTokens: 0, cacheReadTokens: 0 });
+  const input = Math.max(b.input, inputTokens);
+  const output = { inputTokens: 0, outputTokens: b.output, cacheWriteTokens: 0, cacheReadTokens: 0 };
+  return Math.max(costUsd(model, { ...output, inputTokens: input }), costUsd(model, { ...output, cacheWriteTokens: input }));
+}
+
+/** An upper bound on a request's input tokens: its UTF-8 size in bytes.
+ *  Every token is at least one byte (byte-level tokenisers fall back to
+ *  single bytes), so no text, however token-dense, has more tokens than
+ *  bytes; typical text has far fewer, and the JSON adds some more. */
+export function estimateInputTokens(request: { system: string; tools: unknown; messages: unknown }): number {
+  const text = request.system + JSON.stringify(request.tools) + JSON.stringify(request.messages);
+  return new TextEncoder().encode(text).length;
 }
 
 /** D8: Opus 5 first, Sonnet 5 measured against the eval before switching. */
@@ -115,8 +148,8 @@ export function configuredFallbacks(provider: ProviderName = configuredProvider(
 }
 
 /** A hold must cover whichever model in the chain ends up answering. */
-export function chainBoundUsd(models: string[], kind: "chat" | "parse"): number {
-  return Math.max(...models.map((m) => callBoundUsd(m, kind)));
+export function chainBoundUsd(models: string[], kind: CallKind, inputTokens = 0): number {
+  return Math.max(...models.map((m) => callBoundUsd(m, kind, inputTokens)));
 }
 
 export type Effort = "low" | "medium" | "high" | "xhigh" | "max";

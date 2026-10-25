@@ -15,12 +15,17 @@
  * pages could not be read, or didn't say enough, is skipped. A place that
  * already has a background is left alone: --redraft replaces only drafts
  * the model wrote, never an admin's text or a checked background.
+ * Every request, dry runs included, is held against Bento's project-wide
+ * monthly spending cap and recorded in api_usage; a used-up budget stops
+ * the run before Gemini is asked.
  *
  * Requires NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY and GEMINI_API_KEY.
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraft } from "../src/lib/places/background-draft";
+import { callBoundUsd } from "../src/lib/bento-man/cost";
+import { reserveProjectSpend } from "../src/lib/guards/spend";
+import { askWindowStart, draftRequest, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraftWithin } from "../src/lib/places/background-draft";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -46,6 +51,13 @@ async function main() {
   }
   if (!Number.isInteger(limit) || limit < 1) {
     console.error("--limit is a whole number of places, 1 or more.");
+    process.exit(1);
+  }
+  let holdUsd: number;
+  try {
+    holdUsd = callBoundUsd(model, "draft");
+  } catch {
+    console.error(`${model} has no price in src/lib/bento-man/cost.ts, so its spend can't be held. Add it there first.`);
     process.exit(1);
   }
   const db = createClient(url, key, { auth: { persistSession: false } });
@@ -81,13 +93,20 @@ async function main() {
     const city = (p.cities as unknown as { name: string } | null)?.name ?? "";
 
     if (n > 0) await sleep(PAUSE_MS);
-    const reply = await requestDraft(() =>
-      fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: draftPrompt({ name: p.name, nameJa: p.name_ja, city, urls: p.urls }) }] }], tools: [{ url_context: {} }] }),
-      }),
+    const reply = await requestDraftWithin(
+      () => reserveProjectSpend("draft", holdUsd, db),
+      () =>
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
+          body: JSON.stringify(draftRequest({ name: p.name, nameJa: p.name_ja, city, urls: p.urls })),
+        }),
+      model,
     );
+    if (reply.kind === "budget") {
+      console.log(`${reply.reason} Not drafted yet: ${ids.slice(n).join(", ")}`);
+      return;
+    }
     if (reply.kind === "quota") {
       console.log(`Out of Gemini quota. Not drafted yet: ${ids.slice(n).join(", ")}`);
       return;
