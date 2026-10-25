@@ -17,6 +17,7 @@ import type { Proposal } from "./diff";
 import { allocateDates } from "@/lib/engine/route";
 import { DEFAULT_PREFS, nightsBetween, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripCityRow, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
+import type { PlaceBackground } from "@/lib/places/backgrounds";
 import { shiftConflicts, shiftRefusal, staleDayDates } from "./shift";
 
 const CORRIDOR: { id: string; name: string; tier: CoverageTier }[] = [
@@ -52,6 +53,8 @@ export interface MemorySetup {
   /** Earlier turns. An assistant turn may carry a proposal and its status,
    *  so a scenario can start with a proposal waiting for an answer. */
   history?: (ChatTurn & { proposal?: Proposal; status?: "proposed" | "accepted" | "rejected" })[];
+  /** Checked backgrounds by place id. */
+  backgrounds?: Record<string, { body: string; sources: string[] }>;
 }
 
 export class MemoryStore implements TripStore {
@@ -62,6 +65,9 @@ export class MemoryStore implements TripStore {
   ticketRows: TicketLike[] = [];
   messages: (ChatTurn & { id: string; proposal: Proposal | null; status: "proposed" | "accepted" | "rejected" | null })[] = [];
   readonly tiers: Record<string, CoverageTier>;
+  /** Place ids asked about with no checked background, in order. */
+  asks: string[] = [];
+  private readonly backgrounds: Record<string, { body: string; sources: string[] }>;
   private g: Graph | null = null;
   private placeCache = new Map<string, PlaceInput[]>();
   private seq = 0;
@@ -70,6 +76,7 @@ export class MemoryStore implements TripStore {
     this.trip = { id: "trip-mem", title: "Test trip", startDate: null, endDate: null, partySize: 1, status: "planning", ...setup.trip };
     this.prefs = { ...DEFAULT_PREFS, ...setup.prefs, set: setup.prefs ? (setup.prefs.set ?? true) : false };
     this.tiers = { ...Object.fromEntries(CORRIDOR.map((c) => [c.id, c.tier])), ...setup.tiers };
+    this.backgrounds = { ...setup.backgrounds };
     if (setup.cities) this.setRoute(setup.cities.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason ?? null, budgetBand: c.budgetBand ?? null })));
     this.days = setup.days ? setup.days.map((d) => ({ ...d, items: d.items.map((i) => ({ ...i })) })) : [];
     this.ticketRows = setup.bookings ? setup.bookings.map((b) => ({ ...b })) : [];
@@ -193,6 +200,15 @@ export class MemoryStore implements TripStore {
     return this.g;
   }
 
+  async background(placeId: string): Promise<PlaceBackground | null> {
+    const b = this.backgrounds[placeId];
+    return b ? { placeId, body: b.body, sources: [...b.sources] } : null;
+  }
+
+  async noteBackgroundAsk(placeId: string): Promise<void> {
+    this.asks.push(placeId);
+  }
+
   async history(limit: number): Promise<ChatTurn[]> {
     return this.messages.slice(-limit).map((m) => ({ role: m.role, content: m.content }));
   }
@@ -225,7 +241,13 @@ export class MemoryStore implements TripStore {
         const routeNights = p.route.after.reduce((s, c) => s + c.nights, 0);
         if (tripNights != null && routeNights > tripNights) throw new Error(`the route is ${routeNights} nights and the trip is now ${tripNights}`);
       }
-      await this.setTripDates({ startDate: d.after.startDate, endDate: d.after.endDate, partySize: d.after.partySize, title: d.after.title }, p.route?.after);
+      // Only what the proposal changes, as in the database store.
+      await this.setTripDates({
+        startDate: d.after.startDate,
+        endDate: d.after.endDate,
+        ...(d.after.partySize !== d.before.partySize ? { partySize: d.after.partySize } : {}),
+        ...(d.after.title !== d.before.title ? { title: d.after.title } : {}),
+      }, p.route?.after);
     }
     if (p.route) {
       this.setRoute(p.route.after.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));

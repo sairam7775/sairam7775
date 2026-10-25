@@ -57,10 +57,18 @@ Practically:
   (user_id = null) first, because the global spending cap sums it. PostHog
   data is deleted too when `POSTHOG_PERSONAL_API_KEY` and
   `POSTHOG_PROJECT_ID` are set; the privacy page says which. That deletion
-  is tried three times and never blocks the account's; if it still fails,
-  the person is told it is pending (`/?deleted=1&analytics=pending`) and
-  the log says to delete it by hand. Never say it is done when it isn't.
-  Admins can't delete themselves from the UI.
+  runs only after the auth user is gone, is tried three times with a time
+  limit on each call, and never blocks the account's. Before the first try
+  a service-role-only `analytics_deletions` row (no auth foreign key, so it
+  outlives the account) is written, so a request cut off midway still
+  leaves a record; a success takes it out again. If the tries all fail,
+  `/api/cron/analytics-deletions` retries it daily up to ten times (Vercel
+  cron, needs `CRON_SECRET`; a stalled call is cut off and counts as a
+  try), and the
+  person is told it will be retried (`/?deleted=1&analytics=retrying`). If
+  even the queue can't be written, the log says to delete it by hand and
+  the person is told so (`analytics=by-hand`). Never say it is done when
+  it isn't. Admins can't delete themselves from the UI.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
 - **Every new `SECURITY DEFINER` function sets `search_path = public, pg_temp`
@@ -76,7 +84,10 @@ Practically:
   placed in a model prompt.** A PNR plus a surname can cancel a flight.
 - **Reserve spend before every model call** (`reserveSpend`, 0014), sized to
   the most one call can cost (`callBoundUsd`), and settle it with what the
-  call really cost. A chat turn takes a hold per model call and ends
+  call really cost. The chat loop passes each request's own size
+  (`estimateInputTokens`): a request over the usual 40k-token ceiling gets
+  a hold its size, never a smaller one, and input is priced at the dearer of
+  the input and cache-write rates. A chat turn takes a hold per model call and ends
   politely when none is left. It throws rather than returning a flag so a forgotten check
   cannot spend money. The hold is taken under a database lock, so parallel
   requests see each other; there is a per-user cap and a project-wide cap.
@@ -124,6 +135,17 @@ Practically:
   the exporter fails otherwise.
 - Hours are same-day: `closes` must be after `opens`. An overnight venue
   gets `closes: "23:59"` and the real time in the tip.
+- Seasonal hours are never promised (0026): a place whose hours change
+  with the season stores the SHORTEST hours of its year with
+  `hoursVary: true` (`places.hours_vary`), so the planner never arrives
+  after closing. Travellers read "Usually open … hours change with the
+  season, check before you go" (`copy.print.hoursVary`); Bento Man is
+  told "at least …". Don't add per-season times anywhere.
+- Prices are shown as bands, never figures (`engine/cost-band.ts`: free,
+  under ¥500, ¥500–1,500, ¥1,500–3,000, over ¥3,000). `cost` is adult
+  entry to the main paid part; other prices go in the tip. Change it only
+  when the price moves to another band. The engine still sums the figure
+  for a day's budget, so a day with a paid stop reads as `~¥`.
 - Categories are free text but keep to the list in `seed/types.ts`;
   `closedWeekdays` uses 0 = Sunday.
 - `/admin/review` is the sign-off queue. `verifyPlace` redirects to the
@@ -140,6 +162,15 @@ Practically:
   them; `/admin/review?notes=1` lists only places with open ones, and
   `settleReviewNote` records the admin's call. A note never changes the
   place: the fix goes into the seed or the editor.
+- Backgrounds (0027) are a place's lasting story: history and what it is
+  known for, 120–900 characters, never a clock time or a price (those stay on
+  `places`). Only the service role writes `place_backgrounds`; an admin checks
+  them in `/admin/backgrounds`; travellers and Bento Man read
+  `place_backgrounds_public` (checked backgrounds of verified places only).
+  `note_background_ask` counts asks per place and day, with no user id or
+  message text. `scripts/draft-backgrounds.ts` holds every Gemini request,
+  dry runs included, against the project-wide cap (`reserveProjectSpend`,
+  kind `draft`) and records it in `api_usage`.
 
 ## Bento Man (P6)
 
@@ -188,6 +219,9 @@ Practically:
   planned stop on a day it is closed, or a ticketed stop on a day with no
   ticket, is refused (`shift.ts`). Accepting a route drops planned days the
   new calendar gives to another city (day trips included: re-propose them).
+  The shift is worked out from the dates the request read, so
+  `update_trip_dates` takes them as `p_expect` and refuses a trip that moved
+  meanwhile (0028): two changes at once can't move the days twice.
 - Moving dates the trip already has is a **proposal** (`Proposal.dates`, #6),
   unless the traveller allowed changes without asking
   (`user_preferences.apply_dates_without_asking`). Filling in missing dates,
@@ -214,6 +248,12 @@ Practically:
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
+- `place_background` is the one place general knowledge is allowed, and
+  only for history. With a checked background (0027) Bento Man retells it.
+  Without one it may give two or three sentences of widely known background,
+  said as general, and the tool counts the ask (`noteBackgroundAsk`). Never
+  hours, prices or anything a traveller acts on. Guarded by `tools.test.ts`
+  and the `fact-background-*` eval scenarios.
 - An overpacked route is a conversation before it is a proposal:
   `propose_route` refuses it unless `traveller_insists`, and after a refusal
   it stays refused for the rest of that turn, so the traveller hears the
@@ -314,6 +354,13 @@ Practically:
   admin, and removal refuses yourself and the last admin, so admins acting
   at once can't leave none or act after losing access. Only existing
   accounts can be made admin.
+- Admin pages and actions also need a second factor this session
+  (Supabase MFA, TOTP, `aal2`): `requireAdmin()` and Settings → Admin send
+  an admin without one to `/settings/admin/two-factor`, which sets up an
+  authenticator app once and asks for its code after that. A new admin
+  page or action goes through `requireAdmin()`, never `isAdmin()` alone.
+  An admin who loses their phone is recovered by removing their factor in
+  the Supabase dashboard (Authentication → Users → the user → MFA).
 
 ## Legal pages
 
@@ -338,17 +385,27 @@ Practically:
 
 - A traveller can share a trip with their companions by link (0020,
   `trip_shares`). Anyone with the link can read the plan without an account
-  until the traveller switches it off or makes a new one (Trip page → "Share
-  with companions"; `shareTrip` / `renewShareLink` / `stopSharing`).
-- The token is the only key: 32 hex characters made by the database. A
-  traveller can insert a row naming the trip and nothing else; a new link is
-  a delete and an insert, so the old address stops working.
+  until the traveller switches it off, makes a new one, or the chosen expiry
+  arrives (0024; Trip page → "Share with companions";
+  `shareTrip` / `renewShareLink` / `stopSharing`). The default is no expiry;
+  7 days and 30 days are a fixed `expires_at`. "Until the trip ends" is
+  `until_trip_end`, the choice rather than a time, so it follows the trip's
+  current end date (works through that UTC day) whenever the dates change.
+  `shareIsActive` (`lib/trips/share-expiry.ts`) is the same rule as
+  `shared_trip()`; the trip page and the download both use it.
+- The token is the only key: 32 hex characters made by the database. The
+  traveller can write only their own share row's `expires_at` and
+  `until_trip_end` (column grants and the existing own-trip-shares policy);
+  the server derives them from the validated choice, stored trip end date
+  and server clock. A new link is a delete and an insert, so the old
+  address stops working.
 - `/shared/[token]` reads the plan from `shared_trip()` alone (definer
   rights; the visitor may have no account). It returns the route, the days'
   stops with only the facts the sheet shows (through `places_public`), and
   booking names and times — never a reference, note, provider or cost, and
   nothing about the owner except the pace. Places and stations stay closed
-  to anon otherwise. Add a field there only if the sheet shows it.
+  to anon otherwise. Expired and unknown tokens both return nothing. Add a
+  field there only if the sheet shows it.
 - The shared page is the download's sheet (`components/plan/plan-sheet.tsx`,
   read by `lib/trips/shared-plan.ts`), so the two never differ. While a trip
   is shared, the download prints the companions' link.

@@ -61,6 +61,20 @@ The workbook needs one or both of these sheets (exact names):
 `Condition` must already exist in Firebase Console → Remote Config → Conditions —
 this tool does not create conditions, only reads them for targeting.
 
+A row with a blank `Condition` replaces the campaign for everyone: targeted
+values left from earlier runs are removed, so they can't keep showing an old
+message to their audience. Targeted rows for the same key in the same
+workbook stay. Keys must stay distinct once they become parameter names:
+`sale-a` and `sale_a` would both be `iam_sale_a`, so the second is refused,
+and a key needs at least one letter or number (a–z, 0–9).
+
+The command exits with a non-zero status if any row failed or was skipped
+for a missing required column, including in `--dry-run`, so a scheduler can
+tell.
+
+Run the tests with `npm test` (Node's built-in test runner; no Firebase
+project needed).
+
 ## Running
 
 ```

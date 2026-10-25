@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
+import { estimateInputTokens } from "../cost";
 import { AnthropicProvider } from "../provider.anthropic";
 import { TOOLS } from "../tools";
 import { SYSTEM_PROMPT } from "../prompt";
@@ -41,5 +42,21 @@ describe("AnthropicProvider compatibility", () => {
       { role: "assistant", content: blocks },
       { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "bad input", is_error: true }] },
     ] }));
+  });
+
+  it("measures the request it will really send, retained thinking included (Codex review on #54)", async () => {
+    const blocks = [
+      { type: "thinking", thinking: "x".repeat(30_000), signature: "signed" },
+      { type: "tool_use", id: "t1", name: "get_place", input: { query: "Kyoto" } },
+    ];
+    const stream = vi.fn(() => ({ on: () => {}, finalMessage: async () => ({ model: "claude-opus-5", stop_reason: "tool_use", content: blocks, usage: { input_tokens: 1, output_tokens: 1 } }) }));
+    const provider = new AnthropicProvider({ beta: { messages: { stream } } } as unknown as Anthropic, "claude-opus-5", "medium");
+    const first = await provider.call({ system: "", tools: [], maxOutputTokens: 100, messages: [{ role: "user", content: "Hi" }] });
+    const next = { system: "", tools: [], messages: [
+      { role: "user" as const, content: "Hi" },
+      { role: "assistant" as const, content: first.text, toolCalls: first.toolCalls },
+      { role: "user" as const, content: [{ id: "t1", name: "get_place", content: "{}" }] },
+    ] };
+    expect(provider.inputTokens(next)).toBeGreaterThanOrEqual(estimateInputTokens(next) + 10_000);
   });
 });

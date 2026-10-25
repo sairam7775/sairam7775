@@ -45,7 +45,9 @@ describe("scorePlace", () => {
     const dear = scorePlace(p("kyt-saihoji"), { ...owner, budgetBand: "budget" }, ctx()).terms.find((x) => x.term === "budget_strain")!;
     expect(cheap.value).toBe(0);
     expect(dear.value).toBeGreaterThan(0);
-    expect(dear.clause).toMatch(/¥4,000/);
+    // A band, never the figure: prices change more often than the record.
+    expect(dear.clause).toMatch(/over ¥3,000/);
+    expect(dear.clause).not.toMatch(/4,000/);
   });
 });
 

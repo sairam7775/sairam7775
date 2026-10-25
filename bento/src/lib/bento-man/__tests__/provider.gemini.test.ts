@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { estimateInputTokens } from "../cost";
 import { GeminiProvider } from "../provider.gemini";
 import { ProviderCallError, type ModelRequest } from "../provider";
 import { TOOLS } from "../tools";
@@ -193,5 +194,18 @@ describe("GeminiProvider", () => {
     expect(error).toBeInstanceOf(ProviderCallError);
     expect(error.message).toContain("MALFORMED_FUNCTION_CALL");
     expect(error.usage).toMatchObject({ inputTokens: 10, outputTokens: 3 });
+  });
+
+  it("measures the request it will really send, thought signatures included (Codex review on #54)", async () => {
+    const parts = [{ functionCall: { id: "c1", name: "get_place", args: { query: "Kyoto" } }, thoughtSignature: "s".repeat(30_000) }];
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(sse([{ candidates: [{ content: { parts }, finishReason: "STOP" }] }]));
+    const provider = new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher);
+    const first = await provider.call(request);
+    const next = { system: request.system, tools: request.tools, messages: [
+      ...request.messages,
+      { role: "assistant" as const, content: first.text, toolCalls: first.toolCalls },
+      { role: "user" as const, content: [{ id: "c1", name: "get_place", content: "{}" }] },
+    ] };
+    expect(provider.inputTokens(next)).toBeGreaterThanOrEqual(estimateInputTokens(next) + 10_000);
   });
 });

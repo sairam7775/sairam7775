@@ -17,8 +17,12 @@ const secondary = "inline-flex min-h-11 items-center rounded-full border border-
 export default async function Home({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
   const deleted = sp.deleted === "1";
-  // Account deleted, but PostHog couldn't be reached to delete its analytics.
-  const analyticsPending = deleted && sp.analytics === "pending";
+  // Account deleted, but PostHog couldn't be reached to delete its analytics:
+  // queued for the daily retry, or left for a person.
+  const doneNote = !deleted ? null
+    : sp.analytics === "retrying" ? copy.settings.deleteAccount.doneAnalyticsRetrying
+    : sp.analytics === "by-hand" ? copy.settings.deleteAccount.doneAnalyticsPending
+    : copy.settings.deleteAccount.done;
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,7 +46,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
       {!user && <AnalyticsSignedOut />}
       {deleted && !user && (
         <div className="mt-4">
-          <Notice>{analyticsPending ? copy.settings.deleteAccount.doneAnalyticsPending : copy.settings.deleteAccount.done}</Notice>
+          <Notice>{doneNote}</Notice>
         </div>
       )}
       <header className="up flex items-center justify-between gap-3">

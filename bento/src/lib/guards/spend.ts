@@ -33,7 +33,7 @@ export function globalMonthlyCapUsd(): number {
   return positiveEnv("BENTO_GLOBAL_MONTHLY_SPEND_CAP_USD", DEFAULT_GLOBAL_CAP_USD);
 }
 
-export type SpendKind = "chat" | "parse";
+export type SpendKind = "chat" | "parse" | "draft";
 
 export interface SpendStatus {
   spentUsd: number;
@@ -95,11 +95,33 @@ export async function reserveSpend(
   estimateUsd: number,
   admin: SupabaseClient = createAdminClient(),
 ): Promise<SpendReservation> {
+  return reserve(userId, kind, estimateUsd, monthlyCapUsd(), admin);
+}
+
+/** The same hold for a call no traveller makes (an admin script drafting
+ *  place backgrounds): it counts against the project's cap alone. With no
+ *  user, reserve_spend's user total is the project total, so both caps are
+ *  the project's and any refusal is the shared budget's. */
+export async function reserveProjectSpend(
+  kind: SpendKind,
+  estimateUsd: number,
+  admin: SupabaseClient = createAdminClient(),
+): Promise<SpendReservation> {
+  return reserve(null, kind, estimateUsd, globalMonthlyCapUsd(), admin);
+}
+
+async function reserve(
+  userId: string | null,
+  kind: SpendKind,
+  estimateUsd: number,
+  userCapUsd: number,
+  admin: SupabaseClient,
+): Promise<SpendReservation> {
   const { data, error } = await admin.rpc("reserve_spend", {
     p_user: userId,
     p_kind: kind,
     p_estimate: estimateUsd,
-    p_user_cap: monthlyCapUsd(),
+    p_user_cap: userCapUsd,
     p_global_cap: globalMonthlyCapUsd(),
   });
   // Fail closed, like the rate limiter.
@@ -109,6 +131,7 @@ export async function reserveSpend(
     | undefined;
   if (!row) throw new Error("reserve_spend returned no row");
 
+  if (row.refused && userId === null) throw new SpendCapExceeded("global", { spentUsd: Number(row.global_spent), capUsd: globalMonthlyCapUsd() });
   if (row.refused === "user") throw new SpendCapExceeded("user", { spentUsd: Number(row.user_spent), capUsd: monthlyCapUsd() });
   if (row.refused === "global") throw new SpendCapExceeded("global", { spentUsd: Number(row.global_spent), capUsd: globalMonthlyCapUsd() });
   if (row.reservation_id == null) throw new Error("reserve_spend neither reserved nor refused");

@@ -6,9 +6,9 @@ const c = "nara-city";
 export const nara: PlaceSeed[] = [
   draft({ id: "nra-todaiji", city: c, name: "Todai-ji", nameJa: "東大寺", category: "temple", lat: 34.6890, lon: 135.8398,
     station: "kintetsu-nara", walk: 20, tags: ["shrines", "history"], energy: 0.3, crowd: 0.9, discovery: 0.05, signature: 0.95,
-    taste: 30, typical: 60, full: 100, window: ["before 09:00"], opens: "07:30", closes: "17:30",
+    taste: 30, typical: 60, full: 100, window: ["before 09:00"], opens: "08:00", closes: "17:00", hoursVary: true,
     crowdNote: "School groups from mid-morning; the hall is big enough that it never quite feels full, but the approach does.",
-    tip: "The largest bronze Buddha in Japan in one of the largest wooden buildings in the world. Come at 7:30 when it opens and you get the hall almost alone. The pillar with a hole in it is for children.",
+    tip: "The largest bronze Buddha in Japan in one of the largest wooden buildings in the world. Come as it opens and you get the hall almost alone. The pillar with a hole in it is for children.",
     cost: 800, pairs: ["nra-nara-park", "nra-nigatsudo"], sources: ["todaiji.or.jp"] }),
 
   draft({ id: "nra-nara-park", city: c, name: "Nara Park & the deer", nameJa: "奈良公園", category: "park", lat: 34.6851, lon: 135.8430,
@@ -20,7 +20,7 @@ export const nara: PlaceSeed[] = [
 
   draft({ id: "nra-kasuga-taisha", city: c, name: "Kasuga Taisha", nameJa: "春日大社", category: "shrine", lat: 34.6815, lon: 135.8483,
     station: "kintetsu-nara", walk: 25, tags: ["shrines", "nature"], energy: 0.35, crowd: 0.5, discovery: 0.3, signature: 0.8,
-    taste: 30, typical: 60, full: 90, opens: "06:30", closes: "17:30",
+    taste: 30, typical: 60, full: 90, opens: "07:00", closes: "17:00", hoursVary: true,
     crowdNote: "The approach through the forest thins the crowd; the inner shrine is busy but moves.",
     tip: "Three thousand lanterns — stone ones lining the forest path, bronze ones hanging in the shrine. The dark room where they are all lit is the thing to pay for. The walk in from the park is part of it.",
     cost: 500, pairs: ["nra-nara-park"], sources: ["kasugataisha.or.jp"] }),
@@ -69,7 +69,7 @@ export const nara: PlaceSeed[] = [
 
   draft({ id: "nra-horyuji", city: c, name: "Horyu-ji", nameJa: "法隆寺", category: "temple", lat: 34.6146, lon: 135.7342,
     station: "horyuji", walk: 20, tags: ["shrines", "history"], energy: 0.35, crowd: 0.3, discovery: 0.5, signature: 0.8,
-    taste: 45, typical: 90, full: 150, opens: "08:00", closes: "17:00",
+    taste: 45, typical: 90, full: 150, opens: "08:00", closes: "16:30", hoursVary: true,
     crowdNote: "Never crowded — it is outside the city and most day-trippers do not get here.",
     tip: "The oldest wooden buildings in the world, from about 600 AD, and quiet. Twelve minutes by train from Nara then a walk or bus. A half-day; do it on the way to or from Osaka.",
     cost: 1500, sources: ["horyuji.or.jp"] }),
@@ -83,7 +83,7 @@ export const nara: PlaceSeed[] = [
 
   draft({ id: "nra-yakushiji", city: c, name: "Yakushi-ji", nameJa: "薬師寺", category: "temple", lat: 34.6685, lon: 135.7845,
     station: null, walk: null, tags: ["shrines", "history"], energy: 0.3, crowd: 0.2, discovery: 0.6, signature: 0.6,
-    taste: 30, typical: 60, full: 90, opens: "08:30", closes: "17:00",
+    taste: 30, typical: 60, full: 90, opens: "09:00", closes: "17:00",
     crowdNote: "Quiet.",
     tip: "Twin pagodas, one from 730 and one rebuilt in 1981 — stand between them and see the difference twelve centuries makes. Pair with Toshodai-ji next door.",
     cost: 1000, pairs: ["nra-toshodaiji"], sources: ["yakushiji.or.jp"] }),
@@ -114,7 +114,7 @@ export const nara: PlaceSeed[] = [
     taste: 10, typical: 15, full: 25, opens: "10:00", closes: "19:00",
     crowdNote: "A crowd gathers whenever the pounding starts, which is every half hour or so.",
     tip: "The fastest mochi-pounders in Japan, hammering rice at a rate that looks dangerous. Watch, then buy one warm for a few hundred yen. Ten minutes and worth every one.",
-    cost: 200, sources: ["nakatanidou.jp"] }),
+    cost: 0, sources: ["nakatanidou.jp"] }),
 
   draft({ id: "nra-sarusawa-pond", city: c, name: "Sarusawa Pond", nameJa: "猿沢池", category: "viewpoint", lat: 34.6810, lon: 135.8310,
     station: "kintetsu-nara", walk: 5, tags: ["nature"], energy: 0.05, crowd: 0.3, discovery: 0.4, signature: 0.3,
@@ -139,7 +139,7 @@ export const nara: PlaceSeed[] = [
 
   draft({ id: "nra-todaiji-museum", city: c, name: "Todai-ji Museum", nameJa: "東大寺ミュージアム", category: "museum", lat: 34.6875, lon: 135.8385,
     station: "kintetsu-nara", walk: 18, tags: ["art", "history"], energy: 0.1, crowd: 0.3, discovery: 0.5, signature: 0.4,
-    taste: 30, typical: 45, full: 75, opens: "09:30", closes: "17:30",
+    taste: 30, typical: 45, full: 75, opens: "09:30", closes: "17:00", hoursVary: true,
     crowdNote: "Calm even when the Great Buddha Hall outside is heaving.",
     tip: "The statues that used to live in the temple's older halls, lit properly for once — the Nikko and Gakko bodhisattvas are the reason. The combined ticket with the Great Buddha Hall saves a few hundred yen.",
     cost: 600, pairs: ["nra-todaiji"], sources: ["todaiji.or.jp"] }),
@@ -160,7 +160,7 @@ export const nara: PlaceSeed[] = [
 
   draft({ id: "nra-hokkeji", city: c, name: "Hokke-ji", nameJa: "法華寺", category: "temple", lat: 34.6935, lon: 135.8005,
     station: null, walk: null, tags: ["shrines", "history"], energy: 0.15, crowd: 0.1, discovery: 0.85, signature: 0.4,
-    taste: 20, typical: 30, full: 50, opens: "09:00", closes: "17:00",
+    taste: 20, typical: 30, full: 50, opens: "09:00", closes: "16:30",
     crowdNote: "You may be the only visitor.",
     tip: "A convent founded by Empress Komyo in 745 on the site of her father's mansion, with a small garden and a famous Eleven-headed Kannon shown only a few weeks a year. Ten minutes by bus from either Nara station, next to the Heijo Palace site.",
     cost: 700, pairs: ["nra-heijo-palace"], sources: ["hokkeji-nara.jp"] }),

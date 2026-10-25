@@ -6,6 +6,7 @@ import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { INTEREST_TAGS } from "@/lib/types";
 import { REVIEW_NOTE_COLUMNS, type ReviewNote } from "@/lib/places/review-notes";
 import { ReviewNotes } from "../../review-notes";
+import { costBandWords } from "@/lib/engine/cost-band";
 
 function Text({
   name,
@@ -142,7 +143,14 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
             <Text name="name" label="Name" value={place.name} />
             <Text name="nameJa" label="Name (JA)" value={place.name_ja} />
             <Text name="category" label="Category" value={place.category} hint="Drives the redundancy term — the fourth shrine of a day scores lower." />
-            <Text name="costJpy" label="Cost (¥)" value={place.cost_jpy?.toString()} />
+            <Text name="costJpy" label="Cost (¥)" value={place.cost_jpy?.toString()} hint={`Adult entry to the main paid part. Travellers only see its band${place.cost_jpy != null ? ` (now ${costBandWords(place.cost_jpy)})` : ""}: free, under ¥500, ¥500–1,500, ¥1,500–3,000, over ¥3,000. Change it when the price moves to another band.`} />
+            <label className="flex items-start gap-2 text-[0.88rem] sm:col-span-2">
+              <input type="checkbox" name="hoursVary" defaultChecked={place.hours_vary === true} className="mt-1" />
+              <span>
+                Hours change with the season
+                <span className="block text-[0.8rem] text-ink-3">The opening hours on record are then the shortest of the year, and travellers are told to check before they go.</span>
+              </span>
+            </label>
             <Text name="bookingLeadDays" label="Booking lead (days)" value={place.booking_lead_days?.toString()} hint="How far ahead tickets must be bought." />
             <Text name="sources" label="Sources" value={place.sources?.join(", ")} hint="Comma separated. Required to verify — licence compliance depends on it." />
             <Text name="seasons" label="Seasons" value={place.seasons?.join(", ")} hint='When it is at its best: "koyo", "sakura". Leave empty for no season.' />

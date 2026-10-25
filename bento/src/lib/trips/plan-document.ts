@@ -36,7 +36,8 @@ export type DocEntry =
        *  stops or piers, so the name is shown as the graph gives it. */
       station: string | null;
       stationWalkMin: number | null;
-      hours: { opens: string; closes: string } | null;
+      /** `varies`: seasonal, and these are the shortest hours of the year. */
+      hours: { opens: string; closes: string; varies: boolean } | null;
       crowdNote: string | null;
       tip: string | null;
       why: string | null;
@@ -94,7 +95,7 @@ export function planDocument(
           getThereMin: n > 0 ? it.arriveMinutes : null,
           station: p?.nearestStation ? (stations.get(p.nearestStation)?.name ?? null) : null,
           stationWalkMin: p?.nearestStation && stations.has(p.nearestStation) ? (p.stationWalkMin ?? null) : null,
-          hours: p?.opensAt && p.closesAt ? { opens: p.opensAt, closes: p.closesAt } : null,
+          hours: p?.opensAt && p.closesAt ? { opens: p.opensAt, closes: p.closesAt, varies: p.hoursVary === true } : null,
           crowdNote: p?.crowdNote ?? null,
           tip: p?.localTip ?? null,
           why: it.reason,

@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
-import { runBentoMan, usageFromError } from "../chat";
+import { firstHoldThen, runBentoMan, usageFromError } from "../chat";
+import { CHAT_INPUT_BOUND } from "../cost";
 import { AnthropicProvider } from "../provider.anthropic";
 import { MemoryStore } from "../store.memory";
 
@@ -102,5 +103,51 @@ describe("spend holds", () => {
     const client = { beta: { messages: { stream: () => ({ on: () => {}, finalMessage: async () => { throw new Error("overloaded"); } }) } } } as unknown as Anthropic;
     await expect(run(client, { hold: async () => ({ settle: async (u) => { settled.push(u); } }) })).rejects.toThrow("overloaded");
     expect(settled).toEqual([null]);
+  });
+});
+
+describe("hold sizes (Codex review on #3)", () => {
+  it("sizes each hold to the request it is for, which grows with tool results", async () => {
+    const asked: number[] = [];
+    const spend = { hold: async (input: number) => { asked.push(input); return { settle: async () => {} }; } };
+    await run(toolThenDone(3), spend);
+    expect(asked).toHaveLength(3);
+    expect(asked[0]).toBeGreaterThan(0);
+    expect(asked[2]).toBeGreaterThan(asked[0]);
+  });
+
+  const holdOf = (name: string, log: string[]) => ({ settle: async (u: unknown) => { log.push(`${name} ${u === null ? "given back" : "used"}`); } });
+
+  it("uses the route's first hold for a first request within the usual ceiling", async () => {
+    const log: string[] = [];
+    const taken: number[] = [];
+    const holds = firstHoldThen(holdOf("first", log), async (n) => { taken.push(n); return holdOf("new", log); });
+    await holds.hold(1_000);
+    expect(taken).toEqual([]);
+    await holds.hold(2_000);
+    expect(taken).toEqual([2_000]);
+    expect(log).toEqual([]);
+  });
+
+  it("gives the first hold back and takes one its size when the first request is bigger", async () => {
+    const log: string[] = [];
+    const taken: number[] = [];
+    const holds = firstHoldThen(holdOf("first", log), async (n) => { taken.push(n); return holdOf("new", log); });
+    await holds.hold(CHAT_INPUT_BOUND + 1);
+    expect(log).toEqual(["first given back"]);
+    expect(taken).toEqual([CHAT_INPUT_BOUND + 1]);
+  });
+});
+
+describe("hold sizes from the provider (Codex review on #54)", () => {
+  it("sizes holds from the provider's own measure of its request when it has one", async () => {
+    const asked: number[] = [];
+    const provider = {
+      model: "claude-opus-5",
+      call: async () => ({ text: "Hi.", toolCalls: [], stopReason: "end" as const, usage: { inputTokens: 10, outputTokens: 2, cacheWriteTokens: 0, cacheReadTokens: 0 }, model: "claude-opus-5" }),
+      inputTokens: () => 123_456,
+    };
+    await runBentoMan({ store: new MemoryStore(setup), provider, today: "2026-09-15", message: "hi", spend: { hold: async (n: number) => { asked.push(n); return { settle: async () => {} }; } } });
+    expect(asked).toEqual([123_456]);
   });
 });

@@ -46,6 +46,10 @@ export interface ChatProvider {
   /** Pass returned toolCalls back unchanged in the next assistant message.
    *  Providers can retain signed thinking blocks privately against that array. */
   call(request: ModelRequest): Promise<ModelResult>;
+  /** The request's input tokens as this provider will really send it,
+   *  retained thinking and signatures included. The chat loop sizes each
+   *  spend hold from it; without it, from the neutral messages. */
+  inputTokens?(request: Pick<ModelRequest, "system" | "messages" | "tools">): number;
 }
 
 /** A failed stream may already have reported billable usage. */

@@ -8,7 +8,8 @@
   },
   "scripts": {
     "send": "node src/cli.js send",
-    "generate-template": "node templates/generate-template.js"
+    "generate-template": "node templates/generate-template.js",
+    "test": "node --test"
   },
   "license": "MIT",
   "dependencies": {

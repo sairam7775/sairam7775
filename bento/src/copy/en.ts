@@ -502,6 +502,7 @@ export const en = {
     lunchNote: "Nothing booked, and nothing needs to be. Bring cash.",
     map: "Map",
     openMap: (name: string) => `Open ${name} in Google Maps`,
+    about: "About this place",
     budgetEndsLabel: "Day budget ends here",
     budgetEnds: (budget: string) => `${budget} day ends here`,
     pinned: "pinned",
@@ -620,6 +621,8 @@ export const en = {
     getThere: (how: string) => `Getting there: ${how}`,
     station: (name: string, walk: number | null) => (walk != null ? `Nearest stop: ${name}, ${walk} min walk` : `Nearest stop: ${name}`),
     hours: (opens: string, closes: string) => `Open ${opens}–${closes}`,
+    // Seasonal hours: the stored times are the shortest of the year.
+    hoursVary: (opens: string, closes: string) => `Usually open ${opens}–${closes} · hours change with the season, check before you go`,
     why: (reason: string) => `Why: ${reason}`,
     bookings: "Bookings",
     noBookings: "No bookings added yet.",
@@ -694,7 +697,19 @@ export const en = {
     open: "Share plan",
     openOn: "Shared",
     intro: "Give the people travelling with you a link to this plan. They can open it without an account, and it always shows the latest version.",
-    who: "Anyone with the link can see the route, the day plans and your bookings' names and times. Booking reference numbers are never shown. You can switch the link off at any time.",
+    who: "Anyone with the link can see the route, the day plans and your bookings' names and times. Booking reference numbers are never shown. You can switch the link off at any time, or choose when it expires.",
+    expiry: {
+      label: "Link works…",
+      never: "Until I turn it off",
+      sevenDays: "For 7 days",
+      thirtyDays: "For 30 days",
+      tripEnd: "Until the trip ends",
+    },
+    worksUntilOff: "Works until you turn it off",
+    worksUntil: (date: string) => `Works until ${date}`,
+    // The trip's last day; it moves if the trip's dates change.
+    worksUntilTripEnd: (lastDay: string) => `Works until the trip ends, through ${lastDay}`,
+    expired: "This link has expired.",
     turnOn: "Share with companions",
     linkLabel: "Link for your companions",
     copy: "Copy",
@@ -717,7 +732,7 @@ export const en = {
     loadFailed: "Bento couldn't load this plan just now. Try again in a moment.",
     gone: {
       title: "This link doesn't open a trip any more",
-      body: "Whoever shared it may have switched it off or made a new one. Ask them for the latest link.",
+      body: "Whoever shared it may have switched it off, made a new one or let it expire. Ask them for the latest link.",
     },
   },
 
@@ -879,6 +894,15 @@ export const en = {
     ordinals: { 1: "first", 2: "second", 3: "third", 4: "fourth", 5: "fifth", 6: "sixth" },
     ordinal: (n: number) => `${n}th`,
     seasons: { sakura: "cherry blossom", koyo: "autumn colour" },
+    // What a place costs, as a band (engine/cost-band.ts): prices change too
+    // often to promise a figure.
+    costBand: {
+      free: "free",
+      under500: "under ¥500",
+      to1500: "¥500–1,500",
+      to3000: "¥1,500–3,000",
+      over3000: "over ¥3,000",
+    },
     // What a traveller can say they like. The label also finishes "matches …" under a stop, in lower case.
     interests: {
       shrines: { label: "Shrines & temples", hint: "Fushimi Inari, Todai-ji, Koyasan" },
@@ -907,7 +931,7 @@ export const en = {
       busyAllDay: "busy at any hour",
       effort: "more effort than you said you wanted",
       mightSkip: (why: string) => `you might skip it: ${why}`,
-      pricey: (yen: string) => `pricey for your budget here (¥${yen})`,
+      pricey: (band: string) => `pricey for your budget here (${band})`,
       // Added by the scheduler.
       opensAt: (time: string) => `opens at ${time}`,
       opensAtWait: (time: string) => `opens at ${time}, so a short wait`,
@@ -1020,6 +1044,7 @@ export const en = {
       conflictJoin: "; ",
       routeLonger: (route: number, trip: number) => `the route is ${route} nights and the trip is now ${trip}`,
       changedWhileOpen: "the trip dates changed while this was open. Ask again.",
+      changedMeanwhile: "the trip dates changed in the meantime. Check them and try again.",
     },
     // Trains and walks.
     transit: {
@@ -1224,6 +1249,28 @@ export const en = {
       off: "Off",
       more: "How Bento uses data",
     },
+    // Admins only: a second factor before admin pages, which show
+    // travellers' trip reviews. An authenticator app (TOTP), via Supabase.
+    twoFactor: {
+      title: "Two-factor sign-in",
+      why: "Admin pages show travellers' trip reviews, so they need a second step: a six-digit code from an authenticator app on your phone, such as Google Authenticator or 1Password.",
+      setupIntro: "Set it up once. Scan the code with your authenticator app, then type the six digits it shows.",
+      start: "Set up two-factor sign-in",
+      starting: "Starting…",
+      qrAlt: "QR code for your authenticator app",
+      secretLabel: "Or type this key into the app",
+      enterIntro: "Type the six-digit code your authenticator app shows for Bento.",
+      code: "Six-digit code",
+      verify: "Confirm",
+      verifying: "Checking…",
+      badCode: "The code is six digits.",
+      wrongCode: "That code didn't match. Codes change every 30 seconds; try the one showing now.",
+      setupFailed: "Two-factor sign-in couldn't be started just now. Try again in a moment.",
+      setupExpired: "That setup has expired. Start again for a new code to scan.",
+      verifyFailed: "Bento couldn't check the code just now. Try again in a moment.",
+      lost: "Lost your phone? Ask another admin, or the operator, to remove your two-factor setting; then set it up again.",
+      factorName: "Bento admin",
+    },
     deleteAccount: {
       heading: "Delete account",
       // Its row on Privacy & data, which opens the page with the form.
@@ -1239,6 +1286,7 @@ export const en = {
       failed: `Your account wasn't deleted. Try again, or write to ${CONTACT}.`,
       done: "Your account and everything in it has been deleted.",
       // PostHog couldn't be reached after three tries. What is done comes first.
+      doneAnalyticsRetrying: `Your account and everything in it has been deleted. Your usage analytics couldn't be deleted just now; Bento will try again once a day, and delete them by hand if that doesn't work. Write to ${CONTACT} if you'd like to know when.`,
       doneAnalyticsPending: `Your account and everything in it has been deleted. Your usage analytics couldn't be deleted just now; they will be deleted by hand. Write to ${CONTACT} if you'd like to know when.`,
     },
     legal: {
@@ -1289,7 +1337,7 @@ export const en = {
       },
       plan: {
         heading: "Your trips",
-        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.\n\nAfter a trip ends you can tell us how the plan held up. That answer is kept with the trip and read by the people who build Bento, to improve the planner.\n\nIf you share a trip with your companions, anyone with its link can see the route, the day plans and your bookings' names and times (never reference numbers) until you switch the link off. Pages opened with a shared link don't run analytics.",
+        body: "Trip names, dates, the number of people travelling, your route, your day plans and what you tell Bento Man about your preferences.\n\nBookings you add: names, dates, providers, costs and notes. Booking reference numbers are encrypted before they are stored and are never sent to Bento Man or to analytics.\n\nAfter a trip ends you can tell us how the plan held up. That answer is kept with the trip and read by the people who build Bento, to improve the planner.\n\nIf you share a trip with your companions, anyone with its link can see the route, the day plans and your bookings' names and times (never reference numbers) until you switch it off, make a new one or its chosen expiry arrives. Pages opened with a shared link don't run analytics.",
       },
       bentoMan: {
         heading: "Bento Man and the confirmation reader",
@@ -1346,7 +1394,7 @@ export const en = {
       },
       keep: {
         heading: "How long it's kept",
-        body: "Your account and trips are kept until you delete them. A shared link works until you switch it off or delete the trip. Analytics events are kept for up to one year.",
+        body: "Your account and trips are kept until you delete them. A shared link works until you switch it off, make a new one, its chosen expiry arrives or you delete the trip. Analytics events are kept for up to one year.",
       },
       children: {
         heading: "Children",
@@ -1358,7 +1406,7 @@ export const en = {
         body: (chat: "gemini" | "anthropic", googleSignIn: boolean, analyticsDeletion: boolean) =>
           "You can delete a trip from your trips list, or your whole account in Settings, at any time. Deleting your account removes your trips, day plans, bookings, shared links, conversations with Bento Man, trip reviews and preferences straight away. " +
           (analyticsDeletion
-            ? "Analytics linked to your account are deleted from PostHog at the same time. If PostHog can't be reached, you're told so when your account is deleted, and they are deleted by hand. "
+            ? "Analytics linked to your account are deleted from PostHog at the same time. If PostHog can't be reached, you're told so when your account is deleted, and Bento tries again once a day for up to ten days, keeping only your account's internal number until it works. If it still can't, they are deleted by hand. "
             : "To have analytics linked to your account deleted too, write to the address below. ") +
           "Records of what Bento's AI calls cost (Bento Man and the confirmation reader) are kept without any link to you, because they enforce the spending limit.\n\nIf you can't sign in, write to us from the email address on the account and we will delete it within 30 days.\n\nYou can also ask for a copy of your data, ask us to correct it or stop using it, or withdraw consent for analytics at any time. Write to the address below and we will answer within 30 days.\n\nIf you're unhappy with how Bento handles your data, please tell us first. You can also complain to Japan's Personal Information Protection Commission, or to the data protection authority where you live.",
       },
@@ -1392,7 +1440,7 @@ export const en = {
       },
       sharing: {
         heading: "Shared plans",
-        body: "When you share a trip, anyone with its link can see the plan. Share it only with people you want to see it. You can make a new link or switch sharing off at any time.",
+        body: "When you share a trip, anyone with its link can see the plan. Share it only with people you want to see it. You can choose for the link to expire after 7 days, after 30 days or the day after the trip ends, or keep it until you switch it off. Making a new link or switching sharing off ends the old link.",
       },
       use: {
         heading: "Using Bento fairly",

@@ -78,6 +78,9 @@ export default async function AdminHome() {
       <Link href="/admin/trip-reviews" className={`${totals.drafts > 0 ? "ml-3 " : ""}mt-6 inline-block border border-rule bg-surface px-5 py-2.5 text-sm font-medium hover:bg-sunk`}>
         Trip reviews{reviews ? ` (${reviews})` : ""}
       </Link>
+      <Link href="/admin/backgrounds" className="ml-3 mt-6 inline-block border border-rule bg-surface px-5 py-2.5 text-sm font-medium hover:bg-sunk">
+        Place backgrounds
+      </Link>
 
       <dl className="mt-8 flex flex-wrap gap-x-10 gap-y-3 border-y border-rule py-4">
         {[

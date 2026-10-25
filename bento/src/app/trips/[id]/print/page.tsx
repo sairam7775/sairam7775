@@ -8,12 +8,14 @@ import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import type { TripState } from "@/lib/bento-man/store";
 import { buildTripView } from "@/lib/bento-man/trip-view";
 import { planDocument, type DocBooking } from "@/lib/trips/plan-document";
+import { shareIsActive } from "@/lib/trips/share-expiry";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { SubmitButton } from "@/components/form-controls";
 import { PlanSheet } from "@/components/plan/plan-sheet";
 import { PrintButton } from "@/components/plan/print-button";
 import { copy } from "@/copy";
 import { shareTrip } from "../actions";
+import { ShareExpiryField } from "../share-expiry-field";
 
 const t = copy.print;
 
@@ -51,7 +53,7 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
     store.graph(),
     // Never the reference.
     db.from("bookings").select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on").eq("trip_id", id),
-    db.from("trip_shares").select("token").eq("trip_id", id).maybeSingle(),
+    db.from("trip_shares").select("token, expires_at, until_trip_end").eq("trip_id", id).maybeSingle(),
   ]);
   if (bookingsError || !bookingRows) throw new Error(t.loadFailed);
   const places = new Map(placeLists.flat().map((p) => [p.id, p]));
@@ -62,9 +64,9 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
   const doc = planDocument(state, dayList, bookings, places, graph.stations);
   const today = new Date().toISOString().slice(0, 10);
   // Shared: the companions' link, so the copy they're sent opens for them.
-  // Not shared (or unknown): the trip page, which opens only for its owner.
+  // Not shared, expired (or unknown): the trip page, which opens only for its owner.
   const origin = siteOrigin(await headers());
-  const link = share
+  const link = share && shareIsActive(share, state.trip.endDate, new Date())
     ? { label: t.linkShared, url: `${origin}/shared/${share.token}` }
     : { label: t.link, url: `${origin}/trips/${id}` };
 
@@ -78,9 +80,10 @@ export default async function PrintPlan({ params }: PageProps<"/trips/[id]/print
         <PrintButton days={doc.days.length} bookings={doc.bookings.length} />
         <p className="basis-full text-[0.86rem] text-ink-2">{t.howTo}</p>
         {!share && (
-          <form action={shareTrip} className="flex basis-full flex-wrap items-center gap-x-3 gap-y-2 border-t border-rule pt-3">
+          <form action={shareTrip} className="flex basis-full flex-wrap items-end gap-x-3 gap-y-2 border-t border-rule pt-3">
             <input type="hidden" name="tripId" value={id} />
             <input type="hidden" name="from" value="print" />
+            <ShareExpiryField endDate={state.trip.endDate} />
             <p className="text-[0.86rem] text-ink-2">{copy.share.printHint}</p>
             <SubmitButton pending={copy.common.saving} className="min-h-10 rounded-full border border-rule bg-surface px-4 text-[0.86rem] font-medium hover:bg-sunk">
               {copy.share.turnOn}

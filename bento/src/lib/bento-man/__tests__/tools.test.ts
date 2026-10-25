@@ -241,14 +241,61 @@ describe("days", () => {
 describe("facts", () => {
   it("get_place returns the verified judgement and nothing invented", async () => {
     const r = parse(await runTool("get_place", { query: "fushimi inari" }, ctxFor(new MemoryStore())));
-    expect(r.matches[0]).toMatchObject({ id: "kyt-fushimi-inari", verified: true, cost_jpy: 0 });
+    expect(r.matches[0]).toMatchObject({ id: "kyt-fushimi-inari", verified: true, cost: "free" });
+    expect(r.matches[0]).not.toHaveProperty("cost_jpy");
     expect(r.matches[0].duration_min.typical).toBe(90);
     expect(r.matches[0].crowd_note).toMatch(/shuffling queue/);
   });
+
+  it("get_place gives a price band and never promises seasonal hours", async () => {
+    const r = parse(await runTool("get_place", { query: "ginkaku" }, ctxFor(new MemoryStore())));
+    expect(r.matches[0]).toMatchObject({ id: "kyt-ginkakuji", cost: "¥500–1,500" });
+    expect(r.matches[0].hours).toMatch(/^at least 09:00–16:50; hours change with the season/);
+  });
+
   it("get_place says when nothing matches", async () => {
     const r = parse(await runTool("get_place", { query: "Skytree" }, ctxFor(new MemoryStore())));
     expect(r.matches).toEqual([]);
     expect(r.note).toMatch(/don't have it/);
+  });
+  const KINKAKU = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
+  it("place_background retells a checked background and counts nothing", async () => {
+    const store = new MemoryStore({ backgrounds: { "kyt-kinkakuji": { body: KINKAKU, sources: ["shokoku-ji.jp"] } } });
+    const r = parse(await runTool("place_background", { query: "kyt-kinkakuji" }, ctxFor(store)));
+    expect(r).toMatchObject({ id: "kyt-kinkakuji", name: "Kinkaku-ji", background: KINKAKU, sources: ["shokoku-ji.jp"], checked: true });
+    expect(store.asks).toEqual([]);
+  });
+  it("place_background with none yet counts the ask and allows general background", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "Kiyomizu" }, ctxFor(store)));
+    expect(r).toMatchObject({ id: "kyt-kiyomizu", background: null });
+    expect(r.note).toMatch(/general background/);
+    expect(r.note).toMatch(/nothing a traveller would act on/);
+    expect(store.asks).toEqual(["kyt-kiyomizu"]);
+  });
+  it("place_background for an unknown place counts nothing", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "Skytree" }, ctxFor(store)));
+    expect(r.matches).toEqual([]);
+    expect(r.note).toMatch(/don't have it/);
+    expect(store.asks).toEqual([]);
+  });
+  it("place_background asks which place when a name matches several, and counts nothing", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "castle" }, ctxFor(store)));
+    expect(r.background).toBeUndefined();
+    expect(r.matches.map((m: { id: string }) => m.id)).toEqual(expect.arrayContaining(["hmj-castle", "hir-castle"]));
+    expect(r.note).toMatch(/several/);
+    expect(store.asks).toEqual([]);
+  });
+  it("place_background takes the place whose name matches exactly", async () => {
+    const store = new MemoryStore();
+    const r = parse(await runTool("place_background", { query: "Todai-ji" }, ctxFor(store)));
+    expect(r.id).toBe("nra-todaiji");
+    expect(store.asks).toEqual(["nra-todaiji"]);
+  });
+  it("keeps the tool order stable, with place_background last", () => {
+    expect(TOOLS.at(-1)?.name).toBe("place_background");
   });
   it("route_between describes a journey a traveller can follow, from places or stations", async () => {
     const r = parse(await runTool("route_between", { from: "kyoto", to: "kyt-fushimi-inari" }, ctxFor(new MemoryStore())));
