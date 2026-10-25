@@ -241,7 +241,13 @@ export class MemoryStore implements TripStore {
         const routeNights = p.route.after.reduce((s, c) => s + c.nights, 0);
         if (tripNights != null && routeNights > tripNights) throw new Error(`the route is ${routeNights} nights and the trip is now ${tripNights}`);
       }
-      await this.setTripDates({ startDate: d.after.startDate, endDate: d.after.endDate, partySize: d.after.partySize, title: d.after.title }, p.route?.after);
+      // Only what the proposal changes, as in the database store.
+      await this.setTripDates({
+        startDate: d.after.startDate,
+        endDate: d.after.endDate,
+        ...(d.after.partySize !== d.before.partySize ? { partySize: d.after.partySize } : {}),
+        ...(d.after.title !== d.before.title ? { title: d.after.title } : {}),
+      }, p.route?.after);
     }
     if (p.route) {
       this.setRoute(p.route.after.map((c) => ({ cityId: c.cityId, nights: c.nights, reason: c.reason, budgetBand: c.budgetBand })));

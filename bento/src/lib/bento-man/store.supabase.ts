@@ -388,9 +388,16 @@ export class SupabaseStore implements TripStore {
     if (before.trip.startDate !== d.before.startDate || before.trip.endDate !== d.before.endDate) {
       throw new Error(copy.plan.dates.changedWhileOpen);
     }
+    // Only what the proposal itself changes: a title or party size edited
+    // while it was open must survive accepting it.
     const prepared = await this.prepareDates(
       before,
-      { startDate: d.after.startDate, endDate: d.after.endDate, partySize: d.after.partySize, title: d.after.title },
+      {
+        startDate: d.after.startDate,
+        endDate: d.after.endDate,
+        ...(d.after.partySize !== d.before.partySize ? { partySize: d.after.partySize } : {}),
+        ...(d.after.title !== d.before.title ? { title: d.after.title } : {}),
+      },
       { route: p.route?.after, keep: messageId },
     );
     const { error } = await this.db.rpc("apply_proposal_with_dates", {
