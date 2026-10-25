@@ -189,15 +189,19 @@ export class SupabaseStore implements TripStore {
     if (!prepared) return before.trip;
 
     // One transaction: the dates, the days' shift, the closed proposals and
-    // the re-laid route all land together or not at all.
+    // the re-laid route all land together or not at all. The shift was
+    // worked out from the dates read here, so the database refuses it if
+    // they moved meanwhile (0028), and a second change at once can't move
+    // the days twice.
     const { error } = await this.db.rpc("update_trip_dates", {
       p_trip: this.tripId,
       p_patch: prepared.patch,
       p_shift: prepared.shift,
       p_cities: prepared.cities,
       p_reject: prepared.reject,
+      p_expect: { start_date: before.trip.startDate, end_date: before.trip.endDate },
     });
-    if (error) throw error;
+    if (error) throw /trip dates changed meanwhile/.test(error.message) ? new Error(copy.plan.dates.changedMeanwhile) : error;
     this.stateCache = null;
     return (await this.state()).trip;
   }
@@ -388,9 +392,16 @@ export class SupabaseStore implements TripStore {
     if (before.trip.startDate !== d.before.startDate || before.trip.endDate !== d.before.endDate) {
       throw new Error(copy.plan.dates.changedWhileOpen);
     }
+    // Only what the proposal itself changes: a title or party size edited
+    // while it was open must survive accepting it.
     const prepared = await this.prepareDates(
       before,
-      { startDate: d.after.startDate, endDate: d.after.endDate, partySize: d.after.partySize, title: d.after.title },
+      {
+        startDate: d.after.startDate,
+        endDate: d.after.endDate,
+        ...(d.after.partySize !== d.before.partySize ? { partySize: d.after.partySize } : {}),
+        ...(d.after.title !== d.before.title ? { title: d.after.title } : {}),
+      },
       { route: p.route?.after, keep: messageId },
     );
     const { error } = await this.db.rpc("apply_proposal_with_dates", {

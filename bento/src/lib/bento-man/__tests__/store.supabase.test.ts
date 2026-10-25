@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { copy } from "@/copy";
 import { buildGraph } from "@/lib/transit/graph";
 import { SupabaseStore } from "../store.supabase";
 
@@ -155,6 +156,43 @@ describe("date proposals (#6)", () => {
     }));
     const args = vi.mocked(db.rpc).mock.calls[0][1] as { p_reject: string[] };
     expect(args.p_reject).not.toContain("message");
+  });
+
+  it("tells update_trip_dates which dates it read, so a second change at once is refused", async () => {
+    const { store, db } = fixture();
+    await store.setTripDates({ startDate: "2026-11-21", endDate: "2026-11-24" });
+    expect(db.rpc).toHaveBeenCalledWith("update_trip_dates", expect.objectContaining({
+      p_shift: 1,
+      p_expect: { start_date: "2026-11-20", end_date: "2026-11-23" },
+    }));
+  });
+
+  it("says the dates changed meanwhile when the database refuses a stale change", async () => {
+    const { store, rpcErrors } = fixture();
+    rpcErrors.update_trip_dates = Object.assign(new Error("the trip dates changed meanwhile - check them and try again"), { code: "P0001" });
+    const words = copy.plan.dates.changedMeanwhile;
+    expect(words).toEqual(expect.any(String));
+    await expect(store.setTripDates({ startDate: "2026-11-21", endDate: "2026-11-24" })).rejects.toThrow(words);
+  });
+
+  it("keeps a title or party size changed after a dates-only proposal", async () => {
+    const { store, db, rows } = fixture();
+    Object.assign(rows.trips as Record<string, unknown>, { title: "Renamed", party_size: 3 });
+    await store.applyProposal({ summary: "Dates", dates: dates({ startDate: "2026-11-21", endDate: "2026-11-24" }), days: [] }, "message");
+    const args = vi.mocked(db.rpc).mock.calls[0][1] as { p_patch: Record<string, unknown> };
+    expect(args.p_patch).toMatchObject({ start_date: "2026-11-21", end_date: "2026-11-24" });
+    expect(args.p_patch).not.toHaveProperty("title");
+    expect(args.p_patch).not.toHaveProperty("party_size");
+  });
+
+  it("applies a party size the proposal itself changed", async () => {
+    const { store, db } = fixture();
+    const grown = { ...dates({ startDate: "2026-11-21", endDate: "2026-11-24" }) };
+    grown.after = { ...grown.after, partySize: 2 };
+    await store.applyProposal({ summary: "Dates", dates: grown, days: [] }, "message");
+    const args = vi.mocked(db.rpc).mock.calls[0][1] as { p_patch: Record<string, unknown> };
+    expect(args.p_patch).toMatchObject({ party_size: 2 });
+    expect(args.p_patch).not.toHaveProperty("title");
   });
 
   it("refuses when the trip moved since the proposal", async () => {

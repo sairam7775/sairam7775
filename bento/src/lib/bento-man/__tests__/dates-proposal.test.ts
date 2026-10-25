@@ -118,6 +118,15 @@ describe("accepting a date proposal", () => {
     expect(s.cities.map((c) => c.nights)).toEqual([3, 9]);
   });
 
+  it("keeps a title or party size changed while the proposal was open", async () => {
+    const store = new MemoryStore(routed);
+    const ctx = ctxFor(store);
+    await runTool("set_trip_dates", { start_date: "2026-11-22", end_date: "2026-12-01" }, ctx);
+    await store.setTripDates({ title: "Kansai with Mum", partySize: 3 });
+    await store.applyProposal(ctx.proposal!);
+    expect((await store.state()).trip).toMatchObject({ startDate: "2026-11-22", title: "Kansai with Mum", partySize: 3 });
+  });
+
   it("refuses if the trip moved since the proposal was made", async () => {
     const store = new MemoryStore(routed);
     const ctx = ctxFor(store);

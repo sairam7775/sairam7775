@@ -208,6 +208,9 @@ Practically:
   planned stop on a day it is closed, or a ticketed stop on a day with no
   ticket, is refused (`shift.ts`). Accepting a route drops planned days the
   new calendar gives to another city (day trips included: re-propose them).
+  The shift is worked out from the dates the request read, so
+  `update_trip_dates` takes them as `p_expect` and refuses a trip that moved
+  meanwhile (0028): two changes at once can't move the days twice.
 - Moving dates the trip already has is a **proposal** (`Proposal.dates`, #6),
   unless the traveller allowed changes without asking
   (`user_preferences.apply_dates_without_asking`). Filling in missing dates,
