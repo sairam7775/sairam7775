@@ -31,6 +31,7 @@ export default async function AdminHome() {
 
   const rows = (data ?? []) as Progress[];
   const { count: reviews } = await db.from("trip_reviews").select("trip_id", { count: "exact", head: true });
+  const { count: disagreements } = await db.from("place_review_notes").select("id", { count: "exact", head: true }).is("settled_at", null);
 
   const totals = {
     cities: rows.length,
@@ -67,6 +68,12 @@ export default async function AdminHome() {
           Verify several at once
         </Link>
       )}
+
+      {disagreements ? (
+        <Link href="/admin/review?notes=1" className={`${totals.drafts > 0 ? "ml-3 " : ""}mt-6 inline-block border border-tamago bg-tamago-soft px-5 py-2.5 text-sm font-medium hover:bg-sunk`}>
+          Settle {disagreements} reviewer disagreement{disagreements === 1 ? "" : "s"}
+        </Link>
+      ) : null}
 
       <Link href="/admin/trip-reviews" className={`${totals.drafts > 0 ? "ml-3 " : ""}mt-6 inline-block border border-rule bg-surface px-5 py-2.5 text-sm font-medium hover:bg-sunk`}>
         Trip reviews{reviews ? ` (${reviews})` : ""}

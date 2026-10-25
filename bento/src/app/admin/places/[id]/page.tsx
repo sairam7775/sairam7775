@@ -4,6 +4,8 @@ import { AppHeader } from "@/components/app-header";
 import { savePlace, verifyPlace } from "../../actions";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { INTEREST_TAGS } from "@/lib/types";
+import { REVIEW_NOTE_COLUMNS, type ReviewNote } from "@/lib/places/review-notes";
+import { ReviewNotes } from "../../review-notes";
 import { costBandWords } from "@/lib/engine/cost-band";
 
 function Text({
@@ -69,7 +71,10 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
   const { id } = await params;
   const sp = await searchParams;
 
-  const { data: place } = await db.from("places").select("*").eq("id", id).maybeSingle();
+  const [{ data: place }, { data: notes }] = await Promise.all([
+    db.from("places").select("*").eq("id", id).maybeSingle(),
+    db.from("place_review_notes").select(REVIEW_NOTE_COLUMNS).eq("place_id", id).order("settled_at", { nullsFirst: true }).order("field"),
+  ]);
   if (!place) notFound();
 
   const verified = place.verification_status === "verified";
@@ -102,6 +107,7 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
             Verified. The judgement fields below are now visible to travellers.
           </Notice>
         )}
+        {sp.settled === "1" && <Notice>Settled.</Notice>}
       </div>
 
       {verified ? (
@@ -118,6 +124,12 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
           safe to show as soon as they are imported.
         </p>
       )}
+
+      {notes?.length ? (
+        <div className="mt-7 border-x border-b border-rule">
+          <ReviewNotes notes={notes as ReviewNote[]} back={`/admin/places/${place.id}`} />
+        </div>
+      ) : null}
 
       <form action={savePlace} className="mt-9 flex flex-col gap-10">
         <input type="hidden" name="id" value={place.id} />

@@ -22,10 +22,13 @@ export default async function BulkReview({ searchParams }: PageProps<"/admin/rev
     .order("signature", { ascending: false })
     .limit(MAX_BULK_VERIFY);
   if (city) query = query.eq("city_id", city);
-  const [{ data: rows }, { data: allDrafts }] = await Promise.all([
+  const [{ data: rows }, { data: allDrafts }, { data: openNotes }] = await Promise.all([
     query,
     db.from("places").select("city_id, cities!inner(name)").eq("verification_status", "draft"),
+    db.from("place_review_notes").select("place_id").is("settled_at", null),
   ]);
+  const disputes = new Map<string, number>();
+  for (const n of openNotes ?? []) disputes.set(n.place_id, (disputes.get(n.place_id) ?? 0) + 1);
 
   const label = (tag: string) => INTEREST_TAGS.find((t) => t.id === tag)?.label ?? tag;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,6 +40,7 @@ export default async function BulkReview({ searchParams }: PageProps<"/admin/rev
     duration: r.duration_typical_min,
     tags: (r.interest_tags ?? []).map(label).join(", "),
     missing: missingForVerify(r),
+    disputes: disputes.get(r.id) ?? 0,
   }));
 
   // One chip per city that still has drafts, with its count.

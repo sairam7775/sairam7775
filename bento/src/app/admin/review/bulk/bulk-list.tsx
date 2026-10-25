@@ -13,6 +13,8 @@ export interface BulkDraft {
   tags: string;
   /** What it lacks before it can be signed; empty when ready. */
   missing: string[];
+  /** Open points the AI reviewers disagree on (0025). */
+  disputes: number;
 }
 
 /** The ticking half of the bulk page. Native checkboxes post the ids, so
@@ -81,6 +83,12 @@ export function BulkList({ drafts, back }: { drafts: BulkDraft[]; back: string }
                 </div>
                 {d.tags && <p className="mt-0.5 text-[0.82rem] text-ink-2">{d.tags}</p>}
                 {!ok && <p className="mt-0.5 text-[0.8rem] text-ume">Needs {d.missing.join(", ")} — open it to fill in.</p>}
+                {d.disputes > 0 && (
+                  <p className="mt-0.5 text-[0.8rem] text-tamago">
+                    The reviewers disagree on {d.disputes} point{d.disputes === 1 ? "" : "s"} —{" "}
+                    <Link href={`/admin/places/${d.id}`} className="underline underline-offset-2">settle {d.disputes === 1 ? "it" : "them"} first</Link>.
+                  </p>
+                )}
               </div>
             </li>
           );
