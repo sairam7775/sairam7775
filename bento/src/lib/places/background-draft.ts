@@ -3,6 +3,8 @@
  *  before any traveller sees it. Gemini reads the pages with url_context
  *  (never Google Maps grounding), and a draft whose pages could not be read
  *  is skipped rather than saved, so nothing is written from memory alone. */
+import { costUsd } from "@/lib/bento-man/cost";
+import { usageFromMetadata } from "@/lib/bento-man/provider.gemini";
 import { checkBackgroundText } from "./backgrounds";
 
 export type Draft = { ok: true; body: string; sources: string[] } | { ok: false; reason: string };
@@ -72,6 +74,33 @@ export async function requestDraft(send: () => Promise<Response>): Promise<Reply
   } catch {
     return { kind: "skip", reason: "unreadable reply" };
   }
+}
+
+interface DraftHold {
+  settle(usage: { model: string; inputTokens: number; outputTokens: number; cachedTokens?: number; costUsd: number } | null): Promise<void>;
+}
+
+/** requestDraft held against Bento's spending cap, like every model call:
+ *  a hold first (`take`, which throws SpendCapExceeded when the budget is
+ *  used up), settled with what the reply cost, or given back when no reply
+ *  came. A spent budget stops the run before Gemini is asked. */
+export async function requestDraftWithin(take: () => Promise<DraftHold>, send: () => Promise<Response>, model: string): Promise<Reply | { kind: "budget"; reason: string }> {
+  let hold: DraftHold;
+  try {
+    hold = await take();
+  } catch (e) {
+    if (e instanceof Error && e.name === "SpendCapExceeded") return { kind: "budget", reason: e.message };
+    throw e;
+  }
+  const reply = await requestDraft(send);
+  const metadata = reply.kind === "reply" ? (reply.json as { usageMetadata?: Parameters<typeof usageFromMetadata>[0] })?.usageMetadata : undefined;
+  const usage = metadata ? usageFromMetadata(metadata) : null;
+  await hold.settle(
+    usage && (usage.inputTokens || usage.outputTokens)
+      ? { model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cachedTokens: usage.cacheReadTokens, costUsd: costUsd(model, usage) }
+      : null,
+  );
+  return reply;
 }
 
 interface GeminiResponse {

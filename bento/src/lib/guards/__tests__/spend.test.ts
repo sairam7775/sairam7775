@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { globalMonthlyCapUsd, monthlyCapUsd, reserveSpend, SpendCapExceeded } from "../spend";
+import { globalMonthlyCapUsd, monthlyCapUsd, reserveProjectSpend, reserveSpend, SpendCapExceeded } from "../spend";
 
 /** A stand-in for the service-role client that answers the two RPCs. */
 function fakeAdmin(row: Record<string, unknown> | null, settleError: { message: string } | null = null) {
@@ -89,5 +89,25 @@ describe("settle", () => {
     const hold = await reserveSpend("u1", "chat", 0.5, admin);
     await expect(hold.settle(null)).resolves.toBeUndefined();
     spy.mockRestore();
+  });
+});
+
+describe("reserveProjectSpend", () => {
+  it("holds against the project's cap alone, with no user", async () => {
+    vi.stubEnv("BENTO_MONTHLY_SPEND_CAP_USD", "8");
+    vi.stubEnv("BENTO_GLOBAL_MONTHLY_SPEND_CAP_USD", "30");
+    const { admin, calls } = fakeAdmin(granted);
+    await reserveProjectSpend("draft", 0.2, admin);
+    expect(calls[0]).toEqual({
+      fn: "reserve_spend",
+      args: { p_user: null, p_kind: "draft", p_estimate: 0.2, p_user_cap: 30, p_global_cap: 30 },
+    });
+  });
+
+  it("refuses as the shared budget when it is used up", async () => {
+    const { admin } = fakeAdmin({ reservation_id: null, refused: "user", user_spent: "50", global_spent: "50" });
+    const err = await reserveProjectSpend("draft", 0.2, admin).catch((e) => e);
+    expect(err).toBeInstanceOf(SpendCapExceeded);
+    expect(err.scope).toBe("global");
   });
 });

@@ -162,7 +162,9 @@ Practically:
   them in `/admin/backgrounds`; travellers and Bento Man read
   `place_backgrounds_public` (checked backgrounds of verified places only).
   `note_background_ask` counts asks per place and day, with no user id or
-  message text.
+  message text. `scripts/draft-backgrounds.ts` holds every Gemini request,
+  dry runs included, against the project-wide cap (`reserveProjectSpend`,
+  kind `draft`) and records it in `api_usage`.
 
 ## Bento Man (P6)
 

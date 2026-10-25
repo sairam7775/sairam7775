@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraft } from "./background-draft";
+import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraft, requestDraftWithin } from "./background-draft";
 
 const OK = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 const PAGE = "https://www.shokoku-ji.jp/kinkakuji/";
@@ -106,5 +106,35 @@ describe("requestDraft", () => {
   });
   it("passes Gemini's reply on", async () => {
     await expect(requestDraft(async () => Response.json({ candidates: [] }))).resolves.toEqual({ kind: "reply", json: { candidates: [] } });
+  });
+});
+
+describe("requestDraftWithin (Codex review on #50: every model call is held against the cap)", () => {
+  const holdLog = () => {
+    const settled: unknown[] = [];
+    return { settled, take: async () => ({ settle: async (u: unknown) => { settled.push(u); } }) };
+  };
+
+  it("takes a hold before asking Gemini and settles it with what the reply cost", async () => {
+    const { settled, take } = holdLog();
+    const usageMetadata = { promptTokenCount: 1000, toolUsePromptTokenCount: 3000, candidatesTokenCount: 200 };
+    const reply = await requestDraftWithin(take, async () => Response.json({ candidates: [], usageMetadata }), "gemini-3.8-flash");
+    expect(reply.kind).toBe("reply");
+    expect(settled).toEqual([{ model: "gemini-3.8-flash", inputTokens: 4000, outputTokens: 200, cachedTokens: 0, costUsd: (4000 * 0.75 + 200 * 3.75) / 1_000_000 }]);
+  });
+
+  it("gives the hold back when Gemini doesn't answer", async () => {
+    const { settled, take } = holdLog();
+    const reply = await requestDraftWithin(take, () => Promise.reject(new TypeError("fetch failed")), "gemini-3.8-flash");
+    expect(reply).toEqual({ kind: "skip", reason: "Gemini didn't answer" });
+    expect(settled).toEqual([null]);
+  });
+
+  it("stops without asking Gemini when Bento's budget is used up", async () => {
+    let asked = false;
+    const refuse = async () => { throw Object.assign(new Error("Bento's AI budget for this month is used up."), { name: "SpendCapExceeded" }); };
+    const reply = await requestDraftWithin(refuse, async () => { asked = true; return Response.json({}); }, "gemini-3.8-flash");
+    expect(reply).toEqual({ kind: "budget", reason: "Bento's AI budget for this month is used up." });
+    expect(asked).toBe(false);
   });
 });

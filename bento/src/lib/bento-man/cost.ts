@@ -84,9 +84,14 @@ export const CHAT_MAX_OUTPUT_TOKENS = 24_000;
  *  request's own estimate whenever that is bigger. */
 export const CHAT_INPUT_BOUND = 40_000;
 
-const CALL_INPUT_BOUND: Record<"chat" | "parse", { input: number; output: number }> = {
+/** What a call is for: Bento Man's chat, the booking reader, or drafting a
+ *  place background (whose input includes the official pages it reads). */
+export type CallKind = "chat" | "parse" | "draft";
+
+const CALL_INPUT_BOUND: Record<CallKind, { input: number; output: number }> = {
   chat: { input: CHAT_INPUT_BOUND, output: CHAT_MAX_OUTPUT_TOKENS },
   parse: { input: 8_000, output: 2_000 },
+  draft: { input: 100_000, output: 8_000 },
 };
 
 /** What ONE model call can cost at most, in USD. A spend hold is this, not
@@ -95,7 +100,7 @@ const CALL_INPUT_BOUND: Record<"chat" | "parse", { input: number; output: number
  *  (`estimateInputTokens`); the hold never drops below the usual ceiling.
  *  Input is priced at the dearer of the input and cache-write rates, since
  *  a call may write its prompt to the cache. */
-export function callBoundUsd(model: string, kind: "chat" | "parse", inputTokens = 0): number {
+export function callBoundUsd(model: string, kind: CallKind, inputTokens = 0): number {
   const b = CALL_INPUT_BOUND[kind];
   const input = Math.max(b.input, inputTokens);
   const output = { inputTokens: 0, outputTokens: b.output, cacheWriteTokens: 0, cacheReadTokens: 0 };
@@ -132,7 +137,7 @@ export function configuredFallbacks(provider: ProviderName = configuredProvider(
 }
 
 /** A hold must cover whichever model in the chain ends up answering. */
-export function chainBoundUsd(models: string[], kind: "chat" | "parse", inputTokens = 0): number {
+export function chainBoundUsd(models: string[], kind: CallKind, inputTokens = 0): number {
   return Math.max(...models.map((m) => callBoundUsd(m, kind, inputTokens)));
 }
 

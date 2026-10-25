@@ -71,7 +71,7 @@ async function* events(body: ReadableStream<Uint8Array>): AsyncGenerator<Chunk> 
   }
 }
 
-function usageFromMetadata(metadata: NonNullable<Chunk["usageMetadata"]>): Usage {
+export function usageFromMetadata(metadata: NonNullable<Chunk["usageMetadata"]>): Usage {
   const cacheReadTokens = metadata.cachedContentTokenCount ?? 0;
   return {
     // Gemini promptTokenCount includes cached input; neutral input is uncached.
