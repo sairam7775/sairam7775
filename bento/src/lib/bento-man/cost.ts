@@ -88,10 +88,14 @@ export const CHAT_INPUT_BOUND = 40_000;
  *  place background (whose input includes the official pages it reads). */
 export type CallKind = "chat" | "parse" | "draft";
 
+/** A drafted background is two to four sentences; the request sets this as
+ *  its output limit (thinking included), so the hold's bound is enforced. */
+export const DRAFT_MAX_OUTPUT_TOKENS = 8_000;
+
 const CALL_INPUT_BOUND: Record<CallKind, { input: number; output: number }> = {
   chat: { input: CHAT_INPUT_BOUND, output: CHAT_MAX_OUTPUT_TOKENS },
   parse: { input: 8_000, output: 2_000 },
-  draft: { input: 100_000, output: 8_000 },
+  draft: { input: 100_000, output: DRAFT_MAX_OUTPUT_TOKENS },
 };
 
 /** What ONE model call can cost at most, in USD. A spend hold is this, not

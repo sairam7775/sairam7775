@@ -1,5 +1,5 @@
 import type Anthropic from "@anthropic-ai/sdk";
-import type { Effort } from "./cost";
+import { estimateInputTokens, type Effort } from "./cost";
 import type { ChatProvider, ModelMessage, ModelRequest, ModelResult, ToolCall } from "./provider";
 
 export class AnthropicProvider implements ChatProvider {
@@ -24,6 +24,10 @@ export class AnthropicProvider implements ChatProvider {
       })) };
     }
     return { role: message.role, content: message.content };
+  }
+
+  inputTokens(request: Pick<ModelRequest, "system" | "messages" | "tools">): number {
+    return estimateInputTokens({ system: request.system, tools: request.tools, messages: request.messages.map((message) => this.message(message)) });
   }
 
   async call(request: ModelRequest): Promise<ModelResult> {

@@ -3,7 +3,7 @@
  *  before any traveller sees it. Gemini reads the pages with url_context
  *  (never Google Maps grounding), and a draft whose pages could not be read
  *  is skipped rather than saved, so nothing is written from memory alone. */
-import { costUsd } from "@/lib/bento-man/cost";
+import { costUsd, DRAFT_MAX_OUTPUT_TOKENS } from "@/lib/bento-man/cost";
 import { usageFromMetadata } from "@/lib/bento-man/provider.gemini";
 import { checkBackgroundText } from "./backgrounds";
 
@@ -74,6 +74,16 @@ export async function requestDraft(send: () => Promise<Response>): Promise<Reply
   } catch {
     return { kind: "skip", reason: "unreadable reply" };
   }
+}
+
+/** The generateContent body for one place: the prompt, url_context (never
+ *  Google Maps), and an output limit matching the spend hold's bound. */
+export function draftRequest(p: { name: string; nameJa: string | null; city: string; urls: string[] }) {
+  return {
+    contents: [{ role: "user", parts: [{ text: draftPrompt(p) }] }],
+    tools: [{ url_context: {} }],
+    generationConfig: { maxOutputTokens: DRAFT_MAX_OUTPUT_TOKENS },
+  };
 }
 
 interface DraftHold {

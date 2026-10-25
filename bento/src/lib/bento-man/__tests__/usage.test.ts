@@ -138,3 +138,16 @@ describe("hold sizes (Codex review on #3)", () => {
     expect(taken).toEqual([CHAT_INPUT_BOUND + 1]);
   });
 });
+
+describe("hold sizes from the provider (Codex review on #54)", () => {
+  it("sizes holds from the provider's own measure of its request when it has one", async () => {
+    const asked: number[] = [];
+    const provider = {
+      model: "claude-opus-5",
+      call: async () => ({ text: "Hi.", toolCalls: [], stopReason: "end" as const, usage: { inputTokens: 10, outputTokens: 2, cacheWriteTokens: 0, cacheReadTokens: 0 }, model: "claude-opus-5" }),
+      inputTokens: () => 123_456,
+    };
+    await runBentoMan({ store: new MemoryStore(setup), provider, today: "2026-09-15", message: "hi", spend: { hold: async (n: number) => { asked.push(n); return { settle: async () => {} }; } } });
+    expect(asked).toEqual([123_456]);
+  });
+});

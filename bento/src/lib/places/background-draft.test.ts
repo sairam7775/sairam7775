@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraft, requestDraftWithin } from "./background-draft";
+import { callBoundUsd, DRAFT_MAX_OUTPUT_TOKENS } from "@/lib/bento-man/cost";
+import { askWindowStart, draftPrompt, draftRequest, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraft, requestDraftWithin } from "./background-draft";
 
 const OK = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 const PAGE = "https://www.shokoku-ji.jp/kinkakuji/";
@@ -136,5 +137,15 @@ describe("requestDraftWithin (Codex review on #50: every model call is held agai
     const reply = await requestDraftWithin(refuse, async () => { asked = true; return Response.json({}); }, "gemini-3.8-flash");
     expect(reply).toEqual({ kind: "budget", reason: "Bento's AI budget for this month is used up." });
     expect(asked).toBe(false);
+  });
+});
+
+describe("draftRequest (Codex review on #54)", () => {
+  it("caps the reply at the output the spend hold allows for", () => {
+    const body = draftRequest({ name: "Himeji Castle", nameJa: "姫路城", city: "Himeji", urls: ["https://www.himejicastle.jp/"] });
+    expect(body.generationConfig.maxOutputTokens).toBe(DRAFT_MAX_OUTPUT_TOKENS);
+    expect(body.tools).toEqual([{ url_context: {} }]);
+    expect(body.contents[0].parts[0].text).toContain("https://www.himejicastle.jp/");
+    expect(callBoundUsd("gemini-3.8-flash", "draft")).toBeCloseTo((100_000 * 0.75 + DRAFT_MAX_OUTPUT_TOKENS * 3.75) / 1_000_000);
   });
 });

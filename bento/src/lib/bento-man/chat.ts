@@ -125,7 +125,9 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     let hold: CallHold | undefined;
     if (opts.spend) {
       try {
-        hold = await opts.spend.hold(estimateInputTokens({ system: SYSTEM_PROMPT, tools: TOOLS, messages }));
+        // As the provider will send it: it may add back retained thinking.
+        const request = { system: SYSTEM_PROMPT, tools: TOOLS, messages };
+        hold = await opts.spend.hold(provider.inputTokens?.(request) ?? estimateInputTokens(request));
       } catch (e) {
         // Out of budget before the first call is the caller's to report;
         // out of budget between tool rounds just ends the turn here.

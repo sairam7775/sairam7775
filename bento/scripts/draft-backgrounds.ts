@@ -25,7 +25,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { callBoundUsd } from "../src/lib/bento-man/cost";
 import { reserveProjectSpend } from "../src/lib/guards/spend";
-import { askWindowStart, draftPrompt, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraftWithin } from "../src/lib/places/background-draft";
+import { askWindowStart, draftRequest, notToDraft, officialUrls, parseDraft, pickPlaces, requestDraftWithin } from "../src/lib/places/background-draft";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -99,7 +99,7 @@ async function main() {
         fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-          body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: draftPrompt({ name: p.name, nameJa: p.name_ja, city, urls: p.urls }) }] }], tools: [{ url_context: {} }] }),
+          body: JSON.stringify(draftRequest({ name: p.name, nameJa: p.name_ja, city, urls: p.urls })),
         }),
       model,
     );
