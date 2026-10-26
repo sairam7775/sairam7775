@@ -102,7 +102,7 @@ export const hiroshima: PlaceSeed[] = [
     tip: "Inside the station: a floor of okonomiyaki counters, good ones, ten metres from the Shinkansen gate. The practical answer when you have forty minutes before a train.",
     cost: 0, sources: ["wikivoyage"] }),
 
-  draft({ id: "hir-mazda-museum", city: c, name: "Mazda Museum", nameJa: "マツダミュージアム", category: "museum", lat: 34.3690, lon: 132.5000,
+  draft({ id: "hir-mazda-museum", city: c, name: "Mazda Museum", nameJa: "マツダミュージアム", category: "museum", lat: 34.3780, lon: 132.5038,
     station: null, walk: null, tags: ["popculture", "history"], energy: 0.1, crowd: 0.3, discovery: 0.6, signature: 0.5,
     taste: 60, typical: 90, full: 90, booking: "required", lead: 14, opens: "09:00", closes: "16:00", closedWeekdays: [0, 6],
     crowdNote: "Small guided groups; never crowded.",
