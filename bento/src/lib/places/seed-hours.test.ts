@@ -5,8 +5,9 @@ import { kyoto } from "./seed/kyoto";
 import { miyajima } from "./seed/miyajima";
 import { nara } from "./seed/nara";
 import { osaka } from "./seed/osaka";
+import { tokyo } from "./seed/tokyo";
 
-const all = [...kyoto, ...osaka, ...nara, ...hiroshima, ...miyajima, ...himeji];
+const all = [...kyoto, ...osaka, ...nara, ...hiroshima, ...miyajima, ...himeji, ...tokyo];
 const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
 /** Clock times named in a sentence, in minutes: "7:30", "17:30", "6am", "7 pm". */
