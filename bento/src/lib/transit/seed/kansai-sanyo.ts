@@ -119,7 +119,7 @@ export const edges: Edge[] = [
   ...bothWays(e({ from: "randen-arashiyama", to: "saga-arashiyama", line: "walk", mode: "walk", minutes: 8, km: 0.5 })),
   ...bothWays(e({ from: "randen-arashiyama", to: "hankyu-arashiyama", line: "walk", mode: "walk", minutes: 12, km: 0.7,
     note: "Across the Togetsukyo bridge." })),
-  ...bothWays(e({ from: "karasuma", to: "katsura", line: "Hankyu Kyoto Line · Limited Express", operator: "hankyu", km: 6.4, minutes: 7, stops: 2 })),
+  ...bothWays(e({ from: "karasuma", to: "katsura", line: "Hankyu Kyoto Line · Limited Express", operator: "hankyu", km: 6.4, minutes: 7, stops: 1 })),
   ...bothWays(e({ from: "katsura", to: "hankyu-arashiyama", line: "Hankyu Arashiyama Line", operator: "hankyu", km: 4.1, minutes: 8, stops: 3,
     note: "Change at Katsura: Arashiyama Line trains do not run through from Kyoto." })),
   ...bothWays(e({ from: "karasuma", to: "shijo", line: "walk", mode: "walk", minutes: 3, km: 0.1 })),
@@ -150,7 +150,7 @@ export const edges: Edge[] = [
   ...bothWays(e({ from: "tanimachi-4chome", to: "tennoji", line: "Osaka Metro Tanimachi", operator: "osaka-metro", km: 2.6, minutes: 6, stops: 3 })),
   ...bothWays(e({ from: "osaka", to: "bentencho", line: "JR Osaka Loop Line", operator: "jr-west", km: 5.0, minutes: 8, stops: 4 })),
   ...bothWays(e({ from: "bentencho", to: "osakako", line: "Osaka Metro Chuo", operator: "osaka-metro", km: 2.5, minutes: 4, stops: 2 })),
-  ...bothWays(e({ from: "namba", to: "sumiyoshi-taisha", line: "Nankai Main Line · Local", operator: "nankai", km: 5.7, minutes: 12, stops: 7,
+  ...bothWays(e({ from: "namba", to: "sumiyoshi-taisha", line: "Nankai Main Line · Local", operator: "nankai", km: 5.7, minutes: 12, stops: 5,
     note: "Local trains only. Sumiyoshi Taisha is a 3 min walk." })),
 
   // ---- Airport
@@ -186,7 +186,8 @@ export const edges: Edge[] = [
   ...bothWays(e({ from: "hiroshima", to: "hatchobori", line: "Hiroden · Line 1", operator: "hiroden", km: 1.6, minutes: 10, stops: 5 })),
   ...bothWays(e({ from: "hatchobori", to: "shukkeien-mae", line: "Hiroden · Line 9", operator: "hiroden", km: 0.6, minutes: 3, stops: 2 })),
   ...bothWays(e({ from: "hatchobori", to: "kamiyacho-higashi", line: "Hiroden · Line 1", operator: "hiroden", km: 0.5, minutes: 3, stops: 2 })),
-  ...bothWays(e({ from: "kamiyacho-higashi", to: "kamiyacho-nishi", line: "walk", mode: "walk", minutes: 2, km: 0.1 })),
+  // Kamiyacho is a Hiroden transfer stop: changing here keeps one fare.
+  ...bothWays(e({ from: "kamiyacho-higashi", to: "kamiyacho-nishi", line: "walk", mode: "walk", operator: "hiroden", minutes: 2, km: 0.1 })),
   ...bothWays(e({ from: "himeji", to: "shosha-ropeway", line: "Shinki Bus · 8", mode: "bus", operator: "shinki-bus", km: 8.0, minutes: 30, stops: 15 })),
   ...bothWays(e({ from: "miyajima-pier", to: "momijidani", line: "walk", mode: "walk", minutes: 20, km: 1.4 })),
   ...bothWays(e({ from: "hiroshima", to: "miyajimaguchi", line: "JR Sanyo Line", operator: "jr-west", km: 20.0, minutes: 26, stops: 8 })),

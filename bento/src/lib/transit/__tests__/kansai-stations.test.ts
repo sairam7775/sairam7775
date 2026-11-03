@@ -33,6 +33,16 @@ describe("stations added for the review notes (T-07)", () => {
     expect(r.unpricedRides).toBe(0);
   });
 
+  it("keeps one Hiroden fare across the Kamiyacho transfer", () => {
+    const r = route(g, "hatchobori", "genbaku-domu-mae")!;
+    expect(r.fareJpy).toBe(240);
+  });
+
+  it("counts the stops on the new rides", () => {
+    expect(route(g, "namba", "sumiyoshi-taisha")!.legs[0].stops).toBe(5);
+    expect(route(g, "karasuma", "hankyu-arashiyama")!.legs[0].stops).toBe(1);
+  });
+
   it("never prices a Randen or Hankyu ride it has no table for as free", () => {
     // Both Hankyu rides are one ticket, so one unpriced run.
     expect(route(g, "karasuma", "hankyu-arashiyama")!.unpricedRides).toBe(1);
