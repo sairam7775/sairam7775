@@ -95,13 +95,15 @@ describe("route — Tokyo", () => {
     expect(r.fareJpy).toBe(178);
   });
 
-  it("makes the change at Tochomae from the Shinjuku stretch of the Oedo Line", () => {
-    for (const [a, b] of [["shinjuku", "nishi-shinjuku-gochome"], ["nishi-shinjuku-gochome", "shinjuku"]]) {
-      const r = route(g, a, b)!;
-      expect(r.transfers, `${a}→${b}`).toBe(1);
-    }
-    // Loop trains run through Tochomae onto the Hikarigaoka branch.
-    expect(route(g, "shinjuku-nishiguchi", "nishi-shinjuku-gochome")!.transfers).toBe(0);
+  it("warns of the change at Tochomae for loop trains from Shinjuku-nishiguchi", () => {
+    // The router has one Oedo line, so the change is a note on the leg;
+    // trains via Shinjuku run through to the Hikarigaoka branch.
+    const r = route(g, "shinjuku-nishiguchi", "nishi-shinjuku-gochome")!;
+    expect(r.legs[0].notes.join(" ")).toContain("change there for the Hikarigaoka branch");
+    const through = route(g, "shinjuku", "nishi-shinjuku-gochome")!;
+    expect(through.transfers).toBe(0);
+    expect(through.legs[0].notes).toEqual([]);
+    expect(route(g, "yoyogi", "tochomae")!.transfers).toBe(0);
   });
 
   it("reaches Koenji by a train that stops there every day", () => {
