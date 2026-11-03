@@ -81,4 +81,33 @@ describe("route — Tokyo", () => {
     expect(r.legs).toHaveLength(1);
     expect(r.legs[0].mode).toBe("walk");
   });
+
+  it("prices a run that sums to a band edge in that band: Kasai → Kiba is 6.0 km, ¥178", () => {
+    const r = route(g, "kasai", "kiba")!;
+    expect(r.legs).toHaveLength(1);
+    expect(r.fareJpy).toBe(178);
+  });
+
+  it("keeps one Metro fare across a designated transfer walk", () => {
+    const r = route(g, "toranomon", "akasaka")!;
+    expect(r.legs.map((l) => l.mode)).toEqual(["rail", "walk", "rail"]);
+    expect(r.legs[1].from.id).toBe("tameike-sanno");
+    expect(r.fareJpy).toBe(178);
+  });
+
+  it("makes the change at Tochomae from the Shinjuku stretch of the Oedo Line", () => {
+    for (const [a, b] of [["shinjuku", "nishi-shinjuku-gochome"], ["nishi-shinjuku-gochome", "shinjuku"]]) {
+      const r = route(g, a, b)!;
+      expect(r.transfers, `${a}→${b}`).toBe(1);
+    }
+    // Loop trains run through Tochomae onto the Hikarigaoka branch.
+    expect(route(g, "shinjuku-nishiguchi", "nishi-shinjuku-gochome")!.transfers).toBe(0);
+  });
+
+  it("reaches Koenji by a train that stops there every day", () => {
+    for (const [a, b] of [["shinjuku", "koenji"], ["koenji", "shinjuku"]]) {
+      const r = route(g, a, b)!;
+      expect(r.legs.map((l) => l.line), `${a}→${b}`).toEqual(["JR Chuo-Sobu Line · Local"]);
+    }
+  });
 });

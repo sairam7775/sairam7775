@@ -164,7 +164,9 @@ function assemble(g: Graph, from: Station, to: Station, path: Edge[], minutes: n
   // Fares. A run of consecutive edges on one operator is one ticket, so the
   // run's km are summed and the band looked up once — summing per-hop
   // minimums would double-charge a two-stop ride. An edge with an explicit
-  // fare is exact and stands alone. A walk ends a run.
+  // fare is exact and stands alone. A walk ends a run, unless it carries the
+  // run's operator: a designated transfer between two of that operator's
+  // stations, charged as one journey.
   let fareJpy = 0;
   let allExact = true;
   let unpricedRides = 0;
@@ -188,6 +190,7 @@ function assemble(g: Graph, from: Station, to: Station, path: Edge[], minutes: n
   path.forEach((e, i) => {
     const leg = legIndexOfEdge[i];
     if (e.mode === "walk") {
+      if (run && e.operator != null && e.operator === run.operator) return;
       closeRun();
       return;
     }

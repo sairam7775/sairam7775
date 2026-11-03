@@ -317,9 +317,9 @@ export const tokyo: PlaceSeed[] = [
 
   draft({ id: "tky-mori-art", city: c, name: "Mori Art Museum", nameJa: "森美術館", category: "museum", lat: 35.6604, lon: 139.7292,
     station: "roppongi", walk: 5, tags: ["art"], energy: 0.2, crowd: 0.4, discovery: 0.3, signature: 0.5,
-    taste: 60, typical: 90, full: 150, window: ["after 17:30"], booking: "recommended", opens: "10:00", closes: "22:00",
-    crowdNote: "Weekend afternoons are busiest; late evenings are calm.",
-    tip: "Contemporary art on the 53rd floor of Roppongi Hills; the Tokyo City View deck below is a separate or combined ticket. Timed tickets online. Open until 22:00 most nights (17:00 on Tuesdays) and closed between exhibitions, with a long renovation planned from September 2027 to April 2028.",
+    taste: 60, typical: 90, full: 150, booking: "recommended", opens: "10:00", closes: "17:00", hoursVary: true,
+    crowdNote: "Weekend afternoons are busiest; weekday mornings are calm.",
+    tip: "Contemporary art on the 53rd floor of Roppongi Hills; the Tokyo City View deck below is a separate or combined ticket. Timed tickets online. Open late most nights but closes early on Tuesdays, and closed between exhibitions, with a long renovation planned from September 2027 to April 2028.",
     cost: 2600, sources: ["mori.art.museum"] }),
 
   // ---- Akihabara and Bunkyo

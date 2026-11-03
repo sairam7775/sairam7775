@@ -33,8 +33,11 @@ const BANDS: Record<string, [number, number][]> = {
 export function bandFare(operator: string, km: number): number | null {
   const bands = BANDS[operator];
   if (!bands) return null;
+  // Operating km are published to 0.1 km; summing hops in floating point
+  // can land just past a band edge (6.000000000000001), so round first.
+  const rounded = Math.round(km * 10) / 10;
   for (const [maxKm, fare] of bands) {
-    if (km <= maxKm) return fare;
+    if (rounded <= maxKm) return fare;
   }
   return bands[bands.length - 1][1];
 }
