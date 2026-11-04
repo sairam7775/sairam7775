@@ -48,7 +48,7 @@ export const miyajima: PlaceSeed[] = [
 
   draft({ id: "miy-misen", city: c, name: "Mount Misen", nameJa: "弥山", category: "viewpoint", lat: 34.2790, lon: 132.3180,
     station: "momijidani", walk: 5, tags: ["nature", "shrines"], energy: 0.6, crowd: 0.5, discovery: 0.3, signature: 0.8, physical: 0.6,
-    taste: 90, typical: 150, full: 240, opens: "09:00", closes: "16:30",
+    taste: 90, typical: 150, full: 240, opens: "09:00", closes: "16:00",
     crowdNote: "The ropeway queues on autumn weekends — an hour is possible. Weekday mornings you walk on.",
     tip: "Two ropeways to the top station, then a real 30-minute walk up to the summit — steps, not a stroll. The view over the Inland Sea is the best in the region. The flame in the hall near the top has burned for 1,200 years. Last ropeway down is early; check it.",
     cost: 2000, skipIf: ["limited_mobility"], seasons: ["koyo"], pairs: ["miy-momijidani"], sources: ["miyajima-ropeway.info"] }),
