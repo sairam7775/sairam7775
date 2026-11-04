@@ -59,7 +59,7 @@ export const kyoto: PlaceSeed[] = [
     station: "higashiyama", walk: 10, tags: ["shrines", "history"], energy: 0.4, crowd: 0.4, discovery: 0.4, signature: 0.6, physical: 0.4,
     taste: 30, typical: 60, full: 90, opens: "09:00", closes: "16:00",
     crowdNote: "Rarely crowded — the scale of the place absorbs people.",
-    tip: "The Sanmon gate is the largest wooden gate in Japan and free to stand under. The steep stairs behind it are the reason to come. The grounds are free; the Yuzen-en and Hojo gardens are ¥300 and ¥400, or ¥500 for both, sold until 15:20.",
+    tip: "The Sanmon gate is the largest wooden gate in Japan and free to stand under. The steep stairs behind it are the reason to come. The grounds are free. The Yuzen-en and Hojo gardens are ¥300 and ¥400, or ¥500 for both on a combined ticket sold until 15:20.",
     cost: 0, skipIf: ["limited_mobility"], pairs: ["kyt-maruyama-park", "kyt-shorenin"], sources: ["chion-in.or.jp"] }),
 
   draft({ id: "kyt-shorenin", city: c, name: "Shoren-in", nameJa: "青蓮院", category: "temple", lat: 35.0075, lon: 135.7830,
@@ -129,7 +129,7 @@ export const kyoto: PlaceSeed[] = [
     station: "shichijo", walk: 7, tags: ["art", "history"], energy: 0.1, crowd: 0.3, discovery: 0.4, signature: 0.4,
     taste: 45, typical: 90, full: 150, opens: "09:30", closes: "17:00", hoursVary: true, closedWeekdays: [1],
     crowdNote: "Quiet except during a headline special exhibition, when it is the busiest building in the city.",
-    tip: "Closed Mondays, like most museums here. Across the road from Sanjusangen-do — pair them on a wet afternoon. Special exhibitions cost more, and the ¥700 ticket isn't sold while one is on.",
+    tip: "Closed Mondays, like most museums here. Across the road from Sanjusangen-do — pair them on a wet afternoon. Special exhibitions cost more.",
     cost: 700, pairs: ["kyt-sanjusangendo"], sources: ["kyohaku.go.jp"] }),
 
   draft({ id: "kyt-toji", city: c, name: "To-ji", nameJa: "東寺", category: "temple", lat: 34.9807, lon: 135.7475,
