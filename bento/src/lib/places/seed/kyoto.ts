@@ -238,7 +238,7 @@ export const kyoto: PlaceSeed[] = [
     cost: 0, seasons: ["koyo"], pairs: ["kyt-arashiyama-bamboo", "kyt-monkey-park"], sources: ["wikivoyage"] }),
 
   draft({ id: "kyt-okochi-sanso", city: c, name: "Okochi Sanso Villa", nameJa: "大河内山荘", category: "garden", lat: 35.0180, lon: 135.6690,
-    station: "saga-arashiyama", walk: 18, tags: ["nature", "history"], energy: 0.4, crowd: 0.2, discovery: 0.75, signature: 0.5, physical: 0.4,
+    station: "randen-arashiyama", walk: 14, tags: ["nature", "history"], energy: 0.4, crowd: 0.2, discovery: 0.75, signature: 0.5, physical: 0.4,
     taste: 30, typical: 60, full: 75, opens: "09:00", closes: "17:00",
     crowdNote: "Almost empty, because it costs and it is at the top of the bamboo path where most people turn round.",
     tip: "A film star's hillside garden with the best view over Kyoto in Arashiyama. The ticket includes tea and a sweet — sit down for it.",
