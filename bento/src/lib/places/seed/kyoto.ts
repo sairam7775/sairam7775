@@ -57,10 +57,10 @@ export const kyoto: PlaceSeed[] = [
 
   draft({ id: "kyt-chionin", city: c, name: "Chion-in", nameJa: "知恩院", category: "temple", lat: 35.0055, lon: 135.7825,
     station: "higashiyama", walk: 10, tags: ["shrines", "history"], energy: 0.4, crowd: 0.4, discovery: 0.4, signature: 0.6, physical: 0.4,
-    taste: 30, typical: 60, full: 90, opens: "09:00", closes: "16:30",
+    taste: 30, typical: 60, full: 90, opens: "09:00", closes: "16:00",
     crowdNote: "Rarely crowded — the scale of the place absorbs people.",
-    tip: "The Sanmon gate is the largest wooden gate in Japan and free to stand under. The steep stairs behind it are the reason to come.",
-    cost: 500, skipIf: ["limited_mobility"], pairs: ["kyt-maruyama-park", "kyt-shorenin"], sources: ["chion-in.or.jp"] }),
+    tip: "The Sanmon gate is the largest wooden gate in Japan and free to stand under. The steep stairs behind it are the reason to come. The grounds are free. The Yuzen-en and Hojo gardens are ¥300 and ¥400, or ¥500 for both on a combined ticket sold until 15:20.",
+    cost: 0, skipIf: ["limited_mobility"], pairs: ["kyt-maruyama-park", "kyt-shorenin"], sources: ["chion-in.or.jp"] }),
 
   draft({ id: "kyt-shorenin", city: c, name: "Shoren-in", nameJa: "青蓮院", category: "temple", lat: 35.0075, lon: 135.7830,
     station: "higashiyama", walk: 6, tags: ["shrines", "nature"], energy: 0.2, crowd: 0.2, discovery: 0.65, signature: 0.5,
@@ -129,7 +129,7 @@ export const kyoto: PlaceSeed[] = [
     station: "shichijo", walk: 7, tags: ["art", "history"], energy: 0.1, crowd: 0.3, discovery: 0.4, signature: 0.4,
     taste: 45, typical: 90, full: 150, opens: "09:30", closes: "17:00", hoursVary: true, closedWeekdays: [1],
     crowdNote: "Quiet except during a headline special exhibition, when it is the busiest building in the city.",
-    tip: "Closed Mondays, like most museums here. Across the road from Sanjusangen-do — pair them on a wet afternoon.",
+    tip: "Closed Mondays, like most museums here. Across the road from Sanjusangen-do — pair them on a wet afternoon. Special exhibitions cost more.",
     cost: 700, pairs: ["kyt-sanjusangendo"], sources: ["kyohaku.go.jp"] }),
 
   draft({ id: "kyt-toji", city: c, name: "To-ji", nameJa: "東寺", category: "temple", lat: 34.9807, lon: 135.7475,
@@ -171,7 +171,7 @@ export const kyoto: PlaceSeed[] = [
     station: "nijojo-mae", walk: 3, tags: ["history"], energy: 0.3, crowd: 0.6, discovery: 0.2, signature: 0.7,
     taste: 45, typical: 90, full: 120, opens: "08:45", closes: "17:00",
     crowdNote: "The Ninomaru palace is a one-way corridor and moves at the group in front. Mornings are noticeably better.",
-    tip: "The nightingale floors squeak on purpose. Ninomaru is the point; the gardens are pleasant and the outer grounds can be skipped if time is short.",
+    tip: "The nightingale floors squeak on purpose. Ninomaru is the point; the gardens are pleasant and the outer grounds can be skipped if time is short. The Honmaru Palace needs a separate ¥1,000 timed ticket, released 30 days ahead.",
     cost: 1300, seasons: ["sakura"], sources: ["nijo-jocastle.city.kyoto.lg.jp"] }),
 
   draft({ id: "kyt-imperial-palace", city: c, name: "Kyoto Imperial Palace", nameJa: "京都御所", category: "palace", lat: 35.0254, lon: 135.7621,
@@ -210,7 +210,7 @@ export const kyoto: PlaceSeed[] = [
     cost: 600, pairs: ["kyt-kinkakuji", "kyt-ninnaji"], sources: ["ryoanji.jp"] }),
 
   draft({ id: "kyt-ninnaji", city: c, name: "Ninna-ji", nameJa: "仁和寺", category: "temple", lat: 35.0310, lon: 135.7140,
-    station: "ryoanji-mae", walk: 12, tags: ["shrines", "history"], energy: 0.3, crowd: 0.3, discovery: 0.55, signature: 0.5,
+    station: "omuro-ninnaji", walk: 3, tags: ["shrines", "history"], energy: 0.3, crowd: 0.3, discovery: 0.55, signature: 0.5,
     taste: 30, typical: 60, full: 90, opens: "09:00", closes: "16:30", hoursVary: true,
     crowdNote: "Wide grounds, few people — except for its late-blooming cherries in mid-April, which draw the city.",
     tip: "Third in the Kinkaku-ji, Ryoan-ji line and the one most people drop. Keep it if you want a temple with room to breathe; drop it if the day is tight.",
@@ -219,7 +219,7 @@ export const kyoto: PlaceSeed[] = [
   draft({ id: "kyt-arashiyama-bamboo", city: c, name: "Arashiyama Bamboo Grove", nameJa: "嵐山 竹林の小径", category: "nature", lat: 35.0170, lon: 135.6717,
     station: "saga-arashiyama", walk: 12, tags: ["nature"], energy: 0.35, crowd: 0.9, discovery: 0.1, signature: 0.8,
     taste: 20, typical: 45, full: 90, window: ["before 08:00"],
-    crowdNote: "A 300-metre path. After nine it is a slow procession with rickshaws pushing through; at seven it is silent and green.",
+    crowdNote: "A 400-metre path. After nine it is a slow procession with rickshaws pushing through; at seven it is silent and green.",
     tip: "It is shorter than you think. Come at dawn, then Tenryu-ji opens at 8:30 next door. The whole of Arashiyama is a half-day, and it is on the opposite side of the city from Fushimi Inari.",
     cost: 0, conflicts: ["kyt-fushimi-inari"], pairs: ["kyt-tenryuji", "kyt-togetsukyo"], seasons: ["koyo"], sources: ["wikivoyage"] }),
 
@@ -245,7 +245,7 @@ export const kyoto: PlaceSeed[] = [
     cost: 1000, skipIf: ["limited_mobility"], seasons: ["koyo"], pairs: ["kyt-arashiyama-bamboo"], sources: ["wikivoyage"] }),
 
   draft({ id: "kyt-monkey-park", city: c, name: "Iwatayama Monkey Park", nameJa: "嵐山モンキーパーク", category: "nature", lat: 35.0095, lon: 135.6770,
-    station: "saga-arashiyama", walk: 25, tags: ["nature"], energy: 0.7, crowd: 0.5, discovery: 0.3, signature: 0.5, physical: 0.7,
+    station: "hankyu-arashiyama", walk: 5, tags: ["nature"], energy: 0.7, crowd: 0.5, discovery: 0.3, signature: 0.5, physical: 0.7,
     taste: 45, typical: 75, full: 100, opens: "09:00", closes: "16:00", hoursVary: true,
     crowdNote: "A steady stream of families. Never a queue, but the summit hut can be full of people feeding monkeys.",
     tip: "A twenty-minute uphill walk to reach the monkeys — genuinely steep. The view over the city from the top is the reward for people who came for the monkeys and got bored.",
