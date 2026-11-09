@@ -49,3 +49,30 @@ describe("stations added for the review notes (T-07)", () => {
     expect(route(g, "omuro-ninnaji", "randen-arashiyama")!.unpricedRides).toBe(1);
   });
 });
+
+describe("Kintetsu stops before Kintetsu-Nara (T-09)", () => {
+  it("reaches Yamato-Saidaiji and Shin-Omiya from Osaka and Kyoto", () => {
+    for (const from of ["namba", "kyoto"]) {
+      for (const to of ["yamato-saidaiji", "shin-omiya"]) {
+        const r = route(g, from, to);
+        expect(r, `${from}→${to}`).not.toBeNull();
+        expect(r!.unpricedRides).toBe(0);
+        expect(r!.fareJpy).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("rides one Kintetsu ticket from Namba to Shin-Omiya", () => {
+    const r = route(g, "namba", "shin-omiya")!;
+    expect(r.transfers).toBe(0);
+    expect(r.legs.map((l) => l.to.id)).toEqual(["shin-omiya"]);
+  });
+
+  it("keeps the through train and its exact fare to Kintetsu-Nara", () => {
+    const r = route(g, "namba", "kintetsu-nara")!;
+    expect(r.legs).toHaveLength(1);
+    expect(r.legs[0].from.id).toBe("namba");
+    expect(r.fareJpy).toBe(680);
+    expect(r.fareKind).toBe("exact");
+  });
+});
