@@ -58,6 +58,8 @@ export const stations: Station[] = [
   // Nara
   { id: "nara", name: "Nara (JR)", nameJa: "奈良", cityId: "nara-city", lat: 34.6810, lon: 135.8190, lines: ["JR Nara Line"] },
   { id: "kintetsu-nara", name: "Kintetsu-Nara", nameJa: "近鉄奈良", cityId: "nara-city", lat: 34.6840, lon: 135.8280, lines: ["Kintetsu Nara Line", "Kintetsu Kyoto Line"] },
+  { id: "yamato-saidaiji", name: "Yamato-Saidaiji", nameJa: "大和西大寺", cityId: "nara-city", lat: 34.6938, lon: 135.7827, lines: ["Kintetsu Nara Line", "Kintetsu Kyoto Line"] },
+  { id: "shin-omiya", name: "Shin-Omiya", nameJa: "新大宮", cityId: "nara-city", lat: 34.6855, lon: 135.8115, lines: ["Kintetsu Nara Line"] },
   { id: "horyuji", name: "Horyuji", nameJa: "法隆寺", cityId: "nara-city", lat: 34.6050, lon: 135.7420, lines: ["JR Yamatoji Line"] },
   // Himeji
   { id: "himeji", name: "Himeji", nameJa: "姫路", cityId: "himeji", lat: 34.8270, lon: 134.6900, lines: ["Sanyo Shinkansen", "JR Kobe Line", "Shinki Bus"] },
@@ -166,6 +168,17 @@ export const edges: Edge[] = [
   ...bothWays(e({ from: "kyoto", to: "kintetsu-nara", line: "Kintetsu Kyoto Line · Express", operator: "kintetsu", km: 34.6, minutes: 45, stops: 8, fareJpy: 760 })),
   ...bothWays(e({ from: "kyoto", to: "nara", line: "JR Nara Line · Miyakoji Rapid", operator: "jr-west", km: 41.7, minutes: 45, stops: 6, fareJpy: 720 })),
   ...bothWays(e({ from: "namba", to: "kintetsu-nara", line: "Kintetsu Nara Line · Rapid Express", operator: "kintetsu", km: 30.8, minutes: 39, stops: 5, fareJpy: 680 })),
+  // The two stops before Kintetsu-Nara, for Saidai-ji and Hokke-ji. The
+  // through trains above stay as they are, so Kintetsu-Nara keeps its exact
+  // fares; these hops add a minute or two of dwell, so they never undercut
+  // them. Km from ja.wikipedia (Fuse 0.0, Yamato-Saidaiji 22.3, Shin-Omiya
+  // 25.0, Kintetsu-Nara 26.7; Osaka-Namba is 6.1 before Fuse). Minutes are
+  // the through times above less the last hops. No exact fare: the km band.
+  // Limited Expresses don't stop at Shin-Omiya; every other train does.
+  ...bothWays(e({ from: "namba", to: "yamato-saidaiji", line: "Kintetsu Nara Line · Rapid Express", operator: "kintetsu", km: 28.4, minutes: 34, stops: 4 })),
+  ...bothWays(e({ from: "kyoto", to: "yamato-saidaiji", line: "Kintetsu Kyoto Line · Express", operator: "kintetsu", km: 34.6, minutes: 40, stops: 7 })),
+  ...bothWays(e({ from: "yamato-saidaiji", to: "shin-omiya", line: "Kintetsu Nara Line · Rapid Express", operator: "kintetsu", km: 2.7, minutes: 3 })),
+  ...bothWays(e({ from: "shin-omiya", to: "kintetsu-nara", line: "Kintetsu Nara Line · Rapid Express", operator: "kintetsu", km: 1.7, minutes: 3 })),
   ...bothWays(e({ from: "nara", to: "kintetsu-nara", line: "walk", mode: "walk", minutes: 15, km: 1.2 })),
   ...bothWays(e({ from: "nara", to: "horyuji", line: "JR Yamatoji Line", operator: "jr-west", km: 9.9, minutes: 12, stops: 3,
     note: "Horyu-ji is a 20 min walk or a short bus from the station." })),
