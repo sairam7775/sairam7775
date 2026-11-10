@@ -75,7 +75,7 @@ export const hiroshima: PlaceSeed[] = [
     cost: 510, pairs: ["hir-shukkeien"], sources: ["hpam.jp"] }),
 
   draft({ id: "hir-museum-of-art", city: c, name: "Hiroshima Museum of Art", nameJa: "ひろしま美術館", category: "museum", lat: 34.3990, lon: 132.4600,
-    station: "kamiyacho-nishi", walk: 8, tags: ["art"], energy: 0.1, crowd: 0.2, discovery: 0.55, signature: 0.5,
+    station: "kamiyacho-higashi", walk: 5, tags: ["art"], energy: 0.1, crowd: 0.2, discovery: 0.55, signature: 0.5,
     taste: 40, typical: 75, full: 120, opens: "09:00", closes: "17:00", closedWeekdays: [1],
     crowdNote: "Quiet; a few people per room.",
     tip: "Closed Mondays. A small round building with Monet, Van Gogh, Picasso — bought by a bank as a gift to the city after the war. The best small art museum in western Japan.",

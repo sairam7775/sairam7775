@@ -103,10 +103,10 @@ export const osaka: PlaceSeed[] = [
     cost: 900, pairs: ["osk-kaiyukan"], sources: ["wikivoyage"] }),
 
   draft({ id: "osk-sumiyoshi-taisha", city: c, name: "Sumiyoshi Taisha", nameJa: "住吉大社", category: "shrine", lat: 34.6125, lon: 135.4930,
-    station: null, walk: null, tags: ["shrines", "history"], energy: 0.2, crowd: 0.3, discovery: 0.6, signature: 0.6,
+    station: "sumiyoshi-taisha", walk: 3, tags: ["shrines", "history"], energy: 0.2, crowd: 0.3, discovery: 0.6, signature: 0.6,
     taste: 30, typical: 50, full: 80, opens: "06:30", closes: "17:00", hoursVary: true,
     crowdNote: "Quiet on ordinary days; enormous at New Year.",
-    tip: "A shrine style older than Buddhism's arrival, with the steeply arched red bridge everyone photographs. Twenty minutes south of Namba on the Nankai line, then a two-minute walk from Sumiyoshi-taisha station.",
+    tip: "A shrine style older than Buddhism's arrival, with the steeply arched red bridge everyone photographs. Take a local train on the Nankai Main Line from Namba, about twelve minutes, then a three-minute walk from Sumiyoshi-taisha station.",
     cost: 0, sources: ["sumiyoshitaisha.net"] }),
 
   draft({ id: "osk-museum-of-history", city: c, name: "Osaka Museum of History", nameJa: "大阪歴史博物館", category: "museum", lat: 34.6830, lon: 135.5200,
