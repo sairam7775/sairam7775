@@ -1,3 +1,5 @@
+<!-- AGENTS.md, CLAUDE.md and GEMINI.md hold the same text: edit all three together. Claude Code started in a subfolder (e.g. bento/) does not expand an @AGENTS.md import, so these are full copies. -->
+
 # Repository guidelines
 
 This repo holds two projects:
@@ -11,8 +13,10 @@ Design references are in `design/` and project documents are in `docs/`.
 
 The owner keeps preferences, lessons from past fixes and reviews, and reusable checklists in a separate private repo, `sairam7775/knowledge`.
 
-- In the owner's workspace: `../knowledge/`, next to this repo and its worktrees.
-- Anywhere else (cloud sessions, a new machine): `gh repo clone sairam7775/knowledge`.
+Its folder is `knowledge/`, next to this repo's root folder (paths here are relative to the repo root, not to `bento/`):
+
+- In the owner's workspace it is already there, at `../knowledge/` from the root of the main checkout or of any worktree.
+- Anywhere else (cloud sessions, a new machine), clone it from the repo root: `gh repo clone sairam7775/knowledge ../knowledge`. Never clone it inside this repo.
 
 Before starting, read its `GUIDE.md`, its `preferences.md` and the checklist for your task in `checklists/`. Then search `lessons/` for the area you are changing.
 
