@@ -156,6 +156,23 @@ export const en = {
       resetByEmail: "Reset it by email",
     },
 
+    // /auth/confirm: an email link's sign-in waits here until the visitor
+    // says the account is theirs, so a forwarded link can't quietly sign
+    // them in to someone else's.
+    confirm: {
+      title: "Is this your account?",
+      signIn: "This link signs you in as",
+      reset: "This link lets you choose a new password for",
+      check: "Continue only if that’s your email address — a link someone else forwarded would sign you in to their account instead.",
+      switching: (current: string) => `You’re signed in as ${current} right now. Continuing switches to the account above.`,
+      continue: "Continue",
+      pending: "Signing in…",
+      notMe: "That’s not me",
+      points: {
+        once: { title: "Each link works once", body: "It signs in one browser, and you can ask for a new one any time." },
+      },
+    },
+
     // Messages shown back on the form after a server check.
     errors: {
       badEmail: "That doesn't look like an email address.",

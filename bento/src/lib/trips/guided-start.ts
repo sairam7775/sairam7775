@@ -25,10 +25,7 @@ export interface GuidedStart {
   avoid: string;
 }
 
-/** Where the trip page's chat finds the first message: the tab's session
- *  storage, never the address (analytics records addresses, and nothing a
- *  traveller writes goes in one). The chat reads it once and removes it. */
-export const starterKey = (tripId: string) => `bento-start:${tripId}`;
+export { starterKey } from "./starter-key";
 
 /** "November 2026", from "2026-11". */
 export const monthLabel = (month: string) =>

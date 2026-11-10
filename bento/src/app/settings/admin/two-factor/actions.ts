@@ -7,6 +7,7 @@ import { isAdmin } from "@/lib/admin";
 import { copy } from "@/copy";
 import { SETTINGS } from "../../paths";
 import { afterVerifyError } from "./verify-error";
+import { authGate } from "@/lib/guards/auth-limit";
 
 const t = copy.settings.twoFactor;
 
@@ -23,14 +24,14 @@ async function adminClient() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(`/sign-in?next=${SETTINGS.admin}`);
   if (!(await isAdmin(supabase, user.id))) redirect(SETTINGS.home);
-  return supabase;
+  return { supabase, userId: user.id };
 }
 
 /** Starts an authenticator-app setup with Supabase. A setup left unfinished
  *  earlier (never confirmed with a code) is removed first: its key can't be
  *  shown again, so it could never be finished. */
 export async function startTwoFactorSetup(): Promise<TwoFactorState> {
-  const supabase = await adminClient();
+  const { supabase } = await adminClient();
   const { data: factors } = await supabase.auth.mfa.listFactors();
   for (const f of factors?.all ?? []) {
     if (f.factor_type === "totp" && f.status === "unverified") await supabase.auth.mfa.unenroll({ factorId: f.id });
@@ -49,10 +50,14 @@ const Code = z.object({ factorId: z.string().min(1), code: z.string().transform(
  *  session in with the second factor. Either way the session becomes "aal2"
  *  and the admin goes on to Admin. */
 export async function verifyTwoFactor(prev: TwoFactorState, form: FormData): Promise<TwoFactorState> {
-  const supabase = await adminClient();
+  const { supabase, userId } = await adminClient();
   const keep = prev?.step === "verify" ? prev : { step: "start" as const };
   const parsed = Code.safeParse({ factorId: form.get("factorId"), code: String(form.get("code") ?? "") });
   if (!parsed.success) return { ...keep, error: t.badCode };
+  // A six-digit code can be guessed with enough tries; this keeps that to a
+  // handful a minute per account, wherever the tries come from.
+  const gate = await authGate([["mfa_user", userId]]);
+  if (gate !== "ok") return { ...keep, error: gate === "limited" ? copy.auth.supabase.over_request_rate_limit : t.verifyFailed };
   const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: parsed.data.factorId, code: parsed.data.code });
   if (error) {
     // Only a lookup that worked can say the setup is gone; otherwise keep it.

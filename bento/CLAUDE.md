@@ -33,6 +33,21 @@ Practically:
   writable by anyone with the anon key until `0013_lock_public_views`.
 - **Redirects after sign-in go through `safeNext`** (`lib/safe-next.ts`).
   "Starts with /" is not enough: `//evil` leaves the site.
+- **Supabase is only ever called from the server.** The session cookies are
+  httpOnly, and https-only in production (`lib/supabase/cookie-options.ts`,
+  passed by `proxy.ts` and `supabase/server.ts`), so a page script can't
+  read a session. A browser-side Supabase client would need them readable:
+  don't add one.
+- **Every password, reset and two-factor attempt passes `authGate`**
+  (`lib/guards/auth-limit.ts` → `take_auth_token`, 0029) before Supabase is
+  asked: per visitor address, per email (resets: email and address
+  together, so nobody can use up someone else's) and per account.
+  Supabase's own limits see Vercel's address, not the visitor's. The
+  function is service role only and gets keyed hashes, never an email or
+  address; when it can't answer, the attempt is refused. A new form that
+  checks a password or a code needs it too. It doesn't cover someone
+  calling Supabase Auth directly with the public key: only Supabase's own
+  per-IP limits (or a CAPTCHA turned on in Supabase) apply there.
 - **Every way to create an account passes the age screen** (`lib/age-gate.ts`,
   16 and over): email sign-up and Google sign-in both check the cookie, and
   the birth date is never stored. A new sign-up route needs the same check.
@@ -45,16 +60,26 @@ Practically:
   dates. Autocapture keeps no element text; replays mask all text and
   inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
-- **CSP is report-only for now.** The policy lives in `src/lib/security/csp.ts`;
-  add any new third-party origin there after checking that the app really uses
-  it. Per-request nonces through Proxy are the next step before removing
+- **CSP is enforced.** The policy lives in `src/lib/security/csp.ts`; a
+  third-party origin it doesn't list is blocked in production, so add one
+  there (after checking that the app really uses it) and load the page with
+  the policy on before shipping. Violations still go to /api/csp-report.
+  Per-request nonces through Proxy are the next step before removing
   `'unsafe-inline'`.
+- **An email link never signs straight in.** A `token_hash` link works in
+  any browser, so it also works for anyone it's forwarded to: /auth/callback
+  only checks it and holds the session (encrypted refresh token,
+  `lib/pending-sign-in.ts`), and /auth/confirm shows the account's address
+  until the visitor presses Continue, which signs in to that account only
+  (the form carries its id). Google's PKCE `code` is tied to the browser
+  that asked, so it signs in directly.
 - **Deleting an account removes everything of theirs** (Settings → Privacy
   & data → Delete account, `settings/delete` → `deleteAccount` →
   `lib/account/delete.ts`): every user table cascades
   from `auth.users` or from `trips`, so a new user table needs
   `on delete cascade` too. `api_usage` is the exception: it is unlinked
-  (user_id = null) first, because the global spending cap sums it. PostHog
+  (user_id = null) first, and its foreign key sets null (0029), so a hold
+  taken mid-deletion survives too, because the global spending cap sums it. PostHog
   data is deleted too when `POSTHOG_PERSONAL_API_KEY` and
   `POSTHOG_PROJECT_ID` are set; the privacy page says which. That deletion
   runs only after the auth user is gone, is tried three times with a time
@@ -71,6 +96,15 @@ Practically:
   it isn't. Admins can't delete themselves from the UI.
 - **RLS on every user table.** Never reach for the service-role client to work
   around a policy — if a query needs it, the policy is wrong.
+- **RLS lets a traveller write their own rows straight over PostgREST, past
+  the app's checks**, so the database bounds them (0029): row caps per
+  parent (`enforce_row_cap`: 100 trips, and per trip 20 cities, 400 days,
+  300 bookings, 500 gap dismissals, 60 stops a day), 90 nights a city, a
+  year a trip, and a write allowance per account of 1 MB a statement and
+  10 MB in any 24 hours (`charge_user_writes`, insert and update triggers,
+  charges in the `write_usage` ledger so nothing shared is locked). A new
+  user table gets the allowance triggers, and a cap if a page reads all its
+  rows.
 - **Every new `SECURITY DEFINER` function sets `search_path = public, pg_temp`
   (or `''`); `lib/db/definer-functions.test.ts` checks the effective
   definitions across migrations.**

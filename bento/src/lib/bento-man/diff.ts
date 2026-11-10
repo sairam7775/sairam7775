@@ -10,6 +10,7 @@ import { z } from "zod";
 import type { DayPlan } from "@/lib/engine/types";
 import type { RouteAssessment } from "@/lib/engine/route";
 import { copy } from "@/copy";
+import { clock, describeDates } from "./diff-text";
 
 export const DiffItemSchema = z.object({
   placeId: z.string(),
@@ -222,18 +223,8 @@ export function mergeProposals(a: Proposal | null, b: Proposal): Proposal {
   return { summary: summaryParts.join(copy.plan.day.join), ...(dates ? { dates } : {}), route, days: dayList };
 }
 
-const shortDate = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { day: "numeric", month: "short", timeZone: "UTC" });
-
-/** "1 Oct – 10 Oct (9 nights)", or "no dates". */
-export function describeDates(t: Pick<TripFields, "startDate" | "endDate">): string {
-  if (!t.startDate && !t.endDate) return copy.plan.dates.none;
-  const nights = t.startDate && t.endDate ? Math.round((Date.parse(`${t.endDate}T00:00:00Z`) - Date.parse(`${t.startDate}T00:00:00Z`)) / 86_400_000) : null;
-  const range = copy.plan.dates.range(t.startDate ? shortDate(t.startDate) : copy.plan.dates.unknown, t.endDate ? shortDate(t.endDate) : copy.plan.dates.unknown);
-  return nights == null ? range : copy.plan.dates.rangeNights(range, nights);
-}
-
 export function datesDiff(before: TripFields, after: TripFields): DatesDiff {
   return { kind: "dates", before, after, summary: copy.plan.dates.summary(describeDates(after)) };
 }
 
-export const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+export { clock, describeDates };

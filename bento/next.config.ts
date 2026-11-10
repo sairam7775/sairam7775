@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
-import { buildCspReportOnly } from "./src/lib/security/csp";
+import { buildCsp } from "./src/lib/security/csp";
 
-const cspReportOnly = buildCspReportOnly({
+const csp = buildCsp({
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   isDevelopment: process.env.NODE_ENV === "development",
 });
@@ -15,8 +15,7 @@ const cspReportOnly = buildCspReportOnly({
 const securityHeaders = [
   // A page showing a PNR must not be frameable by anyone.
   { key: "X-Frame-Options", value: "DENY" },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
-  { key: "Content-Security-Policy-Report-Only", value: cspReportOnly },
+  { key: "Content-Security-Policy", value: csp },
   { key: "X-Content-Type-Options", value: "nosniff" },
   // Never leak a trip id or a reveal parameter to another origin.
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
@@ -25,6 +24,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // No "X-Powered-By: Next.js": it only tells a scanner which advisories to try.
+  poweredByHeader: false,
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
