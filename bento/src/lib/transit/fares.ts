@@ -17,6 +17,13 @@ const BANDS: Record<string, [number, number][]> = {
   "kyoto-subway": [[3, 220], [7, 260], [11, 290], [15, 330], [20, 360]],
   "osaka-metro": [[3, 190], [7, 240], [13, 290], [19, 340], [25, 390]],
   nankai: [[3, 160], [6, 200], [10, 260], [15, 310], [20, 370], [30, 470], [40, 590], [50, 700]],
+  /** Tokyo, IC fares checked on the operators' pages, October 2026. They
+   *  include the barrier-free surcharge; a Metro–Toei change is charged as
+   *  two runs (the ¥70 through discount is not modelled). JR East has no
+   *  table yet: its March 2026 fares could not be read. */
+  "tokyo-metro": [[6, 178], [11, 209], [19, 252], [27, 293], [40, 324]],
+  "toei-subway": [[4, 178], [9, 220], [15, 272], [21, 325], [27, 377], [46, 430]],
+  rinkai: [[3, 210], [6, 272], [9, 335], [13, 398]],
   /** Flat fares. */
   hiroden: [[999, 240]],
   "kyoto-bus": [[999, 230]],
@@ -26,8 +33,11 @@ const BANDS: Record<string, [number, number][]> = {
 export function bandFare(operator: string, km: number): number | null {
   const bands = BANDS[operator];
   if (!bands) return null;
+  // Operating km are published to 0.1 km; summing hops in floating point
+  // can land just past a band edge (6.000000000000001), so round first.
+  const rounded = Math.round(km * 10) / 10;
   for (const [maxKm, fare] of bands) {
-    if (km <= maxKm) return fare;
+    if (rounded <= maxKm) return fare;
   }
   return bands[bands.length - 1][1];
 }

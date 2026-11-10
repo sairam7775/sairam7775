@@ -3,11 +3,16 @@
  *
  *   npx tsx scripts/route.ts kyoto inari
  *   npx tsx scripts/route.ts kansai-airport miyajima-pier
+ *   npx tsx scripts/route.ts shibuya asakusa
  *   npx tsx scripts/route.ts --stations
  */
 import { buildGraph, route } from "../src/lib/transit/graph";
 import { describeRoute } from "../src/lib/transit/describe";
-import { stations, edges } from "../src/lib/transit/seed/kansai-sanyo";
+import * as kansai from "../src/lib/transit/seed/kansai-sanyo";
+import * as tokyo from "../src/lib/transit/seed/tokyo";
+
+const stations = [...kansai.stations, ...tokyo.stations];
+const edges = [...kansai.edges, ...tokyo.edges];
 
 const [a, b] = process.argv.slice(2);
 if (a === "--stations") {

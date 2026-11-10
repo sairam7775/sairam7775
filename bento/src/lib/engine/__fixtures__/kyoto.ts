@@ -59,7 +59,7 @@ export const kyoto: PlaceInput[] = [
     durationTasteMin: 30, durationTypicalMin: 60, durationFullMin: 150,
     bestWindow: ["before 08:00"], skipIf: [], costJpy: 0, bookingReq: "none",
     opensAt: null, closesAt: null, closedWeekdays: [], conflictsWith: ["kyt-fushimi-inari"],
-    nearestStation: "saga-arashiyama", stationWalkMin: 12, seasons: ["koyo"] },
+    nearestStation: "randen-arashiyama", stationWalkMin: 9, seasons: ["koyo"] },
 
   { ...base, id: "kyt-kinkakuji", name: "Kinkaku-ji", category: "temple",
     interestTags: ["shrines", "history"], energy: 0.2, crowdLevel: 0.9, discovery: 0.05, signature: 0.9,

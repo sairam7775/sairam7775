@@ -130,7 +130,8 @@ Practically:
 - A `station` in a seed record must be a station id in the transit seed
   (it is a foreign key). A place only a bus or a walk serves gets
   `station: null` and pays the engine's 45-minute fallback; add the stop
-  to `kansai-sanyo.ts` instead when the route matters.
+  to the transit seed (`kansai-sanyo.ts`, `tokyo.ts`) instead when the
+  route matters.
 - `conflicts` and `pairs` must point at existing ids in the same batch;
   the exporter fails otherwise.
 - Hours are same-day: `closes` must be after `opens`. An overnight venue
@@ -484,6 +485,14 @@ Practically:
 - `seed/kansai-sanyo.ts` is the one source of truth for the corridor; the
   tests, the CLI and `supabase/seed_transit.sql` all derive from it. Never
   edit the SQL by hand.
+- `seed/tokyo.ts` is Tokyo's core network (every Metro, Toei and Yamanote
+  station, both airports, the Shinkansen to Kyoto and Shin-Osaka). No ODPT
+  data: the repo is public and ODPT's licence forbids redistributing it.
+  Order and km come from ja.wikipedia line tables, positions from Wikidata,
+  minutes from each line's published end-to-end time. Its Shinkansen edges
+  end at Kansai stations, so build the graph from both seeds. JR East has
+  no fare table yet, so JR rides count as unpriced. Walks carry 3 minutes
+  of waiting because walks never pay the transfer penalty.
 
 ## Walkthrough
 
