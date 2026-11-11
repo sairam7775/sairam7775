@@ -1382,11 +1382,11 @@ export const en = {
       where: {
         heading: "Where it's handled",
         body: (chat: "gemini" | "anthropic") =>
-          "Your account and trips are stored in India (Mumbai), where Bento's servers also run. " +
+          "Your account and trips are stored in Japan (Tokyo), where Bento's servers also run. " +
           (chat === "gemini"
             ? "Bento Man's replies are made by Google, and pasted confirmations are read by Anthropic, mainly in the United States."
             : "Bento Man's replies and the reading of pasted confirmations are made by Anthropic, mainly in the United States.") +
-          " Usage analytics, if you allow them, are stored in the EU (Germany).\n\nPrivacy law differs between these places: India has its Digital Personal Data Protection Act, the EU has the GDPR, and the United States has no single national privacy law. Each company works under its terms with Bento, which limit what it may do with your data. Ask us if you'd like more detail about any of them.",
+          " Usage analytics, if you allow them, are stored in the EU (Germany).\n\nPrivacy law differs between these places: Japan has its Act on the Protection of Personal Information (APPI), and the EU recognises it as protecting personal data to the EU's standard; the EU has the GDPR; and the United States has no single national privacy law. Each company works under its terms with Bento, which limit what it may do with your data. Ask us if you'd like more detail about any of them.",
       },
       protect: {
         heading: "How it's protected",
