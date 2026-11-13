@@ -15,58 +15,58 @@ Destination paths are relative to `docs/bento/`. Design: [the vault design](../.
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| spec.html | §01 What this actually is | 10-product/vision.md; summary on docs/README.md |  | todo |
-| spec.html | §02 Decisions taken (D1–D16) | 70-decisions/, one note per decision |  | todo |
-| spec.html | §03 The traveller's line | 10-product/traveller-journey.md, plus links to each feature note |  | todo |
-| spec.html | §04 Division of labour | 30-software/division-of-labour.md |  | todo |
-| spec.html | §05 The engine | 30-software/engine.md |  | todo |
-| spec.html | §06 Coverage, all of Japan, honestly | 10-product/coverage.md |  | todo |
-| spec.html | §07 What "local guide" means in the data | 30-software/place-data.md |  | todo |
-| spec.html | §07 Transit legs are described, not timed | 30-software/transit.md |  | todo |
-| spec.html | §08 Feedback, diffs not regeneration | 10-product/proposals-and-diffs.md |  | todo |
-| spec.html | §09 Architecture | 30-software/architecture.md |  | todo |
-| spec.html | §10 How 2,000 records get written | 50-operations/curation.md |  | todo |
-| spec.html | §11 Gaps the traveller can understand | 10-product/booking-vault.md |  | todo |
-| spec.html | §12 Japan rules the engine must encode | 30-software/japan-rules.md |  | todo |
-| spec.html | §13 Build order | 90-archive (historical); current state in 00-start/status.md |  | todo |
-| spec.html | §14 Cost, and the mobile path | 40-non-functional/costs.md; 60-direction/mobile.md |  | todo |
-| spec.html | §15 Risks | 60-direction/risks.md (product and engineering risks); business risks to bento-private |  | todo |
-| spec.html | §16 User zero | **bento-private** (a personal travel profile, not for a public repo); the public note keeps only "designed against a real first traveller" |  | todo |
-| spec.html | §17 Still open | 00-start/open-questions.md |  | todo |
+| spec.html | §01 What this actually is | 10-product/vision.md; summary on docs/README.md |  | done |
+| spec.html | §02 Decisions taken (D1–D16) | 70-decisions/, one note per decision |  | done |
+| spec.html | §03 The traveller's line | 10-product/traveller-journey.md, plus links to each feature note |  | done |
+| spec.html | §04 Division of labour | 30-software/division-of-labour.md |  | done |
+| spec.html | §05 The engine | 30-software/engine.md |  | done |
+| spec.html | §06 Coverage, all of Japan, honestly | 10-product/coverage.md |  | done |
+| spec.html | §07 What "local guide" means in the data | 30-software/place-data.md |  | done |
+| spec.html | §07 Transit legs are described, not timed | 30-software/transit.md |  | done |
+| spec.html | §08 Feedback, diffs not regeneration | 10-product/proposals-and-diffs.md |  | done |
+| spec.html | §09 Architecture | 30-software/architecture.md |  | done |
+| spec.html | §10 How 2,000 records get written | 50-operations/curation.md |  | done |
+| spec.html | §11 Gaps the traveller can understand | 10-product/booking-vault.md |  | done |
+| spec.html | §12 Japan rules the engine must encode | 30-software/japan-rules.md |  | done |
+| spec.html | §13 Build order | 90-archive (historical); current state in 00-start/status.md |  | done |
+| spec.html | §14 Cost, and the mobile path | 40-non-functional/costs.md; 60-direction/mobile.md |  | done |
+| spec.html | §15 Risks | 60-direction/risks.md (product and engineering risks); business risks to bento-private |  | done |
+| spec.html | §16 User zero | **bento-private** (a personal travel profile, not for a public repo); the public note keeps only "designed against a real first traveller" |  | done |
+| spec.html | §17 Still open | 00-start/open-questions.md |  | done |
 
 ### `bento/README.md` (14 sections)
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| bento/README.md | What exists so far | 00-start/status.md |  | todo |
-| bento/README.md | Setup | 50-operations/local-setup.md | A five-line quick start stays in the README | todo |
-| bento/README.md | Deploying | 50-operations/deploying.md |  | todo |
-| bento/README.md | Curation | 50-operations/curation.md |  | todo |
-| bento/README.md | The day view | 10-product/day-view.md |  | todo |
-| bento/README.md | The vault | 10-product/booking-vault.md |  | todo |
-| bento/README.md | Bento Man | 10-product/bento-man.md; 30-software/bento-man.md |  | todo |
-| bento/README.md | Commands | 30-software/commands.md | Also linked from the quick start | todo |
-| bento/README.md | The engine | 30-software/engine.md |  | todo |
-| bento/README.md | Transit | 30-software/transit.md |  | todo |
-| bento/README.md | Logo | 20-design/logo.md |  | todo |
-| bento/README.md | Two rules the code holds to | 30-software/division-of-labour.md |  | todo |
-| bento/README.md | Layout | 30-software/layout.md |  | todo |
-| bento/README.md | Coverage tiers | 10-product/coverage.md |  | todo |
+| bento/README.md | What exists so far | 00-start/status.md |  | done |
+| bento/README.md | Setup | 50-operations/local-setup.md | A five-line quick start stays in the README | done |
+| bento/README.md | Deploying | 50-operations/deploying.md |  | done |
+| bento/README.md | Curation | 50-operations/curation.md |  | done |
+| bento/README.md | The day view | 10-product/day-view.md |  | done |
+| bento/README.md | The vault | 10-product/booking-vault.md |  | done |
+| bento/README.md | Bento Man | 10-product/bento-man.md; 30-software/bento-man.md |  | done |
+| bento/README.md | Commands | 30-software/commands.md | Also linked from the quick start | done |
+| bento/README.md | The engine | 30-software/engine.md |  | done |
+| bento/README.md | Transit | 30-software/transit.md |  | done |
+| bento/README.md | Logo | 20-design/logo.md |  | done |
+| bento/README.md | Two rules the code holds to | 30-software/division-of-labour.md |  | done |
+| bento/README.md | Layout | 30-software/layout.md |  | done |
+| bento/README.md | Coverage tiers | 10-product/coverage.md |  | done |
 
 ### `docs/PROGRESS.md` (10 sections)
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| PROGRESS.md | The shape of the thing | 90-archive/progress-history.md |  | todo |
-| PROGRESS.md | Phases | 00-start/status.md (current); 90-archive/progress-history.md (history) |  | todo |
-| PROGRESS.md | What a traveller can do today | 00-start/status.md |  | todo |
-| PROGRESS.md | Code review, and what came of it | 90-archive/progress-history.md |  | todo |
-| PROGRESS.md | Before this works end to end | 00-start/status.md (open items) |  | todo |
-| PROGRESS.md | Verification status | 00-start/status.md |  | todo |
-| PROGRESS.md | What P8 actually holds | 10-product/booking-vault.md |  | todo |
-| PROGRESS.md | Open, and next | 00-start/status.md; 60-direction/README.md |  | todo |
-| PROGRESS.md | Pre-launch engineering (12 October 2026) | 90-archive/progress-history.md; lasting rules to 40-non-functional/ |  | todo |
-| PROGRESS.md | UI pass and full-codebase review (12 October 2026) | 90-archive/progress-history.md |  | todo |
+| PROGRESS.md | The shape of the thing | 90-archive/progress-history.md |  | done |
+| PROGRESS.md | Phases | 00-start/status.md (current); 90-archive/progress-history.md (history) |  | done |
+| PROGRESS.md | What a traveller can do today | 00-start/status.md |  | done |
+| PROGRESS.md | Code review, and what came of it | 90-archive/progress-history.md |  | done |
+| PROGRESS.md | Before this works end to end | 00-start/status.md (open items) |  | done |
+| PROGRESS.md | Verification status | 00-start/status.md |  | done |
+| PROGRESS.md | What P8 actually holds | 10-product/booking-vault.md |  | done |
+| PROGRESS.md | Open, and next | 00-start/status.md; 60-direction/README.md |  | done |
+| PROGRESS.md | Pre-launch engineering (12 October 2026) | 90-archive/progress-history.md; lasting rules to 40-non-functional/ |  | done |
+| PROGRESS.md | UI pass and full-codebase review (12 October 2026) | 90-archive/progress-history.md |  | done |
 
 ### `bento/DESIGN.md` (tokens plus 11 sections)
 
@@ -80,10 +80,10 @@ Destination paths are relative to `docs/bento/`. Design: [the vault design](../.
 | bento/DESIGN.md | Elevation |  | Stays | kept |
 | bento/DESIGN.md | Components |  | Stays | kept |
 | bento/DESIGN.md | Motion |  | Stays; 40-non-functional/accessibility.md links it for reduced motion | kept |
-| bento/DESIGN.md | Bento Man, the figure | 20-design/bento-man-figure.md (explains); DESIGN.md keeps the rules |  | todo |
-| bento/DESIGN.md | Seasonal backdrop | 20-design/seasonal-backdrop.md (explains); DESIGN.md keeps the rules |  | todo |
-| bento/DESIGN.md | Voice | 20-design/voice.md |  | todo |
-| bento/DESIGN.md | Known Gaps | 20-design/README.md, open design questions |  | todo |
+| bento/DESIGN.md | Bento Man, the figure | 20-design/bento-man-figure.md (explains); DESIGN.md keeps the rules |  | done |
+| bento/DESIGN.md | Seasonal backdrop | 20-design/seasonal-backdrop.md (explains); DESIGN.md keeps the rules |  | done |
+| bento/DESIGN.md | Voice | 20-design/voice.md |  | done |
+| bento/DESIGN.md | Known Gaps | 20-design/README.md, open design questions |  | done |
 
 ### `bento/CLAUDE.md` (16 sections)
 
@@ -91,46 +91,46 @@ It stays where it is, and its rules stay in it **with their conditions and excep
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| bento/CLAUDE.md | Opening paragraph ("design document … source of truth") | 00-start/which-file-wins.md (resolves C2) | Rewritten to link it | todo |
-| bento/CLAUDE.md | The one idea that shapes everything | 30-software/division-of-labour.md | Rules stay | todo |
-| bento/CLAUDE.md | Invariants | 40-non-functional/security.md, privacy.md, costs.md; 30-software/place-data.md, data-model.md, engine.md (per rule) | Rules stay | todo |
-| bento/CLAUDE.md | Engine (P4) | 30-software/engine.md | Rules stay | todo |
-| bento/CLAUDE.md | Curation data (P5) | 50-operations/curation.md | Rules stay | todo |
-| bento/CLAUDE.md | Bento Man (P6) | 30-software/bento-man.md | Rules stay | todo |
-| bento/CLAUDE.md | Day view (P7) | 10-product/day-view.md | Rules stay | todo |
-| bento/CLAUDE.md | After the trip | 10-product/trip-review.md | Rules stay | todo |
-| bento/CLAUDE.md | Names and admins | 10-product/accounts-and-admins.md | Rules stay | todo |
-| bento/CLAUDE.md | Legal pages | 40-non-functional/privacy.md | Rules stay | todo |
-| bento/CLAUDE.md | Sharing | 10-product/trip-sharing.md (written in PR B) | Rules stay; the link from CLAUDE.md comes in Task 9 | todo |
-| bento/CLAUDE.md | The vault (P8) | 10-product/booking-vault.md | Rules stay | todo |
-| bento/CLAUDE.md | Transit (P3) | 30-software/transit.md | Rules stay | todo |
-| bento/CLAUDE.md | Walkthrough | 10-product/walkthrough.md | Rules stay | todo |
-| bento/CLAUDE.md | Bento Man's figure | 20-design/bento-man-figure.md | Rules stay | todo |
-| bento/CLAUDE.md | Voice (a paragraph, no rule bullets) | 20-design/voice.md | The paragraph stays | todo |
-| bento/CLAUDE.md | Conventions | 30-software/conventions.md | Rules stay | todo |
+| bento/CLAUDE.md | Opening paragraph ("design document … source of truth") | 00-start/which-file-wins.md (resolves C2) | Rewritten to link it | done |
+| bento/CLAUDE.md | The one idea that shapes everything | 30-software/division-of-labour.md | Rules stay | done |
+| bento/CLAUDE.md | Invariants | 40-non-functional/security.md, privacy.md, costs.md; 30-software/place-data.md, data-model.md, engine.md (per rule) | Rules stay | done |
+| bento/CLAUDE.md | Engine (P4) | 30-software/engine.md | Rules stay | done |
+| bento/CLAUDE.md | Curation data (P5) | 50-operations/curation.md | Rules stay | done |
+| bento/CLAUDE.md | Bento Man (P6) | 30-software/bento-man.md | Rules stay | done |
+| bento/CLAUDE.md | Day view (P7) | 10-product/day-view.md | Rules stay | done |
+| bento/CLAUDE.md | After the trip | 10-product/trip-review.md | Rules stay | done |
+| bento/CLAUDE.md | Names and admins | 10-product/accounts-and-admins.md | Rules stay | done |
+| bento/CLAUDE.md | Legal pages | 40-non-functional/privacy.md | Rules stay | done |
+| bento/CLAUDE.md | Sharing | 10-product/trip-sharing.md (written in PR B) | Rules stay; the link from CLAUDE.md comes in Task 9 | done |
+| bento/CLAUDE.md | The vault (P8) | 10-product/booking-vault.md | Rules stay | done |
+| bento/CLAUDE.md | Transit (P3) | 30-software/transit.md | Rules stay | done |
+| bento/CLAUDE.md | Walkthrough | 10-product/walkthrough.md | Rules stay | done |
+| bento/CLAUDE.md | Bento Man's figure | 20-design/bento-man-figure.md | Rules stay | done |
+| bento/CLAUDE.md | Voice (a paragraph, no rule bullets) | 20-design/voice.md | The paragraph stays | done |
+| bento/CLAUDE.md | Conventions | 30-software/conventions.md | Rules stay | done |
 | bento/CLAUDE.md | "This is NOT the Next.js you know" |  | Kept as is; `next dev` writes it | kept |
 
 ### Other documents
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| bento/AGENTS.md | Whole file |  | Codex's entry point; its PROGRESS.md pointer changes to the start page and status page (Task 9) | todo |
+| bento/AGENTS.md | Whole file |  | Codex's entry point; its PROGRESS.md pointer changes to the start page and status page (Task 9) | done |
 | AGENTS.md, CLAUDE.md, GEMINI.md (root) | Whole files |  | Identical agent entry points; the docs rule is added in Task 10 | todo |
 | README.md (root) | Whole file |  | Links docs/README.md | done |
-| design/README.md | Whole file | 20-design/README.md (screens list, with status) | A short pointer stays next to the mock-ups | todo |
-| design/Main.dc.html | Mock-up |  | Stays; listed in 20-design/README.md with its status | todo |
-| design/DayPhone.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Route.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Gaps.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Vault.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Onboarding.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Loader.dc.html | Mock-up |  | Stays; listed with its status | todo |
+| design/README.md | Whole file | 20-design/README.md (screens list, with status) | A short pointer stays next to the mock-ups | done |
+| design/Main.dc.html | Mock-up |  | Stays; listed in 20-design/README.md with its status | done |
+| design/DayPhone.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Route.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Gaps.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Vault.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Onboarding.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Loader.dc.html | Mock-up |  | Stays; listed with its status | done |
 | design/_shared_head.txt | Shared fonts and styles for the mock-ups |  | Stays (the mock-ups need it) | kept |
 | design/canvas.json | Canvas layout of the mock-ups |  | Stays (the design tool needs it) | kept |
-| docs/design-references/README.md | Whole file | 20-design/inspiration/README.md |  | todo |
-| docs/design-references/airbnb.DESIGN.md | Reference | 20-design/inspiration/ |  | todo |
-| docs/design-references/linear.DESIGN.md | Reference | 20-design/inspiration/ |  | todo |
-| docs/design-references/notion.DESIGN.md | Reference | 20-design/inspiration/ |  | todo |
+| docs/design-references/README.md | Whole file | 20-design/inspiration/README.md |  | done |
+| docs/design-references/airbnb.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
+| docs/design-references/linear.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
+| docs/design-references/notion.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
 | docs/superpowers/specs/2026-10-19-bento-man-character-design.md | Dated design | 20-design/bento-man-figure.md (current state) | The dated design stays; linked from 90-archive/README.md | todo |
 | docs/superpowers/specs/2026-10-19-bento-man/ (12 art files) | Art for that design |  | Stays with its design | kept |
 | docs/superpowers/plans/2026-10-19-bento-man-character.md | Dated plan |  | Stays; linked from 90-archive/README.md | todo |
@@ -139,7 +139,7 @@ It stays where it is, and its rules stay in it **with their conditions and excep
 | docs/superpowers/specs/2026-11-13-bento-docs-vault-design.md | This vault's design |  | Stays; linked from 00-start/which-file-wins.md | kept |
 | docs/superpowers/plans/2026-11-13-bento-docs-vault.md | This vault's plan |  | Stays | kept |
 | docs/spec.html | Whole file | 90-archive/spec.html, once every section row above is done |  | todo |
-| docs/PROGRESS.md | Whole file | Replaced by a "Moved to" note, then removed (Task 11) |  | todo |
+| docs/PROGRESS.md | Whole file | Replaced by a "Moved to" note (done); removed in Task 11 |  | todo |
 
 ## Rules in bento/CLAUDE.md
 

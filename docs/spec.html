@@ -246,7 +246,7 @@ footer{
   <h1><span class="jp">弁当</span>Bento</h1>
   <p class="lede">A trip planner for people who have never been to Japan — one that gives the honest version of every place, every train and every gap in the plan, the way a local friend would.</p>
   <div class="meta">
-    <div><b>Owner</b> sai.ram7775@gmail.com</div>
+    <div><b>Owner</b> the repo owner</div>
     <div><b>Repo</b> sairam7775/sairam7775</div>
     <div><b>Branch</b> claude/japan-travel-guide-bot-s5crhl</div>
     <div><b>Date</b> 2026-09-14</div>
@@ -866,29 +866,12 @@ score(place | user, trip, day) =
     <div class="half">
       <h4>The profile</h4>
       <div class="sub">seeds user_preferences</div>
-      <ul>
-        <li><b>Pace</b> — standard, ~8 active hours a day</li>
-        <li><b>Crowds</b> — avoids them, willing to start early. Weights scheduler step 3 toward early <span class="tab">best_window</span> anchors</li>
-        <li><b>Budget</b> — varies by city, so the band lives on <span class="tab">trip_cities</span></li>
-        <li><b>Interests</b> — shrines &amp; temples · history &amp; castles · nature as scenery</li>
-        <li><b>Excludes</b> — beaches, and nature that requires hiking. Hard filter, not a penalty</li>
-      </ul>
+      <p>The owner’s personal profile is kept privately, not in this public repo (moved 2026-11-13). It seeded <span class="tab">user_preferences</span> and the first evaluation scenario.</p>
     </div>
     <div class="half">
-      <h4>What it implies</h4>
-      <div class="sub">why the first cities changed</div>
-      <ul>
-        <li>Shrines, castles and low-effort scenery is a <b>Kansai</b> profile, not a Tokyo one</li>
-        <li>Osaka · Kyoto · Nara · Hiroshima go deep first (D15)</li>
-        <li>Miyajima folds into Hiroshima — Itsukushima is a shrine, and nobody visits one without the other</li>
-        <li>Himeji is a near-free addition: the best surviving castle in Japan, directly on the line between Osaka and Hiroshima</li>
-        <li>All four sit on one rail corridor, so a single transit graph serves them all</li>
-      </ul>
+      <h4>What it implied</h4>
+      <p>The first deep cities (D15) and the tags-plus-axes taxonomy with exclusions (D10) were shaped by testing against this real profile. The reasoning is in the decision notes (<span class="tab">docs/bento/70-decisions/</span>); the profile itself is kept privately.</p>
     </div>
-  </div>
-  <div class="call">
-    <h4>The distinction that broke the schema</h4>
-    <p>"Nature but not hiking" is why D10 chose tags <em>plus</em> axes. A flat <span class="tab">nature</span> tag cannot separate Kenroku-en from the Kumano Kodo; the tag with a low <b>energy</b> axis can. And "no beaches" needed somewhere to live at all — hence <span class="tab">excludes[]</span>. A real profile found both holes in an afternoon; invented personas would not have.</p>
   </div>
 </section>
 
