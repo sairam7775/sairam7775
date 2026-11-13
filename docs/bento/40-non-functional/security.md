@@ -25,7 +25,7 @@ last_reviewed: 2026-11-13
 | S6 | Redirects after sign-in go through `safeNext` ("starts with /" isn't enough: `//evil` leaves the site) |
 | S7 | Every new view revokes insert, update and delete from `anon` and `authenticated`; every `SECURITY DEFINER` function sets a safe `search_path` |
 | S8 | The database bounds direct writes: row caps per parent, 90 nights a city, a year a trip, and 1 MB a statement and 10 MB a day per account |
-| S9 | Booking references are encrypted at rest (AES-256-GCM), never logged, never put in a model prompt |
+| S9 | Stored booking references are encrypted at rest (AES-256-GCM), never logged, never put in a model prompt. Pasted confirmations are redacted before the model reads them, as a best effort for labelled references ([booking vault](../10-product/booking-vault.md)) |
 | S10 | Admin pages and actions need an admin **and** a second factor this session (`requireAdmin()`) |
 | S11 | The scheduled job's bearer check is timing-safe; the server doesn't advertise its software |
 

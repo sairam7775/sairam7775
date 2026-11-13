@@ -12,7 +12,7 @@ The tables are listed in [architecture](architecture.md); the exact schema is in
 
 ## Rules
 
-- **Costs are stored in yen.** Conversion happens on read, so a stale rate can never be baked into stored data (decision [D12](../70-decisions/d12-currency.md)).
+- **Costs are stored in yen** (places, the engine's sums, budgets). Conversion happens on read, so a stale rate can never be baked into stored data (decision [D12](../70-decisions/d12-currency.md)). **Exception: booking costs** keep the amount and currency the traveller entered (`cost_amount`, `cost_currency`); `cost_jpy` is set only when the currency is yen, and other currencies are converted on read (`bento/src/lib/vault/money.ts`).
 - **The budget lives on `trip_cities`, not `trips`.** A ryokan night in Hakone mustn't make the Tokyo days score as overspending.
 - **Every user table has row-level security.** If a query seems to need the service-role client to get past a policy, the policy is wrong ([security](../40-non-functional/security.md)).
 - **Every user table cascades** from `auth.users` or from `trips` when an account is deleted. A new user table needs `on delete cascade` too. The exception is `api_usage`, which is unlinked and kept, because the spending cap sums it ([privacy](../40-non-functional/privacy.md)).

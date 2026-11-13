@@ -34,7 +34,7 @@ last_reviewed: 2026-11-13
 | `places` | The guide data, with verification status ([place data](place-data.md)) |
 | `cities` | Region, prefecture, coverage tier ([coverage](../10-product/coverage.md)) |
 | `stations`, `station_edges` | The train graph |
-| `fx_rates` | Daily rates; every cost is stored in yen and converted on read |
+| `fx_rates` | Daily rates. Costs are stored in yen and converted on read, except booking costs, which keep the currency the traveller entered ([data model](data-model.md)) |
 | `chat_messages` | The conversation, and the proposals made in it |
 | Also | `trip_shares` (sharing), `trip_reviews`, `gap_dismissals`, `api_usage` (spend), `app_admins`, `place_review_notes`, `place_backgrounds`, rate-limit and write-usage tables |
 

@@ -15,11 +15,11 @@ last_reviewed: 2026-11-13
 
 | # | Requirement |
 |---|---|
-| C1 | AI spend can never pass a **monthly project-wide cap** (`BENTO_MONTHLY_SPEND_CAP_USD`, default **$20**) or a per-user cap |
+| C1 | AI spend can never pass a **monthly cap per user** (`BENTO_MONTHLY_SPEND_CAP_USD`, default **$20**) or the **monthly cap for everyone together** (`BENTO_GLOBAL_MONTHLY_SPEND_CAP_USD`, default **$50**) |
 | C2 | A **spend hold** is taken before every model call, sized to the most that call can cost, and settled with what it really cost |
 | C3 | Holds are taken under a database lock, so parallel requests see each other |
 | C4 | A forgotten check can't spend money: `reserveSpend` throws instead of returning a flag |
-| C5 | Every model call, including background drafting, is recorded in `api_usage` against the cap |
+| C5 | Every model call the app or its drafting script makes is recorded in `api_usage` against the caps. **Exception:** the Bento Man evaluation script (`scripts/eval-bento-man.ts`) runs without the spend hook, so its provider costs fall outside `api_usage` and the caps; run it only with the owner's OK |
 
 Details agents must keep:
 - A request over the usual 40,000-token ceiling gets a hold its own size, never a smaller one.

@@ -13,7 +13,7 @@ The part that would be a fine-tuned model in a worse product. It's a **scoring f
 
 ## Scoring a place for this traveller
 
-Every term that moves the score adds one clause to the reason shown with the stop, so **the reason is true by construction**: it's assembled from the terms that actually counted, never written afterwards.
+The reason shown with a stop is assembled from the terms that actually moved its score (`buildReason`): **the two strongest positive terms and, if large enough, one negative**. Some terms, such as confidence and pace strain, never become a clause. So the reason is true by construction, but it's a selection, not every term.
 
 | Term | Weight | What it measures |
 |---|---|---|
@@ -21,17 +21,23 @@ Every term that moves the score adds one clause to the reason shown with the sto
 | signature | + 1.5 | How significant it is for a first-timer, set by hand (0–1) |
 | confidence | + 1.0 | Verified 1.0, draft 0.4; stub places are excluded |
 | season fit | + 0.8 | Autumn leaves in November, cherry blossom in April, festivals |
+| discovery fit | + 0.5 | How well-known or off the beaten track, against the traveller's preference |
 | redundancy | − 2.0 | The nth place of the same category; decays as 1/n |
-| mobility conflict | − 1.5 | The place's "skip if" against the traveller's constraints |
+| crowds | 1.2 | Crowds against the traveller's crowd tolerance |
+| energy | 1.0 | Effort against the traveller's energy |
+| skip if (mobility) | − 1.5 | The place's "skip if" against the traveller's constraints |
 | budget strain | − 1.0 | Cost against the traveller's budget |
 | pace strain | − 0.7 | Duration against what's left of the day |
+| travel | − 1.0 per half hour | Extra travel to reach it |
+
+The weights are the values in `score.ts`; the descriptions are summaries.
 
 The weights are configuration (`bento/src/lib/engine/score.ts`), not constants; they're the first thing to tune against the evaluation set.
 
 ## Building a day (`planDay`)
 
 1. **Budget:** the pace sets the active minutes: relaxed 360, standard 480, packed 600.
-2. **Filter:** drop on hard rules, with no scoring and no exceptions: closed that weekday or date, booking required and not held, stub coverage, unverified, or a category the traveller excluded ("no beaches" means never).
+2. **Filter:** drop on hard rules, with no scoring: closed that weekday or date, booking required and not held, stub coverage, unverified, or a category the traveller excluded ("no beaches" means never). **The one exception is a stop the traveller pinned:** it stays even if it fails a rule, with a warning, and validation never removes a pinned stop.
 3. **Anchor:** seed the day with the best place that has a best time window (Fushimi Inari at 07:00 anchors the morning).
 4. **Grow:** add the place that gains the most score for the least extra travel, until the time is spent or nothing helps.
 5. **Order:** reorder to cut total travel time.

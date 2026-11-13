@@ -39,8 +39,9 @@ The failure of every chat-based planner: the traveller spends an hour refining a
 
 ## Failure behaviour
 
-- A proposal that would put a stop on a day it's closed, or a ticketed stop on a day with no ticket, is refused with the reason.
-- If the trip changed since the proposal was made (another tab, another change), accepting is refused rather than applied twice.
+- A **date change** that would put a planned stop on a day it's closed, or a ticketed stop on a day with no ticket, is refused with the reason (`shift.ts`). Accepting other proposals doesn't re-check those rules; the engine checked them when it made the proposal.
+- A date proposal is refused if the trip's dates changed since it was proposed, and a proposal can't be accepted twice.
+- **Known gap:** other proposals aren't checked for staleness. If the traveller edits a day by hand (removes or pins a stop) and then accepts an older proposal for that day, the proposal's version of the day replaces the edit. Listed in [open questions](../00-start/open-questions.md).
 - Each proposal is checked on its way into the conversation log and again on its way out.
 
 ## Code and tests
