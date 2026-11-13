@@ -18,7 +18,7 @@ A shared trip is opened by **a link alone**:
 - Because the address is the key, it's treated like a password:
   - no analytics on the shared page;
   - no referrer sent;
-  - the token removed from any address that leaves Bento.
+  - the token replaced in anything sent to analytics.
 - The page shows only what the plan sheet needs: never booking references, notes, providers, costs or anything about the owner except their pace.
 
 ## Alternatives considered
@@ -29,7 +29,7 @@ A shared trip is opened by **a link alone**:
 
 ## Consequences
 
-- Sharing takes one tap and works on any device.
+- Companions can open the link in a browser without creating an account.
 - A forwarded link gives access to whoever receives it. The answer is **Make a new link**, which kills the old address at once, and expiry choices that limit how long a leaked link works.
 - Expired and unknown links look the same, so a guessed address reveals nothing.
 - Every new field on the shared page has to be justified by the sheet, because it becomes visible to anyone with the link.
