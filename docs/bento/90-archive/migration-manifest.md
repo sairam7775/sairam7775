@@ -101,7 +101,7 @@ It stays where it is, and its rules stay in it **with their conditions and excep
 | bento/CLAUDE.md | After the trip | 10-product/trip-review.md | Rules stay | todo |
 | bento/CLAUDE.md | Names and admins | 10-product/accounts-and-admins.md | Rules stay | todo |
 | bento/CLAUDE.md | Legal pages | 40-non-functional/privacy.md | Rules stay | todo |
-| bento/CLAUDE.md | Sharing | 10-product/trip-sharing.md | Rules stay | todo |
+| bento/CLAUDE.md | Sharing | 10-product/trip-sharing.md (written in PR B) | Rules stay; the link from CLAUDE.md comes in Task 9 | todo |
 | bento/CLAUDE.md | The vault (P8) | 10-product/booking-vault.md | Rules stay | todo |
 | bento/CLAUDE.md | Transit (P3) | 30-software/transit.md | Rules stay | todo |
 | bento/CLAUDE.md | Walkthrough | 10-product/walkthrough.md | Rules stay | todo |
