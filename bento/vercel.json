@@ -1,6 +1,16 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "regions": ["hnd1"],
-  "github": { "silent": true },
-  "crons": [{ "path": "/api/cron/analytics-deletions", "schedule": "0 3 * * *" }]
+  "regions": [
+    "hnd1"
+  ],
+  "ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- .",
+  "github": {
+    "silent": true
+  },
+  "crons": [
+    {
+      "path": "/api/cron/analytics-deletions",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

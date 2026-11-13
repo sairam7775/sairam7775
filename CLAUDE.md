@@ -23,3 +23,13 @@ Before starting, read its `GUIDE.md`, its `preferences.md` and the checklist for
 After a fix, review or release that taught something reusable, add or update a lesson as its `README.md` describes. Evidence is required, and no secrets. Don't change `preferences.md`; propose changes to the owner.
 
 If you can't reach the knowledge base, say so in your report instead of carrying on as if you had read it.
+
+## Bento docs
+
+Bento's documentation is the docs vault, starting at `docs/README.md`. It's public, like this repo.
+
+- **Before coding,** list the notes in `docs/bento/` that your change affects (each `bento/CLAUDE.md` section names its note).
+- **In the same PR,** update them, and fill in the PR template's **Docs impact** section: "Updated: …" or "No docs impact, because: …" with a real reason.
+- Run `node tools/docs-check/check-docs.mjs` before finishing; CI runs it too.
+- **Nothing confidential here:** business, finances, partners, pricing and personal details go in the private vault, `../bento-private`.
+- When the owner asks to **"Refresh my docs"** or **"Publish my docs edits"**, follow `docs/bento/50-operations/owner-docs-sync.md`.
