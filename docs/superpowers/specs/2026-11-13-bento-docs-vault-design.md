@@ -47,14 +47,16 @@ Both start from one plain-language page and then take separate routes.
 ## Decisions
 
 1. **Two vaults, two repos, side by side.** They are never nested.
-   - **Public vault:** this repo (`sairam7775/sairam7775`). The vault root is the repo root, so notes can link to code, `bento/CLAUDE.md` and `bento/DESIGN.md`. Build folders (`node_modules`, `.next` and so on) are hidden in Obsidian's settings; that's for tidiness only, not confidentiality.
+   - **Public vault:** the `docs/` folder of this repo (`sairam7775/sairam7775`). Obsidian opens `docs/` in a **dedicated copy** of the repo, the git worktree `sairam7775-vault` on the branch `docs/owner`, never in a copy where code is being built.
+     - Notes link to code and to `bento/CLAUDE.md` and `bento/DESIGN.md` with relative paths (`../../bento/…`). Those links work on GitHub and for agents, but don't open inside Obsidian.
+     - *Rejected:* the repo root as the vault. Obsidian reads every file in the vault, and `node_modules` alone holds tens of thousands (agy review, 2026-11-13).
    - **Private vault:** a new private repo, `sairam7775/bento-private`, cloned **next to** this repo. It holds business and finances, legal and company setup, partners, the confidential roadmap and pricing.
    - The public docs must be complete without the private vault.
    - *Rejected:* cloning the private repo inside the public one, hidden by `.gitignore`. `.gitignore` isn't a security boundary: a forced add, a copied attachment or an agent can still publish it, and a leak in a public repo can't be undone (Codex review, 2026-11-13).
 2. **Cross-project lessons stay in `sairam7775/knowledge`.** Bento-specific checklists move into the Bento vault.
 3. **Standard Markdown links with relative paths**, not `[[wikilinks]]`, so GitHub and agents can follow them.
-4. **Few Obsidian plugins.** Obsidian Git for syncing; core Templates and Properties. Dataview is optional: every page must work without it. Canvas only as an extra, with a Markdown explanation next to it.
-   - **Shared settings, public vault:** only `.obsidian/app.json` (excluded folders, link format, attachment folder) and `.obsidian/core-plugins.json` are committed, by an explicit allowlist in `.gitignore`. Workspace state (`workspace*.json`), community plugin folders and their data (Obsidian Git's `data.json` can hold tokens), and caches stay local.
+4. **Few Obsidian plugins.** Core Templates and Properties in both vaults; Obsidian Git in the **private vault only**. Dataview is optional: every page must work without it. Canvas only as an extra, with a Markdown explanation next to it.
+   - **Shared settings, public vault:** only `docs/.obsidian/app.json` (link format, attachment folder) and `docs/.obsidian/core-plugins.json` are committed, by an explicit allowlist in `.gitignore`. Workspace state (`workspace*.json`), community plugin folders and their data (Obsidian Git's `data.json` can hold tokens), and caches stay local.
    - **Attachments** go to `docs/bento/_attachments/` in the public vault, and to the private vault's own `_attachments/`, never to a shared folder.
 5. **The source of truth depends on the topic.** There's no single "source of truth" document. See [Which file wins](#which-file-wins).
 
@@ -92,7 +94,7 @@ Bento's notes are under `docs/bento/`:
 | `type` | feature, non-functional, decision, runbook, checklist, overview, design | Required |
 | `status` | draft, accepted, superseded | Required. Is this the agreed version? |
 | `implementation` | planned, partial, shipped, n/a | Required for feature and non-functional. Accepted ≠ shipped |
-| `code` | list of paths | The code and tests it describes |
+| `code` | list of repo-relative paths, files or folders | The code and tests it describes. Prefer a folder (`bento/src/lib/trips/`) over listing every file |
 | `last_reviewed` | date | Changed only after a real review |
 | `supersedes` | link | When it replaces something |
 
@@ -113,11 +115,12 @@ Bento's notes are under `docs/bento/`:
 - Critical rules are also enforced by tests or database constraints wherever possible, so a note that falls behind can't by itself cause harm.
 
 **Agent files:**
-- `bento/CLAUDE.md` keeps every critical rule as **one line with a link** to the note that explains it. It's loaded into every Claude session automatically, so the rules themselves stay in it; the long explanations move to the notes.
-- **No rule may lose its conditions or exceptions** in the move. Before slimming, every rule in `bento/CLAUDE.md` is listed in a rule inventory (`90-archive/claude-md-rule-inventory.md`): the rule, its conditions and exceptions, and its new home. After slimming, each entry has a one-liner in `bento/CLAUDE.md` and the full text in its note.
+- **Two tiers, on purpose.** The root `AGENTS.md`, `CLAUDE.md` and `GEMINI.md` are short and identical: what's in the repo, where the knowledge base is, and the docs rule. `bento/CLAUDE.md` holds Bento's rules, and `bento/AGENTS.md` points Codex at it. An agent working in `bento/` loads both tiers; this was tested on PR #63.
+- `bento/CLAUDE.md` keeps every critical rule **with its conditions and exceptions**, written briefly, plus a link to the note that explains it. Claude loads this file into every session but doesn't follow links by itself, so anything an agent must obey while coding stays in the file. Only the reasons, history, examples and long detail move to the notes (agy review, 2026-11-13).
+- **No rule may lose a condition or exception.** The migration manifest has a section listing every rule in `bento/CLAUDE.md` with its conditions, exceptions and new note. After the change, each one is still in `bento/CLAUDE.md` with the same conditions.
 - `bento/AGENTS.md` keeps its own working rules (branches, tests before finishing, no live database writes, no line-ending churn). Its pointer to `../docs/PROGRESS.md` changes to the new status page and the vault's start page.
 - The block that `next dev` writes into `bento/CLAUDE.md` ("This is NOT the Next.js you know") stays as it is.
-- Every change to these files is followed by a **fresh-session test from both the repo root and `bento/`**: a fresh `claude -p` and `codex exec`, without the rules in the prompt, must quote sample rules from the inventory (`knowledge/lessons/2026-11-10-agent-notes-must-load.md`).
+- Every change to these files is followed by a **fresh-session test from both the repo root and `bento/`**: a fresh `claude -p` and `codex exec`, without the rules in the prompt, must quote sample rules, with their exceptions, from the manifest (`knowledge/lessons/2026-11-10-agent-notes-must-load.md`).
 
 ## Keeping it current
 
@@ -131,29 +134,42 @@ Bento's notes are under `docs/bento/`:
 4. **Automatic checks** (GitHub Action, new to this repo), all **blocking**:
    - **Notes checked:** `docs/README.md` and `docs/bento/**/*.md`, except `docs/bento/_templates/` and `docs/bento/_attachments/`. In `docs/bento/90-archive/` only links are checked, not properties. Other Markdown in the repo (`bento/CLAUDE.md`, `docs/superpowers/`, the CLI) is not checked.
    - **Links:** every relative link in a checked note must point at a file that exists (another note, code or an attachment). Heading anchors (`#section`) aren't checked yet.
-   - **Properties:** every checked note has the required properties for its `type` (see the table above), with allowed values; every path in `code` is repo-relative and exists.
+   - **Properties:** every checked note has the required properties for its `type` (see the table above), with allowed values; every path in `code` is repo-relative and exists as a file or folder. A rename that breaks one is meant to fail: the note describing that code needs updating.
    - **Agent copies:** the root `AGENTS.md`, `CLAUDE.md` and `GEMINI.md` are byte-identical.
    - **Done when:** each of the four rules has a test case that fails on purpose (a broken link, a missing property, a missing `code` path, the agent copies differing) and passes once fixed.
    - *Deferred:* an advisory comment when code under a note's `code` path changed without the note. Added only if the Docs impact statements show it's needed.
 5. **The owner's own edits:**
    - **Private vault:** Obsidian Git pulls on open and commits and pushes automatically.
-   - **Public vault:** Obsidian Git **pulls only**; auto-commit and auto-push are off, so nothing is ever published automatically. The owner's edits are published through a PR like any other change. The owner can ask an agent to "publish my docs edits"; the agent shows the full diff, including attachments, checks it for anything confidential, and opens the PR.
-   - **Deploys:** Vercel builds only when something under `bento/` changed. `bento/vercel.json` gets `"ignoreCommand": "git diff --quiet HEAD^ HEAD -- ."`. Vercel's root directory is `bento/`, so `.` means the app. The command exits 0 (skip) when nothing in `bento/` changed, and non-zero (build) when something did or when `HEAD^` isn't available. The existing `regions`, `github` and `crons` settings stay. Done when a docs-only commit is skipped and a mixed docs and app commit builds.
+   - **Public vault:** no Obsidian Git, so nothing is ever published automatically and pulls never clash with unsaved edits. The owner edits in the `sairam7775-vault` copy on the branch `docs/owner`. Two requests to an agent handle syncing:
+     - **"Refresh my docs":** commits nothing; brings the latest `main` into `docs/owner`, stashing and restoring any unsaved edits, and reports any clash instead of leaving conflict markers in a note.
+     - **"Publish my docs edits":** shows the full diff, including attachments, checks it for anything confidential, commits on `docs/owner` and opens a PR. After the merge, `docs/owner` is moved to the new `main`.
+   - **Deploys:** Vercel builds only when something under `bento/` changed since the branch's last successful deployment. `bento/vercel.json` gets `"ignoreCommand": "[ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- ."`.
+     - Vercel's root directory is `bento/`, so `.` means the app.
+     - The command exits 0 (skip) only when nothing in `bento/` changed. It exits non-zero (build) when something did, when `VERCEL_GIT_PREVIOUS_SHA` is empty (a branch's first deploy), or when that commit isn't in the clone.
+     - Comparing with the last deployment, not `HEAD^`, covers pushes of several commits at once (agy review, 2026-11-13).
+     - The existing `regions`, `github` and `crons` settings stay.
+     - Done when a docs-only push is skipped, a push with an app commit followed by a docs commit builds, and a new branch's first push builds.
    - Agents' doc changes always go through PRs, with their code.
 6. **Monthly review:** a short checklist note in `80-checklists/`, focused on notes where staleness is risky: security, privacy, costs and caps, operations. `last_reviewed` changes only for notes actually reviewed.
 
 ## Moving from today's files
 
-Each step is one PR, reviewed by Codex. A file that moves leaves a short "Moved to …" note behind for a while.
+The steps are grouped into **four PRs**, each reviewed by Codex:
+- **PR A:** steps 1 and 2. Step 0 happens outside this repo.
+- **PR B:** step 3, the pilot, so the owner can judge the format early.
+- **PR C:** steps 4 to 6, the content.
+- **PR D:** steps 7 and 8, checks and clean-up.
+
+PR C may be split if it gets too big to review. A file that moves leaves a short "Moved to …" note behind until step 8.
 
 | Step | What | Done when |
 |---|---|---|
-| 0 | The owner creates `sairam7775/bento-private` and clones it next to this repo; folders set up | `gh repo view sairam7775/bento-private --json visibility` says PRIVATE, and the vault opens in Obsidian |
+| 0 | The owner creates `sairam7775/bento-private` and clones it next to this repo; folders set up. The `sairam7775-vault` worktree on `docs/owner` is created | `gh repo view sairam7775/bento-private --json visibility` says PRIVATE, and both vaults open in Obsidian |
 | 1 | **Migration manifest** (`90-archive/migration-manifest.md`): every existing doc and every section of the big ones (`spec.html`, `bento/README.md`, `bento/CLAUDE.md`, `PROGRESS.md`, `design/`, `docs/design-references/`, `docs/superpowers/`), with its source, destination, any part kept where it is and why, and a status; plus every contradiction between them | Every doc and section has a row, and each contradiction has a proposed answer |
 | 2 | Skeleton: start page, folders, templates, "which file wins" page, minimal Obsidian settings, Vercel ignored build step | Opens cleanly in Obsidian, and every link works |
 | 3 | Pilot: Trip sharing documented end to end with the feature template | **The owner** confirms a third person would understand it |
 | 4 | `spec.html` moved section by section, with a map from old § numbers to new notes; disagreements become open questions | Every § is mapped; the open questions are answered by the owner |
-| 5 | Rule inventory, then `bento/CLAUDE.md` slimmed to one line per rule with links; `bento/AGENTS.md` pointers updated | Every inventory rule has its one-liner and its full note; fresh `claude -p` and `codex exec` from the repo root and from `bento/` quote sample rules |
+| 5 | `bento/CLAUDE.md` trimmed: reasons, history and long detail move to notes; every rule stays with its conditions and exceptions, plus a link; `bento/AGENTS.md` pointers updated | Every rule in the manifest's rule list is still in `bento/CLAUDE.md` with the same conditions; fresh `claude -p` and `codex exec` from the repo root and from `bento/` quote sample rules with their exceptions |
 | 6 | `PROGRESS.md` becomes one status page. `bento/README.md` keeps a short quick start, its setup and deploy parts move to `50-operations/`, and its technical parts to `30-software/`. Design docs sorted, with `docs/design-references/` going to `20-design/inspiration/`. Runbooks written (Supabase region move, Gmail SMTP); non-functional notes get targets and evidence | Every manifest row for these sources is done; no competing status pages remain |
 | 7 | PR template, GitHub Action, docs rule in all three root files (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, changed together) and in `bento/CLAUDE.md`, Vercel ignore command, first monthly review | Each check's failing test case fails and then passes; a docs-only commit skips the Vercel build |
 | 8 | `spec.html` and old plans move to `90-archive/`, marked historical; inbound links updated; "Moved to …" notes removed once nothing links to them | Every manifest row is done, and a link check of the whole repo finds no link to a moved file |
@@ -173,6 +189,7 @@ Each step is one PR, reviewed by Codex. A file that moves leaves a short "Moved 
 |---|---|
 | Confidential text lands in the public vault | Separate repos; the public vault never auto-pushes; every public change goes through a PR whose full diff, including attachments, is checked; Obsidian's local settings and plugin data are never committed |
 | Notes drift from the code again | Docs impact statement in every PR; monthly review; the code-path comment if that proves not enough |
-| Slimming `CLAUDE.md` makes agents miss a rule or its exceptions | Rule inventory before and after; rules stay as one-liners in the file; fresh-session tests from both folders |
+| Trimming `CLAUDE.md` makes agents miss a rule or its exceptions | Rules and their exceptions stay in the file, and only explanations move; the manifest's rule list is checked before and after; fresh-session tests from both folders |
+| The owner's draft edits clash with agents' merged changes | A dedicated vault copy on its own branch; no automatic pulls; "Refresh my docs" stashes and reports clashes instead of writing conflict markers |
 | Moving `spec.html` loses intent | The § map, plus open questions instead of silent choices; nothing archived until mapped |
 | Vault upkeep becomes a burden | Few plugins; templates; agents do most of the writing as part of their PRs |
