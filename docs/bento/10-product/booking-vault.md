@@ -40,7 +40,7 @@ The traveller keeps their bookings in the trip's **vault** (flights, hotels, tra
 ## What it doesn't do
 
 - Fetch bookings from anywhere, or connect to airline or hotel accounts.
-- Show a booking reference in lists (they're masked, such as `•••902`), or put one in a model prompt or a log.
+- Show a booking reference in lists (they're masked, such as `•••902`), or put a stored one in a model prompt or a log.
 
 ## Failure behaviour
 
@@ -50,7 +50,8 @@ The traveller keeps their bookings in the trip's **vault** (flights, hotels, tra
 ## Safety
 
 - References are encrypted at rest (AES-256-GCM, a random nonce per record), decrypted only to show the traveller their own booking.
-- A pasted confirmation is first stripped of references, emails, phone numbers and long card or ticket numbers. It's then read by a model call with **no tools, no trip state and no history**, so a malicious paste has nothing to steer. The result is checked against a schema and only fills a form the traveller reviews.
+- A pasted confirmation is first stripped of **labelled** references, emails, phone numbers and long card or ticket numbers (`redact.ts`). This is best effort: an unlabelled reference can still reach the model, and the reader accepts one it finds. It's read by a model call with **no tools, no trip state and no history**, so a malicious paste has nothing to steer. The result is checked against a schema and only fills a form the traveller reviews.
+- **Stored** references never go into a prompt or a log. Text the traveller types into the **chat** isn't redacted, so a reference pasted into the chat reaches the chat model.
 
 More in [privacy](../40-non-functional/privacy.md) and [security](../40-non-functional/security.md).
 

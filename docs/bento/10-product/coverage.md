@@ -18,9 +18,11 @@ The target is every destination in Japan, about 2,000 records (decision [D2](../
 
 | Tier | Means | What the planner does |
 |---|---|---|
-| **deep** | 25+ verified places | Builds whole day plans |
-| **outline** | 8+ verified places | Suggests places; won't claim a day is complete |
-| **stub** | Name and location only | Says plainly it doesn't know the place well enough yet |
+| **deep** | 25+ verified places | Builds day plans |
+| **outline** | 8+ verified places | Also builds day plans today, from fewer places (see below) |
+| **stub** | Name and location only | Refuses to plan, and says plainly it doesn't know the place well enough yet |
+
+*The original spec meant outline cities to get suggestions only, never a "complete" day plan. The code refuses only stub cities (`plan_days` and `replanDay` in `bento/src/lib/bento-man/tools.ts`), so outline cities are planned too. Listed in [open questions](../00-start/open-questions.md).*
 
 **The tier is enforced:** the admin page refuses to promote a city without enough verified places (`MIN_VERIFIED_FOR` in `bento/src/app/admin/actions.ts`: deep 25, outline 8). Verifying places never changes a city's tier by itself; promoting is a separate step on the city page.
 
@@ -36,7 +38,7 @@ The target is every destination in Japan, about 2,000 records (decision [D2](../
 - A traveller always sees how well Bento knows each city, in the same words in the city chips and from Bento Man.
 - Bento Man never says "tier" or "stub". The model is told coverage in the chips' words (`coverageWords`), and replies that use internal words fail the voice check.
 - A city can't be promoted beyond what its verified places support.
-- The planner never builds a full day plan for a city that isn't deep.
+- The planner never builds a day plan for a stub city.
 
 ## What it doesn't do
 

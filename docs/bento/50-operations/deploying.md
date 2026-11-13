@@ -33,7 +33,8 @@ Access to the Vercel team `bento-box` and the Supabase project.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → API keys (secret) | **Server only**: it bypasses every RLS policy |
 | `BENTO_BOOKING_REF_KEY` | `openssl rand -base64 32` | Encrypts booking references. **Don't lose it:** rotating it makes every stored reference unreadable |
 | `BENTO_MAN_PROVIDER`, `BENTO_MAN_MODEL`, `BENTO_MAN_EFFORT`, a model API key | The model provider | See [Bento Man (software)](../30-software/bento-man.md) |
-| `BENTO_MONTHLY_SPEND_CAP_USD` | Owner's choice | Defaults to 20 ([costs](../40-non-functional/costs.md)) |
+| `BENTO_MONTHLY_SPEND_CAP_USD` | Owner's choice | AI spend per user per month; defaults to 20 ([costs](../40-non-functional/costs.md)) |
+| `BENTO_GLOBAL_MONTHLY_SPEND_CAP_USD` | Owner's choice | AI spend for everyone together per month; defaults to 50 |
 | `BENTO_GOOGLE_SIGN_IN` | `1` to show "Continue with Google" | Only after the Google provider is set up in Supabase |
 | `NEXT_PUBLIC_SITE_URL` | The live address | Production |
 | `NEXT_PUBLIC_POSTHOG_KEY`, `POSTHOG_PERSONAL_API_KEY`, `POSTHOG_PROJECT_ID` | PostHog (EU) | Analytics and its deletion ([privacy](../40-non-functional/privacy.md)) |

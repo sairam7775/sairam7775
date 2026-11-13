@@ -2,7 +2,7 @@
 
 This is `docs/PROGRESS.md` as it stood on 2026-11-13, moved here unchanged as history. It is **not maintained**. The current state is on the [status page](../00-start/status.md).
 
-Known corrections (from the [migration manifest](migration-manifest.md)): the "Last updated 16 September 2026" header is older than parts of the content (C3), and the multi-day apply described below as not atomic was made atomic by migration 0015 (C7).
+Edited when archived: the owner's email address was replaced with `you@example.com`. Known corrections (from the [migration manifest](migration-manifest.md)): the "Last updated 16 September 2026" header is older than parts of the content (C3), and the multi-day apply described below as not atomic was made atomic by migration 0015 (C7).
 
 ---
 
@@ -166,7 +166,7 @@ Three things need you, and nothing in the product can do them.
    verified places; the batch is sized so all four cities can clear it.
 
    ```
-   npx tsx scripts/grant-admin.ts sai.ram7775@gmail.com
+   npx tsx scripts/grant-admin.ts you@example.com
    ```
 
 3. **Run the eval.** 31 scenarios against the real model, graded

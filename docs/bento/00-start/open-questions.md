@@ -33,6 +33,10 @@ Where the original spec, the notes and the code disagree, or where something pla
 | # | Gap | Note |
 |---|---|---|
 | Q11 | "Make a new link" is two steps; if the second fails, the trip is left not shared | [trip sharing](../10-product/trip-sharing.md); a code fix would make it one database step |
+| Q12 | Outline cities get full day plans, though the spec meant suggestions only | [coverage](../10-product/coverage.md): decide whether outline cities should be planned |
+| Q13 | An older proposal can overwrite a day the traveller edited by hand since | [proposals and diffs](../10-product/proposals-and-diffs.md): only date proposals check for staleness |
+| Q14 | The Bento Man evaluation's model costs aren't counted against the caps | [costs](../40-non-functional/costs.md) |
+| Q15 | Platforms aren't part of train legs yet | [transit](../30-software/transit.md) |
 
 ## From the spec's own "still open" list
 

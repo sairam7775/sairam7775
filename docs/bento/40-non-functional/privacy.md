@@ -22,7 +22,7 @@ Bento is run from Japan and stores its data in Japan (Tokyo); Japan's Act on the
 | P2 | **Analytics only with consent, never content.** Analytics start only when the consent cookie says yes; "no" clears their storage. Bento sends names of events, counts, durations, ids, true/false values and copy keys, never chat text, booking titles or references, emails, names or birth dates. Autocapture keeps no element text; replays mask all text and inputs |
 | P3 | **Account deletion removes everything of theirs:** every user table cascades. Spend records (`api_usage`) are kept but unlinked, because the spending cap sums them. Analytics data is deleted too when configured, retried daily up to ten times if it fails, and the person is told the truth about it |
 | P4 | **16 and over:** every way to create an account passes the age screen; the birth date is never stored |
-| P5 | **Booking references** are never shown in lists, logged or put in a model prompt; pasted confirmations are redacted before a model reads them |
+| P5 | **Stored booking references** are never shown in lists, logged or put in a model prompt. Pasted confirmations are redacted (labelled references, emails, phone and card numbers) before a model reads them, as a best effort; text typed into the chat isn't redacted |
 | P6 | **Names** are optional, used only for greetings, and never sent to Bento Man, analytics or admin pages |
 | P7 | **Shared links** start no analytics, send no referrer, and show nothing about the owner except their pace ([trip sharing](../10-product/trip-sharing.md)) |
 | P8 | **Map links** send nothing to Google until the traveller opens one |

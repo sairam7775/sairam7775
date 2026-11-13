@@ -16,6 +16,6 @@ Store every cost in yen; convert only when showing it, with daily rates and the 
 A stale rate can never be stored in the data; staleness is visible.
 
 ## Today
-In effect: costs are stored in yen and converted on read (`fx_rates`).
+In effect for places, plans and budgets: stored in yen and converted on read (`fx_rates`). **Booking costs are the exception:** they keep the amount and currency the traveller entered, with a yen value only when they entered yen, and are converted on read ([data model](../30-software/data-model.md)).
 
 Source: the original spec, §02 (decision D12). All decisions: [70-decisions](README.md).

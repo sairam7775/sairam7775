@@ -10,11 +10,11 @@ last_reviewed: 2026-11-13
 
 # Transit: train legs a first-timer can follow
 
-"20 minutes" is useless to someone who has never used a Japanese station. The leg a traveller can follow reads:
+"20 minutes" is useless to someone who has never used a Japanese station. **The goal** is a leg a traveller can follow, like this example from the spec:
 
 > JR Nara Line from Kyoto Station, platform 8–10, 2 stops to Inari, 5 min, ¥150, IC card, no reservation — but skip the Rapid, it doesn't stop at Inari.
 
-That last clause is the difference between a plan and a guide.
+That last clause is the difference between a plan and a guide. **Today** a leg shows the line and service, stops, minutes, a fare (exact for intercity legs, otherwise an estimated band, `~¥`) and notes on the hops. **Platforms aren't modelled yet.**
 
 ## How it works
 
