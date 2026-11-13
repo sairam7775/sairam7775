@@ -163,7 +163,7 @@ Each step is one PR, reviewed by Codex. A file that moves leaves a short "Moved 
 ## Not in scope
 
 - Japanese versions (later, if partners need them).
-- Generating docs from code, beyond the advisory check.
+- Generating docs from code, and the deferred code-path comment.
 - Docs for `firebase-campaign-tool`, which can follow the same pattern later.
 - A public docs website. Reading on GitHub and in Obsidian is enough for now.
 
