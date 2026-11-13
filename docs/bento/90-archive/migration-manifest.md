@@ -15,24 +15,24 @@ Destination paths are relative to `docs/bento/`. Design: [the vault design](../.
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| spec.html | §01 What this actually is | 10-product/vision.md; summary on docs/README.md |  | todo |
-| spec.html | §02 Decisions taken (D1–D16) | 70-decisions/, one note per decision |  | todo |
-| spec.html | §03 The traveller's line | 10-product/traveller-journey.md, plus links to each feature note |  | todo |
-| spec.html | §04 Division of labour | 30-software/division-of-labour.md |  | todo |
-| spec.html | §05 The engine | 30-software/engine.md |  | todo |
-| spec.html | §06 Coverage, all of Japan, honestly | 10-product/coverage.md |  | todo |
-| spec.html | §07 What "local guide" means in the data | 30-software/place-data.md |  | todo |
-| spec.html | §07 Transit legs are described, not timed | 30-software/transit.md |  | todo |
-| spec.html | §08 Feedback, diffs not regeneration | 10-product/proposals-and-diffs.md |  | todo |
-| spec.html | §09 Architecture | 30-software/architecture.md |  | todo |
-| spec.html | §10 How 2,000 records get written | 50-operations/curation.md |  | todo |
-| spec.html | §11 Gaps the traveller can understand | 10-product/booking-vault.md |  | todo |
-| spec.html | §12 Japan rules the engine must encode | 30-software/japan-rules.md |  | todo |
-| spec.html | §13 Build order | 90-archive (historical); current state in 00-start/status.md |  | todo |
-| spec.html | §14 Cost, and the mobile path | 40-non-functional/costs.md; 60-direction/mobile.md |  | todo |
-| spec.html | §15 Risks | 60-direction/risks.md (product and engineering risks); business risks to bento-private |  | todo |
-| spec.html | §16 User zero | **bento-private** (a personal travel profile, not for a public repo); the public note keeps only "designed against a real first traveller" |  | todo |
-| spec.html | §17 Still open | 00-start/open-questions.md |  | todo |
+| spec.html | §01 What this actually is | 10-product/vision.md; summary on docs/README.md |  | done |
+| spec.html | §02 Decisions taken (D1–D16) | 70-decisions/, one note per decision |  | done |
+| spec.html | §03 The traveller's line | 10-product/traveller-journey.md, plus links to each feature note |  | done |
+| spec.html | §04 Division of labour | 30-software/division-of-labour.md |  | done |
+| spec.html | §05 The engine | 30-software/engine.md |  | done |
+| spec.html | §06 Coverage, all of Japan, honestly | 10-product/coverage.md |  | done |
+| spec.html | §07 What "local guide" means in the data | 30-software/place-data.md |  | done |
+| spec.html | §07 Transit legs are described, not timed | 30-software/transit.md |  | done |
+| spec.html | §08 Feedback, diffs not regeneration | 10-product/proposals-and-diffs.md |  | done |
+| spec.html | §09 Architecture | 30-software/architecture.md |  | done |
+| spec.html | §10 How 2,000 records get written | 50-operations/curation.md |  | done |
+| spec.html | §11 Gaps the traveller can understand | 10-product/booking-vault.md |  | done |
+| spec.html | §12 Japan rules the engine must encode | 30-software/japan-rules.md |  | done |
+| spec.html | §13 Build order | 90-archive (historical); current state in 00-start/status.md |  | done |
+| spec.html | §14 Cost, and the mobile path | 40-non-functional/costs.md; 60-direction/mobile.md |  | done |
+| spec.html | §15 Risks | 60-direction/risks.md (product and engineering risks); business risks to bento-private |  | done |
+| spec.html | §16 User zero | **bento-private** (a personal travel profile, not for a public repo); the public note keeps only "designed against a real first traveller" |  | done |
+| spec.html | §17 Still open | 00-start/open-questions.md |  | done |
 
 ### `bento/README.md` (14 sections)
 
