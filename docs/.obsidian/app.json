@@ -1,0 +1,6 @@
+{
+  "useMarkdownLinks": true,
+  "newLinkFormat": "relative",
+  "attachmentFolderPath": "bento/_attachments",
+  "alwaysUpdateLinks": true
+}
