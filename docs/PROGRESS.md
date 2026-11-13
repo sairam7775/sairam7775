@@ -7,7 +7,7 @@ for decisions, and section numbers here refer to it. Working notes for
 anyone writing code live in [`../bento/CLAUDE.md`](../bento/CLAUDE.md).
 
 Branch: `claude/japan-travel-guide-bot-s5crhl`. Supabase project
-`xjlrnhwmvlcidtnobrsg` (ap-south-1). Migrations `0001`–`0012` applied.
+`pwlxwncjzgrzvmhhrrap` (ap-northeast-1, Tokyo; moved from Mumbai `xjlrnhwmvlcidtnobrsg` in November 2026). Migrations `0001`–`0029` applied.
 Not deployed anywhere yet; the Vercel config and the steps are in the
 app's README under Deploying.
 

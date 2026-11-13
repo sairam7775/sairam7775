@@ -151,9 +151,9 @@ directory the build fails before it reads any of this — either merge the
 app into the default branch or name the working branch under Settings →
 Git → Production Branch.
 
-`vercel.json` pins the functions to `bom1` (Mumbai) because the Supabase
-project is in `ap-south-1`. One chat turn makes several round trips to the
-database, so a function in Washington talking to a database in Mumbai adds
+`vercel.json` pins the functions to `hnd1` (Tokyo) because the Supabase
+project is in `ap-northeast-1`. One chat turn makes several round trips to the
+database, so a function in Washington talking to a database in Tokyo adds
 a second of latency per turn for no reason. Move both together or neither.
 
 **Environment variables**, all five, on every environment you deploy:
