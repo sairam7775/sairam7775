@@ -1,6 +1,6 @@
 # Map of the original spec's sections
 
-Older code comments, commits and notes refer to the original spec (`docs/spec.html`) by § number or decision number. This map says where each now lives.
+Older code comments, commits and notes refer to the original spec ([spec.html](spec.html), formerly `docs/spec.html`) by § number or decision number. This map says where each now lives.
 
 | Old reference | Was | Now |
 |---|---|---|

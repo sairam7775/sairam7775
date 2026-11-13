@@ -625,6 +625,8 @@ Explained in `../docs/bento/30-software/conventions.md`.
   only that plain module, so it stays framework-free. Not in it: Bento
   Man's instructions and trip state (`prompt.ts`, `context.ts`, tool
   descriptions — changing those needs the eval) and the admin pages.
+- A change to behaviour updates the docs note named under its section here, in the
+  same PR, with a Docs impact line (the "Bento docs" rule in `../AGENTS.md`).
 - Server Components by default; `"use client"` only where interaction needs it.
 - Server actions for mutations, with Zod validation at the boundary.
 - Tailwind v4 theme tokens in `globals.css` — use `text-ink-2`, `bg-surface`,

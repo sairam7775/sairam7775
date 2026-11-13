@@ -10,7 +10,7 @@ Edited when archived: the owner's email address was replaced with `you@example.c
 
 Last updated 16 September 2026, after P8. Every phase in §13 has shipped.
 
-The design document is [`spec.html`](../../spec.html); it is the source of truth
+The design document is [`spec.html`](spec.html); it is the source of truth
 for decisions, and section numbers here refer to it. Working notes for
 anyone writing code live in [`../bento/CLAUDE.md`](../../../bento/CLAUDE.md).
 
