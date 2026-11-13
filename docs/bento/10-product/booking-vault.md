@@ -60,4 +60,4 @@ More in [privacy](../40-non-functional/privacy.md) and [security](../40-non-func
 - Encryption: `vault/crypto.ts`; redaction before parsing: `vault/redact.ts`; the reader: `vault/parse.ts`.
 - Agent rules: [bento/CLAUDE.md](../../../bento/CLAUDE.md), "The vault (P8)".
 
-Source: spec §11; `bento/README.md` "The vault"; `docs/PROGRESS.md` "What P8 actually holds".
+Source: spec §11; `bento/README.md` "The vault"; the progress history, "What P8 actually holds".
