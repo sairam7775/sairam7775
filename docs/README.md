@@ -5,14 +5,19 @@ status: accepted
 
 # Bento
 
-Bento is a Japan trip planner for first-time and returning travellers. You talk to a guide, **Bento Man**, and get a plan whose train times, opening hours and closures hold, and which says plainly what it doesn't know.
+Bento is a Japan trip planner for first-time and returning travellers. You talk to a guide, **Bento Man**, and get a day-by-day plan built around opening hours, closures, travel time and pace, which says plainly what it doesn't know.
 
 It's three parts, not one chat box:
 1. **Bento Man,** the guide you talk to. A rented language model handles the conversation and the explanations only.
 2. **The planner,** Bento's own code. It scores places for this traveller and builds days that respect opening hours, closures, travel time and pace. It's deterministic and testable, and it can explain itself.
 3. **The booking vault.** Bookings the traveller adds are matched to nights and legs, and anything missing is named in plain words.
 
-The bet: anyone can generate a Japan itinerary, but almost nobody makes one where the travel times are real, the constraints hold, and the plan admits what it doesn't know.
+**The goal:** anyone can generate a Japan itinerary, but almost nobody makes one where the travel times are worked out, the constraints hold, and the plan admits what it doesn't know.
+
+**Where it stands:**
+- Bento's place and train information is seed data, checked by a person before travellers see it.
+- Travel times come from Bento's own train network, which covers the cities Bento plans. A stop with no nearby station gets a flat estimate and a warning.
+- Some fares aren't priced yet, and are shown as unpriced, never as free.
 
 - **Today:** see [what works now](bento/00-start/status.md).
 - **Known limits:** see the status page and [open questions](bento/00-start/README.md).
