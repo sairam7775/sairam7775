@@ -1,0 +1,5 @@
+# Obsidian: share only the vault's settings, never workspace state or plugin data.
+docs/.obsidian/*
+!docs/.obsidian/app.json
+!docs/.obsidian/core-plugins.json
+!docs/.obsidian/templates.json
