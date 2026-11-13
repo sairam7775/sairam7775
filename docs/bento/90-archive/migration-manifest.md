@@ -115,7 +115,7 @@ It stays where it is, and its rules stay in it **with their conditions and excep
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
 | bento/AGENTS.md | Whole file |  | Codex's entry point; its PROGRESS.md pointer changes to the start page and status page (Task 9) | done |
-| AGENTS.md, CLAUDE.md, GEMINI.md (root) | Whole files |  | Identical agent entry points; the docs rule is added in Task 10 | todo |
+| AGENTS.md, CLAUDE.md, GEMINI.md (root) | Whole files |  | Identical agent entry points; the docs rule is added in Task 10 | done |
 | README.md (root) | Whole file |  | Links docs/README.md | done |
 | design/README.md | Whole file | 20-design/README.md (screens list, with status) | A short pointer stays next to the mock-ups | done |
 | design/Main.dc.html | Mock-up |  | Stays; listed in 20-design/README.md with its status | done |
@@ -131,15 +131,15 @@ It stays where it is, and its rules stay in it **with their conditions and excep
 | docs/design-references/airbnb.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
 | docs/design-references/linear.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
 | docs/design-references/notion.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
-| docs/superpowers/specs/2026-10-19-bento-man-character-design.md | Dated design | 20-design/bento-man-figure.md (current state) | The dated design stays; linked from 90-archive/README.md | todo |
+| docs/superpowers/specs/2026-10-19-bento-man-character-design.md | Dated design | 20-design/bento-man-figure.md (current state) | The dated design stays; linked from 90-archive/README.md | done |
 | docs/superpowers/specs/2026-10-19-bento-man/ (12 art files) | Art for that design |  | Stays with its design | kept |
-| docs/superpowers/plans/2026-10-19-bento-man-character.md | Dated plan |  | Stays; linked from 90-archive/README.md | todo |
-| docs/superpowers/specs/2026-10-23-place-backgrounds-design.md | Dated design | 30-software/place-data.md (current state) | The dated design stays; linked from 90-archive/README.md | todo |
-| docs/superpowers/plans/2026-10-23-place-backgrounds.md | Dated plan |  | Stays; linked from 90-archive/README.md | todo |
+| docs/superpowers/plans/2026-10-19-bento-man-character.md | Dated plan |  | Stays; linked from 90-archive/README.md | done |
+| docs/superpowers/specs/2026-10-23-place-backgrounds-design.md | Dated design | 30-software/place-data.md (current state) | The dated design stays; linked from 90-archive/README.md | done |
+| docs/superpowers/plans/2026-10-23-place-backgrounds.md | Dated plan |  | Stays; linked from 90-archive/README.md | done |
 | docs/superpowers/specs/2026-11-13-bento-docs-vault-design.md | This vault's design |  | Stays; linked from 00-start/which-file-wins.md | kept |
 | docs/superpowers/plans/2026-11-13-bento-docs-vault.md | This vault's plan |  | Stays | kept |
-| docs/spec.html | Whole file | 90-archive/spec.html, once every section row above is done |  | todo |
-| docs/PROGRESS.md | Whole file | Replaced by a "Moved to" note (done); removed in Task 11 |  | todo |
+| docs/spec.html | Whole file | 90-archive/spec.html (moved 2026-11-13) |  | done |
+| docs/PROGRESS.md | Whole file | Replaced by a "Moved to" note, then removed (2026-11-13) |  | done |
 
 ## Rules in bento/CLAUDE.md
 
