@@ -162,3 +162,65 @@ test("fails when agent copies differ", () => {
   const differ = repo({ "AGENTS.md": "x", "CLAUDE.md": "x", "GEMINI.md": "y" });
   assert.deepEqual(rules(checkAgentCopies(differ)), ["agent-copies"]);
 });
+
+// --- PR #67 review (Codex A4–A7) ---
+
+test("checks links with single-quoted and parenthesised titles", () => {
+  const body = "[a](missing1.md 'Title') [b](missing2.md (Title)) [c](missing3.md \"Title\")\n";
+  assert.deepEqual(rules(check({ [NOTE]: FEATURE + body })), ["link", "link", "link"]);
+});
+
+test("accepts a file name with balanced parentheses", () => {
+  const problems = check({
+    [NOTE]: FEATURE + "[p](file(name).md)\n",
+    "docs/bento/10-product/file(name).md": "x",
+  });
+  assert.deepEqual(problems, []);
+});
+
+test("checks reference-style link definitions", () => {
+  const body = "See [the note][ref].\n\n[ref]: missing.md \"Title\"\n";
+  assert.deepEqual(rules(check({ [NOTE]: FEATURE + body })), ["link"]);
+});
+
+test("a longer fence is not closed by a shorter one inside it", () => {
+  const body = "````md\n```\n[gone](missing.md)\n```\n````\n[real](also-missing.md)\n";
+  const problems = check({ [NOTE]: FEATURE + body });
+  assert.deepEqual(problems.map((p) => p.message.split(" ")[0]), ["also-missing.md"]);
+});
+
+test("reads a block list whose items are not indented", () => {
+  const fm = parseFrontmatter("---\ncode:\n- a/b\n- c/d\n---\n");
+  assert.deepEqual(fm.data.code, ["a/b", "c/d"]);
+});
+
+test("ignores a comment after a value", () => {
+  assert.equal(parseFrontmatter("---\ntype: overview # the start page\n---\n").data.type, "overview");
+});
+
+test("only an exact --- line closes the properties", () => {
+  const fm = parseFrontmatter("---\ntype: overview\n----\nstatus: accepted\n---\n");
+  assert.equal(fm.data.status, "accepted");
+});
+
+test("checks a link in the supersedes property", () => {
+  const head = "---\ntype: decision\nstatus: accepted\nsupersedes: old-decision.md\n---\n";
+  assert.deepEqual(rules(check({ [NOTE]: head })), ["link"]);
+});
+
+test("a link must point at a file, not a folder", () => {
+  const problems = check({ [NOTE]: FEATURE + "[dir](sub/)\n", "docs/bento/10-product/sub/x.md": "x" });
+  assert.deepEqual(rules(problems), ["link"]);
+});
+
+test("fails a dangling symlink", (t) => {
+  const root = repo({ [NOTE]: FEATURE + "[s](link.md)\n" });
+  try {
+    fs.symlinkSync(path.join(root, "nowhere.md"), path.join(root, "docs/bento/10-product/link.md"));
+  } catch {
+    t.skip("symlinks not permitted here");
+    return;
+  }
+  const problems = checkNote(NOTE, fs.readFileSync(path.join(root, NOTE), "utf8"), root);
+  assert.deepEqual(rules(problems), ["link"]);
+});
