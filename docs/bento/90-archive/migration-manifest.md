@@ -80,10 +80,10 @@ Destination paths are relative to `docs/bento/`. Design: [the vault design](../.
 | bento/DESIGN.md | Elevation |  | Stays | kept |
 | bento/DESIGN.md | Components |  | Stays | kept |
 | bento/DESIGN.md | Motion |  | Stays; 40-non-functional/accessibility.md links it for reduced motion | kept |
-| bento/DESIGN.md | Bento Man, the figure | 20-design/bento-man-figure.md (explains); DESIGN.md keeps the rules |  | todo |
-| bento/DESIGN.md | Seasonal backdrop | 20-design/seasonal-backdrop.md (explains); DESIGN.md keeps the rules |  | todo |
-| bento/DESIGN.md | Voice | 20-design/voice.md |  | todo |
-| bento/DESIGN.md | Known Gaps | 20-design/README.md, open design questions |  | todo |
+| bento/DESIGN.md | Bento Man, the figure | 20-design/bento-man-figure.md (explains); DESIGN.md keeps the rules |  | done |
+| bento/DESIGN.md | Seasonal backdrop | 20-design/seasonal-backdrop.md (explains); DESIGN.md keeps the rules |  | done |
+| bento/DESIGN.md | Voice | 20-design/voice.md |  | done |
+| bento/DESIGN.md | Known Gaps | 20-design/README.md, open design questions |  | done |
 
 ### `bento/CLAUDE.md` (16 sections)
 
@@ -117,20 +117,20 @@ It stays where it is, and its rules stay in it **with their conditions and excep
 | bento/AGENTS.md | Whole file |  | Codex's entry point; its PROGRESS.md pointer changes to the start page and status page (Task 9) | todo |
 | AGENTS.md, CLAUDE.md, GEMINI.md (root) | Whole files |  | Identical agent entry points; the docs rule is added in Task 10 | todo |
 | README.md (root) | Whole file |  | Links docs/README.md | done |
-| design/README.md | Whole file | 20-design/README.md (screens list, with status) | A short pointer stays next to the mock-ups | todo |
-| design/Main.dc.html | Mock-up |  | Stays; listed in 20-design/README.md with its status | todo |
-| design/DayPhone.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Route.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Gaps.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Vault.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Onboarding.dc.html | Mock-up |  | Stays; listed with its status | todo |
-| design/Loader.dc.html | Mock-up |  | Stays; listed with its status | todo |
+| design/README.md | Whole file | 20-design/README.md (screens list, with status) | A short pointer stays next to the mock-ups | done |
+| design/Main.dc.html | Mock-up |  | Stays; listed in 20-design/README.md with its status | done |
+| design/DayPhone.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Route.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Gaps.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Vault.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Onboarding.dc.html | Mock-up |  | Stays; listed with its status | done |
+| design/Loader.dc.html | Mock-up |  | Stays; listed with its status | done |
 | design/_shared_head.txt | Shared fonts and styles for the mock-ups |  | Stays (the mock-ups need it) | kept |
 | design/canvas.json | Canvas layout of the mock-ups |  | Stays (the design tool needs it) | kept |
-| docs/design-references/README.md | Whole file | 20-design/inspiration/README.md |  | todo |
-| docs/design-references/airbnb.DESIGN.md | Reference | 20-design/inspiration/ |  | todo |
-| docs/design-references/linear.DESIGN.md | Reference | 20-design/inspiration/ |  | todo |
-| docs/design-references/notion.DESIGN.md | Reference | 20-design/inspiration/ |  | todo |
+| docs/design-references/README.md | Whole file | 20-design/inspiration/README.md |  | done |
+| docs/design-references/airbnb.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
+| docs/design-references/linear.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
+| docs/design-references/notion.DESIGN.md | Reference | 20-design/inspiration/ |  | done |
 | docs/superpowers/specs/2026-10-19-bento-man-character-design.md | Dated design | 20-design/bento-man-figure.md (current state) | The dated design stays; linked from 90-archive/README.md | todo |
 | docs/superpowers/specs/2026-10-19-bento-man/ (12 art files) | Art for that design |  | Stays with its design | kept |
 | docs/superpowers/plans/2026-10-19-bento-man-character.md | Dated plan |  | Stays; linked from 90-archive/README.md | todo |
