@@ -15,6 +15,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { deleteAccountData, postHogDeleter, type AnalyticsPending } from "@/lib/account/delete";
 import { googleOnly } from "@/lib/account/identity";
 import { SETTINGS } from "@/app/settings/paths";
+import { authGate, clientIp } from "@/lib/guards/auth-limit";
+import { linkFailedPath, markLanding } from "@/lib/auth-landing";
+import { openPendingSignIn, PENDING_SIGN_IN_COOKIE, PENDING_SIGN_IN_PATH } from "@/lib/pending-sign-in";
 
 const credentials = z.object({
   email: z.email(copy.auth.errors.badEmail),
@@ -31,6 +34,12 @@ async function origin() {
   return siteOrigin(await headers());
 }
 
+/** What a refused attempt is told: too many tries, or that the check
+ *  itself failed (the attempt is refused either way). */
+function gateMessage(gate: "limited" | "error") {
+  return gate === "limited" ? copy.auth.supabase.over_request_rate_limit : copy.auth.serverError;
+}
+
 export async function signInWithPassword(formData: FormData) {
   const next = safeNext(formData.get("next"));
   const parsed = credentials.safeParse({
@@ -41,6 +50,11 @@ export async function signInWithPassword(formData: FormData) {
   if (!parsed.success) {
     redirect(backTo("/sign-in", parsed.error.issues[0].message, next));
   }
+
+  // Counted per visitor and per email before Supabase is asked, so password
+  // guessing is refused whichever address it comes from.
+  const gate = await authGate([["signin_ip", clientIp(await headers())], ["signin_email", parsed.data.email]]);
+  if (gate !== "ok") redirect(backTo("/sign-in", gateMessage(gate), next));
 
   // A new sign-in is never a password reset, whatever was left in this browser.
   (await cookies()).delete(PASSWORD_RESET_COOKIE);
@@ -97,6 +111,9 @@ export async function signUpWithPassword(formData: FormData) {
     redirect(backTo("/sign-up", parsed.error.issues[0].message));
   }
 
+  const gate = await authGate([["signup_ip", clientIp(await headers())]]);
+  if (gate !== "ok") redirect(backTo("/sign-up", gateMessage(gate)));
+
   // Optional: kept only when given, so a later Google sign-in can still
   // offer its first name (lib/account/name.ts).
   const name = cleanName(formData.get("name"));
@@ -150,6 +167,14 @@ export async function requestPasswordReset(formData: FormData) {
   const parsed = z.email(copy.auth.errors.badEmail).safeParse(formData.get("email"));
   if (!parsed.success) redirect(backTo("/forgot-password", parsed.error.issues[0].message));
 
+  // Counted whether or not the address has an account, so a refusal gives
+  // nothing away either. The email's bucket is per visitor too, so nobody
+  // else can use up a person's resets: a reset link is their way back in
+  // when someone has run their sign-in bucket dry.
+  const ip = clientIp(await headers());
+  const gate = await authGate([["reset_ip", ip], ["reset_email", `${parsed.data}|${ip}`]]);
+  if (gate !== "ok") redirect(backTo("/forgot-password", gateMessage(gate)));
+
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data, {
     redirectTo: `${await origin()}/auth/callback?next=${encodeURIComponent("/settings/password")}`,
@@ -186,6 +211,9 @@ export async function updatePassword(formData: FormData) {
   // Changing it from Settings asks for the current one, so a session left
   // open on a shared computer can't be used to take the account over.
   if (!reset) {
+    // Checking the current password is a way to guess it, so it is counted.
+    const gate = await authGate([["password_user", user.id]]);
+    if (gate !== "ok") back(gateMessage(gate));
     const current = String(formData.get("current") ?? "");
     const check = await supabase.auth.signInWithPassword({ email: user.email ?? "", password: current });
     if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : copy.auth.errors.wrongCurrent);
@@ -195,6 +223,32 @@ export async function updatePassword(formData: FormData) {
   if (error) back(authErrorMessage(error));
   jar.delete(PASSWORD_RESET_COOKIE);
   redirect(`${SETTINGS.personal}?updated=password`);
+}
+
+/** "Continue" on /auth/confirm: the email link's held sign-in
+ *  (lib/pending-sign-in.ts) becomes this browser's session — but only for
+ *  the account that page showed. Another link opened in a second tab
+ *  replaces what's held, and must not ride on a Continue meant for the
+ *  first; the page is shown again, with the account now waiting. */
+export async function confirmSignIn(formData: FormData) {
+  const jar = await cookies();
+  const pending = openPendingSignIn(jar.get(PENDING_SIGN_IN_COOKIE)?.value);
+  if (pending && formData.get("account") !== pending.userId) redirect("/auth/confirm");
+  jar.delete({ name: PENDING_SIGN_IN_COOKIE, path: PENDING_SIGN_IN_PATH });
+  if (!pending) redirect(backTo("/sign-in", copy.auth.errors.signInLinkUsed));
+
+  const next = safeNext(pending.next);
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.refreshSession({ refresh_token: pending.refreshToken });
+  if (error || !data.user) redirect(linkFailedPath(next));
+  markLanding(jar, next, data.user.id);
+  redirect(next);
+}
+
+/** "That's not me": the held sign-in is dropped, and nothing was signed in. */
+export async function cancelSignIn() {
+  (await cookies()).delete({ name: PENDING_SIGN_IN_COOKIE, path: PENDING_SIGN_IN_PATH });
+  redirect("/sign-in");
 }
 
 export async function signOut() {
@@ -223,6 +277,8 @@ export async function deleteAccount(formData: FormData) {
     const typed = String(formData.get("email") ?? "").trim().toLowerCase();
     if (!typed || typed !== (user.email ?? "").toLowerCase()) back(t.emailMismatch);
   } else {
+    const gate = await authGate([["password_user", user.id]]);
+    if (gate !== "ok") back(gateMessage(gate));
     const check = await supabase.auth.signInWithPassword({ email: user.email ?? "", password: String(formData.get("password") ?? "") });
     if (check.error) back(check.error.status === 429 ? authErrorMessage(check.error) : copy.auth.errors.wrongCurrent);
   }

@@ -1,6 +1,7 @@
 "use client";
 
-import { clock, describeDates, type DayDiff, type Proposal } from "@/lib/bento-man/diff";
+import type { DayDiff, Proposal } from "@/lib/bento-man/diff";
+import { clock, describeDates } from "@/lib/bento-man/diff-text";
 import { SubmitButton } from "@/components/form-controls";
 import { acceptProposal, rejectProposal } from "./actions";
 import { copy } from "@/copy";

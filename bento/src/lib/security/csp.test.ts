@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildCspReportOnly } from "./csp";
+import nextConfig from "../../../next.config";
+import { buildCsp } from "./csp";
 
-describe("buildCspReportOnly", () => {
+describe("buildCsp", () => {
   it("includes the policy directives for Bento's local assets and forms", () => {
-    const policy = buildCspReportOnly({
+    const policy = buildCsp({
       supabaseUrl: "https://project.supabase.co",
       isDevelopment: false,
     });
@@ -17,19 +18,18 @@ describe("buildCspReportOnly", () => {
     expect(policy).toContain("object-src 'none'");
     expect(policy).toContain("base-uri 'self'");
     expect(policy).toContain("frame-ancestors 'none'");
-    // Google sign-in posts to a server action that redirects to Supabase auth.
-    expect(policy).toContain("form-action 'self' https://project.supabase.co");
-    // Browsers ignore it in a report-only policy and warn on every page.
-    expect(policy).not.toContain("upgrade-insecure-requests");
+    // Google sign-in before hydration: a real form post, redirected to Supabase
+    // auth and on to Google, and form-action covers each hop.
+    expect(policy).toContain("form-action 'self' https://project.supabase.co https://accounts.google.com");
     expect(policy).toContain("report-uri /api/csp-report");
   });
 
   it("uses only the Supabase origin, with or without a trailing slash", () => {
-    const withoutSlash = buildCspReportOnly({
+    const withoutSlash = buildCsp({
       supabaseUrl: "https://project.supabase.co",
       isDevelopment: false,
     });
-    const withSlash = buildCspReportOnly({
+    const withSlash = buildCsp({
       supabaseUrl: "https://project.supabase.co/",
       isDevelopment: false,
     });
@@ -39,16 +39,25 @@ describe("buildCspReportOnly", () => {
   });
 
   it("allows unsafe-eval only in development", () => {
-    const development = buildCspReportOnly({
+    const development = buildCsp({
       supabaseUrl: "https://project.supabase.co",
       isDevelopment: true,
     });
-    const production = buildCspReportOnly({
+    const production = buildCsp({
       supabaseUrl: "https://project.supabase.co",
       isDevelopment: false,
     });
 
     expect(development).toContain("'unsafe-eval'");
     expect(production).not.toContain("'unsafe-eval'");
+  });
+
+  it("is enforced on every page, not only reported", async () => {
+    const [{ source, headers }] = await nextConfig.headers!();
+    expect(source).toBe("/:path*");
+    const csp = headers.filter((h) => h.key.toLowerCase().startsWith("content-security-policy"));
+    expect(csp.map((h) => h.key)).toEqual(["Content-Security-Policy"]);
+    expect(csp[0].value).toContain("script-src");
+    expect(csp[0].value).toContain("frame-ancestors 'none'");
   });
 });

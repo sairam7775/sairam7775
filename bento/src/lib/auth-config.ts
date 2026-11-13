@@ -10,14 +10,17 @@ export const PASSWORD_RESET_COOKIE = "bento_pw_reset";
 export const PASSWORD_RESET_PATH = "/settings/password";
 export const PASSWORD_RESET_TTL_S = 15 * 60;
 
-// BENTO_AUTH_SECRET if set, else derived from the service-role key — which
-// every deployment already needs for the server — under its own label, so
-// the two uses can't stand in for each other.
-function resetKey(): Buffer | null {
+/** A server-only key for one use: BENTO_AUTH_SECRET if set, else derived
+ *  from the service-role key — which every deployment already needs for the
+ *  server — under the use's own label, so no two uses can stand in for each
+ *  other. */
+export function serverKey(label: string): Buffer | null {
   const raw = process.env.BENTO_AUTH_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!raw) return null;
-  return createHmac("sha256", raw).update("bento password-reset marker v1").digest();
+  return createHmac("sha256", raw).update(label).digest();
 }
+
+const resetKey = () => serverKey("bento password-reset marker v1");
 
 function sign(payload: string, key: Buffer): string {
   return createHmac("sha256", key).update(payload).digest("base64url");

@@ -7,7 +7,7 @@ import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
 import { reasonOf, track } from "@/lib/analytics/client";
-import { starterKey } from "@/lib/trips/guided-start";
+import { starterKey } from "@/lib/trips/starter-key";
 
 const t = copy.chat;
 

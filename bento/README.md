@@ -199,6 +199,11 @@ a link requested from localhost or a preview returns there. It must be on
 the Redirect URLs list (add `http://localhost:3000/**` and the preview
 wildcard), or Supabase substitutes the Site URL and the link breaks.
 
+A link that works in any browser also works for anyone it's forwarded to,
+so it doesn't sign straight in: the visitor first sees which address the
+link is for (/auth/confirm) and presses Continue. No template change is
+needed for that.
+
 ### Before anyone else uses it
 
 - **`maxDuration` is 120 seconds** on `/api/chat`. Check that against your

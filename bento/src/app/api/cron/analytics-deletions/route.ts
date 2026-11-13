@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { postHogDeleter } from "@/lib/account/delete";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { bearerMatches } from "@/lib/security/bearer";
 
 type Counts = { done: number; failed: number; given_up: number };
 type QueuedDeletion = { user_id: string; attempts: number };
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   const counts = emptyCounts();
   const secret = process.env.CRON_SECRET;
   if (!secret) return NextResponse.json(counts, { status: 503 });
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
+  if (!bearerMatches(request.headers.get("authorization"), secret)) {
     return NextResponse.json(counts, { status: 401 });
   }
 

@@ -6,7 +6,7 @@ import { ErrorNote } from "@/app/(auth)/ui";
 import { DateRangeInputs, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { INTEREST_TAGS } from "@/lib/types";
-import { starterKey } from "@/lib/trips/guided-start";
+import { starterKey } from "@/lib/trips/starter-key";
 import { copy } from "@/copy";
 import { startGuidedTrip, type GuidedStartState } from "../actions";
 
