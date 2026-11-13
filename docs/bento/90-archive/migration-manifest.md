@@ -91,30 +91,30 @@ It stays where it is, and its rules stay in it **with their conditions and excep
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| bento/CLAUDE.md | Opening paragraph ("design document … source of truth") | 00-start/which-file-wins.md (resolves C2) | Rewritten to link it | todo |
-| bento/CLAUDE.md | The one idea that shapes everything | 30-software/division-of-labour.md | Rules stay | todo |
-| bento/CLAUDE.md | Invariants | 40-non-functional/security.md, privacy.md, costs.md; 30-software/place-data.md, data-model.md, engine.md (per rule) | Rules stay | todo |
-| bento/CLAUDE.md | Engine (P4) | 30-software/engine.md | Rules stay | todo |
-| bento/CLAUDE.md | Curation data (P5) | 50-operations/curation.md | Rules stay | todo |
-| bento/CLAUDE.md | Bento Man (P6) | 30-software/bento-man.md | Rules stay | todo |
-| bento/CLAUDE.md | Day view (P7) | 10-product/day-view.md | Rules stay | todo |
-| bento/CLAUDE.md | After the trip | 10-product/trip-review.md | Rules stay | todo |
-| bento/CLAUDE.md | Names and admins | 10-product/accounts-and-admins.md | Rules stay | todo |
-| bento/CLAUDE.md | Legal pages | 40-non-functional/privacy.md | Rules stay | todo |
-| bento/CLAUDE.md | Sharing | 10-product/trip-sharing.md (written in PR B) | Rules stay; the link from CLAUDE.md comes in Task 9 | todo |
-| bento/CLAUDE.md | The vault (P8) | 10-product/booking-vault.md | Rules stay | todo |
-| bento/CLAUDE.md | Transit (P3) | 30-software/transit.md | Rules stay | todo |
-| bento/CLAUDE.md | Walkthrough | 10-product/walkthrough.md | Rules stay | todo |
-| bento/CLAUDE.md | Bento Man's figure | 20-design/bento-man-figure.md | Rules stay | todo |
-| bento/CLAUDE.md | Voice (a paragraph, no rule bullets) | 20-design/voice.md | The paragraph stays | todo |
-| bento/CLAUDE.md | Conventions | 30-software/conventions.md | Rules stay | todo |
+| bento/CLAUDE.md | Opening paragraph ("design document … source of truth") | 00-start/which-file-wins.md (resolves C2) | Rewritten to link it | done |
+| bento/CLAUDE.md | The one idea that shapes everything | 30-software/division-of-labour.md | Rules stay | done |
+| bento/CLAUDE.md | Invariants | 40-non-functional/security.md, privacy.md, costs.md; 30-software/place-data.md, data-model.md, engine.md (per rule) | Rules stay | done |
+| bento/CLAUDE.md | Engine (P4) | 30-software/engine.md | Rules stay | done |
+| bento/CLAUDE.md | Curation data (P5) | 50-operations/curation.md | Rules stay | done |
+| bento/CLAUDE.md | Bento Man (P6) | 30-software/bento-man.md | Rules stay | done |
+| bento/CLAUDE.md | Day view (P7) | 10-product/day-view.md | Rules stay | done |
+| bento/CLAUDE.md | After the trip | 10-product/trip-review.md | Rules stay | done |
+| bento/CLAUDE.md | Names and admins | 10-product/accounts-and-admins.md | Rules stay | done |
+| bento/CLAUDE.md | Legal pages | 40-non-functional/privacy.md | Rules stay | done |
+| bento/CLAUDE.md | Sharing | 10-product/trip-sharing.md (written in PR B) | Rules stay; the link from CLAUDE.md comes in Task 9 | done |
+| bento/CLAUDE.md | The vault (P8) | 10-product/booking-vault.md | Rules stay | done |
+| bento/CLAUDE.md | Transit (P3) | 30-software/transit.md | Rules stay | done |
+| bento/CLAUDE.md | Walkthrough | 10-product/walkthrough.md | Rules stay | done |
+| bento/CLAUDE.md | Bento Man's figure | 20-design/bento-man-figure.md | Rules stay | done |
+| bento/CLAUDE.md | Voice (a paragraph, no rule bullets) | 20-design/voice.md | The paragraph stays | done |
+| bento/CLAUDE.md | Conventions | 30-software/conventions.md | Rules stay | done |
 | bento/CLAUDE.md | "This is NOT the Next.js you know" |  | Kept as is; `next dev` writes it | kept |
 
 ### Other documents
 
 | Source | Section | Destination | Kept in place | Status |
 |---|---|---|---|---|
-| bento/AGENTS.md | Whole file |  | Codex's entry point; its PROGRESS.md pointer changes to the start page and status page (Task 9) | todo |
+| bento/AGENTS.md | Whole file |  | Codex's entry point; its PROGRESS.md pointer changes to the start page and status page (Task 9) | done |
 | AGENTS.md, CLAUDE.md, GEMINI.md (root) | Whole files |  | Identical agent entry points; the docs rule is added in Task 10 | todo |
 | README.md (root) | Whole file |  | Links docs/README.md | done |
 | design/README.md | Whole file | 20-design/README.md (screens list, with status) | A short pointer stays next to the mock-ups | done |

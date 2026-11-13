@@ -8,8 +8,12 @@ The project rules live in one place so they can't drift apart:
   in full before changing code; everything in it applies to you too.
 - **`DESIGN.md`** (this folder) — the visual system: tokens, type, motion,
   the seasonal backdrop. Read it before touching UI.
-- **`../docs/PROGRESS.md`** — what has shipped and which review items are
-  still open.
+- **`../docs/README.md`** — the docs vault: product, design, software,
+  security and privacy, operations. Each `CLAUDE.md` section links the note
+  that explains it; update those notes in the same change as the code.
+- **`../docs/bento/00-start/status.md`** — what has shipped and what's open;
+  `../docs/bento/00-start/open-questions.md` for where the spec and the code
+  disagree.
 
 Don't copy rules from those files into this one; add new rules to
 `CLAUDE.md` so both agents see them.
