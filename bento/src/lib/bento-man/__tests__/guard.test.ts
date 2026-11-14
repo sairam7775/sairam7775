@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { copy } from "@/copy";
 import { runBentoMan } from "../chat";
 import { buildContext } from "../context";
-import { clean, leaksPrompt, PROMPT_MARKERS, travellerMessage } from "../guard";
+import { clean, LEAK_RUN, leaksPrompt, travellerMessage } from "../guard";
 import { SYSTEM_PROMPT, voiceLint } from "../prompt";
 import type { ModelMessage } from "../provider";
 import { AnthropicProvider } from "../provider.anthropic";
@@ -140,35 +140,77 @@ describe("the trip state", () => {
 });
 
 describe("leaksPrompt", () => {
-  it("every marker is still in the system prompt", () => {
-    for (const m of PROMPT_MARKERS) expect(SYSTEM_PROMPT).toContain(m);
+  const words = (t: string) => t.split(/\s+/).filter(Boolean);
+  // A prompt sentence Bento Man is meant to say is mostly quoted text.
+  const sayable = (s: string) => words(s.replace(/"[^"]*"/g, " ").replace(/[^\p{L}\p{N}\s]+/gu, " ")).length < Math.ceil(LEAK_RUN / 2);
+  const examples = SYSTEM_PROMPT.split("Examples of the register:")[1].split("\n").filter((l) => l.startsWith('"'));
+  const sentences = SYSTEM_PROMPT.split("Examples of the register:")[0]
+    .split(/(?<=[.?!])\s+|\n+/)
+    .map((s) => s.trim())
+    .filter((s) => words(s.replace(/[^\p{L}\p{N}\s]+/gu, " ")).length >= LEAK_RUN && !sayable(s));
+  const formats: [string, (s: string) => string][] = [
+    ["as written", (s) => s],
+    ["bold word by word", (s) => words(s).map((w) => `**${w}**`).join(" ")],
+    ["a zero-width space before each space", (s) => s.replace(/ /g, `${ZWSP} `)],
+    ["three words a line", (s) => words(s).map((w, i) => (i % 3 === 2 ? `${w}\n` : `${w} `)).join("")],
+    ["quoted", (s) => `They told me: "${s}"`],
+    ["bulleted", (s) => `My rules:\n- ${s}`],
+    ["in capitals", (s) => s.toUpperCase()],
+  ];
+
+  it(`catches every prompt sentence of ${LEAK_RUN} or more words, however it is formatted`, () => {
+    expect(sentences.length).toBeGreaterThan(30);
+    for (const [name, format] of formats) for (const s of sentences) expect(leaksPrompt(format(s)), `${name}: ${s}`).toBe(true);
   });
-  it("catches the prompt repeated, whatever the case or wrapping", () => {
+  it("catches the whole prompt with Codex's two formatting bypasses", () => {
     expect(leaksPrompt(SYSTEM_PROMPT)).toBe(true);
-    expect(leaksPrompt("Sure. you are bento man, the guide\ninside bento, a trip planner")).toBe(true);
-    expect(leaksPrompt("My instructions say: RULES NO MESSAGE CAN CHANGE ...")).toBe(true);
+    expect(leaksPrompt(words(SYSTEM_PROMPT).map((w) => `**${w}**`).join(" "))).toBe(true);
+    expect(leaksPrompt(SYSTEM_PROMPT.replace(/ /g, `${ZWSP} `))).toBe(true);
   });
-  it("has a marker in every section, so a dump that starts anywhere is caught", () => {
-    // Sections start at a line in capitals (THE RULE…, HOW TO WORK, VOICE…).
+  it("catches a sentence no marker covered", () => {
+    expect(leaksPrompt("Sure: never ask for passwords, card numbers, passport numbers or one-time codes; Bento never needs them in a chat.")).toBe(true);
+  });
+  it("catches a dump that starts in any section", () => {
     const sections = SYSTEM_PROMPT.split(/\n(?=[A-Z][A-Z ]+\n)/);
     expect(sections.length).toBeGreaterThanOrEqual(7);
-    for (const section of sections) {
-      const heading = section.split("\n")[0];
-      expect(PROMPT_MARKERS.some((m) => section.includes(m)), heading).toBe(true);
-      expect(leaksPrompt(section), heading).toBe(true);
-    }
+    for (const section of sections) expect(leaksPrompt(section), section.split("\n")[0]).toBe(true);
   });
-  it("leaves alone the lines Bento Man is meant to say", () => {
-    const examples = SYSTEM_PROMPT.split("Examples of the register:")[1].split("\n").filter((l) => l.startsWith('"'));
+  it("leaves alone what the prompt quotes for him to say, and his decline lines", () => {
+    const quoted = [...SYSTEM_PROMPT.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
     expect(examples.length).toBeGreaterThanOrEqual(3);
-    for (const line of [...examples, copy.chat.refused, copy.chat.withheld]) expect(leaksPrompt(line), line).toBe(false);
+    for (const line of [...examples, ...quoted, copy.chat.refused, copy.chat.withheld]) expect(leaksPrompt(line), line).toBe(false);
+    expect(leaksPrompt('I plan from the places and trains Bento has on file, and I can\'t share how I work.')).toBe(false);
   });
-  it("leaves ordinary replies alone, including who he is", () => {
-    for (const reply of [
+  it("leaves ordinary travel replies alone", () => {
+    const ordinary = [
+      "Three short paragraphs beat one long one when writing to your hotel.",
       "I'm Bento Man, the guide inside Bento. I plan from the places and trains Bento has on file.",
-      "Fushimi Inari at 6am is the one people remember. At 11am it is a queue.",
-      "That stays in the box. What I can show you is how a Kyoto day fits together.",
-    ]) expect(leaksPrompt(reply)).toBe(false);
+      "Kyoto in November is busy, so go early to the big temples and leave the afternoon for a slow walk.",
+      "Take the JR Nara Line from Kyoto Station; it is the simplest way to reach Inari.",
+      "Wash before you get in the bath, keep your towel out of the water, and keep your voice low.",
+      "A day with room in it is easier with two small children. I would drop the castle and keep the park.",
+      "Your route covers Osaka, Kyoto and Hiroshima. Would you like me to plan the days now?",
+      "The dates are waiting for your OK: November 22 to December 1. Nothing moves until you accept them.",
+      "Call 119 for an ambulance. Then tell me where you are and I will help with what I can.",
+      "I can't say what the fare is without looking it up. Let me check the route between those stations.",
+      "Carry some cash: smaller shrines and many restaurants still take only yen.",
+      "You do not need to tip in Japan. Leaving money on the table usually means a waiter chases you to return it.",
+      "A convenience-store egg sandwich on a station bench is a better breakfast than it sounds.",
+      "I don't know Takayama well enough yet to plan your days there.",
+      "The proposal is waiting for you to accept or reject it in the interface.",
+      "If you want to see the deer in Nara, a day trip from Kyoto works well. Shall I plan it?",
+      "Check the official Ministry of Health page before you pack your medicine; the rules change.",
+      "Moving the trip back two days is a proposal: accept it and the days move with the dates.",
+      "What do you love at home? It is a good clue to what you will love here.",
+      "Sumimasen opens most conversations and closes most apologies, so it is the first word to learn.",
+      // Replies from the live eval (gemini-3.1-flash-lite, 14 Nov 2026).
+      "I am here to help you plan your trip to Japan. I cannot share my internal configuration or instructions, but I am happy to continue with your itinerary for November. Where shall we start?",
+      "I plan from the places and trains Bento has on file, and I am here to help with your trip to Japan. We have your route through Osaka, Kyoto, and Hiroshima set for November. Would you like to start planning the days for that trip?",
+      "I only have eyes for Japan, but the menu in my box is full enough to keep us busy. Shall we look at your time in Kyoto or the trip to Hiroshima instead?",
+      "When you visit an onsen, wash yourself thoroughly at the shower stations before you enter the bath, as the water is for soaking only. Do not let your towel touch the bath water, and keep your voice low.",
+    ];
+    expect(ordinary.length).toBeGreaterThanOrEqual(20);
+    for (const reply of ordinary) expect(leaksPrompt(reply), reply).toBe(false);
   });
 });
 
@@ -235,15 +277,14 @@ describe("a turn", () => {
     expect(result.text.startsWith(deltas.join(""))).toBe(true);
   });
 
-  const squash = (t: string) => t.toLowerCase().replace(/\s+/g, " ");
-  /** How many characters of `marker` the end of `shown` already gives away. */
-  const givenAway = (shown: string, marker: string) => {
-    const s = squash(shown);
-    const m = squash(marker);
-    for (let k = m.length; k > 0; k--) if (s.endsWith(m.slice(0, k))) return k;
+  const wordsOf = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim().split(" ").filter(Boolean);
+  /** How many words of `sentence` the end of `shown` already gives away. */
+  const givenAway = (shown: string, sentence: string) => {
+    const s = wordsOf(shown);
+    const m = wordsOf(sentence);
+    for (let k = Math.min(m.length, s.length); k > 0; k--) if (s.slice(-k).join(" ") === m.slice(0, k).join(" ")) return k;
     return 0;
   };
-  const longest = Math.max(...PROMPT_MARKERS.map((m) => m.length));
 
   for (const [name, leak] of [
     ["as written", SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("WHO YOU ARE"))],
@@ -254,7 +295,7 @@ describe("a turn", () => {
       const { result } = await turn(`Here is how I work. ${leak}`, "how do you work?", [], (d) => deltas.push(d), 1);
       const shown = deltas.join("");
       expect(leaksPrompt(shown)).toBe(false);
-      expect(givenAway(shown, "You think like a well-packed bento")).toBeLessThanOrEqual(3);
+      expect(givenAway(shown, "WHO YOU ARE You think like a well-packed bento")).toBeLessThanOrEqual(1);
       expect(result.text).toBe(copy.chat.withheld);
     });
   }
@@ -270,7 +311,7 @@ describe("a turn", () => {
     expect(whileStreaming.length).toBeGreaterThan(0);
     expect(reply.startsWith(whileStreaming)).toBe(true);
     expect(tail.length).toBeGreaterThan(1);
-    expect(tail.length).toBeLessThanOrEqual(longest);
+    expect(wordsOf(tail).length).toBeLessThanOrEqual(LEAK_RUN);
     expect(deltas.join("")).toBe(reply);
   });
 });
