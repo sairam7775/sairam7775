@@ -500,13 +500,13 @@ export const en = {
       body: "Give Bento Man the dates and a route and each day gets a compartment here, sized to the time it takes.",
     },
     proposals: {
-      staleDay: "Ask me again and I'll plan from how the day looks now. You changed this day after I suggested this, so I've set my suggestion aside.",
+      staleDay: "The plan has changed since I suggested this, so I've set my suggestion aside. Ask me again and I'll plan from how it looks now.",
       answered: "That proposal has already been answered.",
       unreadable: "That proposal can't be read any more. Ask Bento Man again.",
       notApplied: (why: string) => `That didn't apply: ${why}`,
       notAppliedUnknown: "it couldn't be saved",
       rememberFailed: "The dates changed, but \"don't ask again\" didn't save. Try it from Edit trip.",
-    } satisfies { staleDay: string; answered: string; unreadable: string; notApplied: (why: string) => string; notAppliedUnknown: string; rememberFailed: string },
+    },
     replan: {
       // Bento Man's message in the chat when a day is re-planned.
       message: (day: string, pinned: number, summary: string) =>
