@@ -4,7 +4,7 @@ status: accepted
 code:
   - bento/src/lib/bento-man/
   - bento/scripts/eval-bento-man.ts
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-14
 ---
 
 # Bento Man: how it's built
@@ -39,8 +39,8 @@ The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT") and says the 
 | `assess_route` | Cities and nights → coverage per city, train time per leg, the share of the trip spent moving, and a verdict with the arithmetic |
 | `suggest_route` | A starting route for the trip's length |
 | `propose_route` | A route as a proposal (refuses an over-packed route unless the traveller insists) |
-| `plan_days` | Day plans from the engine, as a proposal |
-| `replan_day` | Pin, unpin, remove, add, avoid a category, start later; the engine re-plans around what's kept |
+| `plan_days` | Day plans from the engine, as a proposal. A day in a city known by its main sights only also carries `coverage` and `coverage_note` (the page's line, and never to call the day complete); other days are unchanged |
+| `replan_day` | Pin, unpin, remove, add, avoid a category, start later; the engine re-plans around what's kept. The same main-sights fields as `plan_days` |
 | `get_place`, `route_between` | The verified facts and the journey, so a description quotes the record |
 | `place_background` | A place's checked history, or a short general background, said as general |
 

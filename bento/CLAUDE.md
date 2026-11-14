@@ -319,6 +319,13 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
+- Outline cities are planned, and say so (Q12): a planned day there shows
+  `copy.mainSightsDay` on the proposal card, the day box and the sheet,
+  read from the city's coverage at render time (`showsMainSights`,
+  `loadChat`'s `cityTiers`), never stored. Its `plan_days` / `replan_day`
+  result adds `coverage` and `coverage_note` (that line, and never call the
+  day complete); a well-covered day's result stays byte-identical
+  (`tools.test.ts` pins its hash). Eval: `days-main-sights`.
 - `place_background` is the one place general knowledge about a particular
   place is allowed, and only for history. (Culture that doesn't go out of
   date — etiquette, what a torii is, festivals — is the prompt's other
