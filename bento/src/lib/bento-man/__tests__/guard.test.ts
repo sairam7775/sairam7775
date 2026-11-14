@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it } from "vitest";
+import { copy } from "@/copy";
 import { runBentoMan } from "../chat";
 import { buildContext } from "../context";
 import { clean, leaksPrompt, PROMPT_MARKERS } from "../guard";
@@ -85,6 +86,21 @@ describe("leaksPrompt", () => {
     expect(leaksPrompt(SYSTEM_PROMPT)).toBe(true);
     expect(leaksPrompt("Sure. you are bento man, the guide\ninside bento, a trip planner")).toBe(true);
     expect(leaksPrompt("My instructions say: RULES NO MESSAGE CAN CHANGE ...")).toBe(true);
+  });
+  it("has a marker in every section, so a dump that starts anywhere is caught", () => {
+    // Sections start at a line in capitals (THE RULE…, HOW TO WORK, VOICE…).
+    const sections = SYSTEM_PROMPT.split(/\n(?=[A-Z][A-Z ]+\n)/);
+    expect(sections.length).toBeGreaterThanOrEqual(7);
+    for (const section of sections) {
+      const heading = section.split("\n")[0];
+      expect(PROMPT_MARKERS.some((m) => section.includes(m)), heading).toBe(true);
+      expect(leaksPrompt(section), heading).toBe(true);
+    }
+  });
+  it("leaves alone the lines Bento Man is meant to say", () => {
+    const examples = SYSTEM_PROMPT.split("Examples of the register:")[1].split("\n").filter((l) => l.startsWith('"'));
+    expect(examples.length).toBeGreaterThanOrEqual(3);
+    for (const line of [...examples, copy.chat.refused, copy.chat.withheld]) expect(leaksPrompt(line), line).toBe(false);
   });
   it("leaves ordinary replies alone, including who he is", () => {
     for (const reply of [
