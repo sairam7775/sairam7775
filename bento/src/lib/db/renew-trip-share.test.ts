@@ -30,12 +30,27 @@ describe("renew_trip_share (0030)", () => {
 
   it("serialises renews of one trip and checks ownership first", () => {
     const body = header![3];
-    expect(body).toMatch(/pg_advisory_xact_lock\s*\(/i);
-    expect(body.search(/auth\.uid\(\)/i)).toBeLessThan(body.search(/pg_advisory_xact_lock/i));
-    expect(body.search(/pg_advisory_xact_lock/i)).toBeLessThan(body.search(/\bdelete\s+from\s+trip_shares\b/i));
+    // The owned trip's row lock first, as apply_proposal takes it: renews of
+    // one trip queue on it, and a trip deletion (trip, then its share) can't
+    // meet a renew (share, then trip) in the opposite order.
+    const tripLock = /from\s+trips\s+where\s+id\s*=\s*p_trip\s+and\s+user_id\s*=\s*\(\s*select\s+auth\.uid\(\)\s*\)\s+for\s+update\b/i;
+    expect(body).toMatch(tripLock);
+    expect(body.search(tripLock)).toBeLessThan(body.search(/\bdelete\s+from\s+trip_shares\b/i));
+    expect(body).not.toMatch(/pg_advisory/i);
+    // No handler: a failed insert must roll the delete back, never be swallowed.
+    expect(body).not.toMatch(/\bexception\s+when\b/i);
     // The token still comes from the column default: the function never names it on write.
     expect(body).not.toMatch(/\bupdate\s+trip_shares\b/i);
     expect(body).toMatch(/insert\s+into\s+trip_shares\s*\(\s*trip_id\s*,\s*expires_at\s*,\s*until_trip_end\s*\)/i);
+  });
+
+  it("re-checks until the trip ends under the lock, by shared_trip()'s own rule", () => {
+    const body = header![3];
+    // The rule shared_trip() uses (0024, unchanged in 0026) to decide such a link still opens.
+    const rule = "now() < (tr.end_date + 1)::timestamp at time zone 'UTC'";
+    expect(withoutComments(read("0026_hours_vary.sql"))).toContain(`tr.end_date is not null and ${rule}`);
+    expect(body).toContain(`p_until_trip_end and not (tr.end_date is not null and ${rule})`);
+    expect(body.search(/p_until_trip_end\s+and\s+not/i)).toBeLessThan(body.search(/\bdelete\s+from\s+trip_shares\b/i));
   });
 
   it("never gives travellers a way to write a token", () => {
