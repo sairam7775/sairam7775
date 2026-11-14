@@ -14,7 +14,7 @@ import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type 
 import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types";
 import { placeRoute, route } from "@/lib/transit/graph";
 import { describeRoute } from "@/lib/transit/describe";
-import { INTEREST_TAGS, type BudgetBand } from "@/lib/types";
+import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
 import { nightsBetween, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import { bookedPlaceIds } from "@/lib/vault/match";
@@ -424,7 +424,15 @@ function parseHHMM(t: string | undefined): number | null {
   return h * 60 + m;
 }
 
-function dayNarration(d: ReturnType<typeof computeDayDiff>) {
+/** A day in a city Bento knows by its main sights only is still planned,
+ *  and the result says what it rests on in the page's words (Q12). A
+ *  well-covered day gets nothing extra, so its result is unchanged. */
+const mainSights = (tier: CoverageTier) =>
+  tier === "outline"
+    ? { coverage: coverageWords(tier), coverage_note: `${copy.mainSightsDay} Tell the traveller this, in those words; never call this day complete or full.` }
+    : {};
+
+function dayNarration(d: ReturnType<typeof computeDayDiff>, tier: CoverageTier) {
   return {
     date: d.date,
     city_id: d.cityId,
@@ -443,6 +451,7 @@ function dayNarration(d: ReturnType<typeof computeDayDiff>) {
     warnings: d.warnings,
     active: `${Math.floor(d.activeMin / 60)}h ${d.activeMin % 60}m of ${d.budgetMin / 60}h`,
     cost: `${d.fareKind === "exact" && !d.after.some((it) => it.costJpy > 0) ? "" : "~"}¥${d.costJpy}`,
+    ...mainSights(tier),
   };
 }
 
@@ -451,7 +460,7 @@ export type ReplanOp = z.infer<typeof ReplanDay>["ops"][number];
 /** One day re-planned around the traveller's pins and the given ops. Used
  *  by the replan_day tool and by the "re-plan this day" button, so a hand
  *  edit and a spoken one go through the same engine call. */
-export async function replanDay(store: TripStore, date: string, ops: ReplanOp[]): Promise<{ diff: ReturnType<typeof computeDayDiff> } | { error: string }> {
+export async function replanDay(store: TripStore, date: string, ops: ReplanOp[]): Promise<{ diff: ReturnType<typeof computeDayDiff>; tier: CoverageTier } | { error: string }> {
   const [state, cities, graph, bookings] = await Promise.all([store.state(), store.cities(), store.graph(), store.bookings()]);
   const existing = state.days.find((d) => d.date === date);
   const cityId = existing?.cityId ?? plannedDates(state).get(date);
@@ -514,7 +523,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     dayStartMin,
     bookedPlaceIds: bookedPlaceIds(bookings, pool, date),
   });
-  return { diff: computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan, pool) };
+  return { diff: computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan, pool), tier: f.tier };
 }
 
 // ------------------------------------------------------------------ run
@@ -699,6 +708,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const targetDates = new Set(targets.map((t) => t.date));
       const used = new Set(state.days.filter((d) => !targetDates.has(d.date)).flatMap((d) => d.items.map((i) => i.placeId)));
       const days = [];
+      const tiers: CoverageTier[] = [];
       const skipped: string[] = [];
       for (const t of targets) {
         const f = facts.get(t.cityId)!;
@@ -723,11 +733,12 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
         });
         for (const it of plan.items) used.add(it.placeId);
+        tiers.push(f.tier);
         days.push(computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan, places));
       }
       if (!days.length) return fail(skipped.join("; ") || "nothing to plan");
       ctx.proposal = mergeProposals(ctx.proposal, { summary: `${days.length} day${days.length === 1 ? "" : "s"}`, days });
-      return { result: j({ proposed: true, note: "Shown to the traveller as a proposal with accept and reject. Not applied yet.", days: days.map(dayNarration), skipped }) };
+      return { result: j({ proposed: true, note: "Shown to the traveller as a proposal with accept and reject. Not applied yet.", days: days.map((d, i) => dayNarration(d, tiers[i])), skipped }) };
     }
 
     case "replan_day": {
@@ -736,7 +747,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const r = await replanDay(store, p.data.date, p.data.ops);
       if ("error" in r) return fail(r.error);
       ctx.proposal = mergeProposals(ctx.proposal, { summary: `${p.data.date} re-planned`, days: [r.diff] });
-      return { result: j({ proposed: true, note: "Shown as a proposal; not applied yet.", day: dayNarration(r.diff) }) };
+      return { result: j({ proposed: true, note: "Shown as a proposal; not applied yet.", day: dayNarration(r.diff, r.tier) }) };
     }
 
     case "get_place": {

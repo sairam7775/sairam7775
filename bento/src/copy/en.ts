@@ -446,6 +446,10 @@ export const en = {
     outline: "Main sights only",
     stub: "Not covered yet",
   },
+  // Under a planned day in a city Bento knows by its main sights only: on
+  // the proposal card, the day box and the sheet, and handed to Bento Man
+  // in the day's tool result. What it rests on first; never "incomplete".
+  mainSightsDay: "Planned from the main sights here. There may be more worth adding.",
 
   trip: {
     planLabel: "The plan",
