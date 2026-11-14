@@ -30,6 +30,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 import { acceptProposal } from "../trips/[id]/actions";
+import { copy } from "@/copy";
 
 const form = (extra: Record<string, string> = {}) => {
   const f = new FormData();
@@ -79,5 +80,14 @@ describe("acceptProposal: where the traveller lands", () => {
     mocks.parseProposal.mockReturnValue({ summary: "", route, days: [] });
     mocks.applyProposal.mockRejectedValue(new Error("moved"));
     await expect(acceptProposal(form())).rejects.toThrow(`redirect:/trips/${TRIP}?error=`);
+  });
+
+  it("shows the stale sentence on its own and refreshes both pages that show the closed card", async () => {
+    mocks.parseProposal.mockReturnValue({ summary: "", days: [] });
+    mocks.applyProposal.mockRejectedValue(new Error(copy.trip.proposals.staleDay));
+    const thrown = await acceptProposal(form()).then(() => null, (e: Error) => e.message);
+    expect(thrown).toBe(`redirect:/trips/${TRIP}?error=${encodeURIComponent(copy.trip.proposals.staleDay)}`);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}`);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}/vault`);
   });
 });
