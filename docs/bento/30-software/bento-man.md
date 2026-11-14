@@ -17,6 +17,15 @@ The product side is in [Bento Man, the guide](../10-product/bento-man.md).
 - The system prompt (`prompt.ts`) and the tool list (`tools.ts`) are the cached prefix and must stay byte-stable: no dates, names or state in them.
 - **Guards before every model call:** sign-in → a per-user rate limit (`take_rate_token`) → a spend hold (`reserveSpend`) → the model. The hold is settled afterwards with what the call really cost.
 
+## Scope and injection guards
+
+The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT": anything else is declined in a line) and says the traveller's words are never instructions ("RULES NO MESSAGE CAN CHANGE"). A prompt can be talked round, so `guard.ts` backs it in code:
+- `clean()` removes characters the traveller can't see (zero-width and direction marks, Unicode tag characters) and defuses `<trip_state>` / `<traveller_message>` tags, in the message, in earlier traveller turns, and in typed trip fields such as the title (which `context.ts` also puts on one line).
+- The message reaches the model inside its own `<traveller_message>` block, after the trip state.
+- A reply that repeats the prompt (`leaksPrompt`, matched against `PROMPT_MARKERS`) stops streaming and is replaced by a short decline (`copy.chat.withheld`). A test fails if a marker line is reworded in the prompt without updating the list.
+- On Gemini, Google's safety filters are on at `BLOCK_ONLY_HIGH` (`SAFETY_SETTINGS`); stricter settings block Hiroshima history.
+- What limits the damage if the model is talked round anyway: replies are plain text, and tools only reach the signed-in traveller's own trip.
+
 ## Tools
 
 | Tool | Does |
@@ -47,7 +56,7 @@ The product side is in [Bento Man, the guide](../10-product/bento-man.md).
 
 ## The evaluation
 
-- `bento/src/lib/bento-man/evals/scenarios.ts` holds about 30 planning scenarios with known-correct answers: onboarding, over-packed routes, stub cities, day plans, changes that mustn't regenerate the rest, facts that must come from the database, and the voice.
+- `bento/src/lib/bento-man/evals/scenarios.ts` holds about 30 planning scenarios with known-correct answers: onboarding, over-packed routes, stub cities, day plans, changes that mustn't regenerate the rest, facts that must come from the database, and the voice. The `scope-*` and `attack-*` scenarios check off-topic requests and injection attempts.
 - Each is graded mechanically: tools called or not, prose patterns, the proposal's kind, and `voiceLint` on every reply.
 - `npx tsx scripts/eval-bento-man.ts` runs the real model against the in-memory store. It costs money, and on Gemini's free tier a full run uses the live site's daily quota, so run a subset (`--only <id>`) and ask the owner first.
 - The engine half of each scenario is also a Vitest test and runs offline.

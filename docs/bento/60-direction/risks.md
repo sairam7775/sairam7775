@@ -25,6 +25,7 @@ Product, engineering, legal and safety risks. Commercial risks (such as retentio
 | Accessibility claims | Medium / high | "Step-free" that isn't strands a wheelchair user | No such claim until it's verified per place; until then the field is absent, not guessed |
 | Booking-data sensitivity | Low / high | A reference and a surname can cancel someone's flight | Encrypted at rest, never logged or put in a prompt, row-level security ([security](../40-non-functional/security.md)) |
 | Prompt injection through pasted bookings | Low / medium | A malicious paste steers a model with tools | Pasted text is read in a separate call with no tools |
+| Prompt injection through the chat | Medium / low | A traveller talks Bento Man off topic or into repeating his instructions | Prompt rules backed by code: hidden characters and forged trip-state tags removed, a repeated prompt withheld; tools reach only the traveller's own trip ([Bento Man (software)](../30-software/bento-man.md)) |
 | Open-data licences | Low / medium | Attribution or redistribution terms broken | Sources recorded per record; ODPT not used because of its licence |
 
 Source: spec §15.
