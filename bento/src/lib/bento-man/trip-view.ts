@@ -3,6 +3,9 @@
 import { allocateDates, assessRoute } from "@/lib/engine/route";
 import { dayStats } from "@/lib/engine/day-stats";
 import { travelDays } from "@/lib/trips/travel-days";
+import { showsMainSights } from "@/lib/trips/route-card";
+import { copy } from "@/copy";
+import type { CoverageTier } from "@/lib/types";
 import type { TripState, TripStore } from "./store";
 
 /** Each travel day's trains, from Bento's own train data, worked out again
@@ -15,6 +18,21 @@ export async function tripTravelDays(store: Pick<TripStore, "cities" | "graph">,
   return travelDays(sorted, a.legs);
 }
 
+/** What the day box shows about how well Bento knows the day's city: the
+ *  chip's words, whether the day can be edited and re-planned (not in a
+ *  city Bento can't plan), whether it is the "can't plan here" box, and
+ *  whether it carries the main-sights line. Anything unknown reads as not
+ *  covered. */
+export function dayCoverage(meta: { cityId: string | null; tier: string }, stops: number) {
+  const tier = (meta.tier in copy.coverage ? meta.tier : "stub") as CoverageTier;
+  return {
+    words: copy.coverage[tier],
+    editable: Boolean(meta.cityId) && tier !== "stub",
+    uncovered: tier === "stub",
+    mainSights: showsMainSights(tier, stops),
+  };
+}
+
 export function buildTripView(state: TripState, requested: string | null) {
   const cityById = new Map(state.cities.map((c) => [c.cityId, c]));
   const dates = new Map<string, { cityId: string | null; cityName: string; tier: string }>();
@@ -22,8 +40,9 @@ export function buildTripView(state: TripState, requested: string | null) {
     for (const d of c.dates) dates.set(d, { cityId: c.cityId, cityName: cityById.get(c.cityId)?.name ?? c.cityId, tier: cityById.get(c.cityId)?.tier ?? "stub" });
   }
   for (const d of state.days) {
+    // The day's own city first: a day trip's city is often not on the route.
     const c = d.cityId ? cityById.get(d.cityId) : null;
-    dates.set(d.date, { cityId: d.cityId, cityName: c?.name ?? d.cityId ?? "—", tier: c?.tier ?? "stub" });
+    dates.set(d.date, { cityId: d.cityId, cityName: d.city?.name ?? c?.name ?? d.cityId ?? "—", tier: d.city?.tier ?? c?.tier ?? "stub" });
   }
   const dayList = [...dates.entries()].sort(([a], [b]) => a.localeCompare(b));
   const daysByDate = new Map(state.days.map((d) => [d.date, d]));

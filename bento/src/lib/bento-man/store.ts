@@ -90,6 +90,10 @@ export interface DayRow {
   id?: string;
   date: string;
   cityId: string | null;
+  /** The day's own city as the catalogue knows it, read with the day: a
+   *  day trip's city is often not on the route, and its name and coverage
+   *  must not depend on that. Absent when the store didn't read it. */
+  city?: { name: string; tier: CoverageTier } | null;
   items: ItemRow[];
 }
 

@@ -10,7 +10,7 @@ import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
-import { buildTripView, tripTravelDays } from "@/lib/bento-man/trip-view";
+import { buildTripView, dayCoverage, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { journeyMapUrl } from "@/lib/maps/links";
 import { loadGaps } from "@/lib/vault/store";
 import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
@@ -33,14 +33,11 @@ import { copy } from "@/copy";
 import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
 import { datesBetween, reviewFromRow, reviewOpen, snapshotCities, snapshotFromRow } from "@/lib/trips/review";
 import { TripReviewCard } from "./trip-review";
-import type { CoverageTier } from "@/lib/types";
 
 const t = copy.trip;
 
 const fmt = (d: string, opts: Intl.DateTimeFormatOptions) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { ...opts, timeZone: "UTC" });
 const dur = copy.time.duration;
-/** A coverage tier in words; anything unknown reads as not covered. */
-const coverage = (tier: string) => copy.coverage[(tier in copy.coverage ? tier : "stub") as CoverageTier];
 
 /** The trip. Every date is a box; the selected one is open. Bento Man sits
  *  beside it. The boxes show accepted state only — proposals live in the
@@ -64,6 +61,8 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
   const requested = typeof sp.day === "string" ? sp.day : null;
   const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested);
+  // How well Bento knows the selected day's own city, for its heading and box.
+  const cover = selectedMeta ? dayCoverage(selectedMeta, selectedDay?.items.length ?? 0) : null;
 
   // Each travel day's trains. A failure only leaves them off the page.
   const travel = await tripTravelDays(store, state).catch(() => null);
@@ -308,7 +307,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 <h2 className="text-[1.5rem] font-bold">
                   {fmt(selected, { weekday: "long", day: "numeric", month: "long" })}
                   {/* One piece, so a narrow screen moves it down whole rather than splitting it. */}
-                  <span className="mono ml-3 inline-block text-[0.72rem] font-normal text-ink-3">{selectedMeta.cityName} · {coverage(selectedMeta.tier)}</span>
+                  <span className="mono ml-3 inline-block text-[0.72rem] font-normal text-ink-3">{selectedMeta.cityName} · {cover!.words}</span>
                 </h2>
                 {stats && selectedDay && selectedDay.items.length > 0 && (
                   <span className="mono text-[0.72rem] text-ink-3">{t.dayStats(selectedDay.items.length, dur(stats.activeMin))}</span>
@@ -350,16 +349,16 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 date={selected}
                 cityId={selectedMeta.cityId ?? ""}
                 cityName={selectedMeta.cityName}
-                tier={coverage(selectedMeta.tier)}
+                tier={cover!.words}
                 items={withBackgrounds(dayItems ?? [], backgrounds)}
                 budgetMin={stats?.budgetMin ?? 480}
                 activeMin={stats?.activeMin ?? 0}
                 overBy={stats?.overBy ?? 0}
                 overFromIndex={stats?.overFromIndex ?? null}
                 lunch={stats?.lunch ?? null}
-                editable={Boolean(selectedMeta.cityId) && selectedMeta.tier !== "stub"}
-                uncovered={selectedMeta.tier === "stub"}
-                mainSights={selectedMeta.tier === "outline"}
+                editable={cover!.editable}
+                uncovered={cover!.uncovered}
+                mainSights={cover!.mainSights}
                 bookings={bookings}
                 tripDays={dayList.map(([d]) => d)}
               />
