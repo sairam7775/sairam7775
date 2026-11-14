@@ -4,7 +4,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlaceInput } from "@/lib/engine/types";
 import { rowToPlace } from "@/lib/engine/load";
-import { CITY_HUBS, allocateDates, type CityFacts } from "@/lib/engine/route";
+import { allocateDates, hubFor, type CityFacts } from "@/lib/engine/route";
 import { loadGraph } from "@/lib/transit/load";
 import { selectAll } from "@/lib/supabase/select-all";
 import type { Graph } from "@/lib/transit/graph";
@@ -290,9 +290,7 @@ export class SupabaseStore implements TripStore {
     const graph = await this.graph();
     this.tierCache = new Map(data.map((c) => [c.city_id, c.coverage_tier as CoverageTier]));
     return data.map((c) => {
-      const hub = CITY_HUBS[c.city_id];
-      let hubStation: string | null = hub && graph.stations.has(hub) ? hub : null;
-      if (!hubStation) for (const s of graph.stations.values()) if (s.cityId === c.city_id) { hubStation = s.id; break; }
+      const hubStation = hubFor(c.city_id, graph);
       return { id: c.city_id, name: c.name, tier: c.coverage_tier as CoverageTier, verifiedPlaces: Number(c.verified_places ?? 0), transitNote: c.transit_note ?? null, hubStation };
     });
   }

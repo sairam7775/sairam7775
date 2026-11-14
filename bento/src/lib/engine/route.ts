@@ -69,9 +69,11 @@ export interface RouteAssessment {
   nightsMismatch: string | null;
 }
 
-/** Where a trip lands in each city. The corridor is hand-mapped; anything
- *  else falls back to any station the graph has in that city. */
+/** Where a trip lands in each city. Mapped cities land at their main
+ *  station; any other city falls back to its station with the smallest id
+ *  (`hubFor`). A new network adds its city here with its station file. */
 export const CITY_HUBS: Record<string, string> = {
+  "tokyo-city": "tokyo",
   "kyoto-city": "kyoto",
   "osaka-city": "shin-osaka",
   "nara-city": "kintetsu-nara",
@@ -89,8 +91,11 @@ const WAKING_MIN_PER_DAY = 600;
 export function hubFor(cityId: string, graph: Graph): string | null {
   const mapped = CITY_HUBS[cityId];
   if (mapped && graph.stations.has(mapped)) return mapped;
-  for (const s of graph.stations.values()) if (s.cityId === cityId) return s.id;
-  return null;
+  // Unmapped: the city's station with the smallest id, so the pick never
+  // depends on the order the stations were loaded in.
+  let first: string | null = null;
+  for (const s of graph.stations.values()) if (s.cityId === cityId && (first === null || s.id < first)) first = s.id;
+  return first;
 }
 
 const PLANNING: Record<CoverageTier, string> = copy.plan.route.canPlan;
