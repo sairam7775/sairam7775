@@ -35,24 +35,45 @@ const STRIPPED: [number, number][] = [
 const u = (point: number) => `\\u{${point.toString(16)}}`;
 const INVISIBLE = new RegExp(`[${STRIPPED.map(([from, to]) => `${u(from)}-${u(to)}`).join("")}]`, "gu");
 
-/** The joiners kept above, allowed between the letters of a framing tag so
- *  they can't hide one from the check below. */
+/** The joiners kept above. With whitespace, they may sit between the letters
+ *  of a framing name without hiding it from the checks below. */
 const JOINER = `[${u(0x200c)}${u(0x200d)}]`;
-const spelled = (name: string) => [...name].join(`${JOINER}*`);
+const GAP = `[\\s${u(0x200c)}${u(0x200d)}]*`;
 
-/** The tags chat.ts and context.ts wrap around what the model reads. */
-const FRAMING = new RegExp(`<\\s*\\/?\\s*(?:${spelled("trip_state")}|${spelled("traveller_message")})\\b[^>]*>`, "giu");
+/** One letter of a framing name, in either case, ASCII or full-width
+ *  (U+FF21-FF3A, U+FF41-FF5A). */
+const letter = (c: string) => {
+  const upper = c.toUpperCase().charCodeAt(0);
+  const lower = c.toLowerCase().charCodeAt(0);
+  return `[${c.toLowerCase()}${c.toUpperCase()}${u(0xff21 + upper - 0x41)}${u(0xff41 + lower - 0x61)}]`;
+};
+/** A framing name however it is spelled: case, full-width letters, and
+ *  whitespace, newlines or joiners between the letters and around the
+ *  underscore (ASCII or full-width, U+FF3F). */
+const spelled = (name: string) =>
+  name.split("_").map((part) => [...part].map(letter).join(GAP)).join(`${GAP}[_${u(0xff3f)}]${GAP}`);
+const NAME = `(?:${spelled("trip_state")}|${spelled("traveller_message")})`;
+const NAMES = new RegExp(NAME, "gu");
+
+/** A real tag around a framing name. Its angle brackets are swapped too. */
+const FRAMING = new RegExp(`<\\s*\\/?${GAP}${NAME}[^>]*>`, "gu");
 const JOINER_RUN = new RegExp(`${JOINER}+`, "gu");
 /** Look-alike angle brackets (U+2039, U+203A) for a defused tag. */
 const OPEN = String.fromCodePoint(0x2039);
 const CLOSE = String.fromCodePoint(0x203a);
 
-/** Text the traveller wrote, made safe to put in front of the model. Runs on
- *  the message and on trip fields they typed, like the trip title. */
+/** A framing name broken so nobody reads it as one: the underscore becomes
+ *  a space, whatever is in front of it (<, &lt;, a full-width bracket). */
+const broken = (name: string) =>
+  (name.normalize("NFKC").toLowerCase().replace(/[^a-z]/g, "").startsWith("trip") ? "trip state" : "traveller message");
+
+/** Text from outside Bento's own code, made safe to put in front of the
+ *  model: what the traveller typed, stored rows, tool results. */
 export function clean(text: string): string {
   return text
     .replace(INVISIBLE, "")
-    .replace(FRAMING, (tag) => tag.replace(JOINER_RUN, "").replace("<", OPEN).replace(">", CLOSE));
+    .replace(FRAMING, (tag) => tag.replace(JOINER_RUN, "").replace(/</g, OPEN).replace(/>/g, CLOSE))
+    .replace(NAMES, broken);
 }
 
 /** This turn's message as the model sees it: after the trip state, inside
