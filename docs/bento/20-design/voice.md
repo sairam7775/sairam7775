@@ -35,7 +35,7 @@ He still has a personality inside those rules (the prompt's "WHO YOU ARE"): dry,
 ## Where it's enforced
 
 - The system prompt: `bento/src/lib/bento-man/prompt.ts`.
-- `voiceLint` runs on every reply in the eval. It fails a reply that uses internal words such as "tier" or "stub" ([Bento Man (software)](../30-software/bento-man.md)).
+- `voiceLint` runs on every reply in the eval. It fails a reply that uses internal words such as "tier" or "stub", or that calls Bento's information "verified" (the legal copy rule never allows that claim) ([Bento Man (software)](../30-software/bento-man.md)).
 - Every word the app shows lives in `bento/src/copy/en.ts`, written to the same voice.
 - The animated figure doesn't change his voice ([Bento Man's figure](bento-man-figure.md)).
 
