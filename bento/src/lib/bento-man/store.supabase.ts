@@ -372,7 +372,7 @@ export class SupabaseStore implements TripStore {
     // One transaction: claiming the proposal, the route (and the days it
     // orphans), every day, and closing the older proposals. A failure
     // anywhere leaves the trip, and the proposal, exactly as they were.
-    const { error } = await this.db.rpc("apply_proposal", {
+    const { data: outcome, error } = await this.db.rpc("apply_proposal", {
       p_trip: this.tripId,
       p_message: messageId,
       p_route: routeRows(p, meta),
@@ -382,12 +382,11 @@ export class SupabaseStore implements TripStore {
     });
     if (error) throw error;
     this.stateCache = null;
-    // The void RPC commits a stale rejection rather than raising (which
-    // would roll it back). Read its durable, distinct outcome afterwards.
-    const { data: outcome, error: outcomeError } = await this.db.from("chat_messages")
-      .select("resolution_reason").eq("trip_id", this.tripId).eq("id", messageId).single();
-    if (outcomeError) throw outcomeError;
-    if (outcome?.resolution_reason === "stale_day") throw new Error(copy.trip.proposals.staleDay);
+    // A day changed since the proposal was made: the RPC returns (so its
+    // close of the proposal commits) instead of raising, and applied nothing.
+    if (outcome === "stale_day") throw new Error(copy.trip.proposals.staleDay);
+    // Anything but 'applied' is not a success we can vouch for.
+    if (outcome !== "applied") throw new Error(copy.trip.proposals.notAppliedUnknown);
   }
 
   /** A proposal that moves the dates: the date change (as setTripDates
