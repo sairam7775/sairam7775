@@ -76,6 +76,29 @@ export function clean(text: string): string {
     .replace(NAMES, broken);
 }
 
+/** Every string in a value cleaned; keys and structure untouched. */
+function cleanStrings(value: unknown): unknown {
+  if (typeof value === "string") return clean(value);
+  if (Array.isArray(value)) return value.map(cleanStrings);
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, cleanStrings(v)]));
+  return value;
+}
+
+/** A tool result (a JSON string, or plain text when a tool failed) as the
+ *  model should read it: its strings can hold what a traveller stored, so
+ *  they are cleaned. A result that needs no change is returned as the same
+ *  string, so ordinary results stay byte-identical (cache and cost). */
+export function cleanToolResult(result: string): string {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(result);
+  } catch {
+    return clean(result);
+  }
+  const cleaned = JSON.stringify(cleanStrings(parsed));
+  return cleaned === JSON.stringify(parsed) ? result : cleaned;
+}
+
 /** This turn's message as the model sees it: after the trip state, inside
  *  the tag the prompt names as the traveller's own words. */
 export const travellerMessage = (message: string) => `<traveller_message>\n${message}\n</traveller_message>`;

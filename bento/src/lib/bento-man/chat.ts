@@ -10,7 +10,7 @@ import { addUsage, CHAT_INPUT_BOUND, CHAT_MAX_OUTPUT_TOKENS, costUsd, estimateIn
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResult } from "./provider";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
-import { clean, leaksPrompt, releasable, travellerMessage } from "./guard";
+import { clean, cleanToolResult, leaksPrompt, releasable, travellerMessage } from "./guard";
 import { SYSTEM_PROMPT } from "./prompt";
 import type { TripStore } from "./store";
 import { runTool, TOOLS, type ToolContext } from "./tools";
@@ -100,8 +100,9 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   if (persist) await store.append("user", message);
 
   const context = buildContext(state, cities, today);
-  // Earlier messages were stored before clean() existed, so clean them too.
-  const said = history.map((h) => (h.role === "user" ? { ...h, content: clean(h.content) } : h));
+  // Earlier turns of either role are stored rows the traveller can write
+  // themselves, so they are cleaned like the message.
+  const said = history.map((h) => ({ ...h, content: clean(h.content) }));
   const messages = conversation(said, `${context}\n\n${travellerMessage(message)}`);
 
   // Stream a reply with a short tail held back, and stop for good once it
@@ -212,7 +213,9 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       }
       toolCalls.push({ name: use.name, input: use.input, ok: !outcome.isError });
       events?.onTool?.(use.name, "end", !outcome.isError);
-      results.push({ id: use.id, name: use.name, content: outcome.result, isError: outcome.isError || undefined });
+      // Tool results carry stored text (titles, preferences, place notes):
+      // cleaned at the boundary, byte-identical when nothing needs it.
+      results.push({ id: use.id, name: use.name, content: cleanToolResult(outcome.result), isError: outcome.isError || undefined });
     }
     messages.push({ role: "user", content: results });
   }
