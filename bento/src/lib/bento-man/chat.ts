@@ -5,6 +5,7 @@
  *  Prompt caching (§09): the system prompt and tool list are byte-stable;
  *  everything that changes per turn — today's date, the trip state — rides
  *  in the final user message, after the cache breakpoint. */
+import { copy } from "@/copy";
 import { addUsage, CHAT_INPUT_BOUND, CHAT_MAX_OUTPUT_TOKENS, costUsd, estimateInputTokens, totalUsage, ZERO_USAGE, type Usage, type UsageByModel } from "./cost";
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResult } from "./provider";
 import { buildContext } from "./context";
@@ -85,9 +86,9 @@ export interface RunResult {
 /** Adaptive thinking comes out of this too, so leave room: a truncated
  *  turn can cut a tool_use block in half. */
 const MAX_TOKENS = CHAT_MAX_OUTPUT_TOKENS;
-const REFUSAL_TEXT = "That one isn't mine to answer. Ask me about Japan or the trip and I'm all yours.";
+const REFUSAL_TEXT = copy.chat.refused;
 /** Said instead of a reply that repeated the system prompt (guard.ts). */
-const WITHHELD_TEXT = "That stays in the box. Ask me about Japan or the trip instead.";
+const WITHHELD_TEXT = copy.chat.withheld;
 
 export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   const { store, provider, today } = opts;
