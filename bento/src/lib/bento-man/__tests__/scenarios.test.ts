@@ -101,6 +101,12 @@ describe("eval scenarios", () => {
       ["Don't let it blow you away: keep an eye on JMA.", "Why did the typhoon cross the road? Check JR West."],
       ["Check the Japan Meteorological Agency and JR West that morning; trains are often suspended in a typhoon. If they are, the travel day can move."]],
   );
+  // The off-route regression (live, 14 Nov).
+  graded.push(
+    ["fact-off-route-place",
+      ["Himeji is outside the area I'm planning for on this trip.", "I don't know Himeji well enough yet; your trip is Osaka, Kyoto and Hiroshima.", "Himeji isn't on your route, so I can't help with it."],
+      ["Give Himeji Castle about two hours, three if you want every floor. Go at opening, before 09:30, when you can climb freely.", "Bento has it: allow 120 minutes for the castle."]],
+  );
   for (const [id, bad, good] of graded) {
     it(`grades ${id} on what it asks for`, () => {
       for (const b of bad) expect(proseFails(byId(id), b), `should fail: ${b}`).toBe(true);

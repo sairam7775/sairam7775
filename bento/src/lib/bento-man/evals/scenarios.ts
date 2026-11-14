@@ -344,6 +344,19 @@ export const SCENARIOS: Scenario[] = [
     expect: { tools: ["get_place"], mustMatch: [/don't have|do not have|not in|don't know|can't say|cannot say/i], mustNotMatch: [/\b\d+ ?(minutes|hours|min)\b/] },
   },
   {
+  {
+    id: "fact-off-route-place",
+    intent: "A place in Bento's data but off the traveller's route is looked up and answered, not declined for being off the route.",
+    // Live, 14 Nov: with a Kansai route he declined Tokyo Skytree without a
+    // lookup. Himeji is in the eval data and not on `routed`.
+    setup: routed,
+    user: "How long should we give Himeji Castle?",
+    expect: {
+      tools: ["get_place"],
+      mustMatch: [/\b(60|90|120|180) ?(minutes|mins?)\b|\b(an|one|two|three|1|2|3)( (or|to) (two|three|2|3))? hours?\b/i],
+      mustNotMatch: [declined, /outside (the|my) (area|region)|not on (your|the) (route|trip)|(don't|do not) know (Himeji|it) well|focus(ing)? on (your trip to )?(Kansai|Osaka|Kyoto)/i],
+    },
+  },
     id: "fact-background-checked",
     intent: "History comes from the checked background, not the model.",
     setup: { ...routed, backgrounds: { "kyt-kinkakuji": { body: KINKAKU, sources: ["shokoku-ji.jp"] } } },

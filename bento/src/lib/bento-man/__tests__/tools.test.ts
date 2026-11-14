@@ -35,6 +35,13 @@ describe("tool definitions", () => {
     expect(examples.length).toBeGreaterThan(100);
     expect(voiceLint(examples)).toEqual([]);
   });
+  it("the prompt keeps every place in Japan in scope and looks it up first", () => {
+    // Live, 14 Nov: with a Kansai route he declined Tokyo Skytree without a lookup.
+    expect(SYSTEM_PROMPT).toMatch(/whether or not it is on the route/);
+    expect(SYSTEM_PROMPT).toMatch(/off the route is never a reason to decline/);
+    expect(SYSTEM_PROMPT).toMatch(/names a place, call get_place first/);
+    expect(SYSTEM_PROMPT).toMatch(/never a reason to skip a tool/);
+  });
   it("the voice lint catches Bento's internal words for coverage", () => {
     expect(voiceLint("Takayama is at stub tier.").map((v) => v.rule)).toEqual(["jargon"]);
     expect(voiceLint("Himeji has the main sights only. A deep breath, then the outline of the castle.")).toEqual([]);
