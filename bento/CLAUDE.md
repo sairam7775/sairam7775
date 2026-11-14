@@ -314,8 +314,10 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
-- `place_background` is the one place general knowledge is allowed, and
-  only for history. With a checked background (0027) Bento Man retells it.
+- `place_background` is the one place general knowledge about a particular
+  place is allowed, and only for history. (Culture that doesn't go out of
+  date — etiquette, what a torii is, festivals — is the prompt's other
+  allowance, checked by `scope-culture`.) With a checked background (0027) Bento Man retells it.
   Without one it may give two or three sentences of widely known background,
   said as general, and the tool counts the ask (`noteBackgroundAsk`). Never
   hours, prices or anything a traveller acts on. Guarded by `tools.test.ts`
