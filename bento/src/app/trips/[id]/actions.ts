@@ -102,7 +102,7 @@ const StopShareForm = z.object({ tripId: z.string().uuid(), from: z.enum(["trip"
 /** Sharing the plan by link (0020/0024). The database makes the token; a new
  *  link is the old row deleted and a fresh one inserted in one database
  *  function (`renew_trip_share`, 0030), so the old address stops working at
- *  once and a failure leaves it working. Expiry is derived from a choice and stored trip
+ *  once and a failure in the database leaves it working. Expiry is derived from a choice and stored trip
  *  dates, never from a timestamp sent by the browser. */
 export async function shareTrip(formData: FormData) {
   await changeShare(formData, "on");
@@ -149,7 +149,8 @@ async function changeShare(formData: FormData, how: "on" | "renew" | "off") {
     }
   }
   if (how === "renew") {
-    // One transaction (0030): if anything fails, the old link keeps working.
+    // One transaction (0030): a failure in the database rolls back and the old
+    // link keeps working. It re-checks "until the trip ends" under the trip lock.
     // A refusal is an error, so only a returned token counts as a new link.
     const { data: token, error } = await db.rpc("renew_trip_share", {
       p_trip: tripId,

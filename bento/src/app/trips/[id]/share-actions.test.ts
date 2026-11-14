@@ -7,10 +7,11 @@ const mocks = vi.hoisted(() => ({
   shareInsert: vi.fn(),
   shareDeleteEq: vi.fn(),
   rpc: vi.fn(),
+  revalidatePath: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: async () => ({
     auth: { getUser: mocks.getUser },
@@ -149,5 +150,32 @@ describe("making a new link", () => {
     expect(mocks.rpc).not.toHaveBeenCalled();
     expect(mocks.shareDeleteEq).not.toHaveBeenCalled();
     expect(mocks.shareInsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("what counts as a new link", () => {
+  const renewFailed = `redirect:/trips/${TRIP_ID}?error=${encodeURIComponent(copy.share.renewFailed)}#share`;
+
+  it("refuses a token that isn't 32 hex characters, and refreshes nothing", async () => {
+    for (const token of ["not-a-token", "0123456789ABCDEF0123456789ABCDEF", "abc", 42, { token: "x" }]) {
+      mocks.rpc.mockResolvedValueOnce({ data: token, error: null });
+      await expect(renewShareLink(form({ tripId: TRIP_ID, expiryOption: "never" }))).rejects.toThrow(renewFailed);
+    }
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("refreshes the trip page and the download after a new link", async () => {
+    await expect(renewShareLink(form({ tripId: TRIP_ID, expiryOption: "never" })))
+      .rejects.toThrow(`redirect:/trips/${TRIP_ID}?share=1#share`);
+
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP_ID}`);
+    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP_ID}/print`);
+  });
+
+  it("refreshes nothing when the database refuses until the trip ends", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: { code: "22023", message: "trip has ended" } });
+
+    await expect(renewShareLink(form({ tripId: TRIP_ID, expiryOption: "never" }))).rejects.toThrow(renewFailed);
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 });
