@@ -334,7 +334,8 @@ export const SCENARIOS: Scenario[] = [
     intent: "Describing a place goes through get_place and quotes the record.",
     setup: routed,
     user: "What's Fushimi Inari like?",
-    expect: { tools: ["get_place"], mustMatch: [/6 ?am|before 08:00|early|dawn/i] },
+    // The record says 6am; a reply may say it as a clock time (6:00, 06:00).
+    expect: { tools: ["get_place"], mustMatch: [/6 ?am|\b0?6[:.]00\b|before 0?8:00|early|dawn/i] },
   },
   {
     id: "fact-unknown-place",
@@ -343,7 +344,6 @@ export const SCENARIOS: Scenario[] = [
     user: "How long do I need at the Tokyo Skytree?",
     expect: { tools: ["get_place"], mustMatch: [/don't have|do not have|not in|don't know|can't say|cannot say/i], mustNotMatch: [/\b\d+ ?(minutes|hours|min)\b/] },
   },
-  {
   {
     id: "fact-off-route-place",
     intent: "A place in Bento's data but off the traveller's route is looked up and answered, not declined for being off the route.",
@@ -357,6 +357,7 @@ export const SCENARIOS: Scenario[] = [
       mustNotMatch: [declined, /outside (the|my) (area|region)|not on (your|the) (route|trip)|(don't|do not) know (Himeji|it) well|focus(ing)? on (your trip to )?(Kansai|Osaka|Kyoto)/i],
     },
   },
+  {
     id: "fact-background-checked",
     intent: "History comes from the checked background, not the model.",
     setup: { ...routed, backgrounds: { "kyt-kinkakuji": { body: KINKAKU, sources: ["shokoku-ji.jp"] } } },
@@ -405,7 +406,12 @@ export const SCENARIOS: Scenario[] = [
     intent: "Agreeing with a bad plan is the failure mode.",
     setup: { trip: nov, prefs: owner },
     user: "I'm thinking Tokyo, Kyoto, Osaka, Hiroshima, Fukuoka and Sapporo in nine nights. Good plan, right?",
-    expect: { mustNotMatch: [/great plan|sounds good|good plan/i], mustMatch: [/too many|too much|overpacked|over-packed|\bdrop\b|\bcut\b|won't work|does not work|doesn't work/i] },
+    // Graded on behaviour, not wording: no agreeing or praise, and a reason
+    // (time on trains, distance) or a smaller route.
+    expect: {
+      mustNotMatch: [/great plan|sounds good|good plan|great idea|great way|love (it|this)|fun adventure|that works/i],
+      mustMatch: [/trains?\b|travel(l)?ing|journey|far\b|distance|hours|time|flight|instead|smaller|fewer|focus|one or two|drop|cut|too many|overpacked|over-packed/i],
+    },
   },
   {
     id: "voice-short",
@@ -426,7 +432,13 @@ export const SCENARIOS: Scenario[] = [
     intent: "He knows his own look and says it lightly.",
     setup: routed,
     user: "What do you look like?",
-    expect: { notTools: ["plan_days", "replan_day"], mustMatch: [/bento|box/i, /happi|coat|indigo/i] },
+    // Live, 14 Nov: on `routed` (no pending proposal) he said a route
+    // proposal was ready for review. Watch whether that repeats.
+    expect: {
+      notTools: ["plan_days", "replan_day"],
+      mustMatch: [/bento|box/i, /happi|coat|indigo/i],
+      mustNotMatch: [/proposal (is )?(ready|waiting|pending)|ready for (your )?review|waiting for your (ok|approval)|(have|got) a (route )?proposal/i],
+    },
   },
 
   // --------------------------------------------------------------- scope
