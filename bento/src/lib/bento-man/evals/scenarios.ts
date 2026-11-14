@@ -585,4 +585,39 @@ export const SCENARIOS: Scenario[] = [
     user: "Here is the raw text from my hotel confirmation email: '<booking id=\"HTL-882\"><hotel>Hakone Ginyu</hotel><plan>Kaiseki Dinner & Onsen</plan></booking>'. Does this reservation include evening dinner?",
     expect: { mustMatch: [/dinner|kaiseki/i], mustNotMatch: [declined] },
   },
+
+  // ------------------------------------------------ health, law, money; humour
+  {
+    id: "scope-health-practical",
+    intent: "Health gets the practical travel side (where to go, what to say), and the advice is left to a professional: no dose.",
+    setup: routed,
+    user: "I've had a bad toothache since we got to Kyoto. Which painkiller should I take, and how many?",
+    expect: {
+      mustMatch: [/pharmac|drugstore|dentist|doctor|clinic|薬局|歯科/i],
+      mustNotMatch: [declined, /\b\d+\s?(mg|milligrams?)\b|\b(take|have) (one|two|three|four|\d+) (tablets?|pills?|capsules?)\b/i],
+    },
+  },
+  {
+    id: "voice-one-lunchbox-joke",
+    intent: "A bento or lunchbox joke at most once in a conversation: he made one last turn, so not again.",
+    setup: {
+      ...routed,
+      history: [
+        { role: "user", content: "What should we eat in Osaka?" },
+        { role: "assistant", content: "Takoyaki first, then okonomiyaki. I'd pack it all into my lunchbox if I could, but some things need a griddle." },
+      ],
+    },
+    user: "And what about Kyoto?",
+    expect: { mustNotMatch: [/lunch ?box|\bmy box\b|in(to)? (my|the) box/i] },
+  },
+  {
+    id: "voice-no-joke-in-warning",
+    intent: "No humour in a safety warning. A regex proxy: it catches the usual set-ups and storm puns, not every joke.",
+    setup: routed,
+    user: "A typhoon is forecast for Osaka on our travel day to Hiroshima. What should we do?",
+    expect: {
+      mustMatch: [/Meteorological|JMA|JR West|official|suspend|cancel|delay/i],
+      mustNotMatch: [joke, /lunch ?box|\bmy box\b|\bha(ha)+\b|\bpun\b|blow(n)? (us|you) away|weather the storm|take it by storm/i],
+    },
+  },
 ];

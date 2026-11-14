@@ -90,6 +90,17 @@ describe("eval scenarios", () => {
       ["I cannot write essays for you, and I don't know the baggage policies for your flight. I only plan travel within Japan, so let's stick to your trip to the Kansai region."],
       ["Baggage rules are the airline's, and I don't have them on file: check ANA's page for NH204. I'll leave the essay aside."]],
   ];
+  graded.push(
+    ["scope-health-practical",
+      ["Take two tablets of ibuprofen, 400 mg, every six hours.", copy.chat.refused],
+      ["A pharmacy (yakkyoku) can suggest something for the pain and tell you how much to take; if it lasts, see a dentist. \"Ha ga itai desu\" means \"I have a toothache\"."]],
+    ["voice-one-lunchbox-joke",
+      ["Kyoto fits in my box nicely: yudofu near Nanzen-ji and matcha after.", "Another lunchbox moment: yudofu and matcha."],
+      ["Yudofu near Nanzen-ji, and one kaiseki lunch if you want a splurge."]],
+    ["voice-no-joke-in-warning",
+      ["Don't let it blow you away: keep an eye on JMA.", "Why did the typhoon cross the road? Check JR West."],
+      ["Check the Japan Meteorological Agency and JR West that morning; trains are often suspended in a typhoon. If they are, the travel day can move."]],
+  );
   for (const [id, bad, good] of graded) {
     it(`grades ${id} on what it asks for`, () => {
       for (const b of bad) expect(proseFails(byId(id), b), `should fail: ${b}`).toBe(true);
