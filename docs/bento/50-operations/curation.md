@@ -28,6 +28,7 @@ Adding or correcting places for a city, or promoting a city's coverage.
 ## Steps
 
 1. Edit the city's drafts in `bento/src/lib/places/seed/<city>.ts`. Never edit the SQL.
+   - A new city's file is registered in `bento/src/lib/places/seed/index.ts`; a test fails until it is. Its stations go in a new network file registered in `bento/src/lib/transit/seed/index.ts` ([transit](../30-software/transit.md)).
    - A `station` must be a station id in the transit seed; a place reached only by bus or on foot gets `station: null` (and the engine's 45-minute fallback), or add the stop to the transit seed.
    - `conflicts` and `pairs` must point at ids in the same batch.
    - Hours are same-day: `closes` after `opens`. An overnight venue gets `closes: "23:59"`, with the real time in the tip.
