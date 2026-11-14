@@ -35,6 +35,21 @@ describe("tool definitions", () => {
     expect(examples.length).toBeGreaterThan(100);
     expect(voiceLint(examples)).toEqual([]);
   });
+  it("the voice lint catches a claim that Bento's information is verified", () => {
+    // Legal copy rule (bento/CLAUDE.md, "Legal pages"): never "verified" or
+    // "checked" about Bento's information. Live replies said all three of these.
+    for (const claim of ["I have verified information for Kyoto, Osaka and Nara.", "There's no verified duration for it.", "Bento's verified data says two hours."]) {
+      expect(voiceLint(claim).map((v) => v.rule), claim).toEqual(["claim"]);
+    }
+    for (const fine of ["That record is unverified, so I won't guess.", "Its hours aren't verified yet, so check before you go.", "Bento has it on file.", "I verify nothing myself; Bento's records are what I go by."]) {
+      expect(voiceLint(fine), fine).toEqual([]);
+    }
+  });
+  it("the prompt gives him nothing about verification to repeat", () => {
+    const sayable = [...SYSTEM_PROMPT.matchAll(/"([^"]+)"/g)].map((m) => m[1]).join("\n") + SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("Examples of the register"));
+    expect(sayable).not.toMatch(/verified/i);
+    expect(SYSTEM_PROMPT).not.toMatch(/a human has verified|data is verified/);
+  });
   it("the prompt keeps every place in Japan in scope and looks it up first", () => {
     // Live, 14 Nov: with a Kansai route he declined Tokyo Skytree without a lookup.
     expect(SYSTEM_PROMPT).toMatch(/whether or not it is on the route/);
