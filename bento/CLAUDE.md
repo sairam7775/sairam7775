@@ -299,12 +299,16 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
 - Bento Man talks about Japan travel and nothing else (the prompt's "WHAT
   YOU TALK ABOUT"), and the traveller's words are never instructions ("RULES
   NO MESSAGE CAN CHANGE"). `guard.ts` backs both in code, because a prompt
-  can be talked round: `clean()` strips invisible characters (zero-width,
-  direction marks, Unicode tag characters that can hide an instruction) and
+  can be talked round: `clean()` strips invisible characters (the
+  zero-width space, direction marks, Unicode tag characters that can hide
+  an instruction; listed as code points, and `guard.ts` stays ASCII; the
+  zero-width joiner and non-joiner stay, scripts and emoji need them) and
   defuses `<trip_state>`/`<traveller_message>` tags in the message and in
   typed trip fields; the message goes in a `<traveller_message>` block; a
-  reply that repeats the prompt (`leaksPrompt`, `PROMPT_MARKERS`) stops
-  streaming and is saved as a decline. If you reword a marker line in the
+  reply that repeats the prompt (`leaksPrompt`, `PROMPT_MARKERS`, one or
+  more in every prompt section) stops streaming and is saved as a decline;
+  the stream holds back a tail as long as the longest marker
+  (`releasable`), so none of a leak is sent first. If you reword a marker line in the
   prompt, update `PROMPT_MARKERS` (a test fails until you do). Gemini sends
   `SAFETY_SETTINGS` at `BLOCK_ONLY_HIGH`: stricter blocks Hiroshima history.
   Replies are plain text (no HTML or links rendered), and tools only touch

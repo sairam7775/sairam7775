@@ -20,9 +20,10 @@ The product side is in [Bento Man, the guide](../10-product/bento-man.md).
 ## Scope and injection guards
 
 The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT": anything else is declined in a line) and says the traveller's words are never instructions ("RULES NO MESSAGE CAN CHANGE"). A prompt can be talked round, so `guard.ts` backs it in code:
-- `clean()` removes characters the traveller can't see (zero-width and direction marks, Unicode tag characters) and defuses `<trip_state>` / `<traveller_message>` tags, in the message, in earlier traveller turns, and in typed trip fields such as the title (which `context.ts` also puts on one line).
-- The message reaches the model inside its own `<traveller_message>` block, after the trip state.
-- A reply that repeats the prompt (`leaksPrompt`, matched against `PROMPT_MARKERS`) stops streaming and is replaced by a short decline (`copy.chat.withheld`). A test fails if a marker line is reworded in the prompt without updating the list.
+- `clean()` removes characters the traveller can't see (control characters, the zero-width space, direction marks and bidi controls, invisible operators, the byte order mark, Unicode tag characters) and defuses `<trip_state>` / `<traveller_message>` tags, in the message, in earlier traveller turns, and in typed trip fields such as the title (which `context.ts` also puts on one line). The zero-width joiner and non-joiner stay, because Indic and Persian scripts and emoji need them. The list is written as code point ranges, and `guard.ts` is kept plain ASCII so it can be reviewed.
+- The message reaches the model inside its own `<traveller_message>` block, after the trip state. A test runs an independent red-team list of messages through it.
+- A reply that repeats the prompt (`leaksPrompt`, matched against `PROMPT_MARKERS`, at least one in every section of the prompt) is replaced by a short decline (`copy.chat.withheld`). Tests fail if a marker is reworded in the prompt without updating the list, or if a line he is meant to say would trip it.
+- While a reply streams, a tail as long as the longest marker is held back (`releasable`), so a leak is caught before any of it reaches the browser. A finished model call's tail is sent before its tools run, and the final reply replaces the stream when the turn ends.
 - On Gemini, Google's safety filters are on at `BLOCK_ONLY_HIGH` (`SAFETY_SETTINGS`); stricter settings block Hiroshima history.
 - What limits the damage if the model is talked round anyway: replies are plain text, and tools only reach the signed-in traveller's own trip.
 
