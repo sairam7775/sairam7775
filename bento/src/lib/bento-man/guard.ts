@@ -93,3 +93,25 @@ export const leaksPrompt = (text: string) => {
   const t = squash(text);
   return MARKERS.some((m) => t.includes(m));
 };
+
+/** The longest marker, counted as leaksPrompt counts. */
+const HOLD_BACK = Math.max(...MARKERS.map((m) => m.length));
+
+/** How much of a reply still streaming may be shown: everything but a tail
+ *  that could hold the start of a marker, so a leak is caught before any of
+ *  it is sent. The tail is counted as leaksPrompt counts, a run of
+ *  whitespace as one character, so extra spacing can't stretch a marker
+ *  past it. The finished reply replaces the stream, so nothing is lost. */
+export function releasable(text: string): number {
+  let i = text.length;
+  let kept = 0;
+  while (i > 0 && kept < HOLD_BACK) {
+    i--;
+    if (/\s/.test(text[i])) while (i > 0 && /\s/.test(text[i - 1])) i--;
+    kept++;
+  }
+  // Don't cut an emoji or other astral character in half.
+  const unit = text.charCodeAt(i);
+  if (i > 0 && unit >= 0xdc00 && unit <= 0xdfff) i--;
+  return i;
+}

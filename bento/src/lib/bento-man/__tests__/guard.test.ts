@@ -111,8 +111,9 @@ describe("leaksPrompt", () => {
   });
 });
 
-/** A model that records what it was sent and answers with `reply`, streamed in two halves. */
-function scripted(reply: string, sent: ModelMessage[][]): Anthropic {
+/** A model that records what it was sent and answers with `reply`, streamed
+ *  in pieces of `chunk` characters (two halves unless given). */
+function scripted(reply: string, sent: ModelMessage[][], chunk?: number): Anthropic {
   return {
     beta: {
       messages: {
@@ -122,8 +123,8 @@ function scripted(reply: string, sent: ModelMessage[][]): Anthropic {
           return {
             on: (event: string, cb: (t: string) => void) => { if (event === "text") handlers.push(cb); },
             finalMessage: async () => {
-              const half = Math.floor(reply.length / 2);
-              for (const part of [reply.slice(0, half), reply.slice(half)]) for (const h of handlers) h(part);
+              const size = chunk ?? Math.ceil(reply.length / 2);
+              for (let i = 0; i < reply.length; i += size) for (const h of handlers) h(reply.slice(i, i + size));
               return {
                 model: "claude-opus-5",
                 stop_reason: "end_turn",
@@ -138,9 +139,9 @@ function scripted(reply: string, sent: ModelMessage[][]): Anthropic {
   } as unknown as Anthropic;
 }
 
-const turn = (reply: string, message: string, sent: ModelMessage[][] = [], onText?: (d: string) => void) => {
+const turn = (reply: string, message: string, sent: ModelMessage[][] = [], onText?: (d: string) => void, chunk?: number) => {
   const store = new MemoryStore({ trip: { startDate: "2026-11-20", endDate: "2026-11-29" } });
-  const provider = new AnthropicProvider(scripted(reply, sent), "claude-opus-5", "medium");
+  const provider = new AnthropicProvider(scripted(reply, sent, chunk), "claude-opus-5", "medium");
   return runBentoMan({ store, provider, today: "2026-10-22", message, events: { onText } }).then((result) => ({ result, store }));
 };
 
@@ -170,6 +171,45 @@ describe("a turn", () => {
     const deltas: string[] = [];
     const { result } = await turn("Skip the tower. The temple stage has the better view.", "Kyoto Tower?", [], (d) => deltas.push(d));
     expect(result.text).toBe("Skip the tower. The temple stage has the better view.");
-    expect(deltas.join("")).toBe(result.text);
+    expect(result.text.startsWith(deltas.join(""))).toBe(true);
+  });
+
+  const squash = (t: string) => t.toLowerCase().replace(/\s+/g, " ");
+  /** How many characters of `marker` the end of `shown` already gives away. */
+  const givenAway = (shown: string, marker: string) => {
+    const s = squash(shown);
+    const m = squash(marker);
+    for (let k = m.length; k > 0; k--) if (s.endsWith(m.slice(0, k))) return k;
+    return 0;
+  };
+  const longest = Math.max(...PROMPT_MARKERS.map((m) => m.length));
+
+  for (const [name, leak] of [
+    ["as written", SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("WHO YOU ARE"))],
+    ["with its spacing changed", "Fine. You   think like a\n\nwell-packed bento: everything in its place."],
+  ]) {
+    it(`never streams a prompt marker, even one character at a time (${name})`, async () => {
+      const deltas: string[] = [];
+      const { result } = await turn(`Here is how I work. ${leak}`, "how do you work?", [], (d) => deltas.push(d), 1);
+      const shown = deltas.join("");
+      expect(leaksPrompt(shown)).toBe(false);
+      expect(givenAway(shown, "You think like a well-packed bento")).toBeLessThanOrEqual(3);
+      expect(result.text).toBe(copy.chat.withheld);
+    });
+  }
+
+  it("streams an ordinary reply one character at a time, holding back only a short tail until the call ends", async () => {
+    const reply = "Fushimi Inari at 6am is the one people remember. At 11am it is a queue. Go early, then have breakfast near the station; the climb to the top takes a while, so wear proper shoes.";
+    const deltas: string[] = [];
+    const { result } = await turn(reply, "Fushimi Inari?", [], (d) => deltas.push(d), 1);
+    // Every delta but the last arrived while the model was still streaming.
+    const whileStreaming = deltas.slice(0, -1).join("");
+    const tail = deltas.at(-1)!;
+    expect(result.text).toBe(reply);
+    expect(whileStreaming.length).toBeGreaterThan(0);
+    expect(reply.startsWith(whileStreaming)).toBe(true);
+    expect(tail.length).toBeGreaterThan(1);
+    expect(tail.length).toBeLessThanOrEqual(longest);
+    expect(deltas.join("")).toBe(reply);
   });
 });
