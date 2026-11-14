@@ -19,7 +19,7 @@ function fixture() {
   const from = vi.fn((table: string) => {
     const query = Object.assign(Promise.resolve({ data: structuredClone(rows[table]), error: errors[table] ?? null }), {
       select: (columns: string) => { selectCalls.push([table, columns]); return query; },
-      eq: () => query, in: () => query, order: () => query, limit: () => query,
+      eq: () => query, in: () => query, order: () => query, limit: () => query, range: () => query,
       maybeSingle: () => query, single: () => query,
       upsert: async (row: Record<string, unknown>) => {
         rows[table] = row;
@@ -235,5 +235,35 @@ describe("place backgrounds", () => {
     await expect(store.noteBackgroundAsk("nope")).resolves.toBeUndefined();
     expect(logged).toHaveBeenCalled();
     logged.mockRestore();
+  });
+});
+
+describe("SupabaseStore reference reads past the API's row limit", () => {
+  /** Answers like PostgREST: at most 1,000 rows a response, with a count. */
+  function capped(tables: Record<string, Record<string, unknown>[]>) {
+    const from = vi.fn((table: string) => {
+      const filters: [string, unknown][] = [];
+      const query = {
+        select: () => query,
+        eq: (column: string, value: unknown) => (filters.push([column, value]), query),
+        order: () => query,
+        range: async (a: number, b: number) => {
+          const rows = (tables[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v));
+          return { data: rows.slice(a, Math.min(b + 1, a + 1000)), error: null, count: rows.length };
+        },
+      };
+      return query;
+    });
+    return new SupabaseStore({ from } as unknown as SupabaseClient, "trip", "user");
+  }
+
+  it("reads every city and every place in a city", async () => {
+    const store = capped({
+      city_coverage: Array.from({ length: 1200 }, (_, i) => ({ city_id: `city-${String(i).padStart(4, "0")}`, name: `City ${i}`, coverage_tier: "deep", verified_places: 0 })),
+      places_public: Array.from({ length: 1005 }, (_, i) => ({ id: `p-${String(i).padStart(4, "0")}`, city_id: "city-0001", name: `Place ${i}` })),
+    });
+
+    expect((await store.cities()).length).toBe(1200);
+    expect((await store.places("city-0001")).length).toBe(1005);
   });
 });
