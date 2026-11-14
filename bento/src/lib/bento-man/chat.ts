@@ -10,7 +10,7 @@ import { addUsage, CHAT_INPUT_BOUND, CHAT_MAX_OUTPUT_TOKENS, costUsd, estimateIn
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResult } from "./provider";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
-import { clean, cleanToolResult, leaksPrompt, releasable, travellerMessage } from "./guard";
+import { clean, cleanToolResult, GuardedStream, leaksPrompt, travellerMessage } from "./guard";
 import { SYSTEM_PROMPT } from "./prompt";
 import type { TripStore } from "./store";
 import { runTool, TOOLS, type ToolContext } from "./tools";
@@ -105,30 +105,12 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   const said = history.map((h) => ({ ...h, content: clean(h.content) }));
   const messages = conversation(said, `${context}\n\n${travellerMessage(message)}`);
 
-  // Stream a reply with a short tail held back, and stop for good once it
-  // starts repeating the system prompt, so no part of a marker is sent. The
-  // final text below replaces the stream on the client ("done"), and a leak
-  // is swapped there as a whole.
-  let streamed = "";
-  let shown = 0;
-  let withheld = false;
-  const show = (upTo: number) => {
-    if (withheld || upTo <= shown) return;
-    opts.events?.onText?.(streamed.slice(shown, upTo));
-    shown = upTo;
-  };
-  const events: ChatEvents | undefined = opts.events && {
-    ...opts.events,
-    onText: (delta) => {
-      if (withheld) return;
-      streamed += delta;
-      if (leaksPrompt(streamed)) withheld = true;
-      else show(releasable(streamed));
-    },
-  };
-  // A finished model call's text has been checked whole, so its held tail
-  // can go out before the tools run, rather than waiting for "done".
-  const showCallEnd = () => show(streamed.length);
+  // Every call's text streams through one guard (guard.ts), joined as the
+  // final reply is, so nothing that could start a prompt leak is sent, even
+  // across a tool round. The final text below replaces the stream on the
+  // client ("done"), and a leak is swapped there as a whole.
+  const stream = new GuardedStream((delta) => opts.events?.onText?.(delta));
+  const events: ChatEvents | undefined = opts.events && { ...opts.events, onText: (delta) => stream.push(delta) };
 
   const ctx: ToolContext = { store, today, proposal: null };
   const texts: string[] = [];
@@ -178,7 +160,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       throw e;
     }
 
-    showCallEnd();
+    stream.endCall();
     // Price against the model that served this iteration, not the last one.
     await account(msg.model, msg.usage, hold);
     servedBy = msg.model;
@@ -225,7 +207,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   }
 
   let text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
-  if (withheld || leaksPrompt(text)) {
+  if (stream.withheld || leaksPrompt(text)) {
     console.warn("Bento Man: withheld a reply that repeated the system prompt.");
     text = WITHHELD_TEXT;
   }

@@ -191,3 +191,62 @@ export function releasable(text: string, ended = false): number {
   }
   return held;
 }
+
+/** A reply as it streams to the browser, across every model call of a
+ *  turn. It keeps one text, joined between calls the way the final reply is
+ *  joined, so a run of prompt words split by a tool round is still one run.
+ *  It sends on only what can't be the start of a leak, stops for good once
+ *  the text leaks, and holds a call's trailing words through a tool round
+ *  when they could continue into the next call. Whatever it holds back, the
+ *  final reply replaces the stream on "done"; if the turn fails instead,
+ *  the browser keeps only text that passed the check. */
+export class GuardedStream {
+  private text = "";
+  private shown = 0;
+  /** Joins between calls: part of the checked text, never sent (the chat
+   *  adds its own break after a tool round). */
+  private joins: [number, number][] = [];
+  private inCall = false;
+  withheld = false;
+
+  constructor(private readonly emit: (delta: string) => void, private readonly join = "\n\n") {}
+
+  push(delta: string) {
+    if (this.withheld || !delta) return;
+    if (!this.inCall) {
+      this.inCall = true;
+      if (this.text.trim()) {
+        this.joins.push([this.text.length, this.text.length + this.join.length]);
+        this.text += this.join;
+      }
+    }
+    this.text += delta;
+    if (leaksPrompt(this.text)) this.withheld = true;
+    else this.show(releasable(this.text));
+  }
+
+  /** A model call finished: its last word is whole. */
+  endCall() {
+    this.inCall = false;
+    if (!this.withheld) this.show(releasable(this.text, true));
+  }
+
+  /** Send nothing more this turn. */
+  stop() {
+    this.withheld = true;
+  }
+
+  private show(upTo: number) {
+    if (upTo <= this.shown) return;
+    let out = "";
+    let i = this.shown;
+    for (const [a, b] of this.joins) {
+      if (b <= i || a >= upTo) continue;
+      if (a > i) out += this.text.slice(i, a);
+      i = Math.max(i, b);
+    }
+    if (i < upTo) out += this.text.slice(i, upTo);
+    this.shown = upTo;
+    if (out) this.emit(out);
+  }
+}
