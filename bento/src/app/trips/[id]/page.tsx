@@ -60,7 +60,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     notFound();
   }
 
-  const { messages, cityNames } = await loadChat(db, id, state.cities.map((c) => ({ id: c.cityId, name: c.name })));
+  const { messages, cityNames, cityTiers } = await loadChat(db, id, state.cities.map((c) => ({ id: c.cityId, name: c.name })));
 
   const requested = typeof sp.day === "string" ? sp.day : null;
   const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested);
@@ -359,6 +359,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 lunch={stats?.lunch ?? null}
                 editable={Boolean(selectedMeta.cityId) && selectedMeta.tier !== "stub"}
                 uncovered={selectedMeta.tier === "stub"}
+                mainSights={selectedMeta.tier === "outline"}
                 bookings={bookings}
                 tripDays={dayList.map(([d]) => d)}
               />
@@ -376,7 +377,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         </section>
 
         <TripChat>
-          <Chat tripId={id} cityNames={cityNames} initial={messages} ask={ask} />
+          <Chat tripId={id} cityNames={cityNames} cityTiers={cityTiers} initial={messages} ask={ask} />
         </TripChat>
       </div>
     </main>

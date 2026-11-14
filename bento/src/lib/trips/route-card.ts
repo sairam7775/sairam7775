@@ -28,6 +28,14 @@ export function trainRows(legs: Leg[]): TrainRow[] {
   return rows;
 }
 
+/** Whether a day carries the main-sights line (`copy.mainSightsDay`): it
+ *  has stops, in a city Bento knows by its main sights only. Read from the
+ *  city's coverage when the day is shown, so the proposal card, the day
+ *  box and the sheet agree and nothing extra is stored. */
+export function showsMainSights(tier: string | null | undefined, stops: number): boolean {
+  return tier === "outline" && stops > 0;
+}
+
 /** Per city when the route mixes how well Bento knows its stops; once for
  *  the whole route when they are all the same, rather than the same
  *  sentence under every city. */

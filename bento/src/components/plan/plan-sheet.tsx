@@ -51,6 +51,7 @@ export function PlanSheet({ trip, doc, today, link, companion = false }: { trip:
           {doc.days.map((d) => (
             <div key={d.date} className="mt-5">
               <h3 className="break-after-avoid border-b border-rule pb-1.5 text-[1rem] font-bold">{t.day(d.number, longDate(d.date), d.city)}</h3>
+              {d.mainSights && <p className="mt-1.5 break-after-avoid text-[0.84rem] text-ink-2">{copy.mainSightsDay}</p>}
               {d.entries.length ? (
                 <ol className="mt-2 flex flex-col gap-3">
                   {d.entries.map((e, i) => <Entry key={i} e={e} />)}

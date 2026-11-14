@@ -10,7 +10,7 @@ import { recordProposalAnswered } from "@/lib/analytics/proposal-answered";
 import { BentoManFigure } from "@/components/mascot/figure";
 import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
-import { coverageShown, hasKnownTrains, routeWideCoverage, trainRows, uncoveredStays } from "@/lib/trips/route-card";
+import { coverageShown, hasKnownTrains, routeWideCoverage, showsMainSights, trainRows, uncoveredStays } from "@/lib/trips/route-card";
 import { placeMapUrl } from "@/lib/maps/links";
 
 const t = copy.proposal;
@@ -31,8 +31,10 @@ const fmtDate = (d: string) =>
  *  stop flagged against today, what was left out and why, and two buttons.
  *  Renders from stored data, so it looks the same an hour later. */
 /** `cityNames` names every city the chat's proposals mention (from the
- *  catalogue, not just today's route), for days a proposal knows by id. */
-export function ProposalCard({ tripId, messageId, proposal, status, cityNames }: { tripId: string; messageId: string; proposal: Proposal; status: ProposalStatus; cityNames: Record<string, string> }) {
+ *  catalogue, not just today's route), for days a proposal knows by id;
+ *  `cityTiers` says how well Bento knows each of them, read when the page
+ *  loads, so a day in a main-sights city carries its line. */
+export function ProposalCard({ tripId, messageId, proposal, status, cityNames, cityTiers = {} }: { tripId: string; messageId: string; proposal: Proposal; status: ProposalStatus; cityNames: Record<string, string>; cityTiers?: Record<string, string> }) {
   // Counted when the card itself turns accepted or rejected (the server
   // applied the answer), not when a button is pressed: a refused accept
   // leaves the card proposed and records nothing.
@@ -55,6 +57,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
     if (cheers(seen, status)) setCheer(true);
   }
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
+  const cityTier = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.tier ?? cityTiers[id] ?? null;
   const uncovered = proposal.route ? uncoveredStays(proposal.route.after) : null;
   const coverage = proposal.route ? coverageShown(proposal.route.after) : null;
   const routeWide = proposal.route ? routeWideCoverage(proposal.route.after) : null;
@@ -161,6 +164,7 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
             <p className="font-display text-[0.95rem] font-bold">{fmtDate(d.date)} {cityName(d.cityId) && <span className="mono text-[0.76rem] font-normal text-ink-3">{cityName(d.cityId)}</span>}</p>
             <p className="mono text-[0.74rem] text-ink-3">{d.summary}</p>
           </div>
+          {showsMainSights(cityTier(d.cityId), d.after.length) && <p className="mt-1 text-[0.82rem] text-ink-2">{copy.mainSightsDay}</p>}
           <ol className="mt-2 flex flex-col gap-2">
             {d.after.map((it) => (
               <li key={it.placeId} className="grid grid-cols-[3.4rem_1fr] gap-x-3 text-[0.9rem]">
