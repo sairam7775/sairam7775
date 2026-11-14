@@ -325,7 +325,10 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   `loadChat`'s `cityTiers`), never stored. Its `plan_days` / `replan_day`
   result adds `coverage` and `coverage_note` (that line, and never call the
   day complete); a well-covered day's result stays byte-identical
-  (`tools.test.ts` pins its hash). Eval: `days-main-sights`.
+  (`tools.test.ts` pins its hash). Eval: `days-main-sights`. A saved day's
+  name and coverage come from its own city (`DayRow.city`, read with the
+  day; `dayCoverage` in `trip-view.ts`), so a day trip off the route is
+  covered as that city, not as "not covered".
 - `place_background` is the one place general knowledge about a particular
   place is allowed, and only for history. (Culture that doesn't go out of
   date — etiquette, what a torii is, festivals — is the prompt's other
