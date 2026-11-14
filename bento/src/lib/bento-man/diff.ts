@@ -31,10 +31,18 @@ export const DiffItemSchema = z.object({
 });
 export type DiffItem = z.infer<typeof DiffItemSchema>;
 
+const DayBaseItemSchema = z.object({
+  placeId: z.string(), sortOrder: z.number().int(), locked: z.boolean(),
+  startMin: z.number().int().nullable(), durationMin: z.number().int().nullable(),
+  arriveMode: z.string().nullable(), arriveMinutes: z.number().int().nullable(), arriveDetail: z.string().nullable(),
+});
+
 export const DayDiffSchema = z.object({
   kind: z.literal("day"),
   date: z.string(),
   cityId: z.string(),
+  /** Absent on legacy proposals; [] means the day was empty. */
+  base: z.array(DayBaseItemSchema).optional(),
   /** The day as it would be, in order, each item flagged against today. */
   after: z.array(DiffItemSchema),
   /** What the proposal drops. */
@@ -126,6 +134,19 @@ export interface ExistingItem {
   sortOrder: number;
   startMin: number | null;
   locked: boolean;
+  durationMin?: number | null;
+  arriveMode?: string | null;
+  arriveMinutes?: number | null;
+  arriveDetail?: string | null;
+}
+
+/** Only fields hand edits write: no generated row ids or display names. */
+export function dayBase(items: ExistingItem[]): z.infer<typeof DayBaseItemSchema>[] {
+  return [...items].sort((a, b) => a.sortOrder - b.sortOrder).map((i) => ({
+    placeId: i.placeId, sortOrder: i.sortOrder, locked: i.locked, startMin: i.startMin,
+    durationMin: i.durationMin ?? null, arriveMode: i.arriveMode ?? null,
+    arriveMinutes: i.arriveMinutes ?? null, arriveDetail: i.arriveDetail ?? null,
+  }));
 }
 
 export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: { id: string; nameJa?: string | null }[] = []): DayDiff {
@@ -181,6 +202,7 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: 
     kind: "day",
     date: plan.date,
     cityId: plan.cityId,
+    base: dayBase(existing),
     after,
     removed,
     summary,

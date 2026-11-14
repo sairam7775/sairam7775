@@ -49,6 +49,12 @@ export async function acceptProposal(formData: FormData) {
     await store.applyProposal(proposal, messageId);
   } catch (e) {
     const why = e instanceof Error ? e.message : copy.trip.proposals.notAppliedUnknown;
+    if (why === copy.trip.proposals.staleDay) {
+      // The RPC committed the rejection, so refresh the card as well as
+      // showing why the itinerary stayed unchanged.
+      revalidatePath(`/trips/${tripId}`);
+      redirect(`/trips/${tripId}?error=${encodeURIComponent(why)}`);
+    }
     redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.notApplied(why))}`);
   }
 

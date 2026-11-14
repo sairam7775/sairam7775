@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { copy } from "@/copy";
 import { buildGraph } from "@/lib/transit/graph";
 import { SupabaseStore } from "../store.supabase";
+import { computeDayDiff } from "../diff";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
 
@@ -47,6 +48,47 @@ function fixture() {
 }
 
 describe("request-local SupabaseStore reads", () => {
+  it("passes a populated base unchanged and keeps old proposals without one", async () => {
+    const { store, rpc } = fixture();
+    const diff = computeDayDiff([{ placeId: "a", name: "A", sortOrder: 0, startMin: 540, locked: true }], {
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
+      fareKind: "exact", considered: [], warnings: [],
+    });
+    await store.applyProposal({ summary: "Plan", days: [diff] }, "message");
+    expect(diff.base).toHaveLength(1);
+    expect(rpc).toHaveBeenLastCalledWith("apply_proposal", expect.objectContaining({
+      p_days: [expect.objectContaining({ base: diff.base })],
+    }));
+    delete diff.base;
+    await store.applyProposal({ summary: "Old", days: [diff] }, "message");
+    expect((rpc.mock.calls.at(-1)![1].p_days as object[])[0]).not.toHaveProperty("base");
+  });
+  it("does not turn RPC or outcome-read failures into stale refusals", async () => {
+    const { store, rpcErrors, errors } = fixture();
+    rpcErrors.apply_proposal = new Error("write failed");
+    await expect(store.applyProposal({ summary: "Plan", days: [] }, "message")).rejects.toThrow("write failed");
+    delete rpcErrors.apply_proposal;
+    errors.chat_messages = new Error("read failed");
+    await expect(store.applyProposal({ summary: "Plan", days: [] }, "message")).rejects.toThrow("read failed");
+  });
+  it("passes an empty base to p_days and maps the persisted stale outcome to copy", async () => {
+    const { store, rpc, rows } = fixture();
+    const diff = computeDayDiff([], {
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
+      fareKind: "exact", considered: [], warnings: [],
+    });
+    rpc.mockImplementationOnce(async () => {
+      rows.chat_messages = { diff_status: "rejected", resolution_reason: "stale_day" };
+      return { error: null };
+    });
+    expect(copy.trip.proposals.staleDay).toEqual(expect.any(String));
+    await expect(store.applyProposal({ summary: "Plan", days: [diff] }, "message")).rejects.toThrow(copy.trip.proposals.staleDay);
+    expect(rpc).toHaveBeenCalledWith("apply_proposal", expect.objectContaining({
+      p_days: [expect.objectContaining({ base: [] })],
+    }));
+  });
   it("shares concurrent and sequential state/city reads and keeps stores isolated", async () => {
     const { store, db, count } = fixture();
     const [first, second] = await Promise.all([store.state(), store.state()]);

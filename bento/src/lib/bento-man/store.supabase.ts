@@ -40,6 +40,7 @@ function dayRows(p: Proposal) {
   return p.days.map((d) => ({
     date: d.date,
     city_id: d.cityId ?? "",
+    ...(d.base !== undefined ? { base: d.base } : {}),
     items: d.after.map((it, i) => dayItemRow({
       placeId: it.placeId, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked, reason: it.reason,
       reasonTerms: it.reasonTerms, arriveMode: it.arriveMode, arriveMinutes: it.arriveMinutes, arriveDetail: it.arriveDetail,
@@ -381,6 +382,12 @@ export class SupabaseStore implements TripStore {
     });
     if (error) throw error;
     this.stateCache = null;
+    // The void RPC commits a stale rejection rather than raising (which
+    // would roll it back). Read its durable, distinct outcome afterwards.
+    const { data: outcome, error: outcomeError } = await this.db.from("chat_messages")
+      .select("resolution_reason").eq("trip_id", this.tripId).eq("id", messageId).single();
+    if (outcomeError) throw outcomeError;
+    if (outcome?.resolution_reason === "stale_day") throw new Error(copy.trip.proposals.staleDay);
   }
 
   /** A proposal that moves the dates: the date change (as setTripDates
