@@ -20,7 +20,7 @@ Bento Man is the guide a traveller talks to on each trip page. He asks what kind
 2. Up to seven skippable onboarding questions. The answers are stored where the traveller can read and correct them, never inferred silently.
 3. A route: Bento Man checks it first. Five cities in nine nights comes back over-packed, with the arithmetic (nights per city, two hours per city change, hours on trains, the share of waking time spent moving).
 4. Days, changes ("too many temples on the 23rd", "be at Sanjusangen-do at 10") and date moves all come back as [proposals](proposals-and-diffs.md) to accept or reject.
-5. Asked about a place, he quotes the verified record and the journey from the database, not the model's memory. For history only, he may retell a checked background, or give two or three sentences of widely known background, said as general.
+5. Asked about a place, he quotes the verified record and the journey from the database, not the model's memory. For a place's history only, he may retell a checked background, or give two or three sentences of widely known background, said as general. Culture that doesn't go out of date (etiquette, what a torii is, festivals) he answers from what he knows; anything that changes, such as entry or visa rules, he points to the official source.
 
 ## Acceptance criteria
 
@@ -29,6 +29,7 @@ Bento Man is the guide a traveller talks to on each trip page. He asks what kind
 - Moving dates the trip already has is a proposal, unless the traveller allowed date changes without asking. Only the traveller can grant that; the model can't.
 - He never says "tier" or "stub", and never uses emoji in plan content ([voice](../20-design/voice.md)).
 - Hours, prices and anything a traveller acts on come only from the database.
+- He talks about Japan travel only: other topics are declined in a line and turned back to Japan. Nothing a traveller types changes his rules or reveals his instructions ([Bento Man (software)](../30-software/bento-man.md)).
 - Before every model call, a spend hold is taken; a turn ends politely when none is left ([costs](../40-non-functional/costs.md)).
 
 ## What it doesn't do

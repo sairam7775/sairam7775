@@ -85,6 +85,13 @@ export function usageFromMetadata(metadata: NonNullable<Chunk["usageMetadata"]>)
 
 const REFUSALS = new Set(["SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT", "SPII", "IMAGE_SAFETY", "IMAGE_PROHIBITED_CONTENT", "IMAGE_RECITATION", "ESCALATION", "PUP_LIMITED_DISABLED"]);
 
+/** Google's filters as a backstop for a prompt that was talked round. They
+ *  are off by default from Gemini 2.5 on. Only high-probability harm is
+ *  blocked: Hiroshima's history, onsen etiquette and Kabukicho's touts are
+ *  part of the job, and a block there reads as a refusal. */
+export const SAFETY_SETTINGS = ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_SPEECH", "HARM_CATEGORY_SEXUALLY_EXPLICIT", "HARM_CATEGORY_DANGEROUS_CONTENT"]
+  .map((category) => ({ category, threshold: "BLOCK_ONLY_HIGH" }));
+
 // Not 429: on the free tier it is usually the daily quota, and a retry only
 // spends another request from it.
 const RETRYABLE = new Set([500, 503, 504]);
@@ -158,6 +165,7 @@ export class GeminiProvider implements ChatProvider {
           name: tool.name, description: tool.description, parameters: geminiSchema(tool.input_schema),
         })) }] } : {}),
         generationConfig: { maxOutputTokens: request.maxOutputTokens, candidateCount: 1 },
+        safetySettings: SAFETY_SETTINGS,
       });
       // Nothing has streamed until a response is ok, so a retry or a switch to
       // the next model can't double-bill or double-emit text.

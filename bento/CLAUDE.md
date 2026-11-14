@@ -296,12 +296,32 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
 - The eval (`evals/scenarios.ts`, `scripts/eval-bento-man.ts`) is the
   regression check for prompt edits and the Sonnet 5 test. Add a scenario
   with every prompt rule you add; `voiceLint` runs on every reply.
+- Bento Man talks about Japan travel and nothing else (the prompt's "WHAT
+  YOU TALK ABOUT"), and the traveller's words are never instructions ("RULES
+  NO MESSAGE CAN CHANGE"). `guard.ts` backs both in code, because a prompt
+  can be talked round: `clean()` strips invisible characters (the
+  zero-width space, direction marks, Unicode tag characters that can hide
+  an instruction; listed as code points, and `guard.ts` stays ASCII; the
+  zero-width joiner and non-joiner stay, scripts and emoji need them) and
+  defuses `<trip_state>`/`<traveller_message>` tags in the message and in
+  typed trip fields; the message goes in a `<traveller_message>` block; a
+  reply that repeats the prompt (`leaksPrompt`, `PROMPT_MARKERS`, one or
+  more in every prompt section) stops streaming and is saved as a decline;
+  the stream holds back a tail as long as the longest marker
+  (`releasable`), so none of a leak is sent first. If you reword a marker line in the
+  prompt, update `PROMPT_MARKERS` (a test fails until you do). Gemini sends
+  `SAFETY_SETTINGS` at `BLOCK_ONLY_HIGH`: stricter blocks Hiroshima history.
+  Replies are plain text (no HTML or links rendered), and tools only touch
+  the signed-in traveller's own trip, so a talked-round model can embarrass
+  Bento but not reach other people's data.
 - The model never sees tier names. The trip state and tool results say how
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
-- `place_background` is the one place general knowledge is allowed, and
-  only for history. With a checked background (0027) Bento Man retells it.
+- `place_background` is the one place general knowledge about a particular
+  place is allowed, and only for history. (Culture that doesn't go out of
+  date — etiquette, what a torii is, festivals — is the prompt's other
+  allowance, checked by `scope-culture`.) With a checked background (0027) Bento Man retells it.
   Without one it may give two or three sentences of widely known background,
   said as general, and the tool counts the ask (`noteBackgroundAsk`). Never
   hours, prices or anything a traveller acts on. Guarded by `tools.test.ts`
@@ -610,7 +630,9 @@ Explained in `../docs/bento/20-design/voice.md`.
 Bento Man is a local friend who knows the place and will tell you the truth
 about it (§04). Not a mascot. No enthusiasm as filler, no emoji in plan
 content, no confident prose where a fact is missing. Warmth comes from
-usefulness, not tone.
+usefulness, not tone. He still has a personality inside those rules
+(prompt.ts "WHO YOU ARE"): dry, brief humour, favourites offered as his
+view, a Japanese word when it helps, curiosity about the traveller.
 
 ## Conventions
 

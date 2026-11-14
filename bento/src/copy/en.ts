@@ -787,6 +787,10 @@ export const en = {
     noAnswer: (status: number) => `Bento Man didn't answer (${status}).`,
     offline: "Couldn't reach Bento Man. Check your connection and try again.",
     failed: "Something went wrong.",
+    // Said in Bento Man's place when the model refuses, or when its reply
+    // repeated his instructions (bento-man/guard.ts).
+    refused: "That one isn't mine to answer. Ask me about Japan or the trip and I'm all yours.",
+    withheld: "That stays in the box. Ask me about Japan or the trip instead.",
   },
 
   vault: {

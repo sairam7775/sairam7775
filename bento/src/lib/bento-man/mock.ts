@@ -37,7 +37,8 @@ const HELP = [
 function travellerText(content: Anthropic.Beta.BetaMessageParam["content"]): string {
   const text = typeof content === "string" ? content : content.map((b) => (b.type === "text" ? b.text : "")).join("\n");
   const end = text.lastIndexOf("</trip_state>");
-  return (end >= 0 ? text.slice(end + "</trip_state>".length) : text).trim();
+  const said = end >= 0 ? text.slice(end + "</trip_state>".length) : text;
+  return said.replace(/<\/?traveller_message>/g, "").trim();
 }
 
 /** The first tool for a traveller message, or null for the help text. */
