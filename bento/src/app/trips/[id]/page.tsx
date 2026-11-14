@@ -9,7 +9,6 @@ import { AppHeader } from "@/components/app-header";
 import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { parseProposal } from "@/lib/bento-man/diff";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
 import { buildTripView, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { journeyMapUrl } from "@/lib/maps/links";
@@ -26,7 +25,8 @@ import { DayStrip } from "./day-strip";
 import { TripChat } from "./trip-chat";
 import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
-import { Chat, type ChatMessage } from "./chat";
+import { Chat } from "./chat";
+import { loadChat } from "./load-chat";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
@@ -60,30 +60,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
     notFound();
   }
 
-  const { data: rows } = await db
-    .from("chat_messages")
-    .select("id, role, content, proposed_diff, diff_status, created_at")
-    .eq("trip_id", id)
-    .order("created_at", { ascending: false })
-    .limit(60);
-  const messages: ChatMessage[] = (rows ?? []).reverse().map((m) => ({
-    id: m.id,
-    role: m.role,
-    content: m.content,
-    proposal: m.proposed_diff ? parseProposal(m.proposed_diff) : null,
-    status: (m.diff_status as ChatMessage["status"]) ?? null,
-  }));
-
-  // Names for every city a proposal in the chat mentions, so an old day
-  // proposal keeps its city after the route changes.
-  const proposalCityIds = [...new Set(messages.flatMap((m) => m.proposal?.days.map((d) => d.cityId) ?? []))];
-  const { data: cityRows } = proposalCityIds.length
-    ? await db.from("cities").select("id, name").in("id", proposalCityIds)
-    : { data: [] as { id: string; name: string }[] };
-  const cityNames = Object.fromEntries([
-    ...(cityRows ?? []).map((c) => [c.id, c.name] as const),
-    ...state.cities.map((c) => [c.cityId, c.name] as const),
-  ]);
+  const { messages, cityNames } = await loadChat(db, id, state.cities.map((c) => ({ id: c.cityId, name: c.name })));
 
   const requested = typeof sp.day === "string" ? sp.day : null;
   const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested);

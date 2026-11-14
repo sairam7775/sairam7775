@@ -481,6 +481,10 @@ Explained in `../docs/bento/10-product/booking-vault.md`.
 
 - `src/lib/vault/`. `gaps.ts` is pure and testable: trip dates, route,
   planned places and bookings in, sentences out. No network, no model.
+- Accepting a trip's first route (no `trip_cities` before) lands on the
+  vault with `?welcome=1`; later proposals stay on the plan. Bento Man's
+  card at the top (`bento-man-tip.ts`, pure) and his chat (`load-chat.ts`,
+  shared with the plan page) live there too; a question only fills the box.
 - A gap's `key` is stable across runs, because a dismissal is stored
   against it. Changing how a key is built un-dismisses things.
 - The detector must distinguish *never needed a booking* from *not booked

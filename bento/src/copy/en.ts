@@ -796,6 +796,15 @@ export const en = {
     intro: "Every night needs a bed, every move between cities needs a way to get there, and anything with a timed ticket needs the ticket. Nothing is fetched from airlines or hotels. This only knows what you put here, which is also why it can hold your reference numbers safely.",
     saved: "Saved.",
     noReferences: "Booking references can’t be saved right now. Everything else saves normally.",
+    // Bento Man's card at the top: one tip from what's missing, and his chat.
+    bentoMan: {
+      label: "Bento Man",
+      welcome: "Your route is set. Next: where you’ll sleep and how you’ll get between cities. This page keeps track of both.",
+      offer: "Want some ideas?",
+      allSet: "Every night has a bed and every move has a way. Ask me anything about the trip.",
+      noDates: "Once the trip has dates, I can work out which nights still need a bed.",
+      asksLabel: "Ask Bento Man about",
+    },
     coverageLabel: "Coverage",
     gapsLabel: "Gaps",
     nothingMissing: {

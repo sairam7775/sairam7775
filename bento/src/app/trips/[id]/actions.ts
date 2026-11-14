@@ -36,6 +36,14 @@ export async function acceptProposal(formData: FormData) {
     redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.unreadable)}`);
   }
 
+  // A trip's first route is the moment to look at what to book: asked
+  // before applying, because applying adds the cities.
+  let firstRoute = false;
+  if (proposal.route) {
+    const { count } = await db.from("trip_cities").select("city_id", { count: "exact", head: true }).eq("trip_id", tripId);
+    firstRoute = count === 0;
+  }
+
   const store = new SupabaseStore(db, tripId, user.id);
   try {
     await store.applyProposal(proposal, messageId);
@@ -56,6 +64,8 @@ export async function acceptProposal(formData: FormData) {
   }
 
   revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/vault`);
+  if (firstRoute) redirect(`/trips/${tripId}/vault?welcome=1`);
 }
 
 /** The traveller's answer to "may Bento Man change dates without asking?".

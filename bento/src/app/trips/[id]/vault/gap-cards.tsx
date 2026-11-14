@@ -110,7 +110,7 @@ export function GapCard({ tripId, gap }: { tripId: string; gap: Gap }) {
           ) : (
             <a
               key={a.label}
-              href={`/trips/${tripId}?ask=${encodeURIComponent(gap.key)}#bento-man`}
+              href={`/trips/${tripId}/vault?ask=${encodeURIComponent(gap.key)}#bento-man`}
               className="inline-flex min-h-10 items-center rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk"
             >
               {a.label}

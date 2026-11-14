@@ -14,6 +14,11 @@ import { CoverageRibbon, DismissedGaps, GapCard } from "./gap-cards";
 import { deleteBooking } from "./actions";
 import { copy } from "@/copy";
 import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
+import { bentoManTip } from "@/lib/vault/bento-man-tip";
+import { BentoManCard } from "./bento-man-card";
+import { Chat } from "../chat";
+import { TripChat } from "../trip-chat";
+import { loadChat } from "../load-chat";
 
 const t = copy.vault;
 
@@ -71,6 +76,15 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
     name: (c.cities as any)?.name ?? c.city_id,
   }));
 
+  const chat = await loadChat(db, id, cities);
+  // A gap's "Ask Bento Man" (or a question on his card) puts its question
+  // in the chat box; the key comes in the address, the words from the gap.
+  const askKey = typeof sp.ask === "string" ? sp.ask : null;
+  const ask = askKey
+    ? [...report.gaps, ...report.dismissed].find((g) => g.key === askKey)?.actions.find((a) => a.kind === "ask_bento_man")?.hint
+    : undefined;
+  const tip = bentoManTip(report, { welcome: sp.welcome === "1" });
+
   const spent = totalLine(vaultTotal(
     bookings,
     (fxRows.data ?? []).map((r) => ({ currency: r.currency, jpyPerUnit: Number(r.jpy_per_unit), fetchedAt: r.fetched_at })),
@@ -86,7 +100,8 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
     : undefined;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10">
+    // Room at the bottom on a phone for the floating Ask Bento Man button.
+    <main className="mx-auto w-full max-w-[1680px] px-4 pt-6 pb-24 sm:px-6 lg:px-10 lg:pb-6">
       <Tour id="vault" seen={await tourSeen("vault")} />
       <AnalyticsUser id={user.id} />
       <AppHeader back={{ href: `/trips/${id}`, label: t.back }}>
@@ -95,112 +110,122 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
         )}
       </AppHeader>
 
-      <header className="up mt-7" style={{ animationDelay: ".05s" }}>
-        <h1 className="text-[2.2rem] font-extrabold leading-none sm:text-[2.8rem]">{t.title}</h1>
-        <p className="mt-2.5 max-w-[62ch] text-[0.98rem] leading-relaxed text-ink-2">
-          {t.intro}
-        </p>
-      </header>
+      <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,34%)] lg:items-start">
+        <div className="min-w-0">
+          <BentoManCard tripId={id} tip={tip} />
 
-      <div className="mt-5 flex flex-col gap-2">
-        <ErrorNote message={error} />
-        {warning && <Notice>{warning}</Notice>}
-        {saved && <Notice>{t.saved}</Notice>}
-        {(saved || warning) && <TrackOnce event="booking_saved" props={{ type: typeof sp.kind === "string" ? sp.kind : null, from_paste: sp.pasted === "1", reference_kept: !warning }} consume={["saved", "warning", "kind", "pasted"]} />}
-        {!canEncrypt() && (
-          // The server has no BENTO_BOOKING_REF_KEY (openssl rand -base64 32).
-          <Notice>{t.noReferences}</Notice>
-        )}
-      </div>
+          <header className="up mt-7" style={{ animationDelay: ".05s" }}>
+            <h1 className="text-[2.2rem] font-extrabold leading-none sm:text-[2.8rem]">{t.title}</h1>
+            <p className="mt-2.5 max-w-[62ch] text-[0.98rem] leading-relaxed text-ink-2">
+              {t.intro}
+            </p>
+          </header>
 
-      <section aria-label={t.coverageLabel} className="mt-5">
-        <CoverageRibbon nights={report.nights} covered={report.coveredNights} />
-      </section>
+          <div className="mt-5 flex flex-col gap-2">
+            <ErrorNote message={error} />
+            {warning && <Notice>{warning}</Notice>}
+            {saved && <Notice>{t.saved}</Notice>}
+            {(saved || warning) && <TrackOnce event="booking_saved" props={{ type: typeof sp.kind === "string" ? sp.kind : null, from_paste: sp.pasted === "1", reference_kept: !warning }} consume={["saved", "warning", "kind", "pasted"]} />}
+            {!canEncrypt() && (
+              // The server has no BENTO_BOOKING_REF_KEY (openssl rand -base64 32).
+              <Notice>{t.noReferences}</Notice>
+            )}
+          </div>
 
-      {report.gaps.length > 0 ? (
-        <section aria-label={t.gapsLabel} className="mt-3 grid gap-3 sm:grid-cols-2">
-          {report.gaps.map((g) => <GapCard key={g.key} tripId={id} gap={g} />)}
-        </section>
-      ) : (
-        <section className="tile up mt-3 px-5 py-8 text-center">
-          <p className="disp text-[1.15rem] font-bold">{t.nothingMissing.title}</p>
-          <p className="mx-auto mt-2 max-w-[42ch] text-[0.9rem] text-ink-2">
-            {t.nothingMissing.body}
-          </p>
-        </section>
-      )}
+          <section aria-label={t.coverageLabel} className="mt-5">
+            <CoverageRibbon nights={report.nights} covered={report.coveredNights} />
+          </section>
 
-      <DismissedGaps tripId={id} gaps={report.dismissed} />
+          {report.gaps.length > 0 ? (
+            <section aria-label={t.gapsLabel} className="mt-3 grid gap-3 sm:grid-cols-2">
+              {report.gaps.map((g) => <GapCard key={g.key} tripId={id} gap={g} />)}
+            </section>
+          ) : (
+            <section className="tile up mt-3 px-5 py-8 text-center">
+              <p className="disp text-[1.15rem] font-bold">{t.nothingMissing.title}</p>
+              <p className="mx-auto mt-2 max-w-[42ch] text-[0.9rem] text-ink-2">
+                {t.nothingMissing.body}
+              </p>
+            </section>
+          )}
 
-      <section aria-label={t.bookingsLabel} className="mt-10">
-        <div id="add-booking" data-tour="add-booking" className="scroll-mt-6">
-          <BookingForm
-            heading={
-              <>
-                <h2 className="text-[1.5rem] font-bold">{t.everything}</h2>
-                <p className="mono mt-1 text-[0.76rem] text-ink-2">
-                  {t.recorded(bookings.length)}{spent && ` · ${spent}`}
-                </p>
-              </>
-            }
-            tripId={id}
-            cities={cities}
-            defaultType={typeof sp.add === "string" ? sp.add : undefined}
-            defaultDate={typeof sp.on === "string" ? sp.on : undefined}
-            defaultPlaceId={place}
-            defaultTitle={placeTitle}
-          />
+          <DismissedGaps tripId={id} gaps={report.dismissed} />
+
+          <section aria-label={t.bookingsLabel} className="mt-10">
+            <div id="add-booking" data-tour="add-booking" className="scroll-mt-6">
+              <BookingForm
+                heading={
+                  <>
+                    <h2 className="text-[1.5rem] font-bold">{t.everything}</h2>
+                    <p className="mono mt-1 text-[0.76rem] text-ink-2">
+                      {t.recorded(bookings.length)}{spent && ` · ${spent}`}
+                    </p>
+                  </>
+                }
+                tripId={id}
+                cities={cities}
+                defaultType={typeof sp.add === "string" ? sp.add : undefined}
+                defaultDate={typeof sp.on === "string" ? sp.on : undefined}
+                defaultPlaceId={place}
+                defaultTitle={placeTitle}
+              />
+            </div>
+
+            {bookings.length > 0 ? (
+              <div className="box up mt-4 grid gap-2.5 p-3 sm:grid-cols-2">
+                {GROUPS.filter((g) => bookings.some((b) => b.type === g)).map((g) => (
+                  <div key={g} className="tile up p-5">
+                    <span className="mono text-[0.6rem] uppercase tracking-[0.1em] text-ink-3">{t.groups[g]}</span>
+                    <ul className="mt-3 flex flex-col gap-3">
+                      {bookings.filter((b) => b.type === g).map((b) => (
+                        <li key={b.id} id={b.id} className="scroll-mt-24 border-b border-rule pb-3 last:border-b-0 last:pb-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="disp min-w-0 pt-1.5 text-[1rem] font-bold leading-snug">{b.title}</span>
+                            {/* Apart from the reference, and it asks: a slip here loses a booking. */}
+                            <form action={deleteBooking} className="-mr-2 shrink-0">
+                              <input type="hidden" name="tripId" value={id} />
+                              <input type="hidden" name="id" value={b.id} />
+                              <ConfirmButton message={t.removeConfirm(b.title)} pending={copy.common.saving} className="min-h-9 rounded-full px-3 text-[0.8rem] text-ink-2 hover:bg-ume-soft hover:text-ume">
+                                {t.remove}
+                              </ConfirmButton>
+                            </form>
+                          </div>
+                          <p className="mono mt-0.5 text-[0.74rem] leading-relaxed text-ink-2">
+                            {[b.provider, when(b), money(b)].filter(Boolean).join(" · ") || t.noDates}
+                          </p>
+                          {b.notes && <p className="mt-1 text-[0.84rem] text-ink-2">{b.notes}</p>}
+                          {(b.reference || b.referenceMasked) && (
+                            <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.8rem] text-ink-2">
+                              <span>{t.referenceLabel}</span>
+                              {b.reference ? (
+                                <span className="mono rounded-full bg-lacquer px-2.5 py-1 text-[0.76rem] text-rice">{b.reference}</span>
+                              ) : (
+                                <Link href={`/trips/${id}/vault?reveal=${b.id}#${b.id}`} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-sunk px-3 hover:bg-rule">
+                                  <span className="mono text-[0.76rem]">{b.referenceMasked}</span>
+                                  <span className="font-medium underline underline-offset-2">{t.referenceShow}</span>
+                                </Link>
+                              )}
+                            </p>
+                          )}
+                          {b.referenceError && <p className="mt-1 text-[0.8rem] text-ume">{b.referenceError}</p>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="tile up mt-4 px-5 py-8 text-center text-[0.92rem] text-ink-2">
+                {t.empty}
+              </p>
+            )}
+          </section>
         </div>
 
-        {bookings.length > 0 ? (
-          <div className="box up mt-4 grid gap-2.5 p-3 sm:grid-cols-2">
-            {GROUPS.filter((g) => bookings.some((b) => b.type === g)).map((g) => (
-              <div key={g} className="tile up p-5">
-                <span className="mono text-[0.6rem] uppercase tracking-[0.1em] text-ink-3">{t.groups[g]}</span>
-                <ul className="mt-3 flex flex-col gap-3">
-                  {bookings.filter((b) => b.type === g).map((b) => (
-                    <li key={b.id} id={b.id} className="scroll-mt-24 border-b border-rule pb-3 last:border-b-0 last:pb-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="disp min-w-0 pt-1.5 text-[1rem] font-bold leading-snug">{b.title}</span>
-                        {/* Apart from the reference, and it asks: a slip here loses a booking. */}
-                        <form action={deleteBooking} className="-mr-2 shrink-0">
-                          <input type="hidden" name="tripId" value={id} />
-                          <input type="hidden" name="id" value={b.id} />
-                          <ConfirmButton message={t.removeConfirm(b.title)} pending={copy.common.saving} className="min-h-9 rounded-full px-3 text-[0.8rem] text-ink-2 hover:bg-ume-soft hover:text-ume">
-                            {t.remove}
-                          </ConfirmButton>
-                        </form>
-                      </div>
-                      <p className="mono mt-0.5 text-[0.74rem] leading-relaxed text-ink-2">
-                        {[b.provider, when(b), money(b)].filter(Boolean).join(" · ") || t.noDates}
-                      </p>
-                      {b.notes && <p className="mt-1 text-[0.84rem] text-ink-2">{b.notes}</p>}
-                      {(b.reference || b.referenceMasked) && (
-                        <p className="mt-2 flex flex-wrap items-center gap-2 text-[0.8rem] text-ink-2">
-                          <span>{t.referenceLabel}</span>
-                          {b.reference ? (
-                            <span className="mono rounded-full bg-lacquer px-2.5 py-1 text-[0.76rem] text-rice">{b.reference}</span>
-                          ) : (
-                            <Link href={`/trips/${id}/vault?reveal=${b.id}#${b.id}`} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-sunk px-3 hover:bg-rule">
-                              <span className="mono text-[0.76rem]">{b.referenceMasked}</span>
-                              <span className="font-medium underline underline-offset-2">{t.referenceShow}</span>
-                            </Link>
-                          )}
-                        </p>
-                      )}
-                      {b.referenceError && <p className="mt-1 text-[0.8rem] text-ume">{b.referenceError}</p>}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="tile up mt-4 px-5 py-8 text-center text-[0.92rem] text-ink-2">
-            {t.empty}
-          </p>
-        )}
-      </section>
+        <TripChat>
+          <Chat tripId={id} cityNames={chat.cityNames} initial={chat.messages} ask={ask} />
+        </TripChat>
+      </div>
     </main>
   );
 }
