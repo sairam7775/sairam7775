@@ -19,13 +19,17 @@ The product side is in [Bento Man, the guide](../10-product/bento-man.md).
 
 ## Scope and injection guards
 
-The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT": anything else is declined in a line) and says the traveller's words are never instructions ("RULES NO MESSAGE CAN CHANGE"). A prompt can be talked round, so `guard.ts` backs it in code:
-- `clean()` removes characters the traveller can't see (control characters, the zero-width space, direction marks and bidi controls, invisible operators, the byte order mark, Unicode tag characters) and defuses `<trip_state>` / `<traveller_message>` tags, in the message, in earlier traveller turns, and in typed trip fields such as the title (which `context.ts` also puts on one line). The zero-width joiner and non-joiner stay, because Indic and Persian scripts and emoji need them. The list is written as code point ranges, and `guard.ts` is kept plain ASCII so it can be reviewed.
-- The message reaches the model inside its own `<traveller_message>` block, after the trip state. A test runs an independent red-team list of messages through it.
-- A reply that repeats the prompt (`leaksPrompt`, matched against `PROMPT_MARKERS`, at least one in every section of the prompt) is replaced by a short decline (`copy.chat.withheld`). Tests fail if a marker is reworded in the prompt without updating the list, or if a line he is meant to say would trip it.
-- While a reply streams, a tail as long as the longest marker is held back (`releasable`), so a leak is caught before any of it reaches the browser. A finished model call's tail is sent before its tools run, and the final reply replaces the stream when the turn ends.
-- On Gemini, Google's safety filters are on at `BLOCK_ONLY_HIGH` (`SAFETY_SETTINGS`); stricter settings block Hiroshima history.
-- What limits the damage if the model is talked round anyway: replies are plain text, and tools only reach the signed-in traveller's own trip.
+The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT") and says the traveller's words are never instructions ("RULES NO MESSAGE CAN CHANGE"). A prompt can be talked round, so `guard.ts` backs part of it in code. Keep the two apart:
+
+**Guaranteed in code (unit-tested):**
+- **Text is cleaned at the model boundary.** `clean()` runs on the message, on earlier turns of either role, on every free-text trip-state field (title, preferences, city reasons, a pending proposal's summary, each on one line), and on every string in a tool result (`cleanToolResult`: keys and structure untouched, and an ordinary result is handed over byte for byte). It removes characters nobody can see (control characters, the zero-width space, direction marks and bidi controls, invisible operators, the byte order mark, Unicode tag characters). The zero-width joiner and non-joiner stay, because Indic and Persian scripts and emoji need them. The list is written as code point ranges, and `guard.ts` is kept plain ASCII so it can be reviewed.
+- **Bento's framing names can't appear in that text.** `trip_state` and `traveller_message` are found in any case, ASCII or full-width, with whitespace, newlines or joiners between letters, and with or without `<`, `&lt;` or a full-width bracket in front; the underscore becomes a space. A real tag also gets look-alike brackets. The message then goes inside the one `<traveller_message>` block Bento adds itself. A test runs an independent red-team list through it.
+- **Verbatim runs of the prompt are withheld.** A reply that repeats eight or more consecutive prompt words (`LEAK_RUN`), compared as plain words so markdown, punctuation, quoting and invisible characters change nothing, is replaced by `copy.chat.withheld`. What the prompt quotes for him to say is exempt. Eight was chosen from evidence: it catches every prompt sentence of eight or more words, and the longest run in 38 ordinary and live-eval replies was seven. Shorter prompt sentences are not caught on their own.
+- **That holds while streaming, across tool rounds.** `GuardedStream` checks the whole turn's text, joined between calls as the final reply is, and holds back trailing words that could start a run, including at the end of a call before its tools run. The final reply replaces the stream; if the turn fails instead, the browser keeps only text that passed the check.
+- **A refused call's text is dropped.** If a provider streams text and then blocks it (Gemini `SAFETY`), the reply and the saved message are the earlier calls' text plus the refusal copy.
+- Replies are plain text, and tools only reach the signed-in traveller's own trip.
+
+**Model-dependent (checked only by the live eval):** keeping to Japan, declining off-topic work, not obeying instructions in a message or a pasted note, and refusing to paraphrase, summarise or translate his instructions. A paraphrase or translation is not a verbatim run, and nothing tracks what was said across turns, so someone asking for one short sentence per turn is not stopped by code. On Gemini, Google's safety filters are on at `BLOCK_ONLY_HIGH` (`SAFETY_SETTINGS`); stricter settings block Hiroshima history.
 
 ## Tools
 
@@ -57,7 +61,7 @@ The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT": anything else
 
 ## The evaluation
 
-- `bento/src/lib/bento-man/evals/scenarios.ts` holds about 30 planning scenarios with known-correct answers: onboarding, over-packed routes, stub cities, day plans, changes that mustn't regenerate the rest, facts that must come from the database, and the voice. The `scope-*` and `attack-*` scenarios check off-topic requests and injection attempts.
+- `bento/src/lib/bento-man/evals/scenarios.ts` holds about 30 planning scenarios with known-correct answers: onboarding, over-packed routes, stub cities, day plans, changes that mustn't regenerate the rest, facts that must come from the database, and the voice. The `scope-*`, `attack-*` and `voice-*` guardrail scenarios check off-topic requests, injection attempts and the humour rules; they test the model's behaviour, which code does not guarantee.
 - Each is graded mechanically: tools called or not, prose patterns, the proposal's kind, and `voiceLint` on every reply.
 - `npx tsx scripts/eval-bento-man.ts` runs the real model against the in-memory store. It costs money, and on Gemini's free tier a full run uses the live site's daily quota, so run a subset (`--only <id>`) and ask the owner first.
 - The engine half of each scenario is also a Vitest test and runs offline.

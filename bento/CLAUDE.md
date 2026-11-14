@@ -298,18 +298,19 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   with every prompt rule you add; `voiceLint` runs on every reply.
 - Bento Man talks about Japan travel and nothing else (the prompt's "WHAT
   YOU TALK ABOUT"), and the traveller's words are never instructions ("RULES
-  NO MESSAGE CAN CHANGE"). `guard.ts` backs both in code, because a prompt
-  can be talked round: `clean()` strips invisible characters (the
-  zero-width space, direction marks, Unicode tag characters that can hide
-  an instruction; listed as code points, and `guard.ts` stays ASCII; the
-  zero-width joiner and non-joiner stay, scripts and emoji need them) and
-  defuses `<trip_state>`/`<traveller_message>` tags in the message and in
-  typed trip fields; the message goes in a `<traveller_message>` block; a
-  reply that repeats the prompt (`leaksPrompt`, `PROMPT_MARKERS`, one or
-  more in every prompt section) stops streaming and is saved as a decline;
-  the stream holds back a tail as long as the longest marker
-  (`releasable`), so none of a leak is sent first. If you reword a marker line in the
-  prompt, update `PROMPT_MARKERS` (a test fails until you do). Gemini sends
+  NO MESSAGE CAN CHANGE"). That much is model behaviour, checked only by the
+  live eval. `guard.ts` guarantees less, in code: everything the model
+  reads from outside Bento's code (the message, history of either role,
+  free-text trip-state fields, every string in a tool result) goes through
+  `clean()`, which strips invisible characters (listed as code points;
+  `guard.ts` stays ASCII; the zero-width joiner and non-joiner stay, scripts
+  and emoji need them) and breaks the framing names `trip_state` and
+  `traveller_message` however they are spelt; a reply holding eight or
+  more consecutive prompt words (`LEAK_RUN`, word-normalised, quoted
+  "sayable" lines exempt) is withheld, and `GuardedStream` holds back any
+  start of such a run, across tool rounds too. A paraphrase, translation or
+  one sentence per turn is not caught by code. Text he may say verbatim
+  belongs in quotes in the prompt. A refused call's text is dropped. Gemini sends
   `SAFETY_SETTINGS` at `BLOCK_ONLY_HIGH`: stricter blocks Hiroshima history.
   Replies are plain text (no HTML or links rendered), and tools only touch
   the signed-in traveller's own trip, so a talked-round model can embarrass

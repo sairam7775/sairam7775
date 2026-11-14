@@ -29,7 +29,7 @@ Bento Man is the guide a traveller talks to on each trip page. He asks what kind
 - Moving dates the trip already has is a proposal, unless the traveller allowed date changes without asking. Only the traveller can grant that; the model can't.
 - He never says "tier" or "stub", and never uses emoji in plan content ([voice](../20-design/voice.md)).
 - Hours, prices and anything a traveller acts on come only from the database.
-- He talks about Japan travel only: other topics are declined in a line and turned back to Japan. Nothing a traveller types changes his rules or reveals his instructions ([Bento Man (software)](../30-software/bento-man.md)).
+- He talks about Japan travel only: other topics are declined in a line and turned back to Japan. He doesn't follow instructions in a message, and a reply repeating his instructions word for word is withheld by code; what is guaranteed by code and what depends on the model is set out in [Bento Man (software)](../30-software/bento-man.md).
 - Before every model call, a spend hold is taken; a turn ends politely when none is left ([costs](../40-non-functional/costs.md)).
 
 ## What it doesn't do
