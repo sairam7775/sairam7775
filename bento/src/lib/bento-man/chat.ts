@@ -160,19 +160,22 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       throw e;
     }
 
-    stream.endCall();
     // Price against the model that served this iteration, not the last one.
     await account(msg.model, msg.usage, hold);
     servedBy = msg.model;
     stopReason = msg.stopReason;
 
-    if (msg.text.trim()) texts.push(msg.text.trim());
-
     if (msg.stopReason === "refusal") {
+      // A provider can stream text before it decides to block (Gemini's
+      // SAFETY). None of that call's text is kept: the reply is the earlier
+      // calls' checked text and the refusal copy, and "done" replaces what
+      // streamed. Nothing more streams this turn.
+      stream.stop();
       texts.push(REFUSAL_TEXT);
-      events?.onText?.(REFUSAL_TEXT);
       break;
     }
+    stream.endCall();
+    if (msg.text.trim()) texts.push(msg.text.trim());
     if (msg.stopReason === "max_tokens") {
       // A cut-off turn can hold half a tool call. Never run it.
       texts.push("That answer ran long and got cut off. Ask me again, or narrower.");

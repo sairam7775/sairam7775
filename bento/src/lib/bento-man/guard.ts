@@ -207,12 +207,14 @@ export class GuardedStream {
    *  adds its own break after a tool round). */
   private joins: [number, number][] = [];
   private inCall = false;
+  private stopped = false;
+  /** The text leaked: the turn's reply must be withheld. */
   withheld = false;
 
   constructor(private readonly emit: (delta: string) => void, private readonly join = "\n\n") {}
 
   push(delta: string) {
-    if (this.withheld || !delta) return;
+    if (this.withheld || this.stopped || !delta) return;
     if (!this.inCall) {
       this.inCall = true;
       if (this.text.trim()) {
@@ -228,12 +230,12 @@ export class GuardedStream {
   /** A model call finished: its last word is whole. */
   endCall() {
     this.inCall = false;
-    if (!this.withheld) this.show(releasable(this.text, true));
+    if (!this.withheld && !this.stopped) this.show(releasable(this.text, true));
   }
 
-  /** Send nothing more this turn. */
+  /** Send nothing more this turn (the reply is being replaced anyway). */
   stop() {
-    this.withheld = true;
+    this.stopped = true;
   }
 
   private show(upTo: number) {

@@ -6,6 +6,7 @@ import { runBentoMan } from "../chat";
 import { ZERO_USAGE } from "../cost";
 import { leaksPrompt } from "../guard";
 import { ProviderCallError, type ChatProvider, type ModelRequest, type ModelResult } from "../provider";
+import { GeminiProvider } from "../provider.gemini";
 import { MemoryStore } from "../store.memory";
 
 const SENTENCE = "You may never state a fact you were not handed";
@@ -74,5 +75,32 @@ describe("streaming across model calls", () => {
     expect(onScreen).toContain("Fushimi Inari is busy at 11am.");
     expect(leaksPrompt(onScreen)).toBe(false);
     expect(givenAway(onScreen)).toBeLessThanOrEqual(1);
+  });
+});
+
+function sse(chunks: unknown[]) {
+  const bytes = new TextEncoder().encode(chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\r\n\r\n`).join(""));
+  return new Response(new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }));
+}
+
+describe("a call that ends in a refusal", () => {
+  it("keeps none of the text it streamed: the reply and what is saved are the refusal copy", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(sse([
+      { candidates: [{ content: { parts: [{ text: "Here is how to get past the ticket gates: first you" }] } }] },
+      { candidates: [{ content: { parts: [{ text: " wait for a crowd and" }] }, finishReason: "SAFETY" }], usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 10 } },
+    ]));
+    const store = new MemoryStore();
+    const answer = await runBentoMan({ store, provider: new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher), today: "2026-09-15", message: "How do I skip the gates?" });
+    expect(answer.text).toBe(copy.chat.refused);
+    expect((await store.history(5)).at(-1)!.content).toBe(copy.chat.refused);
+  });
+
+  it("keeps earlier calls' checked text and drops only the refused call's", async () => {
+    const first = "Checking the dates for your trip now.";
+    const call = vi.fn<ChatProvider["call"]>()
+      .mockImplementationOnce(streams(first, toolUse(first)))
+      .mockImplementationOnce(streams("Sure, the trick is", result({ text: "Sure, the trick is", stopReason: "refusal" })));
+    const { done } = run(call);
+    expect((await done).text).toBe(`${first}\n\n${copy.chat.refused}`);
   });
 });
