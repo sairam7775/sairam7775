@@ -267,13 +267,17 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   counts; `curation_progress` stays admin-only because it counts drafts.
 - Accepting a proposal (`apply_proposal`) and changing the dates
   (`update_trip_dates`) are each ONE database function (0015): never add a
-  second write after them from TypeScript. Day proposals carry a base
-  snapshot (0031), compared before any writes under the trip lock shared
-  with `replace_day_items`. A mismatch closes only that proposal as rejected,
-  with `resolution_reason = 'stale_day'`, and applies nothing; the void RPC
-  returns normally so the close commits, and the store reads the outcome.
-  Legacy days without a base and combined date/day proposals remain unchecked
-  (Q13); the latter need the original date per day before a sound check.
+  second write after them from TypeScript. Each day of a proposal carries
+  `base`, the day as SAVED when it was made (not as a route proposed in the
+  same turn leaves it), compared before any write under the trip lock
+  shared with `replace_day_items` (0031). `apply_proposal` returns
+  `'applied'` or `'stale_day'`: a mismatch closes only that proposal as
+  rejected, applies nothing and returns normally so the close commits;
+  every other failure raises. The store treats any other value as a
+  failure. `base` never goes to the browser (`proposalForClient`).
+  Proposals without a base and date proposals with days are unchecked
+  (Q13); the latter need each day's original date before a sound check.
+  Run on PGlite on one connection; true concurrency not exercised.
   A date change that would put a
   planned stop on a day it is closed, or a ticketed stop on a day with no
   ticket, is refused (`shift.ts`). Accepting a route drops planned days the

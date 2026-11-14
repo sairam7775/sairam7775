@@ -6,7 +6,7 @@ code:
   - bento/supabase/migrations/0015_atomic_trip_edits.sql
   - bento/src/lib/bento-man/provider.ts
   - bento/src/app/api/cron/
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-14
 ---
 
 # Reliability
@@ -24,13 +24,13 @@ last_reviewed: 2026-11-13
 
 ## How it's checked
 
-- Database functions tested on PGlite before being applied (migrations 0015, 0028, 0029).
+- Database functions tested on PGlite before being applied (migrations 0015, 0028, 0029, 0031; one connection, so two requests truly at once are not exercised).
 - Unit tests for the provider's retry and fallback: `bento/src/lib/bento-man/__tests__/provider.gemini.test.ts`.
 - `knowledge/checklists/verification.md` (shared knowledge base) for every change.
 
 ## Evidence
 
-- Migrations `0015_atomic_trip_edits.sql`, `0016_date_proposals.sql`, `0028_trip_dates_guard.sql`.
+- Migrations `0015_atomic_trip_edits.sql`, `0016_date_proposals.sql`, `0028_trip_dates_guard.sql`, `0031_stale_proposals.sql`.
 - The analytics-deletion retry: `bento/src/app/api/cron/` (Vercel cron, needs `CRON_SECRET`).
 
 ## Known gaps

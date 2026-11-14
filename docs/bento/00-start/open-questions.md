@@ -34,7 +34,7 @@ Where the original spec, the notes and the code disagree, or where something pla
 |---|---|---|
 | Q11 | "Make a new link" is two steps; if the second fails, the trip is left not shared | [trip sharing](../10-product/trip-sharing.md); a code fix would make it one database step |
 | Q12 | Outline cities get full day plans, though the spec meant suggestions only | [coverage](../10-product/coverage.md): decide whether outline cities should be planned |
-| Q13 | Partly addressed: day snapshots prevent an older day proposal overwriting hand edits; combined date/day proposals remain unchecked | [proposals and diffs](../10-product/proposals-and-diffs.md): 0031 checks bases under the hand-edit lock and closes stale cards; legacy proposals without bases remain acceptable. Combined date/day proposals need original dates per day. Postgres verification pending. |
+| Q13 | Partly addressed: an older day proposal no longer overwrites a day edited by hand since; date proposals that also carry days still can | [proposals and diffs](../10-product/proposals-and-diffs.md): 0031 compares each day's saved base under the hand-edit lock; `apply_proposal` returns `stale_day`, closes the card and applies nothing. Proposals stored before 0031 and date proposals with days are unchecked (those need each day's original date). Run on PGlite, single connection: true concurrency not exercised. |
 | Q14 | The Bento Man evaluation's model costs aren't counted against the caps | [costs](../40-non-functional/costs.md) |
 | Q15 | Platforms aren't part of train legs yet | [transit](../30-software/transit.md) |
 
