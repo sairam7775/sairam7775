@@ -7,7 +7,7 @@ code:
   - bento/src/app/trips/[id]/proposal-card.tsx
   - bento/supabase/migrations/0015_atomic_trip_edits.sql
   - bento/supabase/migrations/0016_date_proposals.sql
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-14
 ---
 
 # Proposals and diffs
@@ -22,6 +22,7 @@ The failure of every chat-based planner: the traveller spends an hour refining a
 2. Bento Man calls the engine and shows a proposal card. Each stop is marked **kept**, **new**, **moved** or **out**, with what was left out and why.
 3. The traveller presses **Accept** or **Reject**. Nothing changes before that.
 4. Accepting applies the whole proposal at once. Pinned stops stay where they are.
+5. If it was the trip's **first route** (the trip had no cities before), the traveller is taken to the [booking vault](booking-vault.md) next, where Bento Man suggests what to book. Every later proposal leaves them on the plan.
 
 ## Acceptance criteria
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { copy } from "@/copy";
+import { onAsk } from "./ask-event";
 
 // The exact opposite of Tailwind's `lg` (min-width: 64rem), so the script and
 // the classes always agree on whether this is the phone layout: a fixed pixel
@@ -35,6 +36,11 @@ export function TripChat({ children }: { children: ReactNode }) {
       window.removeEventListener("hashchange", maybeOpenFromLink);
     };
   }, []);
+
+  // A question asked from elsewhere on the page opens the sheet on a phone.
+  useEffect(() => onAsk(() => {
+    if (window.matchMedia(PHONE_QUERY).matches) setOpen(true);
+  }), []);
 
   useEffect(() => {
     if (!mobileOpen) return;

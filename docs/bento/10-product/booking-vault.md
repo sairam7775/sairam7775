@@ -6,7 +6,7 @@ code:
   - bento/src/lib/vault/
   - bento/src/app/trips/[id]/vault/
   - bento/src/app/api/parse-booking/
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-14
 ---
 
 # The booking vault and gaps
@@ -17,11 +17,12 @@ The traveller keeps their bookings in the trip's **vault** (flights, hotels, tra
 
 ## User journey
 
-1. On a trip, the traveller opens the vault (`/trips/<id>/vault`).
-2. They add a booking: type it in, or paste a confirmation and let Bento fill the form for them to check.
-3. A ribbon shows one bar per night, solid where covered and hatched where not. Under it, sentences such as: "You have nowhere to sleep on the night of 26 November. Your Kyoto hotel runs through the 25th and the next booking starts on the 27th."
-4. They can drag a booking into one of its days, where it sits as a fixed block at its booked time.
-5. A gap they've seen and chosen to live with can be dismissed. It's kept, not deleted.
+1. When the traveller accepts a trip's **first route**, Bento opens the vault (`/trips/<id>/vault?welcome=1`), so what to book comes straight after the plan. Later they open it from the bookings bar on the trip page.
+2. **Bento Man sits at the top** (`bento-man-card.tsx`, `lib/vault/bento-man-tip.ts`): a welcome on that first visit, one tip from the most serious gap, and up to three questions for gaps he can help with. A question, or a gap card's **Ask Bento Man**, opens his chat on the same page (beside the vault on a wide screen, as a sheet on a phone) with the question in the box. Nothing is sent until the traveller presses Send.
+3. They add a booking: type it in, or paste a confirmation and let Bento fill the form for them to check.
+4. A ribbon shows one bar per night, solid where covered and hatched where not. Under it, sentences such as: "You have nowhere to sleep on the night of 26 November. Your Kyoto hotel runs through the 25th and the next booking starts on the 27th."
+5. They can drag a booking into one of its days, where it sits as a fixed block at its booked time.
+6. A gap they've seen and chosen to live with can be dismissed. It's kept, not deleted.
 
 ## Acceptance criteria
 

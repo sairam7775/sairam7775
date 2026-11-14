@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/form-controls";
 import { acceptProposal, rejectProposal } from "./actions";
 import { copy } from "@/copy";
 import { useEffect, useRef, useState } from "react";
-import { track } from "@/lib/analytics/client";
+import { recordProposalAnswered } from "@/lib/analytics/proposal-answered";
 import { BentoManFigure } from "@/components/mascot/figure";
 import { cheers } from "@/components/mascot/playback";
 import type { CoverageTier } from "@/lib/types";
@@ -39,9 +39,9 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames }:
   const was = useRef(status);
   useEffect(() => {
     if (was.current === "proposed" && status !== "proposed") {
-      // The message id lets a dashboard count each answer once, even if two
-      // open tabs both see it change.
-      track("proposal_answered", { answer: status, proposal_id: messageId, route: Boolean(proposal.route), dates: Boolean(proposal.dates), days: proposal.days.length, verdict: proposal.route?.verdict ?? null });
+      // Once per answer on this page (Bookings may report it too). The
+      // message id lets a dashboard count each answer once across tabs.
+      recordProposalAnswered({ answer: status, proposal_id: messageId, route: Boolean(proposal.route), dates: Boolean(proposal.dates), days: proposal.days.length, verdict: proposal.route?.verdict ?? null });
     }
     was.current = status;
   }, [status, proposal, messageId]);

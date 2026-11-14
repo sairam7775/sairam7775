@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { onAsk } from "./ask-event";
 import { useRouter } from "next/navigation";
 import { BentoManFigure } from "@/components/mascot/figure";
 import type { Proposal } from "@/lib/bento-man/diff";
@@ -82,6 +83,13 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
     // Only on arrival: a later re-render must not put it back.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A question from a button on the page (Bookings): into the box, ready to
+  // send or edit, every time it's pressed.
+  useEffect(() => onAsk((q) => {
+    setInput(q);
+    field.current?.focus({ preventScroll: true });
+  }), []);
 
   // A conversation mounted out of sight (the phone's closed sheet) has no
   // height to scroll to the bottom of. When it appears, or its box changes
