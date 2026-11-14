@@ -239,6 +239,18 @@ export const SCENARIOS: Scenario[] = [
     user: "Make the 24th a day trip to Nara.",
     expect: { tools: ["plan_days"], proposal: "days", mustMatch: [/Nara/] },
   },
+  {
+    id: "days-main-sights",
+    intent: "A day in a city Bento knows by its main sights is still planned, said in the page's words to be planned from the main sights, and never called complete or full (Q12).",
+    setup: routed,
+    user: "Make the 28th a day trip to Miyajima.",
+    expect: {
+      tools: ["plan_days"],
+      proposal: "days",
+      mustMatch: [/Miyajima/, /main sights/i],
+      mustNotMatch: [/\b(day|plan|itinerary) is (now )?(complete|full|done)\b/i, /\b(a|your|the) (complete|full) (day|plan|itinerary)\b/i, /\bcovers everything\b|\beverything (worth seeing|there is)\b/i, /\boutline\b/i],
+    },
+  },
 
   // ------------------------------------------------------------- changes
   {
