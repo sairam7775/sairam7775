@@ -94,7 +94,8 @@ describe("request-local SupabaseStore reads", () => {
   it("treats a null or unexpected outcome as an error, never a success or a stale refusal", async () => {
     for (const data of [null, undefined, "", "accepted", 1]) {
       const { store, rpc } = fixture();
-      rpc.mockResolvedValueOnce({ data, error: null });
+      // What a misbehaving database could send; the mock's type only knows strings.
+      rpc.mockResolvedValueOnce({ data: data as string, error: null });
       const e = await store.applyProposal({ summary: "Plan", days: [] }, "message").then(() => null, (x: Error) => x);
       expect(e, String(data)).toBeInstanceOf(Error);
       expect(e!.message).not.toBe(copy.trip.proposals.staleDay);

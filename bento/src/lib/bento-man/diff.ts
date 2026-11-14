@@ -130,7 +130,14 @@ export function parseProposal(raw: unknown): Proposal | null {
 /** The proposal as the browser gets it: without each day's `base`, which
  *  only the accept check on the server reads (from the stored row). */
 export function proposalForClient(p: Proposal): Proposal {
-  return { ...p, days: p.days.map(({ base: _base, ...day }) => day) };
+  return {
+    ...p,
+    days: p.days.map((d) => {
+      const day = { ...d };
+      delete day.base;
+      return day;
+    }),
+  };
 }
 
 /** An itinerary item as it exists today. Enough to diff against. */

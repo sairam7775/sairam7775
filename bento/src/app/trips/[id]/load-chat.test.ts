@@ -10,7 +10,7 @@ const diff = computeDayDiff([{ placeId: "a", name: "A", sortOrder: 0, startMin: 
 
 function fakeDb(rows: object[]) {
   const chain = (data: unknown) => {
-    const q: Record<string, unknown> = Object.assign(Promise.resolve({ data, error: null }), {});
+    const q = Promise.resolve({ data, error: null }) as Promise<unknown> & Record<string, unknown>;
     for (const k of ["select", "eq", "order", "limit", "in"]) q[k] = () => q;
     return q;
   };
