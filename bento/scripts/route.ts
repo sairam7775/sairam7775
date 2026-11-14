@@ -8,11 +8,7 @@
  */
 import { buildGraph, route } from "../src/lib/transit/graph";
 import { describeRoute } from "../src/lib/transit/describe";
-import * as kansai from "../src/lib/transit/seed/kansai-sanyo";
-import * as tokyo from "../src/lib/transit/seed/tokyo";
-
-const stations = [...kansai.stations, ...tokyo.stations];
-const edges = [...kansai.edges, ...tokyo.edges];
+import { edges, stations } from "../src/lib/transit/seed";
 
 const [a, b] = process.argv.slice(2);
 if (a === "--stations") {

@@ -1,14 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PlaceSeed } from "./seed/types";
-import { himeji } from "./seed/himeji";
-import { hiroshima } from "./seed/hiroshima";
-import { kyoto } from "./seed/kyoto";
-import { miyajima } from "./seed/miyajima";
-import { nara } from "./seed/nara";
-import { osaka } from "./seed/osaka";
-import { tokyo } from "./seed/tokyo";
+import { allPlaces as all } from "./seed";
 
-const all = [...kyoto, ...osaka, ...nara, ...hiroshima, ...miyajima, ...himeji, ...tokyo];
 const minutes = (hhmm: string) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3, 5));
 
 /** Clock times named in a sentence, in minutes: "7:30", "17:30", "6am", "7 pm". */

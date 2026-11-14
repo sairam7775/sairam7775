@@ -7,7 +7,7 @@
  *   npx tsx scripts/plan-day.ts 2026-11-25 --pin kyt-sanjusangendo@10:00
  */
 import { buildGraph } from "../src/lib/transit/graph";
-import { stations, edges } from "../src/lib/transit/seed/kansai-sanyo";
+import { stations, edges } from "../src/lib/transit/seed";
 import { planDay } from "../src/lib/engine/schedule";
 import { travelFromGraph } from "../src/lib/engine/travel";
 import { kyoto, owner } from "../src/lib/engine/__fixtures__/kyoto";
