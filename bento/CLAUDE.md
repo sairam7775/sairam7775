@@ -461,10 +461,14 @@ Explained in `../docs/bento/10-product/trip-sharing.md`.
   the server derives them from the validated choice, stored trip end date
   and server clock. A new link is a delete and an insert in ONE database
   function (`renew_trip_share`, 0030, security invoker, so RLS and these
-  grants still apply), so the old address stops working, a failure leaves
-  it working, and renews of one trip queue on an advisory lock. Never
-  split it back into two calls from TypeScript, and only a returned token
-  counts as success.
+  grants still apply), so the old address stops working. A failure inside
+  the database rolls back and leaves the old link working; a reply lost
+  after the commit shows a failure although the link changed, and the page
+  shows the current link after reload. It locks the owned trip row first
+  (FOR UPDATE, like `apply_proposal`), so renews queue and can't deadlock
+  with a trip deletion, and re-checks "until the trip ends" by
+  `shared_trip()`'s rule under that lock. Never split it back into two
+  calls from TypeScript, and only a returned token counts as success.
 - `/shared/[token]` reads the plan from `shared_trip()` alone (definer
   rights; the visitor may have no account). It returns the route, the days'
   stops with only the facts the sheet shows (through `places_public`), and

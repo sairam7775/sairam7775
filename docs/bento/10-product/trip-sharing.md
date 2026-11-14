@@ -50,7 +50,8 @@ A traveller can give the people they're travelling with a **link to their trip p
 - **"Until the trip ends"** works through the whole last day of the trip (UTC), and follows the trip's dates if they change later.
 - Bento's share actions work out every expiry from the traveller's choice, the trip's stored end date and the server's clock. A time sent by the browser is ignored. (The database itself would let a trip's owner change their own link's expiry directly; see Access below.)
 - "Until the trip ends" is refused for a trip that has ended or has no end date, before the current link is touched.
-- **Make a new link** deletes the old link and creates one with a new address in one database step (`renew_trip_share`), so the old address stops working at once, and if anything fails the old link keeps working. Two renews at once queue behind each other and leave one link.
+- **Make a new link** deletes the old link and creates one with a new address in one database step (`renew_trip_share`), so the old address stops working at once. A failure inside the database rolls everything back and the old link keeps working. If the database finishes but its reply is lost on the way back, the traveller sees a failure although the link changed; the trip page shows the current link once it reloads. Two renews at once queue behind each other on the trip and leave one link.
+- "Until the trip ends" is checked again inside that step, by the same rule as the shared page, so a date change made in between can't leave a new link that never opens.
 - Pressing **Share** a second time on an already shared trip keeps the existing link.
 - The trip page, the shared page and the download agree on whether a link still works: they use one rule (`shareIsActive`, the same as the database's `shared_trip()`).
 - The link's address is the key:
@@ -82,7 +83,7 @@ A traveller can give the people they're travelling with a **link to their trip p
 - **If the shared plan can't be loaded,** because the database call fails or returns data in an unexpected shape, Bento's general error page appears: "That didn't load." with "It's on our side, not yours", and a way to try again. An unexpected shape is Bento's fault, so it's never shown as a switched-off link, and never as part of a plan.
 - **If changing the sharing fails:** the traveller returns to the trip page with "Couldn't change sharing for this trip. Try again in a moment."
   - A refused choice (such as "until the trip ends" for a trip that's over) is caught **before** the old link is touched.
-  - **If making a new link fails,** the traveller sees "Couldn't make a new link. Try again in a moment." When the database step failed, nothing changed: the delete and the insert are one transaction, so the old link still works, and the trip page shows the link as it stands. A trip that isn't the traveller's is refused with nothing changed.
+  - **If making a new link fails,** the traveller sees "Couldn't make a new link. Try again in a moment." When the database step failed, nothing changed: the delete and the insert are one transaction, so the old link still works. (Only a reply lost after the database finished can mean the link did change.) Either way the trip page shows the link as it stands. A trip that isn't the traveller's, or "until the trip ends" for a trip that has ended by then, is refused with nothing changed.
 
 ## Code and tests
 
