@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "@/copy";
 import type { DayPlan } from "@/lib/engine/types";
-import { computeDayDiff, parseProposal, type Proposal } from "../diff";
+import { computeDayDiff, dayBase, parseProposal, type Proposal } from "../diff";
 import { MemoryStore } from "../store.memory";
+import { runTool, type ToolContext } from "../tools";
 import type { DayRow, ItemRow } from "../store";
 
 const item = (placeId: string, sortOrder: number): ItemRow => ({
@@ -104,6 +105,62 @@ describe("stale day proposals", () => {
     await store.saveDay({ ...day(), items: day().items.map((i) => ({ ...i, name: "New name", id: "new-id" })) });
     await expect(store.applyProposal(p)).resolves.toBeUndefined();
   });
+  describe("a route change and day plans in the same turn", () => {
+    const prefs = { pace: "standard" as const, interestTags: ["art", "nature"] as ("art" | "nature")[], energy: 0.4, crowdTolerance: 0.6, discovery: 0.5, excludes: [] };
+    const D = "2026-11-20";
+    // Turn 1: Osaka 2 / Kyoto 5 / Hiroshima 2, plan 20 Nov (Osaka) and accept it.
+    async function afterTurnOne() {
+      const store = new MemoryStore({
+        trip: { startDate: "2026-11-20", endDate: "2026-11-29" }, prefs,
+        cities: [{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 5 }, { cityId: "hiroshima-city", nights: 2 }],
+      });
+      const ctx: ToolContext = { store, today: "2026-09-15", proposal: null };
+      expect((await runTool("plan_days", { dates: [{ date: D }] }, ctx)).isError).toBeFalsy();
+      const { id } = await store.append("assistant", "Plan", ctx.proposal!);
+      await store.applyProposal(ctx.proposal!, id);
+      const saved = (await store.state()).days.find((d) => d.date === D)!;
+      expect(saved.cityId).toBe("osaka-city");
+      expect(saved.items.length).toBeGreaterThan(0);
+      return store;
+    }
+    // Turn 2: drop Osaka, start in Kyoto, and plan days in the same turn.
+    async function turnTwo(store: MemoryStore, planInput: object) {
+      const ctx: ToolContext = { store, today: "2026-09-15", proposal: null };
+      expect((await runTool("propose_route", { cities: [{ city_id: "kyoto-city", nights: 7, reason: "Kyoto first" }, { city_id: "hiroshima-city", nights: 2, reason: "then west" }] }, ctx)).isError).toBeFalsy();
+      expect((await runTool("plan_days", planInput, ctx)).isError).toBeFalsy();
+      const p = ctx.proposal!;
+      const { id } = await store.append("assistant", "Route and days", p);
+      return { p, id };
+    }
+
+    for (const [name, input] of [["with dates", { dates: [{ date: D }] }], ["without dates", {}]] as const) {
+      it(`applies ${name}, with the base taken from the day as saved, and the day ends in the new city`, async () => {
+        const store = await afterTurnOne();
+        const saved = (await store.state()).days.find((d) => d.date === D)!;
+        const { p, id } = await turnTwo(store, input);
+        expect(p.days.find((d) => d.date === D)!.base).toEqual(dayBase(saved.items));
+        await expect(store.applyProposal(p, id)).resolves.toBeUndefined();
+        const after = await store.state();
+        expect(after.days.find((d) => d.date === D)!.cityId).toBe("kyoto-city");
+        expect(after.cities.map((c) => c.cityId)).toEqual(["kyoto-city", "hiroshima-city"]);
+        expect(store.messages.find((m) => m.id === id)?.status).toBe("accepted");
+      });
+    }
+
+    it("is refused when the saved day is edited by hand between proposing and accepting", async () => {
+      const store = await afterTurnOne();
+      const { p, id } = await turnTwo(store, { dates: [{ date: D }] });
+      const saved = (await store.state()).days.find((d) => d.date === D)!;
+      await store.saveDay({ ...saved, items: saved.items.slice(1) });
+      const before = await store.state();
+      await expect(store.applyProposal(p, id)).rejects.toThrow(copy.trip.proposals.staleDay);
+      const after = await store.state();
+      expect(after.days).toEqual(before.days);
+      expect(after.cities.map((c) => c.cityId)).toEqual(["osaka-city", "kyoto-city", "hiroshima-city"]);
+      expect(store.messages.find((m) => m.id === id)?.status).toBe("rejected");
+    });
+  });
+
   it("leaves combined dates and days unchecked until original dates are recorded", async () => {
     const store = new MemoryStore({ days: [day()] });
     const p = propose(day());

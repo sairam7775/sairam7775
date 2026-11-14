@@ -149,7 +149,12 @@ export function dayBase(items: ExistingItem[]): z.infer<typeof DayBaseItemSchema
   }));
 }
 
-export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: { id: string; nameJa?: string | null }[] = []): DayDiff {
+/** `existing` is the day the plan is compared with (change flags, removed
+ *  stops). `saved` is the day as stored for that date, recorded as `base`
+ *  for the stale check at accept. They differ only when the caller plans
+ *  against a working state, such as a route proposed earlier in the turn
+ *  that drops the day's saved city. */
+export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: { id: string; nameJa?: string | null }[] = [], saved: ExistingItem[] = existing): DayDiff {
   const afterIds = new Set(plan.items.map((it) => it.placeId));
   // "Moved" means its place in the sequence changed relative to the other
   // stops that survived — not that the clock shifted because something
@@ -202,7 +207,7 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: 
     kind: "day",
     date: plan.date,
     cityId: plan.cityId,
-    base: dayBase(existing),
+    base: dayBase(saved),
     after,
     removed,
     summary,

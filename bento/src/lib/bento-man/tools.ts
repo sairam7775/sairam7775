@@ -721,7 +721,11 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
         });
         for (const it of plan.items) used.add(it.placeId);
-        days.push(computeDayDiff(existing?.items ?? [], plan, places));
+        // The base is the day as saved, not as the proposed route leaves it:
+        // that route drops a day in a city it no longer visits, but the
+        // stale check at accept runs before the route is replaced.
+        const saved = accepted.days.find((d) => d.date === t.date);
+        days.push(computeDayDiff(existing?.items ?? [], plan, places, saved?.items ?? []));
       }
       if (!days.length) return fail(skipped.join("; ") || "nothing to plan");
       ctx.proposal = mergeProposals(ctx.proposal, { summary: `${days.length} day${days.length === 1 ? "" : "s"}`, days });
