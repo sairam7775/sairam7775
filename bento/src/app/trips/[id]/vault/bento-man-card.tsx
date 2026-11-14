@@ -1,12 +1,13 @@
 import { BentoManFigure } from "@/components/mascot/figure";
 import type { BentoManTip } from "@/lib/vault/bento-man-tip";
 import { copy } from "@/copy";
+import { AskLink } from "../ask-link";
 
 const t = copy.vault.bentoMan;
 
 /** Bento Man at the top of Bookings: one tip from what's missing, and a
  *  question per gap he can help with. A question opens his chat with it in
- *  the box (a full load, so the phone sheet opens too); nothing is sent. */
+ *  the box (`AskLink`); nothing is sent. */
 export function BentoManCard({ tripId, tip }: { tripId: string; tip: BentoManTip }) {
   return (
     <section aria-labelledby="bento-man-tip" className="tile up flex gap-4 px-5 py-4" style={{ animationDelay: ".05s" }}>
@@ -19,12 +20,13 @@ export function BentoManCard({ tripId, tip }: { tripId: string; tip: BentoManTip
           <ul aria-label={t.asksLabel} className="mt-3 flex flex-wrap gap-2">
             {tip.asks.map((a) => (
               <li key={a.key}>
-                <a
+                <AskLink
                   href={`/trips/${tripId}/vault?ask=${encodeURIComponent(a.key)}#bento-man`}
+                  question={a.question}
                   className="inline-flex min-h-10 items-center rounded-full border border-rule bg-surface px-4 text-left text-[0.84rem] font-medium hover:bg-sunk"
                 >
                   {a.question}
-                </a>
+                </AskLink>
               </li>
             ))}
           </ul>

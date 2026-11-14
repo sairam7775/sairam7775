@@ -52,20 +52,27 @@ export async function acceptProposal(formData: FormData) {
     redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.notApplied(why))}`);
   }
 
+  // The proposal is applied: both pages show it, whatever happens next.
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/vault`);
+
   // "Don't ask me again" on a date change is the traveller's permission
   // (#6). It's a preference, not part of the trip, so it isn't in the
   // transaction above: if it fails, the dates still moved, and we say so.
+  let warning: string | null = null;
   if (proposal.dates && formData.get("remember") === "on") {
     try {
       await store.setAutoApplyDates(true);
     } catch {
-      redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.rememberFailed)}`);
+      warning = copy.trip.proposals.rememberFailed;
     }
   }
 
-  revalidatePath(`/trips/${tripId}`);
-  revalidatePath(`/trips/${tripId}/vault`);
-  if (firstRoute) redirect(`/trips/${tripId}/vault?welcome=1`);
+  // The first route goes on to Bookings. `accepted` lets that page count
+  // the answer once (the card that would have counted it is gone).
+  const error = warning ? `error=${encodeURIComponent(warning)}` : null;
+  if (firstRoute) redirect(`/trips/${tripId}/vault?welcome=1&accepted=${messageId}${error ? `&${error}` : ""}`);
+  if (error) redirect(`/trips/${tripId}?${error}`);
 }
 
 /** The traveller's answer to "may Bento Man change dates without asking?".

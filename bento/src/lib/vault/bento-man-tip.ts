@@ -14,7 +14,7 @@ export interface BentoManTip {
 
 /** What Bento Man says at the top of Bookings. The gaps arrive most
  *  serious first, so the tip is about the first one. Pure: gaps in, words out. */
-export function bentoManTip(report: Pick<GapReport, "gaps" | "totalNights">, opts: { welcome: boolean }): BentoManTip {
+export function bentoManTip(report: Pick<GapReport, "gaps" | "dismissed" | "coveredNights" | "totalNights">, opts: { welcome: boolean }): BentoManTip {
   const lead = opts.welcome ? t.welcome : null;
   const asks = report.gaps.flatMap((g) => {
     const q = g.actions.find((a) => a.kind === "ask_bento_man")?.hint;
@@ -26,5 +26,8 @@ export function bentoManTip(report: Pick<GapReport, "gaps" | "totalNights">, opt
     const canHelp = first.actions.some((a) => a.kind === "ask_bento_man");
     return { lead, tip: canHelp ? `${first.title} ${t.offer}` : first.title, asks };
   }
-  return { lead, tip: report.totalNights > 0 ? t.allSet : t.noDates, asks };
+  if (report.totalNights === 0) return { lead, tip: t.noDates, asks };
+  // "All covered" only when it is: a dismissed gap is still unbooked.
+  const covered = report.dismissed.length === 0 && report.coveredNights >= report.totalNights;
+  return { lead, tip: covered ? t.allSet : t.setAside, asks };
 }

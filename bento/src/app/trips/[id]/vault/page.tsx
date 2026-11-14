@@ -84,6 +84,10 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
     ? [...report.gaps, ...report.dismissed].find((g) => g.key === askKey)?.actions.find((a) => a.kind === "ask_bento_man")?.hint
     : undefined;
   const tip = bentoManTip(report, { welcome: sp.welcome === "1" });
+  // A first route accepted on the plan page lands here: count the answer
+  // once, as the proposal card would have (TrackOnce drops `accepted`).
+  const acceptedId = typeof sp.accepted === "string" ? sp.accepted : null;
+  const accepted = acceptedId ? chat.messages.find((m) => m.id === acceptedId && m.status === "accepted" && m.proposal) : undefined;
 
   const spent = totalLine(vaultTotal(
     bookings,
@@ -125,7 +129,10 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
             <ErrorNote message={error} />
             {warning && <Notice>{warning}</Notice>}
             {saved && <Notice>{t.saved}</Notice>}
-            {(saved || warning) && <TrackOnce event="booking_saved" props={{ type: typeof sp.kind === "string" ? sp.kind : null, from_paste: sp.pasted === "1", reference_kept: !warning }} consume={["saved", "warning", "kind", "pasted"]} />}
+            {accepted?.proposal && (
+          <TrackOnce event="proposal_answered" props={{ answer: "accepted", proposal_id: accepted.id, route: Boolean(accepted.proposal.route), dates: Boolean(accepted.proposal.dates), days: accepted.proposal.days.length, verdict: accepted.proposal.route?.verdict ?? null }} consume={["accepted"]} />
+        )}
+        {(saved || warning) && <TrackOnce event="booking_saved" props={{ type: typeof sp.kind === "string" ? sp.kind : null, from_paste: sp.pasted === "1", reference_kept: !warning }} consume={["saved", "warning", "kind", "pasted"]} />}
             {!canEncrypt() && (
               // The server has no BENTO_BOOKING_REF_KEY (openssl rand -base64 32).
               <Notice>{t.noReferences}</Notice>

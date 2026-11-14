@@ -802,6 +802,8 @@ export const en = {
       welcome: "Your route is set. Next: where you’ll sleep and how you’ll get between cities. This page keeps track of both.",
       offer: "Want some ideas?",
       allSet: "Every night has a bed and every move has a way. Ask me anything about the trip.",
+      // Nothing open, but only because the traveller set gaps aside: never "all covered".
+      setAside: "Nothing left on the list. The things you set aside are further down if you want another look.",
       noDates: "Once the trip has dates, I can work out which nights still need a bed.",
       asksLabel: "Ask Bento Man about",
     },

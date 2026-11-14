@@ -1,6 +1,7 @@
 import type { Gap, GapSeverity, NightCoverage } from "@/lib/vault/gaps";
 import { dismissGap, restoreGap } from "./actions";
 import { copy } from "@/copy";
+import { AskLink } from "../ask-link";
 
 const t = copy.vault;
 
@@ -108,13 +109,14 @@ export function GapCard({ tripId, gap }: { tripId: string; gap: Gap }) {
               {a.label}
             </a>
           ) : (
-            <a
+            <AskLink
               key={a.label}
               href={`/trips/${tripId}/vault?ask=${encodeURIComponent(gap.key)}#bento-man`}
+              question={a.hint ?? a.label}
               className="inline-flex min-h-10 items-center rounded-full border border-rule bg-surface px-4 text-[0.84rem] font-medium hover:bg-sunk"
             >
               {a.label}
-            </a>
+            </AskLink>
           ),
         )}
         {/* Quiet, and undoable from "you said were not a problem" below. */}
