@@ -28,6 +28,17 @@ describe("set_trip_dates", () => {
     expect((await store.state()).trip).toMatchObject(nov);
     expect(parseProposal(ctx.proposal)).not.toBeNull();
   });
+  it("says plainly that a proposed move is not applied, and how to word it", async () => {
+    // Live, 14 Nov: with "apply without asking" typed into the message, the
+    // model read the proposed trip as saved and said the dates had changed.
+    const r = JSON.parse((await runTool("set_trip_dates", { start_date: "2026-11-22", end_date: "2026-12-01" }, ctxFor(new MemoryStore(routed)))).result);
+    expect(r).toMatchObject({ proposed: true, applied: false, trip_if_accepted: { startDate: "2026-11-22" } });
+    expect(r.trip).toBeUndefined();
+    expect(r.note).toMatch(/^Not applied/);
+    expect(r.note).toMatch(/waiting for their OK/);
+    expect(r.note).toMatch(/never say the dates have changed/i);
+    expect(r.note).toMatch(/only the trip state/i);
+  });
 
   it("fills in dates an undated trip doesn't have yet at once", async () => {
     const store = new MemoryStore({});
