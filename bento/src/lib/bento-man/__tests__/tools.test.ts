@@ -36,6 +36,28 @@ describe("tool definitions", () => {
     expect(examples.length).toBeGreaterThan(100);
     expect(voiceLint(examples)).toEqual([]);
   });
+  it("the voice lint catches a claim that Bento's information is verified", () => {
+    // Legal copy rule (bento/CLAUDE.md, "Legal pages"): never "verified" or
+    // "checked" about Bento's information. Live replies said all three of these.
+    for (const claim of ["I have verified information for Kyoto, Osaka and Nara.", "There's no verified duration for it.", "Bento's verified data says two hours."]) {
+      expect(voiceLint(claim).map((v) => v.rule), claim).toEqual(["claim"]);
+    }
+    for (const fine of ["That record is unverified, so I won't guess.", "Its hours aren't verified yet, so check before you go.", "Bento has it on file.", "I verify nothing myself; Bento's records are what I go by."]) {
+      expect(voiceLint(fine), fine).toEqual([]);
+    }
+  });
+  it("the prompt gives him nothing about verification to repeat", () => {
+    const sayable = [...SYSTEM_PROMPT.matchAll(/"([^"]+)"/g)].map((m) => m[1]).join("\n") + SYSTEM_PROMPT.slice(SYSTEM_PROMPT.indexOf("Examples of the register"));
+    expect(sayable).not.toMatch(/verified/i);
+    expect(SYSTEM_PROMPT).not.toMatch(/a human has verified|data is verified/);
+  });
+  it("the prompt keeps every place in Japan in scope and looks it up first", () => {
+    // Live, 14 Nov: with a Kansai route he declined Tokyo Skytree without a lookup.
+    expect(SYSTEM_PROMPT).toMatch(/whether or not it is on the route/);
+    expect(SYSTEM_PROMPT).toMatch(/off the route is never a reason to decline/);
+    expect(SYSTEM_PROMPT).toMatch(/names a place, call get_place first/);
+    expect(SYSTEM_PROMPT).toMatch(/never a reason to skip a tool/);
+  });
   it("the voice lint catches Bento's internal words for coverage", () => {
     expect(voiceLint("Takayama is at stub tier.").map((v) => v.rule)).toEqual(["jargon"]);
     expect(voiceLint("Himeji has the main sights only. A deep breath, then the outline of the castle.")).toEqual([]);
@@ -245,6 +267,8 @@ describe("days", () => {
     expect(r.days[0].coverage).toBe(MAIN_SIGHTS);
     expect(r.days[0].coverage_note).toContain(copy.mainSightsDay);
     expect(r.days[0].coverage_note).toMatch(/complete/);
+    // What he is told to say must pass the lint his reply is held to (claim rule included).
+    expect(voiceLint(r.days[0].coverage_note)).toEqual([]);
     expect(raw).not.toMatch(/\b(tiers?|stub|outline)\b/i);
   });
 

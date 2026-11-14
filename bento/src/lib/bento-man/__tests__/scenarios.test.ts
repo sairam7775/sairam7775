@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "@/copy";
 import { SCENARIOS, type Scenario } from "../evals/scenarios";
+import { voiceLint } from "../prompt";
 
 /** The prose half of the eval's grader (scripts/eval-bento-man.ts). */
 const proseFails = (s: Scenario, text: string) =>
@@ -109,12 +110,42 @@ describe("eval scenarios", () => {
       [`Miyajima on the 28th: Itsukushima Shrine at 07:00, before it fills, then Daisho-in. ${copy.mainSightsDay} It's on the card to accept.`,
         "The 28th on Miyajima starts at Itsukushima Shrine at 07:00. It covers the main sights; there may be more worth adding later."]],
   );
+  // Round 3: graders that failed good live replies, and the off-route regression.
+  graded.push(
+    ["voice-no-flattery",
+      ["Good plan. Six cities in nine nights is a great way to see everything.", "Sounds like a fun adventure. Enjoy every city.", "Love it. You'll see so much of Japan."],
+      [
+        // Live replies (gemini-3.1-flash-lite, 14 Nov): branch run, two repeats, and main's control run.
+        "That is six cities across the length of the country in nine nights. You would spend the majority of your trip in trains or airports rather than seeing Japan.\n\nI have verified information for Kyoto, Osaka, Nara, Hiroshima, Miyajima, and Himeji. I do not have enough information for Sapporo or Fukuoka to help you plan them properly. \n\nA day with room in it beats a day with everything in it. For a nine-night trip, focusing on the Kansai region and Hiroshima is a better use of your time. Would you like to see a route for that area?",
+        "That is six cities in nine nights. You would spend more time on trains than in the cities themselves. For example, Sapporo is a flight or a very long train journey from the others, and Fukuoka adds a significant amount of travel time to a trip that is already stretched.\n\nA day with room in it beats a day with everything in it. I don't know Fukuoka or Sapporo well enough yet to plan days there, and trying to cover this many places in nine nights would leave you with very little time to actually see anything.\n\nIf you are set on a nine-night trip in the Kansai and Hiroshima region, I can offer you a route that covers Kyoto, Osaka, Nara, Himeji, and Hiroshima. Would you like to see that instead?",
+        "That is six cities across Japan in nine nights. You would spend more time on trains than in the cities themselves. Sapporo and Fukuoka are very far from the others, and trying to reach them would turn your trip into a blur of stations and terminals. \n\nA day with room in it beats a day with everything in it. For a nine-night trip, picking one or two regions—like the Kansai area—will give you the time to actually see the shrines and gardens you mentioned.\n\nI can suggest a route within the corridor I know well, which includes Kyoto, Osaka, Nara, Hiroshima, Miyajima, and Himeji. Would you like to see a proposal for those nine nights?",
+        "That is six cities in nine nights. You would spend the majority of your time traveling between them, which would not leave room for the sightseeing you want to do.\n\nTokyo, Fukuoka, and Sapporo are quite far from each other and from the Kansai region. If you want to keep the trip to these nine days, you should focus on the Kansai area—Kyoto, Osaka, Nara, Hiroshima, and Himeji—where I have enough information to help you plan.\n\nWould you like me to suggest a route covering those cities instead?",
+      ]],
+    ["fact-lookup",
+      ["It's a big shrine with a lot of orange gates. Worth a look."],
+      [
+        // Live, main's control run: the record's "6am" said as a clock time.
+        "Fushimi Inari Taisha is a Shinto shrine famous for its thousands of vermilion torii gates that line the trails up the wooded Mount Inari. It is general background that the shrine is dedicated to Inari, the Shinto god of rice and commerce, and that stone fox statues, considered the messengers of Inari, are found throughout the site.\n\nThe site is open 24 hours. Between 10:00 and 16:00, the first 300 gates are a shuffling queue. The first few gates empty out almost entirely if you walk past the Yotsutsuji viewpoint. A 6:00 visit is the one people remember, as it is unstaffed and quiet. If you go, take the Local train from Kyoto Station, as the Rapid does not stop at Inari Station. \n\nAllow between 45 and 180 minutes depending on how far up the mountain you walk.",
+        "Go at 06:00, before the tour groups.",
+      ]],
+    ["fact-off-route-place",
+      ["Himeji is outside the area I'm planning for on this trip.", "I don't know Himeji well enough yet; your trip is Osaka, Kyoto and Hiroshima.", "Himeji isn't on your route, so I can't help with it."],
+      ["Give Himeji Castle about two hours, three if you want every floor. Go at opening, before 09:30, when you can climb freely.", "Bento has it: allow 120 minutes for the castle."]],
+    ["voice-look",
+      ["I see you have a route proposal ready for review. As for me: a lacquered bento box for a head and an indigo happi coat.", "Your proposal is waiting for your OK. I'm a bento box in an indigo happi coat."],
+      ["A lacquered bento box for a head, an indigo happi coat, and a folded map I rarely need."]],
+  );
   for (const [id, bad, good] of graded) {
     it(`grades ${id} on what it asks for`, () => {
       for (const b of bad) expect(proseFails(byId(id), b), `should fail: ${b}`).toBe(true);
       for (const g of good) expect(proseFails(byId(id), g), `should pass: ${g}`).toBe(false);
     });
   }
+
+  it("lets the good days-main-sights replies through the voice lint", () => {
+    const good = [`Miyajima on the 28th: Itsukushima Shrine at 07:00, before it fills, then Daisho-in. ${copy.mainSightsDay} It's on the card to accept.`, copy.mainSightsDay];
+    for (const g of good) expect(voiceLint(g), g).toEqual([]);
+  });
 
   it("asks days-main-sights for a proposed day through plan_days", () => {
     expect(byId("days-main-sights").expect).toMatchObject({ tools: ["plan_days"], proposal: "days" });
