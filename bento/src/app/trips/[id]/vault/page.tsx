@@ -16,6 +16,7 @@ import { copy } from "@/copy";
 import { AnalyticsUser, TrackOnce } from "@/components/analytics/analytics";
 import { bentoManTip } from "@/lib/vault/bento-man-tip";
 import { BentoManCard } from "./bento-man-card";
+import { TrackAccepted } from "./track-accepted";
 import { Chat } from "../chat";
 import { TripChat } from "../trip-chat";
 import { loadChat } from "../load-chat";
@@ -85,7 +86,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
     : undefined;
   const tip = bentoManTip(report, { welcome: sp.welcome === "1" });
   // A first route accepted on the plan page lands here: count the answer
-  // once, as the proposal card would have (TrackOnce drops `accepted`).
+  // once, as the proposal card would have (TrackAccepted drops `accepted`).
   const acceptedId = typeof sp.accepted === "string" ? sp.accepted : null;
   const accepted = acceptedId ? chat.messages.find((m) => m.id === acceptedId && m.status === "accepted" && m.proposal) : undefined;
 
@@ -130,7 +131,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
             {warning && <Notice>{warning}</Notice>}
             {saved && <Notice>{t.saved}</Notice>}
             {accepted?.proposal && (
-          <TrackOnce event="proposal_answered" props={{ answer: "accepted", proposal_id: accepted.id, route: Boolean(accepted.proposal.route), dates: Boolean(accepted.proposal.dates), days: accepted.proposal.days.length, verdict: accepted.proposal.route?.verdict ?? null }} consume={["accepted"]} />
+          <TrackAccepted answer={{ answer: "accepted", proposal_id: accepted.id, route: Boolean(accepted.proposal.route), dates: Boolean(accepted.proposal.dates), days: accepted.proposal.days.length, verdict: accepted.proposal.route?.verdict ?? null }} />
         )}
         {(saved || warning) && <TrackOnce event="booking_saved" props={{ type: typeof sp.kind === "string" ? sp.kind : null, from_paste: sp.pasted === "1", reference_kept: !warning }} consume={["saved", "warning", "kind", "pasted"]} />}
             {!canEncrypt() && (
