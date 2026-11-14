@@ -1,5 +1,5 @@
 import type { createClient } from "@/lib/supabase/server";
-import { parseProposal } from "@/lib/bento-man/diff";
+import { parseProposal, proposalForClient } from "@/lib/bento-man/diff";
 import type { ChatMessage } from "./chat";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
@@ -15,13 +15,17 @@ export async function loadChat(db: Db, tripId: string, routeCities: { id: string
     .eq("trip_id", tripId)
     .order("created_at", { ascending: false })
     .limit(60);
-  const messages: ChatMessage[] = (rows ?? []).reverse().map((m) => ({
-    id: m.id,
-    role: m.role,
-    content: m.content,
-    proposal: m.proposed_diff ? parseProposal(m.proposed_diff) : null,
-    status: (m.diff_status as ChatMessage["status"]) ?? null,
-  }));
+  const messages: ChatMessage[] = (rows ?? []).reverse().map((m) => {
+    const proposal = m.proposed_diff ? parseProposal(m.proposed_diff) : null;
+    return {
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      // Accept reads the stored row, so the page never needs the bases.
+      proposal: proposal && proposalForClient(proposal),
+      status: (m.diff_status as ChatMessage["status"]) ?? null,
+    };
+  });
 
   const proposalCityIds = [...new Set(messages.flatMap((m) => m.proposal?.days.map((d) => d.cityId) ?? []))];
   const { data: cityRows } = proposalCityIds.length

@@ -127,6 +127,12 @@ export function parseProposal(raw: unknown): Proposal | null {
   return r.success ? r.data : null;
 }
 
+/** The proposal as the browser gets it: without each day's `base`, which
+ *  only the accept check on the server reads (from the stored row). */
+export function proposalForClient(p: Proposal): Proposal {
+  return { ...p, days: p.days.map(({ base: _base, ...day }) => day) };
+}
+
 /** An itinerary item as it exists today. Enough to diff against. */
 export interface ExistingItem {
   placeId: string;
