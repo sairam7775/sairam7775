@@ -82,12 +82,15 @@ describe("acceptProposal: where the traveller lands", () => {
     await expect(acceptProposal(form())).rejects.toThrow(`redirect:/trips/${TRIP}?error=`);
   });
 
-  it("shows the stale sentence on its own and refreshes both pages that show the closed card", async () => {
-    mocks.parseProposal.mockReturnValue({ summary: "", days: [] });
-    mocks.applyProposal.mockRejectedValue(new Error(copy.trip.proposals.staleDay));
-    const thrown = await acceptProposal(form()).then(() => null, (e: Error) => e.message);
-    expect(thrown).toBe(`redirect:/trips/${TRIP}?error=${encodeURIComponent(copy.trip.proposals.staleDay)}`);
-    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}`);
-    expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}/vault`);
-  });
+  for (const [name, sentence] of [["stale", () => copy.trip.proposals.staleDay], ["unknown-outcome", () => copy.trip.proposals.outcomeUnknown]] as const) {
+    it(`shows the ${name} sentence on its own and refreshes both pages that show the card`, async () => {
+      mocks.parseProposal.mockReturnValue({ summary: "", days: [] });
+      expect(sentence()).toEqual(expect.any(String));
+      mocks.applyProposal.mockRejectedValue(new Error(sentence()));
+      const thrown = await acceptProposal(form()).then(() => null, (e: Error) => e.message);
+      expect(thrown).toBe(`redirect:/trips/${TRIP}?error=${encodeURIComponent(sentence())}`);
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}`);
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}/vault`);
+    });
+  }
 });

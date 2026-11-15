@@ -382,11 +382,16 @@ export class SupabaseStore implements TripStore {
     });
     if (error) throw error;
     this.stateCache = null;
+    // No value, with no error: the database doesn't have 0031 yet. That
+    // function returns void and either raises or has applied and
+    // committed, so no value means applied. (0031's never returns null.)
+    if (outcome == null || outcome === "applied") return;
     // A day changed since the proposal was made: the RPC returns (so its
     // close of the proposal commits) instead of raising, and applied nothing.
     if (outcome === "stale_day") throw new Error(copy.trip.proposals.staleDay);
-    // Anything but 'applied' is not a success we can vouch for.
-    if (outcome !== "applied") throw new Error(copy.trip.proposals.notAppliedUnknown);
+    // Anything else: the call finished but we can't say what it did, so
+    // claim neither success nor failure.
+    throw new Error(copy.trip.proposals.outcomeUnknown);
   }
 
   /** A proposal that moves the dates: the date change (as setTripDates

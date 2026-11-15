@@ -273,8 +273,11 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   shared with `replace_day_items` (0031). `apply_proposal` returns
   `'applied'` or `'stale_day'`: a mismatch closes only that proposal as
   rejected, applies nothing and returns normally so the close commits;
-  every other failure raises. The store treats any other value as a
-  failure. `base` never goes to the browser (`proposalForClient`).
+  every other failure raises. The store reads no value as applied (the
+  pre-0031 void function, so either deploy order is safe), and any other
+  value as an unknown outcome (`outcomeUnknown`: claim neither).
+  `dayBase` (diff.ts) and 0031's `order by` share one total order: change
+  both together. `base` never goes to the browser (`proposalForClient`).
   Proposals without a base and date proposals with days are unchecked
   (Q13); the latter need each day's original date before a sound check.
   Run on PGlite on one connection; true concurrency not exercised.

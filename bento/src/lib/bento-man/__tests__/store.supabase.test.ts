@@ -91,14 +91,20 @@ describe("request-local SupabaseStore reads", () => {
       p_days: [expect.objectContaining({ base: [] })],
     }));
   });
-  it("treats a null or unexpected outcome as an error, never a success or a stale refusal", async () => {
-    for (const data of [null, undefined, "", "accepted", 1]) {
+  it("treats no value as applied: the function before 0031 returns void, and only once it has applied", async () => {
+    for (const data of [null, undefined]) {
+      const { store, rpc } = fixture();
+      rpc.mockResolvedValueOnce({ data: data as unknown as string, error: null });
+      await expect(store.applyProposal({ summary: "Plan", days: [] }, "message"), String(data)).resolves.toBeUndefined();
+    }
+  });
+  it("says the outcome is unknown for any other value, claiming neither success nor a stale refusal", async () => {
+    expect(copy.trip.proposals.outcomeUnknown).toEqual(expect.any(String));
+    for (const data of ["", "accepted", 1]) {
       const { store, rpc } = fixture();
       // What a misbehaving database could send; the mock's type only knows strings.
       rpc.mockResolvedValueOnce({ data: data as string, error: null });
-      const e = await store.applyProposal({ summary: "Plan", days: [] }, "message").then(() => null, (x: Error) => x);
-      expect(e, String(data)).toBeInstanceOf(Error);
-      expect(e!.message).not.toBe(copy.trip.proposals.staleDay);
+      await expect(store.applyProposal({ summary: "Plan", days: [] }, "message"), String(data)).rejects.toThrow(copy.trip.proposals.outcomeUnknown);
     }
   });
   it("shares concurrent and sequential state/city reads and keeps stores isolated", async () => {

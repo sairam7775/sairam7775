@@ -2,8 +2,13 @@
 --
 -- Bento Man proposed a day, the traveller then edited that day by hand, and
 -- pressing Accept on the old card replaced the day: the hand edit was lost
--- without a word (open question Q13). Run this before deploying the code
--- that needs it.
+-- without a word (open question Q13).
+--
+-- Either deploy order is safe. Old code ignores the returned value and
+-- sends no base, so this function always returns 'applied' to it. New
+-- code reads the void return of the function before this as applied,
+-- because that one either raises or has applied. Running this first is
+-- still the recommended order: until it runs there is no stale check.
 --
 -- Each day of a proposal now carries `base`: the day's stops as they were
 -- saved when the proposal was made (place, order, pin, start, duration and
