@@ -18,6 +18,10 @@ import { runTool, TOOLS, type ToolContext } from "./tools";
 export interface ChatEvents {
   onText?: (delta: string) => void;
   onTool?: (name: string, phase: "start" | "end", ok: boolean) => void;
+  /** The whole reply so far, to replace what streamed: sent when a call is
+   *  refused, before the reply is saved, so a failed save can't leave the
+   *  refused call's text on screen. */
+  onReplace?: (text: string) => void;
 }
 
 export interface RunOptions {
@@ -168,8 +172,9 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     if (msg.stopReason === "refusal") {
       // A provider can stream text before it decides to block (Gemini's
       // SAFETY). None of that call's text is kept: the reply is the earlier
-      // calls' checked text and the refusal copy, and "done" replaces what
-      // streamed. Nothing more streams this turn.
+      // calls' checked text and the refusal copy, sent to replace what
+      // streamed ("replace", below) before anything is saved. Nothing more
+      // streams this turn.
       stream.stop();
       texts.push(REFUSAL_TEXT);
       break;
@@ -214,6 +219,9 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     console.warn("Bento Man: withheld a reply that repeated the system prompt.");
     text = WITHHELD_TEXT;
   }
+  // The refused call's text may be on screen already; "done" would replace
+  // it, but only after the save below, which can fail.
+  if (stopReason === "refusal") opts.events?.onReplace?.(text);
   let assistantMessageId: string | null = null;
   if (persist) {
     // The model has been paid by now: if saving the reply fails, the usage

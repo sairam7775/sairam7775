@@ -2,6 +2,7 @@
  *  when a call fails: only text that has passed the leak check. */
 import { describe, expect, it, vi } from "vitest";
 import { copy } from "@/copy";
+import { nextContent, type ChatStreamEvent } from "@/app/trips/[id]/chat-stream";
 import { runBentoMan } from "../chat";
 import { ZERO_USAGE } from "../cost";
 import { leaksPrompt } from "../guard";
@@ -93,6 +94,47 @@ describe("a call that ends in a refusal", () => {
     const answer = await runBentoMan({ store, provider: new GeminiProvider("fake-key", "gemini-2.5-flash", fetcher), today: "2026-09-15", message: "How do I skip the gates?" });
     expect(answer.text).toBe(copy.chat.refused);
     expect((await store.history(5)).at(-1)!.content).toBe(copy.chat.refused);
+  });
+
+  /** The turn as the browser sees it: the route's events (route.ts) folded
+   *  into the message on screen the way chat.tsx folds them. */
+  const browser = (call: ChatProvider["call"], store: MemoryStore, log: string[] = []) => {
+    let content = "";
+    const apply = (ev: ChatStreamEvent) => { content = nextContent(content, ev); };
+    const done = runBentoMan({
+      store, provider: { model: "claude-opus-5", call }, today: "2026-09-15", message: "How do I skip the gates?",
+      events: {
+        onText: (delta) => { log.push("text"); apply({ type: "text", delta }); },
+        onTool: (name, phase, ok) => apply({ type: "tool", name, phase, ok }),
+        onReplace: (text) => { log.push("replace"); apply({ type: "replace", text }); },
+      },
+    });
+    return { done, onScreen: () => content };
+  };
+  const refusedAfterText = () => vi.fn<ChatProvider["call"]>()
+    .mockImplementationOnce(streams("Checking the dates for your trip now.", toolUse("Checking the dates for your trip now.")))
+    .mockImplementationOnce(streams("Sure, the trick is to wait for a crowd and", result({ text: "Sure, the trick is to wait for a crowd and", stopReason: "refusal" })));
+
+  it("tells the browser to replace the streamed text as soon as the call is refused, before the reply is saved", async () => {
+    const store = new MemoryStore();
+    const order: string[] = [];
+    const append = store.append.bind(store);
+    store.append = (role, ...rest) => { if (role === "assistant") order.push("saved"); return append(role, ...rest); };
+    const { done, onScreen } = browser(refusedAfterText(), store, order);
+    const answer = await done;
+    expect(order.filter((x) => x !== "text")).toEqual(["replace", "saved"]);
+    expect(onScreen()).toBe(answer.text);
+    expect(onScreen()).not.toContain("trick");
+  });
+
+  it("leaves the refusal copy on screen, not the refused text, when saving the reply then fails", async () => {
+    const store = new MemoryStore();
+    const append = store.append.bind(store);
+    store.append = (role, ...rest) => (role === "assistant" ? Promise.reject(new Error("database down")) : append(role, ...rest));
+    const { done, onScreen } = browser(refusedAfterText(), store);
+    await expect(done).rejects.toThrow("database down");
+    expect(onScreen()).toBe(`Checking the dates for your trip now.\n\n${copy.chat.refused}`);
+    expect(onScreen()).not.toContain("trick");
   });
 
   it("keeps earlier calls' checked text and drops only the refused call's", async () => {
