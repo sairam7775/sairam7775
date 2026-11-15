@@ -91,8 +91,8 @@ describe("request-local SupabaseStore reads", () => {
       p_days: [expect.objectContaining({ base: [] })],
     }));
   });
-  it("treats no value as applied: the function before 0031 returns void, and only once it has applied", async () => {
-    for (const data of [null, undefined]) {
+  it("treats no value as applied: the function before 0031 returns void (null, or \"\" where void is sent as an empty string), and only once it has applied", async () => {
+    for (const data of [null, undefined, ""]) {
       const { store, rpc } = fixture();
       rpc.mockResolvedValueOnce({ data: data as unknown as string, error: null });
       await expect(store.applyProposal({ summary: "Plan", days: [] }, "message"), String(data)).resolves.toBeUndefined();
@@ -100,7 +100,7 @@ describe("request-local SupabaseStore reads", () => {
   });
   it("says the outcome is unknown for any other value, claiming neither success nor a stale refusal", async () => {
     expect(copy.trip.proposals.outcomeUnknown).toEqual(expect.any(String));
-    for (const data of ["", "accepted", 1]) {
+    for (const data of ["accepted", "Applied", "stale", 1]) {
       const { store, rpc } = fixture();
       // What a misbehaving database could send; the mock's type only knows strings.
       rpc.mockResolvedValueOnce({ data: data as string, error: null });

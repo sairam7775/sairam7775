@@ -384,8 +384,10 @@ export class SupabaseStore implements TripStore {
     this.stateCache = null;
     // No value, with no error: the database doesn't have 0031 yet. That
     // function returns void and either raises or has applied and
-    // committed, so no value means applied. (0031's never returns null.)
-    if (outcome == null || outcome === "applied") return;
+    // committed, so no value means applied. A void result is null, or ""
+    // where it is sent as an empty string (Postgres prints void as "").
+    // 0031's function never returns null or "".
+    if (outcome == null || outcome === "" || outcome === "applied") return;
     // A day changed since the proposal was made: the RPC returns (so its
     // close of the proposal commits) instead of raising, and applied nothing.
     if (outcome === "stale_day") throw new Error(copy.trip.proposals.staleDay);
