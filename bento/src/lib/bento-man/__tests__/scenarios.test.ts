@@ -13,7 +13,7 @@ const byId = (id: string) => {
 };
 
 // What Bento Man says when he declines: the canned lines and the prompt's example.
-const DECLINES = [copy.chat.refused, copy.chat.withheld, "That one doesn't fit in my box. Japan does, though: where are you headed?"];
+const DECLINES = [copy.chat.refused, copy.chat.withheld, "Code isn't in my box. Japan is, though: where are you headed?"];
 
 describe("eval scenarios", () => {
   it("have unique ids", () => {
