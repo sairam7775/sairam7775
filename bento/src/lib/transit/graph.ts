@@ -33,24 +33,45 @@ export function bothWays(e: Edge): Edge[] {
 
 /** Search state is (station, line arrived on), so a change of line can be
  *  charged as a transfer. Walking never pays the penalty: the walk is the
- *  transfer. */
+ *  transfer. `rode` says whether a train has been ridden yet, so the next
+ *  ride after a walk can be counted as a change of train. */
 interface State {
   station: string;
   line: string;
+  rode: boolean;
 }
 
 // Station ids are slugs and line names use middle dots, so " @ " cannot
-// occur inside either half.
-const key = (s: State) => `${s.station} @ ${s.line}`;
+// occur inside either half. After a ride `rode` is always true, so only
+// walk-only states carry the marker.
+const key = (s: State) => `${s.station} @ ${s.line}${s.rode ? "" : " @ -"}`;
+
+/** What the search minimises, in order: minutes as the traveller sees them
+ *  (rides, walks and the change penalty: exactly `Route.minutes`), then
+ *  changes of train (`Route.transfers`), then legs. Only exact ties on
+ *  minutes reach the second and third, so no route gets slower. */
+interface Cost {
+  min: number;
+  changes: number;
+  legs: number;
+}
+
+const ZERO: Cost = { min: 0, changes: 0, legs: 0 };
+
+function less(a: Cost, b: Cost): boolean {
+  if (a.min !== b.min) return a.min < b.min;
+  if (a.changes !== b.changes) return a.changes < b.changes;
+  return a.legs < b.legs;
+}
 
 class MinHeap {
-  private a: { d: number; s: State }[] = [];
-  push(d: number, s: State) {
-    this.a.push({ d, s });
+  private a: { c: Cost; s: State }[] = [];
+  push(c: Cost, s: State) {
+    this.a.push({ c, s });
     let i = this.a.length - 1;
     while (i > 0) {
       const p = (i - 1) >> 1;
-      if (this.a[p].d <= this.a[i].d) break;
+      if (!less(this.a[i].c, this.a[p].c)) break;
       [this.a[p], this.a[i]] = [this.a[i], this.a[p]];
       i = p;
     }
@@ -65,8 +86,8 @@ class MinHeap {
         const l = 2 * i + 1;
         const r = l + 1;
         let m = i;
-        if (l < this.a.length && this.a[l].d < this.a[m].d) m = l;
-        if (r < this.a.length && this.a[r].d < this.a[m].d) m = r;
+        if (l < this.a.length && less(this.a[l].c, this.a[m].c)) m = l;
+        if (r < this.a.length && less(this.a[r].c, this.a[m].c)) m = r;
         if (m === i) break;
         [this.a[m], this.a[i]] = [this.a[i], this.a[m]];
         i = m;
@@ -88,32 +109,42 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
   }
 
   const penalty = opts.transferPenaltyMin ?? 5;
-  const dist = new Map<string, number>();
+  const dist = new Map<string, Cost>();
   const prev = new Map<string, { state: State; edge: Edge }>();
   const heap = new MinHeap();
 
-  const start: State = { station: fromId, line: "" };
-  dist.set(key(start), 0);
-  heap.push(0, start);
+  const start: State = { station: fromId, line: "", rode: false };
+  dist.set(key(start), ZERO);
+  heap.push(ZERO, start);
 
   let best: State | null = null;
 
   while (heap.size) {
-    const { d, s } = heap.pop();
-    if (d > (dist.get(key(s)) ?? Infinity)) continue;
+    const { c, s } = heap.pop();
+    const known = dist.get(key(s));
+    if (known && less(known, c)) continue;
     if (s.station === toId) {
       best = s;
       break;
     }
     for (const e of g.out.get(s.station) ?? []) {
       const isTransfer = s.line !== "" && s.line !== e.line && e.mode !== "walk" && s.line !== "walk";
-      const nd = d + e.minutes + (isTransfer ? penalty : 0);
-      const ns: State = { station: e.to, line: e.line };
+      // The rules `assemble` uses: a new line starts a new leg, and a new
+      // train after an earlier one is a change, even across a walk.
+      const newLeg = s.line !== e.line;
+      const newTrain = newLeg && e.mode !== "walk";
+      const nc: Cost = {
+        min: c.min + e.minutes + (isTransfer ? penalty : 0),
+        changes: c.changes + (newTrain && s.rode ? 1 : 0),
+        legs: c.legs + (newLeg ? 1 : 0),
+      };
+      const ns: State = { station: e.to, line: e.line, rode: s.rode || e.mode !== "walk" };
       const nk = key(ns);
-      if (nd < (dist.get(nk) ?? Infinity)) {
-        dist.set(nk, nd);
+      const old = dist.get(nk);
+      if (!old || less(nc, old)) {
+        dist.set(nk, nc);
         prev.set(nk, { state: s, edge: e });
-        heap.push(nd, ns);
+        heap.push(nc, ns);
       }
     }
   }
@@ -129,7 +160,7 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
     cur = p.state;
   }
 
-  return assemble(g, from, to, path, dist.get(key(best))!);
+  return assemble(g, from, to, path, dist.get(key(best))!.min);
 }
 
 // ---------------------------------------------------------------- legs & fares
