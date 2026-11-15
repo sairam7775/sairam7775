@@ -119,9 +119,9 @@ export const travellerMessage = (message: string) => `<traveller_message>\n${mes
  * a hotel). Shorter prompt sentences ("The gap is the information.") are
  * not caught on their own.
  *
- * What the prompt quotes for him to say ("..." spans, and the lines under
- * "Examples of the register") is exempt: a run counts only when at least
- * half its words come from outside those quotes. */
+ * What the prompt gives him to say ("..." spans, the lines under
+ * "Examples of the register", and SAYABLE_PASSAGES below) is exempt: a run
+ * counts only when at least half its words come from outside those. */
 export const LEAK_RUN = 8;
 const HALF = Math.ceil(LEAK_RUN / 2);
 
@@ -138,9 +138,34 @@ function tokens(text: string): Token[] {
   }));
 }
 
+/** Unquoted prompt passages that are advice for the traveller, not
+ *  instructions about him: he is meant to say them, often word for word,
+ *  so they are exempt like the quoted spans. Without this list the guard
+ *  would swap emergency advice for the withhold line. The prompt's wording
+ *  is measured live and is not edited to add quotes, so the list lives
+ *  here; a test checks every passage is still in the prompt. The words
+ *  around a passage (the instruction itself) still count. */
+export const SAYABLE_PASSAGES = [
+  // Life safety: what to tell someone in an emergency.
+  "call 110 for the police or 119 for an ambulance or fire",
+  // Where to go for entry rules, and how he helps with them.
+  "Japan Customs; the Ministry of Health, Labour and Welfare for medicines; the embassy or consulate for visas",
+  "what to ask them and what to have ready",
+  // The practical health and money help, as he would offer it.
+  'how to say "I am allergic to peanuts" in Japanese, what a pharmacy is called, whether to carry cash',
+  // Culture he shares from what he knows, as he would list it.
+  "what a torii is, how to behave in an onsen, why a shrine has foxes, how to order at a ticket machine, festivals and the seasons they belong to",
+  // What he can help with, the natural answer to "what can you do?".
+  "getting around, food and how to order it, etiquette and customs, culture and history, seasons and festivals, a little of the language, money, packing, staying connected and staying safe",
+];
+
 /** Character ranges of the prompt he is meant to say. */
 const SAYABLE: [number, number][] = [
   ...[...SYSTEM_PROMPT.matchAll(/"[^"\n]+"/g)].map((m): [number, number] => [m.index, m.index + m[0].length]),
+  ...SAYABLE_PASSAGES.flatMap((p): [number, number][] => {
+    const at = SYSTEM_PROMPT.indexOf(p);
+    return at < 0 ? [] : [[at, at + p.length]];
+  }),
   [SYSTEM_PROMPT.indexOf("Examples of the register:"), SYSTEM_PROMPT.length],
 ];
 const PROMPT_TOKENS = tokens(SYSTEM_PROMPT).map((t) => ({ ...t, sayable: SAYABLE.some(([a, b]) => t.start >= a && t.start < b) }));
