@@ -34,7 +34,7 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 - **It is read a page at a time.** Supabase's API answers at most 1,000 rows per request by default and drops the rest without an error, and the seed already has more than 1,000 edges. So `selectAll` (`bento/src/lib/supabase/select-all.ts`) reads each table in order of its key, 1,000 rows a request, with an exact row count, until every row has arrived. This works even if the project's row limit is set lower than 1,000.
   - If any page fails, the whole load fails and nothing is cached; a partial graph is never used.
   - The city list (`city_coverage`) and a city's places (`places_public`) are read the same way (`bento/src/lib/bento-man/store.supabase.ts`, `bento/src/lib/engine/load.ts`).
-- **Where a trip lands in each city** is its hub station (`CITY_HUBS` and `hubFor` in `bento/src/lib/engine/route.ts`): Tokyo Station for Tokyo, the main station of each corridor city. A city with no entry lands at its station with the smallest id, the same on every load, whatever order the stations arrive in. Legs between cities on a route start and end at hubs, and Bento Man's `route_between` uses a city's hub when it is given a city rather than a station or a place.
+- **Where a trip lands in each city** is its hub station (`CITY_HUBS` and `hubFor` in `bento/src/lib/engine/route.ts`): Tokyo Station for Tokyo, Yokohama Station for Yokohama, Kamakura Station for Kamakura, the main station of each corridor city. A city with no entry lands at its station with the smallest id, the same on every load, whatever order the stations arrive in. Legs between cities on a route start and end at hubs, and Bento Man's `route_between` uses a city's hub when it is given a city rather than a station or a place.
 
 ## The networks
 
@@ -42,6 +42,7 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 |---|---|---|
 | Kansai–Sanyo corridor | `seed/kansai-sanyo.ts`, the one source of truth for the corridor | Hand-built seed |
 | Tokyo | `seed/tokyo.ts`: every Metro, Toei and Yamanote station, both airports, and the Shinkansen to Kyoto and Shin-Osaka | Line order and distances from ja.wikipedia's line tables; positions from Wikidata; minutes from each line's published end-to-end time |
+| Kanagawa (Yokohama and Kamakura) | `seed/kanagawa.ts`: JR Yokosuka, Tokaido and Negishi lines from Tokyo, the Tokyu Toyoko Limited Express running through onto the Minatomirai Line from Shibuya, the Blue Line to Shin-Yokohama, the Enoden from Kamakura to Enoshima and Fujisawa, and two bus stops (Jomyoji for Hokoku-ji, Honmoku for Sankeien). Room for Hakone later in the same file | Order and distances from ja.wikipedia's line tables; positions from Wikidata, and the two bus stops from MLIT's bus stop data (国土数値情報 P11, CC BY 4.0); minutes from a published end-to-end time where one was found (operator or Wikipedia), apportioned by km. JR minutes are hand-set |
 
 - **Every network is registered in the seed index**, `bento/src/lib/transit/seed/index.ts`. The exporter, the CLI and the seed tests read that list, and a test fails if a file in the folder is missing from it. (The place seeds have the same index, `bento/src/lib/places/seed/index.ts`.)
 - **A new network is a new file**, registered in the index, with its city's hub added to `CITY_HUBS` in the same change. Edit seed files directly; don't regenerate `tokyo.ts` from the tools that first built it.
@@ -53,6 +54,9 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 - **Known gaps:**
   - JR East has no fare table yet, so JR rides in Tokyo are unpriced;
   - Yurikamome, airport lines and private railways in Tokyo are unpriced too, because the sources conflicted.
+  - In Kanagawa, only operators whose own fare page could be read are priced: the Minatomirai Line and the Enoden by band (each table matches every station pair the operator publishes; IC fares where both are published), the Blue Line ride and the Yokohama City Bus ride as exact fares on their edges. JR East, Tokyu and Keikyu Bus rides are unpriced. A Toyoko train running through onto the Minatomirai Line is one leg with two fares.
+  - Kanagawa's JR minutes (Yokosuka and Tokaido lines) are hand-set seed values, because no operator or Wikipedia end-to-end time was used; with them, Tokyo → Kamakura changes at Ofuna (52 minutes) rather than taking the direct Yokosuka Line train (55), and the leg carries a note about the direct train.
+  - Not modelled in Kanagawa: the Shonan–Shinjuku Line (so Shinjuku → Kamakura goes by Shinagawa, slower than the direct train), the Keikyu Line, the Shinkansen and the Tokyu Shin-Yokohama Line to Shin-Yokohama, the Odakyu Line and the Shonan Monorail to Enoshima, and walks between nearby stations in Yokohama.
 
 ## Try it
 
