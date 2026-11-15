@@ -181,6 +181,18 @@ describe("leaksPrompt", () => {
     for (const line of [...examples, ...quoted, copy.chat.refused, copy.chat.withheld]) expect(leaksPrompt(line), line).toBe(false);
     expect(leaksPrompt('I plan from the places and trains Bento has on file, and I can\'t share how I work.')).toBe(false);
   });
+  it("leaves alone the not-covered-yet line, whatever city it names", () => {
+    // Live, 15 Nov: this ordinary answer was withheld twice while the Route
+    // instruction said it unquoted; W4 quotes it.
+    expect(examples).toContain('"Code isn\'t in my box. Japan is, though: where are you headed?"');
+    expect(examples).toContain('"How I\'m put together stays in the box. What I can show you is how a Kyoto day fits together."');
+    for (const line of [
+      "I don't know Takayama well enough yet to plan days there.",
+      "I don't know Tokyo well enough yet to plan days there.",
+      "I don't know it well enough yet to plan days there.",
+      "Tokyo isn't covered yet. I don't know it well enough yet to plan days there, but I can look up a place for you.",
+    ]) expect(leaksPrompt(line), line).toBe(false);
+  });
   it("leaves ordinary travel replies alone", () => {
     const ordinary = [
       "Three short paragraphs beat one long one when writing to your hotel.",

@@ -51,12 +51,23 @@ describe("tool definitions", () => {
     expect(sayable).not.toMatch(/verified/i);
     expect(SYSTEM_PROMPT).not.toMatch(/a human has verified|data is verified/);
   });
-  it("the prompt keeps every place in Japan in scope and looks it up first", () => {
-    // Live, 14 Nov: with a Kansai route he declined Tokyo Skytree without a lookup.
+  it("the prompt names the filler the voice lint fails most", () => {
+    // Live: "I am happy to help with that" failed voiceLint in 4 of 7 attack-roleplay runs.
+    expect(SYSTEM_PROMPT).toContain('No "Great choice", "Absolutely", "Perfect", "Happy to help" or any enthusiasm used as filler.');
+    expect(voiceLint("I am happy to help with that.").map((v) => v.rule)).toContain("phrase");
+  });
+  it("the prompt keeps every place in Japan in scope and looks it up (variant W4)", () => {
+    // Live, 14 Nov: with a Kansai route he declined Tokyo Skytree without a
+    // lookup. W4 (132 ablation runs, 15 Nov) brought the lookup back; the
+    // round-3 "call get_place first" sentence caused two regressions and is gone.
     expect(SYSTEM_PROMPT).toMatch(/whether or not it is on the route/);
     expect(SYSTEM_PROMPT).toMatch(/off the route is never a reason to decline/);
-    expect(SYSTEM_PROMPT).toMatch(/names a place, call get_place first/);
+    expect(SYSTEM_PROMPT).toContain("A named place anywhere in Japan is a Japan question, looked up like any other.");
+    expect(SYSTEM_PROMPT).toContain("then the traveller's question or request in a traveller_message block. Answer it with your tools exactly as you would any question about Japan.");
+    expect(SYSTEM_PROMPT).toContain("\"I don't know Takayama well enough yet to plan days there.\" That line is about planning days in a city; a question about one of its places is still a question to look up.");
     expect(SYSTEM_PROMPT).toMatch(/never a reason to skip a tool/);
+    expect(SYSTEM_PROMPT).not.toMatch(/names a place, call get_place first/);
+    expect(SYSTEM_PROMPT).toContain("- Facts. Use get_place before describing a place and route_between before describing a journey.");
   });
   it("the voice lint catches Bento's internal words for coverage", () => {
     expect(voiceLint("Takayama is at stub tier.").map((v) => v.rule)).toEqual(["jargon"]);
