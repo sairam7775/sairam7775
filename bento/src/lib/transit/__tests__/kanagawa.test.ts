@@ -80,17 +80,33 @@ describe("route — Kanagawa", () => {
     expect(r.minutes).toBeLessThanOrEqual(60);
     expect(r.fareJpy).toBe(0);
     expect(r.unpricedRides).toBe(1);
-    // The hand-set minutes favour a change at Ofuna by 3 minutes; the
-    // traveller is told about the train with no change.
+    // The published figures favour a change at Ofuna (54) over the direct
+    // train (60); the traveller is told about the train with no change.
     if (r.transfers > 0) expect(r.legs[0].notes.join(" ")).toContain("Yokosuka Line runs there from Tokyo without a change");
   });
 
-  it("the direct Yokosuka Line train to Kamakura is in the graph at 55 minutes", () => {
+  it("the direct Yokosuka Line train to Kamakura is in the graph at the published 60 minutes", () => {
     const yokosuka = kanagawa.edges.filter((e) => e.line === "JR Yokosuka Line" && e.mode === "rail");
     const path = ["tokyo", "shimbashi", "shinagawa", "yokohama", "ofuna", "kita-kamakura", "kamakura"];
     let minutes = 0;
     for (let i = 1; i < path.length; i++) minutes += yokosuka.find((e) => e.from === path[i - 1] && e.to === path[i])!.minutes;
-    expect(minutes).toBe(55);
+    expect(minutes).toBe(60);
+  });
+
+  it("Shinjuku → Kamakura is one Shonan-Shinjuku Line train", () => {
+    const r = route(g, "shinjuku", "kamakura")!;
+    expect(r.legs.map((l) => l.line)).toEqual(["JR Shonan-Shinjuku Line"]);
+    expect(r.transfers).toBe(0);
+    expect(r.minutes).toBe(66); // 36 to Yokohama (Visit Kanagawa) + 30 on to Kamakura
+    expect(r.unpricedRides).toBe(1);
+  });
+
+  it("Shibuya → Yokohama takes the Toyoko Limited Express, faster than the Shonan-Shinjuku Line", () => {
+    const r = route(g, "shibuya", "yokohama")!;
+    expect(r.legs.map((l) => l.line)).toEqual(["Tokyu Toyoko Line · Limited Express"]);
+    expect(r.minutes).toBe(28);
+    const jr = kanagawa.edges.find((e) => e.from === "shibuya" && e.to === "yokohama" && e.line === "JR Shonan-Shinjuku Line")!;
+    expect(jr.minutes).toBe(32);
   });
 
   it("Tokyo → Motomachi-Chukagai changes once, at Yokohama", () => {

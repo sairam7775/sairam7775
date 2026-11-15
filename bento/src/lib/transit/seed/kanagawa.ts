@@ -1,7 +1,7 @@
 /** Kanagawa: Yokohama and Kamakura (with Enoshima), hand-seeded.
  *
  *  A small network for the drafted Yokohama and Kamakura places, joined to
- *  the Tokyo seed at Tokyo, Shimbashi, Shinagawa and Shibuya. Only what a
+ *  the Tokyo seed at Tokyo, Shimbashi, Shinagawa, Shibuya and Shinjuku. Only what a
  *  visitor rides: every station serves a place, joins two lines, or is
  *  where a line ends. Skipped stations are counted in `stops` and their km
  *  kept in the hop, so no station is added just for its distance. Hakone
@@ -9,17 +9,19 @@
  *
  *  Sources (the full list, with dates, is kept outside the repo):
  *  - Station order and operating km: each line's station table on
- *    ja.wikipedia (横須賀線, 横須賀・総武快速線, 東海道線 (JR東日本), 根岸線,
- *    東急東横線, 横浜高速鉄道みなとみらい線, 横浜市営地下鉄ブルーライン,
+ *    ja.wikipedia (横須賀線, 横須賀・総武快速線, 東海道線 (JR東日本), 湘南新宿ライン,
+ *    根岸線, 東急東横線, 横浜高速鉄道みなとみらい線, 横浜市営地下鉄ブルーライン,
  *    江ノ島電鉄線), read November 2026.
- *  - Positions: Wikidata (CC0). The two bus stops have no Wikidata item;
- *    their positions are from MLIT's National Land Numerical Information
- *    bus stop data (国土数値情報 バス停留所データ P11, 2022, CC BY 4.0;
- *    出典：国土数値情報（バス停留所データ）（国土交通省）).
- *  - Minutes: see each line. Where a line publishes an end-to-end time it
- *    is apportioned by km plus a 0.5-minute dwell per intermediate stop,
- *    rounded so the line total still matches. JR East's own pages were not
- *    used, so the JR minutes are HAND-SET.
+ *  - Positions: Wikidata (CC0). The two bus stops have no Wikidata item
+ *    and no open position, so each is approximate: the Wikidata position of
+ *    the place it serves (see the stations).
+ *  - Minutes: see each line. A published journey time is apportioned over
+ *    its hops by km plus a 0.5-minute dwell per intermediate stop, rounded
+ *    so the total still matches. JR East's own pages were not used; the JR
+ *    times come from the Kanagawa Prefecture visitor guide (Visit Kanagawa,
+ *    "Getting Around", as of September 2022) and the other official pages
+ *    named at each line. Where two sources differ, the larger figure is
+ *    used.
  *  - Fares: only from the operators' own fare pages (see fares.ts). JR
  *    East, Tokyu and Keikyu Bus have no table, so their rides count as
  *    unpriced, never free.
@@ -32,7 +34,7 @@ import type { Edge, Station } from "../types";
 
 export const stations: Station[] = [
   // ---- Yokohama
-  { id: "yokohama", name: "Yokohama", nameJa: "横浜", cityId: "yokohama", lat: 35.4658, lon: 139.6228, lines: ["JR Tokaido Line","JR Yokosuka Line","JR Negishi Line","Tokyu Toyoko Line","Minatomirai Line","Yokohama Subway Blue Line"] },
+  { id: "yokohama", name: "Yokohama", nameJa: "横浜", cityId: "yokohama", lat: 35.4658, lon: 139.6228, lines: ["JR Tokaido Line","JR Yokosuka Line","JR Shonan-Shinjuku Line","JR Negishi Line","Tokyu Toyoko Line","Minatomirai Line","Yokohama Subway Blue Line"] },
   { id: "shin-takashima", name: "Shin-Takashima", nameJa: "新高島", cityId: "yokohama", lat: 35.4619, lon: 139.6269, lines: ["Minatomirai Line"] },
   { id: "minatomirai", name: "Minatomirai", nameJa: "みなとみらい", cityId: "yokohama", lat: 35.4579, lon: 139.6323, lines: ["Minatomirai Line"] },
   { id: "bashamichi", name: "Bashamichi", nameJa: "馬車道", cityId: "yokohama", lat: 35.4501, lon: 139.6364, lines: ["Minatomirai Line"] },
@@ -43,15 +45,19 @@ export const stations: Station[] = [
   { id: "ishikawacho", name: "Ishikawacho", nameJa: "石川町", cityId: "yokohama", lat: 35.4383, lon: 139.6431, lines: ["JR Negishi Line"] },
   { id: "negishi", name: "Negishi", nameJa: "根岸", cityId: "yokohama", lat: 35.4158, lon: 139.6350, lines: ["JR Negishi Line","Yokohama City Bus"] },
   // For Sankeien: a 10-minute walk from this stop (Sankeien's access page).
-  { id: "honmoku", name: "Honmoku (bus)", nameJa: "本牧", cityId: "yokohama", lat: 35.4224, lon: 139.6648, lines: ["Yokohama City Bus"] },
+  // Approximate: stop position not published as open data. This is
+  // Sankeien's own position (Wikidata Q4249885), a 10-minute walk away.
+  { id: "honmoku", name: "Honmoku (bus)", nameJa: "本牧", cityId: "yokohama", lat: 35.4170, lon: 139.6600, lines: ["Yokohama City Bus"] },
   { id: "shin-yokohama", name: "Shin-Yokohama", nameJa: "新横浜", cityId: "yokohama", lat: 35.5075, lon: 139.6175, lines: ["Yokohama Subway Blue Line"] },
   // ---- Kamakura. Ofuna station is in Kamakura city (ja.wikipedia 横須賀線).
-  { id: "ofuna", name: "Ofuna", nameJa: "大船", cityId: "kamakura", lat: 35.3533, lon: 139.5311, lines: ["JR Tokaido Line","JR Yokosuka Line"] },
-  { id: "kita-kamakura", name: "Kita-Kamakura", nameJa: "北鎌倉", cityId: "kamakura", lat: 35.3381, lon: 139.5444, lines: ["JR Yokosuka Line"] },
-  { id: "kamakura", name: "Kamakura", nameJa: "鎌倉", cityId: "kamakura", lat: 35.3191, lon: 139.5504, lines: ["JR Yokosuka Line","Enoden Line","Keikyu Bus"] },
+  { id: "ofuna", name: "Ofuna", nameJa: "大船", cityId: "kamakura", lat: 35.3533, lon: 139.5311, lines: ["JR Tokaido Line","JR Yokosuka Line","JR Shonan-Shinjuku Line"] },
+  { id: "kita-kamakura", name: "Kita-Kamakura", nameJa: "北鎌倉", cityId: "kamakura", lat: 35.3381, lon: 139.5444, lines: ["JR Yokosuka Line","JR Shonan-Shinjuku Line"] },
+  { id: "kamakura", name: "Kamakura", nameJa: "鎌倉", cityId: "kamakura", lat: 35.3191, lon: 139.5504, lines: ["JR Yokosuka Line","JR Shonan-Shinjuku Line","Enoden Line","Keikyu Bus"] },
   { id: "hase", name: "Hase", nameJa: "長谷", cityId: "kamakura", lat: 35.3114, lon: 139.5364, lines: ["Enoden Line"] },
   // For Hokoku-ji: a 3-minute walk from this stop (Hokoku-ji's access page).
-  { id: "jomyoji", name: "Jomyoji (bus)", nameJa: "浄明寺", cityId: "kamakura", lat: 35.3212, lon: 139.5703, lines: ["Keikyu Bus"] },
+  // Approximate: stop position not published as open data. This is
+  // Hokoku-ji's own position (Wikidata Q3146363), a 3-minute walk away.
+  { id: "jomyoji", name: "Jomyoji (bus)", nameJa: "浄明寺", cityId: "kamakura", lat: 35.3200, lon: 139.5693, lines: ["Keikyu Bus"] },
   // Enoshima is in Fujisawa city, but Bento files the island's places under
   // Kamakura, and a place's station must be in the place's own city.
   { id: "enoshima", name: "Enoshima", nameJa: "江ノ島", cityId: "kamakura", lat: 35.3111, lon: 139.4875, lines: ["Enoden Line"] },
@@ -63,6 +69,8 @@ const e = (partial: Omit<Edge, "mode"> & { mode?: Edge["mode"] }): Edge => ({ mo
 
 const YOKOSUKA = "JR Yokosuka Line";
 const TOKAIDO = "JR Tokaido Line";
+const SHONAN_SHINJUKU = "JR Shonan-Shinjuku Line";
+const SHONAN_SHINJUKU_NOTE = "Take a train for Zushi: trains for Odawara turn off at Ofuna onto the Tokaido Line.";
 const TOYOKO = "Tokyu Toyoko Line · Limited Express";
 const TOYOKO_NOTE = "Most trains run through onto the Minatomirai Line: stay on for Minatomirai and Motomachi-Chukagai.";
 const MINATOMIRAI = "Minatomirai Line · Local";
@@ -74,33 +82,51 @@ export const edges: Edge[] = [
   // ---- JR Yokosuka Line: Tokyo – Kamakura, every train stops at every
   // station. Km are fare km: between Shinagawa and Yokohama the trains run
   // by the Hinkaku line, 2.9 km longer, but fares use the Tokaido km (22.0),
-  // as ja.wikipedia 横須賀・総武快速線 explains. Minutes HAND-SET, to verify:
-  // Tokyo – Kamakura 55. Cross-checks: Hokoku-ji's access page gives about
-  // 60 minutes from Tokyo and about 50 from Shinagawa; ja.wikipedia says
-  // this line takes 5 minutes longer than the Tokaido Line from Shinagawa to
-  // Yokohama, and 15–18 minutes from Yokohama to Ofuna (根岸線).
-  ...bothWays(e({ from: "tokyo", to: "shimbashi", line: YOKOSUKA, operator: "jr-east", km: 1.9, minutes: 3,
+  // as ja.wikipedia 横須賀・総武快速線 explains. Minutes anchored to:
+  // Tokyo – Yokohama 30 (Visit Kanagawa); Yokohama – Kamakura 30 (Kamakura
+  // City Tourist Association "about 30"; Visit Kanagawa says 25); together
+  // Tokyo – Kamakura 60 (Visit Kanagawa "1 hr"; Hokoku-ji "about 60"). Each
+  // split by km and dwell.
+  ...bothWays(e({ from: "tokyo", to: "shimbashi", line: YOKOSUKA, operator: "jr-east", km: 1.9, minutes: 2,
     note: "Leaves Tokyo from the underground Yokosuka and Sobu Line platforms." })),
-  ...bothWays(e({ from: "shimbashi", to: "shinagawa", line: YOKOSUKA, operator: "jr-east", km: 4.9, minutes: 6 })),
-  ...bothWays(e({ from: "shinagawa", to: "yokohama", line: YOKOSUKA, operator: "jr-east", km: 22.0, minutes: 22, stops: 4 })),
-  ...bothWays(e({ from: "yokohama", to: "ofuna", line: YOKOSUKA, operator: "jr-east", km: 17.7, minutes: 18, stops: 4 })),
+  ...bothWays(e({ from: "shimbashi", to: "shinagawa", line: YOKOSUKA, operator: "jr-east", km: 4.9, minutes: 5 })),
+  ...bothWays(e({ from: "shinagawa", to: "yokohama", line: YOKOSUKA, operator: "jr-east", km: 22.0, minutes: 23, stops: 4 })),
+  ...bothWays(e({ from: "yokohama", to: "ofuna", line: YOKOSUKA, operator: "jr-east", km: 17.7, minutes: 24, stops: 4 })),
   ...bothWays(e({ from: "ofuna", to: "kita-kamakura", line: YOKOSUKA, operator: "jr-east", km: 2.3, minutes: 3 })),
   ...bothWays(e({ from: "kita-kamakura", to: "kamakura", line: YOKOSUKA, operator: "jr-east", km: 2.2, minutes: 3 })),
 
   // ---- JR Tokaido Line, local trains (they stop at every station in the
   // table: Kawasaki and Totsuka are skipped here, counted in stops).
-  // Minutes HAND-SET, to verify: Tokyo – Yokohama 25, Yokohama – Ofuna 16
-  // (ja.wikipedia 根岸線: 15–18 minutes by Tokaido or Yokosuka Line).
-  ...bothWays(e({ from: "tokyo", to: "shimbashi", line: TOKAIDO, operator: "jr-east", km: 1.9, minutes: 3 })),
+  // Minutes anchored to: Tokyo – Yokohama 25 (Visit Kanagawa), split by km
+  // and dwell; Yokohama – Ofuna 18 (ja.wikipedia 根岸線: 15–18 minutes by
+  // Tokaido or Yokosuka Line). Ofuna – Fujisawa 4 is HAND-SET: no published
+  // figure was found.
+  ...bothWays(e({ from: "tokyo", to: "shimbashi", line: TOKAIDO, operator: "jr-east", km: 1.9, minutes: 2 })),
   ...bothWays(e({ from: "shimbashi", to: "shinagawa", line: TOKAIDO, operator: "jr-east", km: 4.9, minutes: 5 })),
-  ...bothWays(e({ from: "shinagawa", to: "yokohama", line: TOKAIDO, operator: "jr-east", km: 22.0, minutes: 17, stops: 2 })),
-  // With these hand-set minutes, Tokaido to Ofuna and a change beats the
-  // direct Yokosuka Line train to Kamakura by 3 minutes, which is within
-  // their error; the note points out the train with no change.
-  e({ from: "yokohama", to: "ofuna", line: TOKAIDO, operator: "jr-east", km: 17.7, minutes: 16, stops: 2,
+  ...bothWays(e({ from: "shinagawa", to: "yokohama", line: TOKAIDO, operator: "jr-east", km: 22.0, minutes: 18, stops: 2 })),
+  // With these minutes, Tokaido to Ofuna and a change beats the direct
+  // Yokosuka Line train to Kamakura; the note points out the train with no
+  // change. Which one a traveller is shown is an engine question.
+  e({ from: "yokohama", to: "ofuna", line: TOKAIDO, operator: "jr-east", km: 17.7, minutes: 18, stops: 2,
     note: "For Kita-Kamakura and Kamakura, the Yokosuka Line runs there from Tokyo without a change." }),
-  e({ from: "ofuna", to: "yokohama", line: TOKAIDO, operator: "jr-east", km: 17.7, minutes: 16, stops: 2 }),
+  e({ from: "ofuna", to: "yokohama", line: TOKAIDO, operator: "jr-east", km: 17.7, minutes: 18, stops: 2 }),
   ...bothWays(e({ from: "ofuna", to: "fujisawa", line: TOKAIDO, operator: "jr-east", km: 4.6, minutes: 4 })),
+
+  // ---- JR Shonan-Shinjuku Line, the trains for Zushi: Shinjuku – Shibuya –
+  // Yokohama – Kamakura, stopping at every station south of Omiya
+  // (ja.wikipedia 湘南新宿ライン). Ebisu, Osaki, Nishi-Oi, Musashi-Kosugi and
+  // Shin-Kawasaki are counted in stops. Km are the fare km from that table
+  // (via Oimachi): Shibuya 3.4, Yokohama 32.6, Ofuna 50.3, Kita-Kamakura
+  // 52.6, Kamakura 54.8. Minutes anchored to: Shinjuku – Yokohama 36 (Visit
+  // Kanagawa), split by km and dwell; south of Yokohama these run as
+  // Yokosuka Line trains on its tracks, so the same 30 to Kamakura.
+  // Shinjuku – Kamakura comes to 66; Visit Kanagawa gives 65, Hokoku-ji
+  // about 53.
+  ...bothWays(e({ from: "shinjuku", to: "shibuya", line: SHONAN_SHINJUKU, operator: "jr-east", km: 3.4, minutes: 4, note: SHONAN_SHINJUKU_NOTE })),
+  ...bothWays(e({ from: "shibuya", to: "yokohama", line: SHONAN_SHINJUKU, operator: "jr-east", km: 29.2, minutes: 32, stops: 6, note: SHONAN_SHINJUKU_NOTE })),
+  ...bothWays(e({ from: "yokohama", to: "ofuna", line: SHONAN_SHINJUKU, operator: "jr-east", km: 17.7, minutes: 24, stops: 4, note: SHONAN_SHINJUKU_NOTE })),
+  ...bothWays(e({ from: "ofuna", to: "kita-kamakura", line: SHONAN_SHINJUKU, operator: "jr-east", km: 2.3, minutes: 3 })),
+  ...bothWays(e({ from: "kita-kamakura", to: "kamakura", line: SHONAN_SHINJUKU, operator: "jr-east", km: 2.2, minutes: 3 })),
 
   // ---- Tokyu Toyoko Line Limited Express, running through onto the
   // Minatomirai Line. One line name for the whole run, because it is one
@@ -109,8 +135,8 @@ export const edges: Edge[] = [
   // Kikuna, Yokohama; then Minatomirai and Motomachi-Chukagai). Minutes:
   // Yokohama Minatomirai Railway gives about 35 minutes from Motomachi-
   // Chukagai to Shibuya and about 7 to Yokohama in the daytime, so
-  // Shibuya – Yokohama is 28 (ja.wikipedia: 26 at fastest); the 7 is split
-  // by km.
+  // Shibuya – Yokohama is 28 (ja.wikipedia: 26 at fastest; Visit Kanagawa:
+  // 25–30); the 7 is split by km.
   ...bothWays(e({ from: "shibuya", to: "yokohama", line: TOYOKO, operator: "tokyu", km: 24.2, minutes: 28, stops: 5,
     note: `${TOYOKO_NOTE} On weekday mornings and evenings the Commuter Limited Express runs instead and also stops at Hiyoshi.` })),
   ...bothWays(e({ from: "yokohama", to: "minatomirai", line: TOYOKO, operator: "minatomirai", km: 1.7, minutes: 3,
