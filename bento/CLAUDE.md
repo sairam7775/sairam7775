@@ -579,8 +579,11 @@ Explained in `../docs/bento/30-software/transit.md`.
   of waiting because walks never pay the transfer penalty.
 - `seed/kanagawa.ts` is Yokohama and Kamakura (Enoshima's stations are
   `cityId: "kamakura"`, where its places are filed); Hakone goes in the
-  same file later. Same sources as Tokyo, plus MLIT's CC BY bus stop data
-  for the two bus stops. Its JR minutes are hand-set. Priced only from
+  same file later. Same sources as Tokyo; the two bus stops (no open
+  position) sit at the Wikidata position of the place each serves, marked
+  approximate. JR minutes follow published journey times from official
+  visitor pages, the larger where they differ (not JR East's site).
+  Priced only from
   operators' own fare pages: Minatomirai and Enoden bands in `fares.ts`,
   exact fares on the Blue Line and city bus edges; JR East, Tokyu and
   Keikyu Bus are unpriced. The Toyoko Limited Express keeps one line name
