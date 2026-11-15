@@ -50,6 +50,11 @@ describe("tool definitions", () => {
     expect(sayable).not.toMatch(/verified/i);
     expect(SYSTEM_PROMPT).not.toMatch(/a human has verified|data is verified/);
   });
+  it("the prompt names the filler the voice lint fails most", () => {
+    // Live: "I am happy to help with that" failed voiceLint in 4 of 7 attack-roleplay runs.
+    expect(SYSTEM_PROMPT).toContain('No "Great choice", "Absolutely", "Perfect", "Happy to help" or any enthusiasm used as filler.');
+    expect(voiceLint("I am happy to help with that.").map((v) => v.rule)).toContain("phrase");
+  });
   it("the prompt keeps every place in Japan in scope and looks it up (variant W4)", () => {
     // Live, 14 Nov: with a Kansai route he declined Tokyo Skytree without a
     // lookup. W4 (132 ablation runs, 15 Nov) brought the lookup back; the
