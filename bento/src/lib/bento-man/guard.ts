@@ -125,14 +125,22 @@ export const travellerMessage = (message: string) => `<traveller_message>\n${mes
 export const LEAK_RUN = 8;
 const HALF = Math.ceil(LEAK_RUN / 2);
 
-const IGNORABLE = `[${STRIPPED.map(([from, to]) => `${u(from)}-${u(to)}`).join("")}${u(0x200c)}${u(0x200d)}]`;
+/** Characters a word may hold without changing what it says: everything
+ * clean() strips, the joiners it keeps (this is matching only, never stored
+ * text), and every Unicode default-ignorable code point (U+034F, variation
+ * selectors, the Hangul fillers, musical formatting marks...). They are
+ * dropped from each word before it is compared, so one inside every word
+ * doesn't break a run. Homoglyphs, hyphens or spaces between the letters of
+ * a word, and a filler word every few words are not handled: known limits. */
+const IGNORABLE = `[${STRIPPED.map(([from, to]) => `${u(from)}-${u(to)}`).join("")}${u(0x200c)}${u(0x200d)}\\p{Default_Ignorable_Code_Point}]`;
 const TOKEN = new RegExp(`[\\p{L}\\p{N}](?:[\\p{L}\\p{N}]|${IGNORABLE})*`, "gu");
 const IGNORABLE_ALL = new RegExp(IGNORABLE, "gu");
 
 interface Token { word: string; start: number; end: number }
 function tokens(text: string): Token[] {
   return [...text.matchAll(TOKEN)].map((m) => ({
-    word: m[0].replace(IGNORABLE_ALL, "").normalize("NFKC").toLowerCase(),
+    // Stripped again after NFKC, which can map one ignorable to another.
+    word: m[0].replace(IGNORABLE_ALL, "").normalize("NFKC").replace(IGNORABLE_ALL, "").toLowerCase(),
     start: m.index,
     end: m.index + m[0].length,
   }));
