@@ -25,6 +25,7 @@ last_reviewed: 2026-11-14
 ## How it's checked
 
 - Database functions tested on PGlite before being applied (migrations 0015, 0028, 0029, 0031; one connection, so two requests truly at once are not exercised).
+- Known gap for 0031: no test runs an Accept and a hand edit on two connections at once. The repo has no multi-connection database harness and PGlite is single-connection, so the shared trip lock is checked only in the migration's text (`bento/src/lib/db/stale-proposals.test.ts`).
 - Unit tests for the provider's retry and fallback: `bento/src/lib/bento-man/__tests__/provider.gemini.test.ts`.
 - `knowledge/checklists/verification.md` (shared knowledge base) for every change.
 
