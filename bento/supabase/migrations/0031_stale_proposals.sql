@@ -72,7 +72,18 @@ begin
         'startMin', (extract(hour from i.start_time) * 60 + extract(minute from i.start_time))::int,
         'durationMin', i.duration_min, 'arriveMode', i.arrive_mode,
         'arriveMinutes', i.arrive_minutes, 'arriveDetail', i.arrive_detail
-      ) order by i.sort_order), '[]'::jsonb) into v_base
+      -- One total order over every compared field, the same as dayBase in
+      -- diff.ts (change both together), so stops sharing a sort_order come
+      -- out the same way on both sides. "C" compares bytes, which for
+      -- UTF-8 is code point order, whatever the database's collation.
+      ) order by i.sort_order,
+                 i.place_id collate "C" nulls last,
+                 (extract(hour from i.start_time) * 60 + extract(minute from i.start_time))::int nulls last,
+                 i.duration_min nulls last,
+                 i.locked,
+                 i.arrive_mode collate "C" nulls last,
+                 i.arrive_minutes nulls last,
+                 i.arrive_detail collate "C" nulls last), '[]'::jsonb) into v_base
       from itinerary_items i join itinerary_days d on d.id = i.day_id
       where d.trip_id = p_trip and d.date = (v_day->>'date')::date;
       if v_base is distinct from v_day->'base' then

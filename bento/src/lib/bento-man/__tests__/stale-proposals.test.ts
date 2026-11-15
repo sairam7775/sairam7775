@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "@/copy";
 import type { DayPlan } from "@/lib/engine/types";
-import { computeDayDiff, dayBase, parseProposal, type Proposal } from "../diff";
+import { baseMatches, computeDayDiff, dayBase, parseProposal, type Proposal } from "../diff";
 import { MemoryStore } from "../store.memory";
 import { runTool, type ToolContext } from "../tools";
 import type { DayRow, ItemRow } from "../store";
@@ -105,6 +105,41 @@ describe("stale day proposals", () => {
     await store.saveDay({ ...day(), items: day().items.map((i) => ({ ...i, name: "New name", id: "new-id" })) });
     await expect(store.applyProposal(p)).resolves.toBeUndefined();
   });
+  describe("stops that share a sort order", () => {
+    const a = { ...item("b-place", 1), startMin: 600 };
+    const b = { ...item("a-place", 1), startMin: 660 };
+    const c = item("z-first", 0);
+    it("give the same base whichever order the rows arrive in", () => {
+      expect(dayBase([c, a, b])).toEqual(dayBase([b, c, a]));
+      // sort order, then place id (byte order), then the remaining fields
+      expect(dayBase([a, b, c]).map((i) => i.placeId)).toEqual(["z-first", "a-place", "b-place"]);
+      const sameId = [{ ...item("p", 0), startMin: null }, { ...item("p", 0), startMin: 700 }];
+      expect(dayBase(sameId).map((i) => i.startMin)).toEqual([700, null]);
+      expect(dayBase([...sameId].reverse())).toEqual(dayBase(sameId));
+    });
+    it("apply when unchanged even if the saved rows come back in another order", async () => {
+      const store = new MemoryStore({ days: [{ ...day(), items: [c, a, b] }] });
+      const p = propose({ ...day(), items: [c, a, b] });
+      const { id } = await store.append("assistant", "Plan", p);
+      store.days[0].items = [b, a, c];
+      await expect(store.applyProposal(p, id)).resolves.toBeUndefined();
+    });
+    it("are still refused after a real edit among the tied stops", async () => {
+      const store = new MemoryStore({ days: [{ ...day(), items: [c, a, b] }] });
+      const p = propose({ ...day(), items: [c, a, b] });
+      const { id } = await store.append("assistant", "Plan", p);
+      await store.saveDay({ ...day(), items: [c, a, { ...b, locked: true }] });
+      store.days[0].items = store.days[0].items.map((i) => ({ ...i, sortOrder: i.placeId === "z-first" ? 0 : 1 }));
+      await expect(store.applyProposal(p, id)).rejects.toThrow(copy.trip.proposals.staleDay);
+    });
+    it("are compared without re-sorting the stored base, as the database does", () => {
+      const saved = [c, a, b];
+      const base = dayBase(saved);
+      expect(baseMatches(base, [b, a, c])).toBe(true);
+      expect(baseMatches([base[0], base[2], base[1]], saved)).toBe(false);
+    });
+  });
+
   describe("a route change and day plans in the same turn", () => {
     const prefs = { pace: "standard" as const, interestTags: ["art", "nature"] as ("art" | "nature")[], energy: 0.4, crowdTolerance: 0.6, discovery: 0.5, excludes: [] };
     const D = "2026-11-20";

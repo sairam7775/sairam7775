@@ -13,7 +13,7 @@ import { miyajima } from "@/lib/places/seed/miyajima";
 import { himeji } from "@/lib/places/seed/himeji";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import type { CoverageTier } from "@/lib/types";
-import { dayBase, type Proposal } from "./diff";
+import { baseMatches, type Proposal } from "./diff";
 import { copy } from "@/copy";
 import { allocateDates } from "@/lib/engine/route";
 import { DEFAULT_PREFS, nightsBetween, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripCityRow, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
@@ -235,8 +235,7 @@ export class MemoryStore implements TripStore {
     // Combined date/day proposals retain their previous behaviour until
     // every day carries its original date (tools may plan before a shift).
     if (!p.dates && p.days.some((d) => d.base !== undefined &&
-      JSON.stringify(dayBase(d.base.map((i) => ({ ...i, name: "" })))) !==
-      JSON.stringify(dayBase(this.days.find((x) => x.date === d.date)?.items ?? [])))) {
+      !baseMatches(d.base, this.days.find((x) => x.date === d.date)?.items ?? []))) {
       if (message) message.status = "rejected";
       throw new Error(copy.trip.proposals.staleDay);
     }
