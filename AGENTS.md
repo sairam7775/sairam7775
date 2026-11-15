@@ -18,7 +18,16 @@ Its folder is `knowledge/`, next to this repo's root folder (paths here are rela
 - In the owner's workspace it is already there, at `../knowledge/` from the root of the main checkout or of any worktree.
 - Anywhere else (cloud sessions, a new machine), clone it from the repo root: `gh repo clone sairam7775/knowledge ../knowledge`. Never clone it inside this repo.
 
-Before starting, read its `GUIDE.md`, its `preferences.md` and the checklist for your task in `checklists/`. Then search `lessons/` for the area you are changing.
+Before starting, read its `GUIDE.md`, its `preferences.md`, its `AI-DEVELOPMENT.md` (the standards for how AI agents plan, build, review and report here, with `checklists/agent-work.md`) and the checklist for your task in `checklists/`. Then search `lessons/` for the area you are changing.
+
+The short version of those standards, so they hold even when the knowledge base can't be reached:
+
+- The builder of a change never reviews it. A different model reviews, and someone runs it for real before it is called done.
+- One change per branch and working folder. Failing test first.
+- Say what was not tested, every time.
+- A change to Bento Man's prompt, tool descriptions or tool results needs a live evaluation, compared with the current live prompt. Measure wording; don't guess.
+- Ask the owner before a push, merge, deploy or live database change. If the permission system refuses an action, stop and say so.
+- Report the result first, with evidence, and status per finding.
 
 After a fix, review or release that taught something reusable, add or update a lesson as its `README.md` describes. Evidence is required, and no secrets. Don't change `preferences.md`; propose changes to the owner.
 
