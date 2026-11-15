@@ -225,6 +225,35 @@ export function releasable(text: string, ended = false): number {
   return held;
 }
 
+/** How far a word goes on into new text, from its start. */
+const CONTINUES = new RegExp(`(?:[\\p{L}\\p{N}]|${IGNORABLE})*`, "uy");
+const NEXT_WORD = new RegExp(TOKEN.source, "gu");
+/** No prompt word is anywhere near this long, even padded with invisible
+ *  characters, so a longer word is never normalised or kept whole. */
+const MAX_WORD = 1024;
+const NOT_A_PROMPT_WORD = "#";
+/** A run of trailing words that is the start of a leak: its words, how
+ *  many, and where it begins. The first k - 1 words of a start are a start
+ *  too, so every start ending at a new word extends one ending at the word
+ *  before: a stream need only keep these, usually none or one or two. */
+interface Start { run: string; k: number; start: number }
+function extend(starts: Start[], word: string, start: number): Start[] {
+  const out: Start[] = STARTS.has(word) ? [{ run: word, k: 1, start }] : [];
+  for (const s of starts) {
+    if (s.k >= LEAK_RUN - 1) continue;
+    const run = `${s.run} ${word}`;
+    if (STARTS.has(run)) out.push({ run, k: s.k + 1, start: s.start });
+  }
+  return out;
+}
+/** Where the longest start of MIN_HELD words or more begins. */
+const heldAt = (starts: Start[]) => starts.reduce((at, s) => (s.k >= MIN_HELD ? Math.min(at, s.start) : at), Infinity);
+/** A leak is a start of LEAK_RUN - 1 words and one more. */
+const leaksWith = (starts: Start[], word: string) => starts.some((s) => s.k === LEAK_RUN - 1 && LEAKS.has(`${s.run} ${word}`));
+const PLAIN = /^[A-Za-z0-9]*$/;
+const wordOf = (raw: string) =>
+  raw.length > MAX_WORD ? NOT_A_PROMPT_WORD : PLAIN.test(raw) ? raw.toLowerCase() : raw.replace(IGNORABLE_ALL, "").normalize("NFKC").replace(IGNORABLE_ALL, "").toLowerCase();
+
 /** A reply as it streams to the browser, across every model call of a
  *  turn. It keeps one text, joined between calls the way the final reply is
  *  joined, so a run of prompt words split by a tool round is still one run.
@@ -232,15 +261,34 @@ export function releasable(text: string, ended = false): number {
  *  the text leaks, and holds a call's trailing words through a tool round
  *  when they could continue into the next call. Whatever it holds back, the
  *  final reply replaces the stream on "done"; if the turn fails instead,
- *  the browser keeps only text that passed the check. */
+ *  the browser keeps only text that passed the check.
+ *
+ *  It decides what leaksPrompt and releasable would on the whole text (a
+ *  test compares them), but reads each delta once and keeps only the last
+ *  LEAK_RUN - 1 whole words, the word still being written and the text not
+ *  yet sent, so the longest reply a turn can produce costs time in
+ *  proportion to its length, not its square (stream.test.ts, "the guard's
+ *  cost"). */
 export class GuardedStream {
-  private text = "";
+  /** Length of the whole text so far (positions below are in it). */
+  private length = 0;
+  private hasText = false;
+  /** The text from `shown` on: what may still be sent. */
+  private unsent = "";
   private shown = 0;
   /** Joins between calls: part of the checked text, never sent (the chat
    *  adds its own break after a tool round). */
   private joins: [number, number][] = [];
   private inCall = false;
   private stopped = false;
+  /** The starts of a leak that end at the last whole word, and where the
+   *  longest of them begins. */
+  private starts: Start[] = [];
+  private wordsHeld = Infinity;
+  /** The word that reaches the end of the text, which may go on. */
+  private tail: { start: number; raw: string } | null = null;
+  /** Half of a surrogate pair, held until its other half arrives. */
+  private pending = "";
   /** The text leaked: the turn's reply must be withheld. */
   withheld = false;
 
@@ -250,20 +298,36 @@ export class GuardedStream {
     if (this.withheld || this.stopped || !delta) return;
     if (!this.inCall) {
       this.inCall = true;
-      if (this.text.trim()) {
-        this.joins.push([this.text.length, this.text.length + this.join.length]);
-        this.text += this.join;
+      if (this.hasText) {
+        this.joins.push([this.length, this.length + this.join.length]);
+        this.read(this.join);
       }
     }
-    this.text += delta;
-    if (leaksPrompt(this.text)) this.withheld = true;
-    else this.show(releasable(this.text));
+    delta = this.pending + delta;
+    this.pending = "";
+    const last = delta.charCodeAt(delta.length - 1);
+    if (last >= 0xd800 && last <= 0xdbff) {
+      this.pending = delta.slice(-1);
+      delta = delta.slice(0, -1);
+    }
+    if (delta) this.read(delta);
+    if (this.withheld || this.tailLeaks()) this.withheld = true;
+    else this.show(this.releasable(false));
   }
 
   /** A model call finished: its last word is whole. */
   endCall() {
     this.inCall = false;
-    if (!this.withheld && !this.stopped) this.show(releasable(this.text, true));
+    if (this.withheld || this.stopped) return;
+    if (this.pending) {
+      this.read(this.pending);
+      this.pending = "";
+      if (this.withheld || this.tailLeaks()) {
+        this.withheld = true;
+        return;
+      }
+    }
+    this.show(this.releasable(true));
   }
 
   /** Send nothing more this turn (the reply is being replaced anyway). */
@@ -271,16 +335,68 @@ export class GuardedStream {
     this.stopped = true;
   }
 
+  /** Adds text and reads the words it finishes. Only `s` is scanned. */
+  private read(s: string) {
+    const at = this.length;
+    this.length += s.length;
+    this.unsent += s;
+    if (!this.hasText && /\S/.test(s)) this.hasText = true;
+    let from = 0;
+    if (this.tail) {
+      CONTINUES.lastIndex = 0;
+      CONTINUES.exec(s);
+      from = CONTINUES.lastIndex;
+      if (this.tail.raw.length <= MAX_WORD) this.tail.raw += s.slice(0, from);
+      if (from < s.length) {
+        this.finish(this.tail.raw, this.tail.start);
+        this.tail = null;
+      }
+    }
+    if (this.tail) return;
+    NEXT_WORD.lastIndex = from;
+    for (let m = NEXT_WORD.exec(s); m; m = NEXT_WORD.exec(s)) {
+      if (m.index + m[0].length === s.length) {
+        this.tail = { start: at + m.index, raw: m[0] };
+        NEXT_WORD.lastIndex = 0;
+        break;
+      }
+      this.finish(m[0], at + m.index);
+    }
+  }
+
+  /** A whole word: it may end a leak, or start or extend one. Worked out
+   *  once per word, not on every delta. */
+  private finish(raw: string, start: number) {
+    const word = wordOf(raw);
+    if (leaksWith(this.starts, word)) this.withheld = true;
+    this.starts = extend(this.starts, word, start);
+    this.wordsHeld = heldAt(this.starts);
+  }
+
+  /** leaksPrompt counts the word still being written as a word. */
+  private tailLeaks() {
+    return Boolean(this.tail && leaksWith(this.starts, wordOf(this.tail.raw)));
+  }
+
+  /** releasable(text, ended) on the whole text, from the starts kept. */
+  private releasable(ended: boolean): number {
+    if (!this.tail) return Math.min(this.length, this.wordsHeld);
+    if (!ended) return Math.min(this.tail.start, this.wordsHeld);
+    return Math.min(this.length, heldAt(extend(this.starts, wordOf(this.tail.raw), this.tail.start)));
+  }
+
   private show(upTo: number) {
     if (upTo <= this.shown) return;
+    const text = (from: number, to: number) => this.unsent.slice(from - this.shown, to - this.shown);
     let out = "";
     let i = this.shown;
     for (const [a, b] of this.joins) {
       if (b <= i || a >= upTo) continue;
-      if (a > i) out += this.text.slice(i, a);
+      if (a > i) out += text(i, a);
       i = Math.max(i, b);
     }
-    if (i < upTo) out += this.text.slice(i, upTo);
+    if (i < upTo) out += text(i, upTo);
+    this.unsent = this.unsent.slice(upTo - this.shown);
     this.shown = upTo;
     if (out) this.emit(out);
   }
