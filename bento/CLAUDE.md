@@ -306,11 +306,20 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   `guard.ts` stays ASCII; the zero-width joiner and non-joiner stay, scripts
   and emoji need them) and breaks the framing names `trip_state` and
   `traveller_message` however they are spelt; a reply holding eight or
-  more consecutive prompt words (`LEAK_RUN`, word-normalised, quoted
-  "sayable" lines exempt) is withheld, and `GuardedStream` holds back any
-  start of such a run, across tool rounds too. A paraphrase, translation or
-  one sentence per turn is not caught by code. Text he may say verbatim
-  belongs in quotes in the prompt. A refused call's text is dropped. Gemini sends
+  more consecutive prompt words (`LEAK_RUN`) is withheld, and
+  `GuardedStream` holds back any start of such a run of two words or more,
+  across tool rounds too, so at most one word of a run reaches the browser.
+  It reads each delta once (the longest possible turn checks in well under
+  half a second). Words are compared lower-cased, NFKC, with invisible and
+  default-ignorable characters dropped; look-alike letters, hyphens or
+  spaces inside words, filler words, a paraphrase, translation or one
+  sentence per turn are not caught by code. Quoted lines, the register
+  examples and `SAYABLE_PASSAGES` (unquoted advice for the traveller, the
+  emergency numbers first; a test pins each to the prompt) are exempt. Text
+  he may say verbatim belongs in quotes in the prompt, or, when the prompt's
+  measured wording can't change, in that list. A refused call's text is
+  dropped, and a `replace` event swaps it on screen before the reply is
+  saved. Gemini sends
   `SAFETY_SETTINGS` at `BLOCK_ONLY_HIGH`: stricter blocks Hiroshima history.
   Replies are plain text (no HTML or links rendered), and tools only touch
   the signed-in traveller's own trip, so a talked-round model can embarrass
