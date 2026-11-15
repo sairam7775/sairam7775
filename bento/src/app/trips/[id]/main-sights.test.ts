@@ -55,6 +55,18 @@ describe("the proposal card", () => {
     expect(card(proposal, {})).toContain(LINE);
   });
 
+  // A stored route remembers the coverage it was proposed with; the city
+  // may have been promoted or demoted since. The current reading wins.
+  const routed = (tier: "deep" | "outline"): Proposal => ({
+    summary: "route and a day",
+    route: { kind: "route", before: [], after: [{ cityId: "miyajima", name: "Miyajima", nights: 1, reason: null, budgetBand: null, arriveDate: "2026-11-28", departDate: "2026-11-29", tier }], summary: "Miyajima", verdict: "fine", arithmetic: "1 city" },
+    days: [day("2026-11-28", "miyajima")],
+  });
+  it("prefers the city's current coverage over the one stored with the route", () => {
+    expect(card(routed("outline"), { miyajima: "deep" })).not.toContain(LINE);
+    expect(card(routed("deep"), { miyajima: "outline" })).toContain(LINE);
+  });
+
   it("shows nothing extra for a well-covered day", () => {
     expect(card({ summary: "1 day", days: [day("2026-11-24", "kyoto-city")] }, { "kyoto-city": "deep" })).not.toContain(LINE);
   });

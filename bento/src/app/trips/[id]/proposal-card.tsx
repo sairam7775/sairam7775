@@ -57,7 +57,10 @@ export function ProposalCard({ tripId, messageId, proposal, status, cityNames, c
     if (cheers(seen, status)) setCheer(true);
   }
   const cityName = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.name ?? cityNames[id] ?? null;
-  const cityTier = (id: string) => proposal.route?.after.find((c) => c.cityId === id)?.tier ?? cityTiers[id] ?? null;
+  // The city's coverage now, as the page loaded it; the coverage stored with
+  // a proposed route only until that arrives (a card streaming in), since a
+  // city can be promoted or demoted after the proposal was made.
+  const cityTier = (id: string) => cityTiers[id] ?? proposal.route?.after.find((c) => c.cityId === id)?.tier ?? null;
   const uncovered = proposal.route ? uncoveredStays(proposal.route.after) : null;
   const coverage = proposal.route ? coverageShown(proposal.route.after) : null;
   const routeWide = proposal.route ? routeWideCoverage(proposal.route.after) : null;
