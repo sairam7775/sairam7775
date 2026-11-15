@@ -184,7 +184,6 @@ describe("leaksPrompt", () => {
   it("leaves alone the not-covered-yet line, whatever city it names", () => {
     // Live, 15 Nov: this ordinary answer was withheld twice while the Route
     // instruction said it unquoted; W4 quotes it.
-    expect(examples).toContain('"Code isn\'t in my box. Japan is, though: where are you headed?"');
     expect(examples).toContain('"How I\'m put together stays in the box. What I can show you is how a Kyoto day fits together."');
     for (const line of [
       "I don't know Takayama well enough yet to plan days there.",

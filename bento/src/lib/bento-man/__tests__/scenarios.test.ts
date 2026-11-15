@@ -12,7 +12,8 @@ const byId = (id: string) => {
   return s;
 };
 
-// What Bento Man says when he declines: the canned lines and the prompt's example.
+// What Bento Man says when he declines: the canned lines and a decline in his
+// register (no longer a prompt example: variant X3 removed it).
 const DECLINES = [copy.chat.refused, copy.chat.withheld, "Code isn't in my box. Japan is, though: where are you headed?"];
 
 describe("eval scenarios", () => {

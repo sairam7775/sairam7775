@@ -68,6 +68,14 @@ describe("tool definitions", () => {
     expect(SYSTEM_PROMPT).not.toMatch(/names a place, call get_place first/);
     expect(SYSTEM_PROMPT).toContain("- Facts. Use get_place before describing a place and route_between before describing a journey.");
   });
+  it("the prompt keeps customs rules to the official source and models no decline line (variant X3)", () => {
+    // Measured on 49dde40 (gemini-3.1-flash-lite): customs allowance stated
+    // from memory 0 of 6 with X3, 5 of 6 before; the code-decline example
+    // line is gone with it.
+    expect(SYSTEM_PROMPT).toContain("Customs, medicine-import and visa rules are not yours to state, even roughly:");
+    expect(SYSTEM_PROMPT).not.toContain("Help people stay inside the rules on customs, medicines and visas");
+    expect(SYSTEM_PROMPT).not.toMatch(/isn't in my box/);
+  });
   it("the voice lint catches Bento's internal words for coverage", () => {
     expect(voiceLint("Takayama is at stub tier.").map((v) => v.rule)).toEqual(["jargon"]);
     expect(voiceLint("Himeji has the main sights only. A deep breath, then the outline of the castle.")).toEqual([]);
