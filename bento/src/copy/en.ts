@@ -447,8 +447,10 @@ export const en = {
     stub: "Not covered yet",
   },
   // Under a planned day in a city Bento knows by its main sights only: on
-  // the proposal card, the day box and the sheet, and handed to Bento Man
-  // in the day's tool result. What it rests on first; never "incomplete".
+  // the proposal card, the day box and the download, and handed to Bento
+  // Man in the day's tool result. The companions' shared sheet shows it for
+  // days in a city on the route only, not yet for a day trip off it (Q16).
+  // What it rests on first; never "incomplete".
   mainSightsDay: "Planned from the main sights here. There may be more worth adding.",
 
   trip: {

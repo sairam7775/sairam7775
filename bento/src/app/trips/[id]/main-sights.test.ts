@@ -1,6 +1,7 @@
 /** Q12: a day planned in a city Bento knows by its main sights says so,
  *  in one calm line, on the proposal card, the saved day and the sheet
- *  (download and shared link), so the three views agree. A well-covered
+ *  (download, and the shared link for days in a route city: Q16, pinned
+ *  in shared-plan.test.ts), so the views agree. A well-covered
  *  day shows nothing extra. Rendered to static HTML, as the admin review
  *  tests do. */
 import { createElement } from "react";

@@ -37,6 +37,7 @@ Where the original spec, the notes and the code disagree, or where something pla
 | Q13 | An older proposal can overwrite a day the traveller edited by hand since | [proposals and diffs](../10-product/proposals-and-diffs.md): only date proposals check for staleness |
 | Q14 | The Bento Man evaluation's model costs aren't counted against the caps | [costs](../40-non-functional/costs.md) |
 | Q15 | Platforms aren't part of train legs yet | [transit](../30-software/transit.md) |
+| Q16 | On the companions' shared sheet, a day trip to a city off the route shows the city's id instead of its name, and no main-sights line | [coverage](../10-product/coverage.md): `shared_trip()` returns coverage only for the route's cities. The fix is a reviewed migration so it also returns each day's city name and coverage level, then `shared-plan.ts` fills `DayRow.city` and the test pinning today's behaviour changes |
 
 ## From the spec's own "still open" list
 

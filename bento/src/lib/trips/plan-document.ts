@@ -52,7 +52,10 @@ export interface DocDay {
   number: number;
   city: string;
   /** Planned in a city Bento knows by its main sights only: the sheet
-   *  prints `copy.mainSightsDay` under it, as the day box does. */
+   *  prints `copy.mainSightsDay` under it, as the day box does. Read from
+   *  the day list's coverage, so on the shared sheet (no coverage for a
+   *  day's own city from `shared_trip()`) only days in a route city get it
+   *  (Q16). */
   mainSights: boolean;
   entries: DocEntry[];
 }

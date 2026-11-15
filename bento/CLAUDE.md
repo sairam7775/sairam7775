@@ -320,7 +320,9 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
 - Outline cities are planned, and say so (Q12): a planned day there shows
-  `copy.mainSightsDay` on the proposal card, the day box and the sheet,
+  `copy.mainSightsDay` on the proposal card, the day box and the download
+  (the shared sheet: days in a route city only, until `shared_trip()`
+  returns each day's own city coverage, Q16),
   read from the city's coverage at render time (`showsMainSights`,
   `loadChat`'s `cityTiers`), never stored. Its `plan_days` / `replan_day`
   result adds `coverage` and `coverage_note` (that line, and never call the
