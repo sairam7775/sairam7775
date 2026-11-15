@@ -38,10 +38,21 @@ describe("tool definitions", () => {
   it("the voice lint catches a claim that Bento's information is verified", () => {
     // Legal copy rule (bento/CLAUDE.md, "Legal pages"): never "verified" or
     // "checked" about Bento's information. Live replies said all three of these.
-    for (const claim of ["I have verified information for Kyoto, Osaka and Nara.", "There's no verified duration for it.", "Bento's verified data says two hours."]) {
+    for (const claim of [
+      "I have verified information for Kyoto, Osaka and Nara.", "There's no verified duration for it.", "Bento's verified data says two hours.",
+      "I have verified the opening hours.", "That time is verified in my records.", "Kyoto has 41 verified places.",
+    ]) {
       expect(voiceLint(claim).map((v) => v.rule), claim).toEqual(["claim"]);
     }
-    for (const fine of ["That record is unverified, so I won't guess.", "Its hours aren't verified yet, so check before you go.", "Bento has it on file.", "I verify nothing myself; Bento's records are what I go by."]) {
+    for (const fine of [
+      "That record is unverified, so I won't guess.", "Its hours aren't verified yet, so check before you go.", "Bento has it on file.", "I verify nothing myself; Bento's records are what I go by.",
+      // "Verified" about something other than Bento's information.
+      "Your identity may need to be verified at the hotel.",
+      "Those hours are not independently verified, so check before you go.",
+      "Have your passport ready; it is verified at check-in.",
+      "Once the ryokan has verified your booking, they email a confirmation.",
+      "Your JR Pass exchange order is verified at the ticket office before they print the pass.",
+    ]) {
       expect(voiceLint(fine), fine).toEqual([]);
     }
   });

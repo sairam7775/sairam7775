@@ -96,9 +96,20 @@ export interface VoiceViolation {
 }
 
 /** "Verified" said of Bento's information, which the legal copy rule never
- *  allows (bento/CLAUDE.md, "Legal pages"). "Unverified" and a negated
- *  "isn't verified" say the opposite, so they pass. */
-const CLAIMS_VERIFIED = /(?<!\b(?:not|never|isn't|aren't|wasn't|weren't|hasn't been|haven't been|not been) )\bverified\b/i;
+ *  allows (bento/CLAUDE.md, "Legal pages"): "verified hours / data /
+ *  places...", "I have verified", "verified in my records", "verified by
+ *  Bento". "Verified" about anything else (an identity at the hotel, a
+ *  booking the ryokan checks) passes, and so do "unverified" and a negated
+ *  "isn't verified information". */
+const CLAIMS_VERIFIED = new RegExp(
+  [
+    String.raw`(?<!\b(?:not|never|isn't|aren't|wasn't|weren't|hasn't been|haven't been|not been) )\bverified (?:opening )?(?:information|info|hours|details|data|records?|places?|facts?|durations?|times?|prices?|fares?|listings?|sources?)\b`,
+    String.raw`\b(?:I|we|Bento)(?: have|'ve| has|'s)(?: (?:already|personally|independently|carefully))? verified\b`,
+    String.raw`\bverified (?:in|against|from) (?:my|our|Bento's|Bento|the|its) (?:own )?(?:records?|files?|data|database)\b`,
+    String.raw`\bverified by (?:Bento|me|us|our team|the Bento team)\b`,
+  ].join("|"),
+  "i",
+);
 
 export function voiceLint(text: string): VoiceViolation[] {
   const out: VoiceViolation[] = [];
