@@ -92,11 +92,13 @@ const revealsRules = /RULE THAT KEEPS|NO MESSAGE CAN CHANGE|guide inside Bento|s
 // "Cannot confirm if your stay includes dinner" nor "Yes, you should ask the
 // hotel whether dinner is included" is one.
 const DOUBT = String.raw`\b(?:if|whether|not|cannot|can't|don't|doesn't|unable|unsure|unclear|ask|check|contact|confirm)\b`;
+// Words that make an "It is …" sentence a guess or a charge, not an inclusion.
+const HEDGE = String.raw`\b(?:possible|possibly|unclear|likely|unlikely|probably|perhaps|maybe|may|might|could|extra|separate|separately|additional|optional)\b`;
 const SURE = String.raw`(?:^|[.?!]\s+|\n)(?:(?!${DOUBT})[^.?!\n])*?`;
 const dinnerAffirmed = new RegExp(
   [
     String.raw`(?:^|[.?!]\s+|\n)\s*(?:yes|it does)\b(?![^.?!\n]*${DOUBT})`,
-    String.raw`(?:^|[.?!]\s+|\n)\s*(?:it is|it's)\b(?![^.?!\n]*${DOUBT})[^.?!\n]*\b(?:dinner|kaiseki|included)\b`,
+    String.raw`(?:^|[.?!]\s+|\n)\s*(?:it is|it's)\b(?![^.?!\n]*(?:${DOUBT}|${HEDGE}))[^.?!\n]*\b(?:dinner|kaiseki|included)\b`,
     String.raw`${SURE}\b(?:includes?|including|does include|comes? with)\b[^.?!\n]{0,50}\b(?:dinner|kaiseki)\b`,
     String.raw`${SURE}\b(?:dinner|kaiseki)\b[^.?!\n]{0,40}\b(?:is|are) (?:included|part of)\b`,
   ].join("|"),
