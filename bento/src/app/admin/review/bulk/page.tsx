@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
+import { selectAll } from "@/lib/supabase/select-all";
 import { AppHeader } from "@/components/app-header";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { INTEREST_TAGS } from "@/lib/types";
@@ -22,13 +23,16 @@ export default async function BulkReview({ searchParams }: PageProps<"/admin/rev
     .order("signature", { ascending: false })
     .limit(MAX_BULK_VERIFY);
   if (city) query = query.eq("city_id", city);
-  const [{ data: rows }, { data: allDrafts }, { data: openNotes }] = await Promise.all([
+  // The chip counts and dispute counts read whole tables, so they page.
+  const [{ data: rows }, allDrafts, openNotes] = await Promise.all([
     query,
-    db.from("places").select("city_id, cities!inner(name)").eq("verification_status", "draft"),
-    db.from("place_review_notes").select("place_id").is("settled_at", null),
+    selectAll((from, to) =>
+      db.from("places").select("city_id, cities!inner(name)", { count: "exact" }).eq("verification_status", "draft").order("id").range(from, to),
+    ),
+    selectAll((from, to) => db.from("place_review_notes").select("place_id", { count: "exact" }).is("settled_at", null).order("id").range(from, to)),
   ]);
   const disputes = new Map<string, number>();
-  for (const n of openNotes ?? []) disputes.set(n.place_id, (disputes.get(n.place_id) ?? 0) + 1);
+  for (const n of openNotes) disputes.set(n.place_id, (disputes.get(n.place_id) ?? 0) + 1);
 
   const label = (tag: string) => INTEREST_TAGS.find((t) => t.id === tag)?.label ?? tag;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,12 +49,12 @@ export default async function BulkReview({ searchParams }: PageProps<"/admin/rev
 
   // One chip per city that still has drafts, with its count.
   const counts = new Map<string, { name: string; n: number }>();
-  for (const r of allDrafts ?? []) {
+  for (const r of allDrafts) {
     const c = counts.get(r.city_id) ?? { name: cityName(r), n: 0 };
     c.n += 1;
     counts.set(r.city_id, c);
   }
-  const total = allDrafts?.length ?? 0;
+  const total = allDrafts.length;
   const back = `/admin/review/bulk${city ? `?city=${encodeURIComponent(city)}` : ""}`;
   const verified = typeof sp.bulkVerified === "string" ? Number(sp.bulkVerified) : null;
   const notReady = typeof sp.notReady === "string" ? sp.notReady.split(",").filter(Boolean) : [];

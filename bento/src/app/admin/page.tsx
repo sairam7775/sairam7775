@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
+import { selectAll } from "@/lib/supabase/select-all";
 import { AppHeader } from "@/components/app-header";
 
 interface Progress {
@@ -23,13 +24,13 @@ const TIER_STYLE: Record<Progress["coverage_tier"], string> = {
 export default async function AdminHome() {
   const { db } = await requireAdmin();
 
-  const { data } = await db
-    .from("curation_progress")
-    .select("*")
-    .order("region")
-    .order("name");
+  // One row per city, paged: whole-Japan coverage outgrows the API's row
+  // limit, which would drop cities without an error. city_id breaks ties.
+  const data = await selectAll((from, to) =>
+    db.from("curation_progress").select("*", { count: "exact" }).order("region").order("name").order("city_id").range(from, to),
+  );
 
-  const rows = (data ?? []) as Progress[];
+  const rows = data as Progress[];
   const { count: reviews } = await db.from("trip_reviews").select("trip_id", { count: "exact", head: true });
   const { count: disagreements } = await db.from("place_review_notes").select("id", { count: "exact", head: true }).is("settled_at", null);
 
