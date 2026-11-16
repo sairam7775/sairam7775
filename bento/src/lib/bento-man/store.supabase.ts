@@ -4,8 +4,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlaceInput } from "@/lib/engine/types";
 import { rowToPlace } from "@/lib/engine/load";
-import { CITY_HUBS, allocateDates, type CityFacts } from "@/lib/engine/route";
+import { allocateDates, hubFor, type CityFacts } from "@/lib/engine/route";
 import { loadGraph } from "@/lib/transit/load";
+import { selectAll } from "@/lib/supabase/select-all";
 import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
@@ -283,14 +284,14 @@ export class SupabaseStore implements TripStore {
   }
 
   private async loadCities(): Promise<CityFacts[]> {
-    const { data, error } = await this.db.from("city_coverage").select("city_id, name, coverage_tier, transit_note, verified_places");
-    if (error) throw error;
+    // Every city, past the API's row limit: whole-Japan coverage outgrows one page.
+    const data = await selectAll((from, to) =>
+      this.db.from("city_coverage").select("city_id, name, coverage_tier, transit_note, verified_places", { count: "exact" }).order("city_id").range(from, to),
+    );
     const graph = await this.graph();
-    this.tierCache = new Map((data ?? []).map((c) => [c.city_id, c.coverage_tier as CoverageTier]));
-    return (data ?? []).map((c) => {
-      const hub = CITY_HUBS[c.city_id];
-      let hubStation: string | null = hub && graph.stations.has(hub) ? hub : null;
-      if (!hubStation) for (const s of graph.stations.values()) if (s.cityId === c.city_id) { hubStation = s.id; break; }
+    this.tierCache = new Map(data.map((c) => [c.city_id, c.coverage_tier as CoverageTier]));
+    return data.map((c) => {
+      const hubStation = hubFor(c.city_id, graph);
       return { id: c.city_id, name: c.name, tier: c.coverage_tier as CoverageTier, verifiedPlaces: Number(c.verified_places ?? 0), transitNote: c.transit_note ?? null, hubStation };
     });
   }
@@ -301,9 +302,11 @@ export class SupabaseStore implements TripStore {
   }
 
   async places(cityId: string): Promise<PlaceInput[]> {
-    const [tier, { data, error }] = await Promise.all([this.tierOf(cityId), this.db.from("places_public").select("*").eq("city_id", cityId)]);
-    if (error) throw error;
-    return (data ?? []).map((r) => rowToPlace(r, tier));
+    const [tier, data] = await Promise.all([
+      this.tierOf(cityId),
+      selectAll((from, to) => this.db.from("places_public").select("*", { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
+    ]);
+    return data.map((r) => rowToPlace(r, tier));
   }
 
   async searchPlaces(query: string, cityId?: string | null): Promise<PlaceInput[]> {

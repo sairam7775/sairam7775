@@ -179,8 +179,9 @@ Explained in `../docs/bento/50-operations/curation.md` and `../docs/bento/30-sof
 - A `station` in a seed record must be a station id in the transit seed
   (it is a foreign key). A place only a bus or a walk serves gets
   `station: null` and pays the engine's 45-minute fallback; add the stop
-  to the transit seed (`kansai-sanyo.ts`, `tokyo.ts`) instead when the
-  route matters.
+  to the transit seed (the network's file in `transit/seed/`) instead when
+  the route matters. A new city's file is registered in
+  `places/seed/index.ts`.
 - `conflicts` and `pairs` must point at existing ids in the same batch;
   the exporter fails otherwise.
 - Hours are same-day: `closes` must be after `opens`. An overnight venue
@@ -576,12 +577,28 @@ Explained in `../docs/bento/30-software/transit.md`.
 - `seed/kansai-sanyo.ts` is the one source of truth for the corridor; the
   tests, the CLI and `supabase/seed_transit.sql` all derive from it. Never
   edit the SQL by hand.
+- Every network is registered in `seed/index.ts` (places: `places/seed/index.ts`);
+  the exporters, the CLI and the seed tests read only the index, and
+  `all-seeds.test.ts` fails on a seed file it doesn't list, a station id
+  used twice, a repeated (from, to, line) edge, an edge to an unknown
+  station or a place id used twice. A new network goes in a NEW file,
+  registered there, with its city's hub in `CITY_HUBS` (`engine/route.ts`)
+  in the same change. Edit seed files directly; never regenerate
+  `tokyo.ts` from the tools that first built it. `MemoryStore` keeps
+  importing the corridor files alone, on purpose.
+- `loadGraph` (and every whole-table reference read) pages through
+  `selectAll` (`lib/supabase/select-all.ts`): the API stops at 1,000 rows
+  a request without an error. A failed page fails the load; never cache
+  or return part of a table. If the row count changes between pages, the
+  read starts again (three tries, then it throws). Admin lists and the
+  trips page's `trip_cities` read page the same way. An unmapped city's hub is its smallest
+  station id (`hubFor`), never "whichever came first".
 - `seed/tokyo.ts` is Tokyo's core network (every Metro, Toei and Yamanote
   station, both airports, the Shinkansen to Kyoto and Shin-Osaka). No ODPT
   data: the repo is public and ODPT's licence forbids redistributing it.
   Order and km come from ja.wikipedia line tables, positions from Wikidata,
   minutes from each line's published end-to-end time. Its Shinkansen edges
-  end at Kansai stations, so build the graph from both seeds. JR East has
+  end at Kansai stations, so build the graph from every seed (the index). JR East has
   no fare table yet, so JR rides count as unpriced. Walks carry 3 minutes
   of waiting because walks never pay the transfer penalty.
 

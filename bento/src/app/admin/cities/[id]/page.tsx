@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/admin";
+import { selectAll } from "@/lib/supabase/select-all";
 import { AppHeader } from "@/components/app-header";
 import { setCoverageTier, createPlace } from "../../actions";
 import { ErrorNote } from "@/app/(auth)/ui";
@@ -25,12 +26,18 @@ export default async function CityDetail({ params, searchParams }: PageProps<"/a
 
   if (!city) notFound();
 
-  const { data: places } = await db
-    .from("places")
-    .select("id, name, name_ja, category, verification_status, last_verified")
-    .eq("city_id", id)
-    .order("verification_status")
-    .order("name");
+  // Paged: a big city has more places than the API's row limit, which
+  // would drop the rest without an error. id breaks ties on name.
+  const places = await selectAll((from, to) =>
+    db
+      .from("places")
+      .select("id, name, name_ja, category, verification_status, last_verified", { count: "exact" })
+      .eq("city_id", id)
+      .order("verification_status")
+      .order("name")
+      .order("id")
+      .range(from, to),
+  );
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
@@ -78,9 +85,9 @@ export default async function CityDetail({ params, searchParams }: PageProps<"/a
 
       <section className="mt-12">
         <h2 className="border-b-2 border-ink pb-1.5 text-base font-bold">
-          Places ({places?.length ?? 0})
+          Places ({places.length})
         </h2>
-        {places && places.length > 0 ? (
+        {places.length > 0 ? (
           <ul className="flex flex-col">
             {places.map((place) => (
               <li key={place.id}>

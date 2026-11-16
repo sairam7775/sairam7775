@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { selectAll } from "@/lib/supabase/select-all";
 import type { PlaceInput } from "./types";
 import type { CoverageTier } from "@/lib/types";
 
@@ -7,15 +8,15 @@ import type { CoverageTier } from "@/lib/types";
  *  exactly what makes them unschedulable (filter.ts). */
 export async function loadPlacesForCity(cityId: string): Promise<PlaceInput[]> {
   const db = await createClient();
-  const [{ data: city, error: e1 }, { data: rows, error: e2 }] = await Promise.all([
+  const [{ data: city, error: e1 }, rows] = await Promise.all([
     db.from("cities").select("coverage_tier").eq("id", cityId).maybeSingle(),
-    db.from("places_public").select("*").eq("city_id", cityId),
+    // Paged so the API's row limit can't silently drop places.
+    selectAll((from, to) => db.from("places_public").select("*", { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
   ]);
   if (e1) throw e1;
-  if (e2) throw e2;
   const tier = (city?.coverage_tier ?? "stub") as CoverageTier;
 
-  return (rows ?? []).map((r) => rowToPlace(r, tier));
+  return rows.map((r) => rowToPlace(r, tier));
 }
 
 /** A places_public row as the engine reads it. Shared with Bento Man's

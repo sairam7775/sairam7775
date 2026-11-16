@@ -31,7 +31,7 @@ A guidebook says *Fushimi Inari: famous for its torii gates*. A local says go be
 
 ## Where the data lives
 
-- `bento/src/lib/places/seed/<city>.ts` is the source of truth for drafted places. The SQL is generated from it, never edited by hand. Every seed record lands as a draft, and a re-export can't overwrite a record a person has verified.
+- `bento/src/lib/places/seed/<city>.ts` is the source of truth for drafted places, and each city's file is registered in `bento/src/lib/places/seed/index.ts`, which the exporter and the seed tests read. The SQL is generated from it, never edited by hand. Every seed record lands as a draft, and a re-export can't overwrite a record a person has verified.
 - How records are drafted and checked: [curation](../50-operations/curation.md).
 
 Agent rules: [bento/CLAUDE.md](../../../bento/CLAUDE.md), "Invariants" and "Curation data (P5)". Source: spec §07; the place-backgrounds design (`docs/superpowers/specs/2026-10-23-place-backgrounds-design.md`).

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
+import { selectAll } from "@/lib/supabase/select-all";
 import { costBandWords } from "@/lib/engine/cost-band";
 import { AppHeader } from "@/components/app-header";
 import { verifyPlace } from "../actions";
@@ -38,8 +39,11 @@ export default async function Review({ searchParams }: PageProps<"/admin/review"
   const skip = typeof sp.skip === "string" ? sp.skip.split(",").filter(Boolean) : [];
   const notesOnly = sp.notes === "1";
 
-  const { data: openNotes } = await db.from("place_review_notes").select("place_id").is("settled_at", null);
-  const disputed = [...new Set((openNotes ?? []).map((n) => n.place_id as string))];
+  // Every open note, paged: the API's row limit would drop some silently.
+  const openNotes = await selectAll((from, to) =>
+    db.from("place_review_notes").select("place_id", { count: "exact" }).is("settled_at", null).order("id").range(from, to),
+  );
+  const disputed = [...new Set(openNotes.map((n) => n.place_id as string))];
 
   let query = db
     .from("places")

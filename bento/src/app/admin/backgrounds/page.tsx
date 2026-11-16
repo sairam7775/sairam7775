@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
+import { selectAll } from "@/lib/supabase/select-all";
 import { AppHeader } from "@/components/app-header";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
 import { askWindowStart } from "@/lib/places/background-draft";
@@ -48,13 +49,22 @@ export default async function PlaceBackgrounds({ searchParams }: PageProps<"/adm
   const sp = await searchParams;
 
   const since = askWindowStart(new Date());
-  const [{ data: askRows }, { data: bgRows }] = await Promise.all([
-    db.from("place_background_asks").select("place_id, asks").gte("day", since),
-    db.from("place_backgrounds").select("place_id, body, sources, status, drafted_by, verified_by, verified_on, updated_at").order("place_id"),
+  // Paged: the API's row limit would otherwise drop rows without an error.
+  const [askRows, bgRows] = await Promise.all([
+    selectAll((from, to) =>
+      db.from("place_background_asks").select("place_id, asks", { count: "exact" }).gte("day", since).order("place_id").order("day").range(from, to),
+    ),
+    selectAll((from, to) =>
+      db
+        .from("place_backgrounds")
+        .select("place_id, body, sources, status, drafted_by, verified_by, verified_on, updated_at", { count: "exact" })
+        .order("place_id")
+        .range(from, to),
+    ),
   ]);
   const asks = new Map<string, number>();
-  for (const a of askRows ?? []) asks.set(a.place_id, (asks.get(a.place_id) ?? 0) + a.asks);
-  const rows = (bgRows ?? []) as BackgroundRow[];
+  for (const a of askRows) asks.set(a.place_id, (asks.get(a.place_id) ?? 0) + a.asks);
+  const rows = bgRows as BackgroundRow[];
   const written = new Set(rows.map((r) => r.place_id));
   const byAsks = (a: string, b: string) => (asks.get(b) ?? 0) - (asks.get(a) ?? 0) || a.localeCompare(b);
 
@@ -63,8 +73,10 @@ export default async function PlaceBackgrounds({ searchParams }: PageProps<"/adm
   const checked = rows.filter((r) => r.status === "verified");
 
   const ids = [...new Set([...asked, ...rows.map((r) => r.place_id)])];
-  const { data: placeRows } = ids.length ? await db.from("places").select("id, name, city_id, sources").in("id", ids) : { data: [] };
-  const places = new Map(((placeRows ?? []) as PlaceRow[]).map((p) => [p.id, p]));
+  const placeRows = ids.length
+    ? await selectAll((from, to) => db.from("places").select("id, name, city_id, sources", { count: "exact" }).in("id", ids).order("id").range(from, to))
+    : [];
+  const places = new Map((placeRows as PlaceRow[]).map((p) => [p.id, p]));
   const title = (id: string) => places.get(id)?.name ?? id;
   const askedTimes = (id: string) => (asks.get(id) ? ` · asked ${asks.get(id)} time${asks.get(id) === 1 ? "" : "s"}` : "");
   const message = (key: string) => (typeof sp[key] === "string" ? (sp[key] as string) : null);

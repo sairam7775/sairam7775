@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed/kansai-sanyo";
-import { allocateDates, assessRoute, suggestRoute, type CityFacts } from "../route";
+import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts } from "../route";
+import * as tokyoSeed from "@/lib/transit/seed/tokyo";
 import { copy } from "@/copy";
 
 const graph = buildGraph(stations, edges);
@@ -122,5 +123,32 @@ describe("assessRoute — 0-night cities", () => {
   it("a day trip before the first stay goes from the first place you sleep", () => {
     const a = assessRoute([{ cityId: "nara-city", nights: 0 }, { cityId: "kyoto-city", nights: 3 }], facts, graph, 3);
     expect(pairs(a)).toEqual(["kyoto-city>nara-city", "nara-city>kyoto-city"]);
+  });
+});
+
+describe("hubFor", () => {
+  const both = buildGraph([...stations, ...tokyoSeed.stations], [...edges, ...tokyoSeed.edges]);
+
+  // Tokyo legs start at Tokyo Station, where the Shinkansen does, not at
+  // whichever Tokyo station the database happened to list first.
+  it("lands a Tokyo leg at Tokyo Station", () => {
+    expect(hubFor("tokyo-city", both)).toBe("tokyo");
+  });
+
+  it("picks the same station for an unmapped city whatever order the stations load in", () => {
+    const reversed = buildGraph([...tokyoSeed.stations, ...stations].reverse(), [...edges, ...tokyoSeed.edges]);
+    expect(hubFor("narita", both)).toBe("narita-t1");
+    expect(hubFor("narita", reversed)).toBe("narita-t1");
+  });
+
+  it("falls back the same way when the mapped station is not in the graph", () => {
+    const tokyoOnly = [...tokyoSeed.stations].filter((s) => s.id !== "tokyo");
+    const a = buildGraph(tokyoOnly, []);
+    const b = buildGraph([...tokyoOnly].reverse(), []);
+    expect(hubFor("tokyo-city", a)).toBe(hubFor("tokyo-city", b));
+  });
+
+  it("has no hub for a city with no stations", () => {
+    expect(hubFor("kamakura", both)).toBeNull();
   });
 });

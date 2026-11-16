@@ -4,6 +4,63 @@ import { invalidateGraphCache, loadGraph } from "../load";
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 
+/** A client that answers like PostgREST: ordered, ranged, and never more
+ *  than `cap` rows in one response, whatever range was asked for. */
+function fakeDb(tables: Record<string, unknown[]>, opts: { cap?: number; fail?: { table: string; page: number } } = {}) {
+  const cap = opts.cap ?? 1000;
+  const pages: { table: string; from: number; to: number; order: string[]; count?: string }[] = [];
+  const select = vi.fn();
+  const from = vi.fn((table: string) => {
+    const order: string[] = [];
+    let count: string | undefined;
+    const q = {
+      select: (columns: string, o?: { count?: string }) => {
+        select(columns);
+        count = o?.count;
+        return q;
+      },
+      order: (column: string) => {
+        order.push(column);
+        return q;
+      },
+      range: (a: number, b: number) => {
+        const page = pages.filter((p) => p.table === table).length;
+        pages.push({ table, from: a, to: b, order: [...order], count });
+        if (opts.fail?.table === table && opts.fail.page === page) {
+          return Promise.resolve({ data: null, error: new Error(`${table} page ${page} failed`), count: null });
+        }
+        const rows = tables[table] ?? [];
+        return Promise.resolve({
+          data: rows.slice(a, Math.min(b + 1, a + cap)),
+          error: null,
+          count: count === "exact" ? rows.length : null,
+        });
+      },
+      // Awaited with no range, PostgREST still stops at its limit.
+      then: (resolve: (r: unknown) => void) => {
+        const rows = tables[table] ?? [];
+        resolve({ data: rows.slice(0, cap), error: null, count: count === "exact" ? rows.length : null });
+      },
+    };
+    return q;
+  });
+  vi.mocked(createClient).mockResolvedValue({ from } as never);
+  return { from, select, pages };
+}
+
+const station = (id: string) => ({ id, name: id, name_ja: null, city_id: "test-city", coords: null, lines: [] });
+const edge = (i: number, stationCount: number) => ({
+  from_station: `s${i % stationCount}`,
+  to_station: `s${(i + 1) % stationCount}`,
+  line: `Line ${i}`,
+  mode: "rail", operator: null, km: null, minutes: 2, fare_jpy: null, stops: 1, note: null,
+});
+const network = (stationCount: number, edgeCount: number) => ({
+  stations: Array.from({ length: stationCount }, (_, i) => station(`s${i}`)),
+  station_edges: Array.from({ length: edgeCount }, (_, i) => edge(i, stationCount)),
+});
+const edgeCount = (g: Awaited<ReturnType<typeof loadGraph>>) => [...g.out.values()].reduce((n, list) => n + list.length, 0);
+
 describe("loadGraph", () => {
   afterEach(() => {
     invalidateGraphCache();
@@ -11,14 +68,10 @@ describe("loadGraph", () => {
   });
 
   function stationsReturn(coords: unknown) {
-    const select = vi.fn((columns: string) => Promise.resolve({
-      data: columns.startsWith("id, name")
-        ? [{ id: "kyoto", name: "Kyoto", name_ja: "京都", city_id: "kyoto-city", coords, lines: ["JR Kyoto Line"] }]
-        : [],
-      error: null,
-    }));
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn(() => ({ select })) } as never);
-    return select;
+    return fakeDb({
+      stations: [{ id: "kyoto", name: "Kyoto", name_ja: "京都", city_id: "kyoto-city", coords, lines: ["JR Kyoto Line"] }],
+      station_edges: [],
+    }).select;
   }
 
   // What the database really returns for Kyoto's point: hex EWKB
@@ -39,5 +92,65 @@ describe("loadGraph", () => {
 
     expect(station?.lat).toBeUndefined();
     expect(station?.lon).toBeUndefined();
+  });
+
+  // The committed seed has 1,008 edges; PostgREST answers at most 1,000
+  // rows per request by default and says nothing about the rest.
+  it("reads every edge past the server's 1,000-row limit", async () => {
+    const { pages } = fakeDb(network(40, 1008));
+
+    const graph = await loadGraph();
+
+    expect(edgeCount(graph)).toBe(1008);
+    expect(pages.filter((p) => p.table === "station_edges").length).toBe(2);
+  });
+
+  it("reads every station past the limit too", async () => {
+    fakeDb(network(1001, 0));
+
+    expect((await loadGraph()).stations.size).toBe(1001);
+  });
+
+  it("asks for a stable order so pages neither skip nor repeat rows", async () => {
+    const { pages } = fakeDb(network(3, 3));
+
+    await loadGraph();
+
+    expect(pages.find((p) => p.table === "stations")?.order).toEqual(["id"]);
+    expect(pages.find((p) => p.table === "station_edges")?.order).toEqual(["from_station", "to_station", "line"]);
+  });
+
+  it("stops on an exact multiple of the page size", async () => {
+    const { pages } = fakeDb(network(40, 2000));
+
+    expect(edgeCount(await loadGraph())).toBe(2000);
+    expect(pages.filter((p) => p.table === "station_edges").length).toBeLessThanOrEqual(3);
+  });
+
+  it("still reads everything when the server's limit is lower than a page", async () => {
+    fakeDb(network(40, 1008), { cap: 300 });
+
+    expect(edgeCount(await loadGraph())).toBe(1008);
+  });
+
+  it("fails the load when a later page fails, and caches nothing", async () => {
+    const db = fakeDb(network(40, 1008), { fail: { table: "station_edges", page: 1 } });
+
+    await expect(loadGraph()).rejects.toThrow("station_edges page 1 failed");
+
+    // Nothing partial was kept: the next call reads the database again.
+    db.from.mockClear();
+    fakeDb(network(40, 1008));
+    expect(edgeCount(await loadGraph())).toBe(1008);
+  });
+
+  it("serves the cached graph without reading again", async () => {
+    const { from } = fakeDb(network(3, 3));
+
+    await loadGraph();
+    const calls = from.mock.calls.length;
+    await loadGraph();
+
+    expect(from.mock.calls.length).toBe(calls);
   });
 });
