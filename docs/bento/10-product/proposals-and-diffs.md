@@ -7,6 +7,7 @@ code:
   - bento/src/app/trips/[id]/proposal-card.tsx
   - bento/supabase/migrations/0015_atomic_trip_edits.sql
   - bento/supabase/migrations/0016_date_proposals.sql
+  - bento/supabase/migrations/0031_stale_proposals.sql
 last_reviewed: 2026-11-14
 ---
 
@@ -42,14 +43,16 @@ The failure of every chat-based planner: the traveller spends an hour refining a
 
 - A **date change** that would put a planned stop on a day it's closed, or a ticketed stop on a day with no ticket, is refused with the reason (`shift.ts`). Accepting other proposals doesn't re-check those rules; the engine checked them when it made the proposal.
 - A date proposal is refused if the trip's dates changed since it was proposed, and a proposal can't be accepted twice.
-- **Known gap:** other proposals aren't checked for staleness. If the traveller edits a day by hand (removes or pins a stop) and then accepts an older proposal for that day, the proposal's version of the day replaces the edit. Listed in [open questions](../00-start/open-questions.md).
+- Each day of a proposal records the day as it was saved when the proposal was made (its `base`): the stops in order, with pins, start times, durations and the travel to each, the things a hand edit changes. It is the saved day even when Bento Man planned against a route proposed in the same turn, which may give that date to another city. Accept compares every base with the day as saved now, inside the database, under the same trip lock as hand edits. If any day differs, the whole proposal is set aside: no route or day changes, and that card closes. This also catches a suggestion saved after a hand edit but computed before it. The traveller sees "The plan has changed since I suggested this, so I've set my suggestion aside. Ask me again and I'll plan from how it looks now."
+- **Remaining gap (Q13):** proposals stored before the base existed are accepted unchecked. Date proposals that also carry days are not checked either: their days may have been planned before or after the proposed date shift, so the original date of each day must be recorded before they can be checked soundly. Both can still overwrite a hand edit.
 - Each proposal is checked on its way into the conversation log and again on its way out.
 
 ## Code and tests
 
 - The proposal format and checks: `bento/src/lib/bento-man/diff.ts`.
 - The card: `bento/src/app/trips/[id]/proposal-card.tsx`.
-- The database steps: migrations 0015, 0016 and 0028 (`update_trip_dates` refuses a trip that moved meanwhile).
+- The database steps: migrations 0015, 0016, 0028 (`update_trip_dates` refuses a trip that moved meanwhile), and 0031 (day bases). Since 0031, `apply_proposal` returns `'applied'` or `'stale_day'`; for `'stale_day'` it closes the proposal and returns normally, so the close commits, and every other failure still raises and rolls back. `SupabaseStore.applyProposal` maps `'stale_day'` to the sentence above. No value (null, or an empty string, which is how Postgres prints void) counts as applied, because the function before 0031 returns nothing and either raises or has applied, so the code and the migration can go live in either order (migration first is still recommended: until it runs there is no stale check). Any other value means the outcome is unknown: the traveller reads "Check the plan below: I couldn't confirm whether that went through. If it didn't, ask me again.", and both the plan and Bookings are refreshed. The bases are compared in one total order on both sides (sort order, place id, start minute, then the other compared fields; text in byte order, empty values last), so stops that share a sort order can't make an untouched day look changed. The base stays in the stored proposal; the page and the chat stream get proposals without it (`proposalForClient`).
+- Tests: `bento/src/lib/bento-man/__tests__/stale-proposals.test.ts` (the memory store, including a route change and day plans in one turn) and `bento/src/lib/db/stale-proposals.test.ts` (the migration's text and grants). The SQL was also run on PGlite, all migrations replayed, as the signed-in role, on a single connection: two Accepts truly at once were not exercised.
 - The rules agents keep are in [bento/CLAUDE.md](../../../bento/CLAUDE.md), "Bento Man (P6)".
 
 ## Related decisions

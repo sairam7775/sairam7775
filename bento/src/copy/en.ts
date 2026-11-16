@@ -500,6 +500,8 @@ export const en = {
       body: "Give Bento Man the dates and a route and each day gets a compartment here, sized to the time it takes.",
     },
     proposals: {
+      staleDay: "The plan has changed since I suggested this, so I've set my suggestion aside. Ask me again and I'll plan from how it looks now.",
+      outcomeUnknown: "Check the plan below: I couldn't confirm whether that went through. If it didn't, ask me again.",
       answered: "That proposal has already been answered.",
       unreadable: "That proposal can't be read any more. Ask Bento Man again.",
       notApplied: (why: string) => `That didn't apply: ${why}`,

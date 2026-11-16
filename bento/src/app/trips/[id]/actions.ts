@@ -49,6 +49,14 @@ export async function acceptProposal(formData: FormData) {
     await store.applyProposal(proposal, messageId);
   } catch (e) {
     const why = e instanceof Error ? e.message : copy.trip.proposals.notAppliedUnknown;
+    if (why === copy.trip.proposals.staleDay || why === copy.trip.proposals.outcomeUnknown) {
+      // The RPC committed something (the rejection, or an outcome we
+      // couldn't read), so refresh both pages that show the card and the
+      // plan, and say it alone: neither is "That didn't apply".
+      revalidatePath(`/trips/${tripId}`);
+      revalidatePath(`/trips/${tripId}/vault`);
+      redirect(`/trips/${tripId}?error=${encodeURIComponent(why)}`);
+    }
     redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.notApplied(why))}`);
   }
 

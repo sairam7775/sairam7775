@@ -40,6 +40,7 @@ function dayRows(p: Proposal) {
   return p.days.map((d) => ({
     date: d.date,
     city_id: d.cityId ?? "",
+    ...(d.base !== undefined ? { base: d.base } : {}),
     items: d.after.map((it, i) => dayItemRow({
       placeId: it.placeId, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked, reason: it.reason,
       reasonTerms: it.reasonTerms, arriveMode: it.arriveMode, arriveMinutes: it.arriveMinutes, arriveDetail: it.arriveDetail,
@@ -371,7 +372,7 @@ export class SupabaseStore implements TripStore {
     // One transaction: claiming the proposal, the route (and the days it
     // orphans), every day, and closing the older proposals. A failure
     // anywhere leaves the trip, and the proposal, exactly as they were.
-    const { error } = await this.db.rpc("apply_proposal", {
+    const { data: outcome, error } = await this.db.rpc("apply_proposal", {
       p_trip: this.tripId,
       p_message: messageId,
       p_route: routeRows(p, meta),
@@ -381,6 +382,18 @@ export class SupabaseStore implements TripStore {
     });
     if (error) throw error;
     this.stateCache = null;
+    // No value, with no error: the database doesn't have 0031 yet. That
+    // function returns void and either raises or has applied and
+    // committed, so no value means applied. A void result is null, or ""
+    // where it is sent as an empty string (Postgres prints void as "").
+    // 0031's function never returns null or "".
+    if (outcome == null || outcome === "" || outcome === "applied") return;
+    // A day changed since the proposal was made: the RPC returns (so its
+    // close of the proposal commits) instead of raising, and applied nothing.
+    if (outcome === "stale_day") throw new Error(copy.trip.proposals.staleDay);
+    // Anything else: the call finished but we can't say what it did, so
+    // claim neither success nor failure.
+    throw new Error(copy.trip.proposals.outcomeUnknown);
   }
 
   /** A proposal that moves the dates: the date change (as setTripDates

@@ -30,6 +30,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 import { acceptProposal } from "../trips/[id]/actions";
+import { copy } from "@/copy";
 
 const form = (extra: Record<string, string> = {}) => {
   const f = new FormData();
@@ -80,4 +81,16 @@ describe("acceptProposal: where the traveller lands", () => {
     mocks.applyProposal.mockRejectedValue(new Error("moved"));
     await expect(acceptProposal(form())).rejects.toThrow(`redirect:/trips/${TRIP}?error=`);
   });
+
+  for (const [name, sentence] of [["stale", () => copy.trip.proposals.staleDay], ["unknown-outcome", () => copy.trip.proposals.outcomeUnknown]] as const) {
+    it(`shows the ${name} sentence on its own and refreshes both pages that show the card`, async () => {
+      mocks.parseProposal.mockReturnValue({ summary: "", days: [] });
+      expect(sentence()).toEqual(expect.any(String));
+      mocks.applyProposal.mockRejectedValue(new Error(sentence()));
+      const thrown = await acceptProposal(form()).then(() => null, (e: Error) => e.message);
+      expect(thrown).toBe(`redirect:/trips/${TRIP}?error=${encodeURIComponent(sentence())}`);
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}`);
+      expect(mocks.revalidatePath).toHaveBeenCalledWith(`/trips/${TRIP}/vault`);
+    });
+  }
 });
