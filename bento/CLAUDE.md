@@ -257,6 +257,22 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
 - Every tool validates its input with Zod and returns a JSON string. A
   bad input is an `is_error` result the model can recover from, never a
   throw. Tools that change the plan write to `ctx.proposal`, nothing else.
+- An error result says what was not done and names the working call: every
+  `plan_days` / `replan_day` error ends "Nothing was proposed.", and
+  `replan_day` given another city's place (or a city, by id or name) says
+  which city and gives the `plan_days` day-trip call with the real date and
+  city id. Those texts are for the model: "Re-plan this day" shows
+  `copy.trip.replan.errors` by `replanDay`'s `reason`, never its `error`.
+- The honesty net (`honesty.ts`): on a turn that proposed and applied
+  nothing, a reply saying a proposal waits (with none waiting from earlier),
+  or a change done after a plan-changing tool failed this turn, gets
+  `copy.chat.notChanged` appended as the one closing line, sent as a
+  `replace` before the save. A "done" claim with no failed change is left
+  alone (it may be about an earlier turn). Negation cancels only in the
+  claim's own clause. Pattern-based: a paraphrase can slip through; the
+  eval's `honestAboutProposal` grades with broader patterns too. A turn out
+  of tool rounds says `copy.chat.cappedSuggestion` (or `noReply`), never
+  "Here is what I'd suggest".
 - A `Proposal` (`diff.ts`) is validated on the way into `chat_messages`
   and again on the way out. `acceptProposal` is the only writer of
   `trip_cities`, `itinerary_days` and `itinerary_items` from the chat.
@@ -343,6 +359,18 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
+- Outline cities are planned, and say so (Q12): a planned day there shows
+  `copy.mainSightsDay` on the proposal card, the day box and the download
+  (the shared sheet: days in a route city only, until `shared_trip()`
+  returns each day's own city coverage, Q16),
+  read from the city's coverage at render time (`showsMainSights`,
+  `loadChat`'s `cityTiers`), never stored. Its `plan_days` / `replan_day`
+  result adds `coverage` and `coverage_note` (that line, and never call the
+  day complete); a well-covered day's result stays byte-identical
+  (`tools.test.ts` pins its hash). Eval: `days-main-sights`. A saved day's
+  name and coverage come from its own city (`DayRow.city`, read with the
+  day; `dayCoverage` in `trip-view.ts`), so a day trip off the route is
+  covered as that city, not as "not covered".
 - `place_background` is the one place general knowledge about a particular
   place is allowed, and only for history. (Culture that doesn't go out of
   date — etiquette, what a torii is, festivals — is the prompt's other

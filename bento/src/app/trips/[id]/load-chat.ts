@@ -29,11 +29,14 @@ export async function loadChat(db: Db, tripId: string, routeCities: { id: string
 
   const proposalCityIds = [...new Set(messages.flatMap((m) => m.proposal?.days.map((d) => d.cityId) ?? []))];
   const { data: cityRows } = proposalCityIds.length
-    ? await db.from("cities").select("id, name").in("id", proposalCityIds)
-    : { data: [] as { id: string; name: string }[] };
+    ? await db.from("cities").select("id, name, coverage_tier").in("id", proposalCityIds)
+    : { data: [] as { id: string; name: string; coverage_tier: string | null }[] };
   const cityNames: Record<string, string> = Object.fromEntries([
     ...(cityRows ?? []).map((c) => [c.id, c.name] as const),
     ...routeCities.map((c) => [c.id, c.name] as const),
   ]);
-  return { messages, cityNames };
+  // How well Bento knows each city a day proposal is in, read now rather
+  // than stored with the proposal, so the card says what the page says.
+  const cityTiers: Record<string, string> = Object.fromEntries((cityRows ?? []).map((c) => [c.id, c.coverage_tier ?? "stub"] as const));
+  return { messages, cityNames, cityTiers };
 }

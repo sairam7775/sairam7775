@@ -9,6 +9,7 @@ import { bookingSlot, canPlanOn, clashingBookings } from "@/lib/vault/plan-day";
 import { copy } from "@/copy";
 import { track } from "@/lib/analytics/client";
 import { placeMapUrl } from "@/lib/maps/links";
+import { showsMainSights } from "@/lib/trips/route-card";
 
 const t = copy.day;
 const bk = copy.bookings;
@@ -48,6 +49,9 @@ export interface DayBoxProps {
   /** A city Bento can't plan days in yet: the box says so, rather than
    *  inviting the traveller to ask for stops that can't come. */
   uncovered?: boolean;
+  /** A city Bento knows by its main sights only: a planned day says what
+   *  it rests on (`copy.mainSightsDay`). */
+  mainSights?: boolean;
   /** Every booking in the trip, for the Bookings column; the ones planned
    *  on this date also sit in the box. */
   bookings: PlanBooking[];
@@ -377,6 +381,7 @@ export function DayBox(p: DayBoxProps) {
 
           <div className="tile up px-4 py-4" style={{ animationDelay: ".28s" }}>
             <span className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{p.cityName} · {p.tier}</span>
+            {showsMainSights(p.mainSights ? "outline" : null, items.length) && <p className="mt-2 text-[0.85rem] leading-snug text-ink-2">{copy.mainSightsDay}</p>}
             <p className="mt-2 text-[0.85rem] leading-snug text-ink-2">
               {items.filter((i) => i.locked).length ? t.pinnedCount(items.filter((i) => i.locked).length) : ""}
               {p.uncovered ? t.uncoveredHowTo : t.howTo}

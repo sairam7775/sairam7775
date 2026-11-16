@@ -71,3 +71,36 @@ describe("seasonal hours on the shared sheet", () => {
     expect(sharedPlanFromJson(json)!.places.get("kyt-kiyomizu")?.hoursVary).toBe(false);
   });
 });
+
+// Q16 (open questions): shared_trip() gives coverage only for the route's
+// cities, not for a day's own city, so the companions' sheet labels a
+// main-sights day only when that city is on the route. Pinned here so the
+// fix (shared_trip returning each day's city coverage) changes it on purpose.
+describe("the main-sights line on the shared sheet, today", () => {
+  const item = (id: string) => ({ id: `i-${id}`, place_id: id, sort_order: 0, start_time: "09:00:00", duration_min: 60, reason: null, arrive_mode: null, arrive_minutes: null, arrive_detail: null });
+  const shared = {
+    ...json,
+    trip: { ...json.trip, start_date: "2026-11-20", end_date: "2026-11-23" },
+    cities: [
+      { city_id: "hiroshima-city", name: "Hiroshima", tier: "deep", nights: 2, sort_order: 0, arrive_date: "2026-11-20", depart_date: "2026-11-22" },
+      { city_id: "miyajima", name: "Miyajima", tier: "outline", nights: 1, sort_order: 1, arrive_date: "2026-11-22", depart_date: "2026-11-23" },
+    ],
+    days: [
+      { id: "d1", date: "2026-11-21", city_id: "himeji", items: [item("hmj-castle")] },
+      { id: "d2", date: "2026-11-22", city_id: "miyajima", items: [item("miy-itsukushima")] },
+    ],
+    places: [], stations: [], bookings: [],
+  };
+  const doc = () => {
+    const plan = sharedPlanFromJson(shared)!;
+    return planDocument(plan.state, buildTripView(plan.state, null).dayList, plan.bookings, plan.places, plan.stations);
+  };
+
+  it("labels a main-sights day in a city on the route", () => {
+    expect(doc().days.find((d) => d.date === "2026-11-22")).toMatchObject({ city: "Miyajima", mainSights: true });
+  });
+
+  it("does not yet label an off-route main-sights day trip (Himeji), nor name it", () => {
+    expect(doc().days.find((d) => d.date === "2026-11-21")).toMatchObject({ city: "himeji", mainSights: false });
+  });
+});

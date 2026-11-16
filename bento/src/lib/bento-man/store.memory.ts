@@ -88,6 +88,12 @@ export class MemoryStore implements TripStore {
     return CORRIDOR.find((c) => c.id === id)?.name ?? STUBS.find((c) => c.id === id)?.name ?? id;
   }
 
+  /** A known city's name and coverage; null for an id the catalogue lacks. */
+  private dayCity(id: string): { name: string; tier: CoverageTier } | null {
+    const known = CORRIDOR.some((c) => c.id === id) || STUBS.some((c) => c.id === id);
+    return known ? { name: this.cityName(id), tier: this.tiers[id] ?? "stub" } : null;
+  }
+
   private setRoute(list: { cityId: string; nights: number; reason: string | null; budgetBand: TripCityRow["budgetBand"] }[]) {
     const dated = allocateDates(this.trip.startDate, list, this.trip.endDate);
     this.tripCities = list.map((c, i) => ({
@@ -109,7 +115,8 @@ export class MemoryStore implements TripStore {
       trip: { ...this.trip },
       prefs: { ...this.prefs },
       cities: this.tripCities.map((c) => ({ ...c })),
-      days: this.days.map((d) => ({ ...d, items: d.items.map((i) => ({ ...i })) })).sort((a, b) => a.date.localeCompare(b.date)),
+      // Each day's own city, as SupabaseStore reads it with the day.
+      days: this.days.map((d) => ({ ...d, city: d.cityId ? this.dayCity(d.cityId) : null, items: d.items.map((i) => ({ ...i })) })).sort((a, b) => a.date.localeCompare(b.date)),
       pendingProposal: pending ? { id: pending.id, summary: pending.proposal!.summary } : null,
     };
   }

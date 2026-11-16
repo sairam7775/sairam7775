@@ -446,6 +446,12 @@ export const en = {
     outline: "Main sights only",
     stub: "Not covered yet",
   },
+  // Under a planned day in a city Bento knows by its main sights only: on
+  // the proposal card, the day box and the download, and handed to Bento
+  // Man in the day's tool result. The companions' shared sheet shows it for
+  // days in a city on the route only, not yet for a day trip off it (Q16).
+  // What it rests on first; never "incomplete".
+  mainSightsDay: "Planned from the main sights here. There may be more worth adding.",
 
   trip: {
     planLabel: "The plan",
@@ -513,6 +519,13 @@ export const en = {
       message: (day: string, pinned: number, summary: string) =>
         `Re-planned ${day}${pinned ? ` around the ${pinned} stop${pinned === 1 ? "" : "s"} you pinned` : ""}. ${summary}. Accept it to replace the day, or reject it and keep what you have.`,
       summary: (day: string) => `${day} re-planned`,
+      // When "Re-plan this day" can't make a plan. Nothing on the day changed.
+      errors: {
+        notADay: "That date isn't a day of this trip any more, so there was nothing to re-plan.",
+        notCovered: (city: string) => `Bento doesn't know ${city} well enough yet to re-plan a day there. Your day is as it was.`,
+        placeGone: "A stop you pinned on this day can't be planned with any more. Unpin it, then re-plan the day. Your day is as it was.",
+        failed: "That day couldn't be re-planned just now. Your day is as it was; try again in a moment.",
+      },
     },
   },
 
@@ -795,6 +808,15 @@ export const en = {
     // repeated his instructions (bento-man/guard.ts).
     refused: "That one isn't mine to answer. Ask me about Japan or the trip and I'm all yours.",
     withheld: "That stays in the box. Ask me about Japan or the trip instead.",
+    // Said after a reply that claims a change or a proposal on a turn that
+    // made none (bento-man/honesty.ts).
+    notChanged: "Nothing in the plan has changed yet: I couldn't make that change. Tell me again what you'd like and I'll try a different way.",
+    // When a turn ends with a proposal and no words of his own.
+    suggestion: "Here is what I'd suggest.",
+    // When a turn runs out of tool rounds with a proposal and no words of
+    // his own: the proposal may be a step towards the request, not all of it.
+    cappedSuggestion: "I've put a suggestion below. It may not be exactly what you asked for, so check it before you accept.",
+    noReply: "I didn't manage a reply that time. Try again.",
   },
 
   vault: {

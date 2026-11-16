@@ -11,6 +11,7 @@ import type { PlaceInput } from "@/lib/engine/types";
 import { bookingDates, bookingSlot, canPlanOn, clashingBookings, type PlannableBooking } from "@/lib/vault/plan-day";
 import { clock } from "@/lib/bento-man/diff";
 import { copy } from "@/copy";
+import { showsMainSights } from "./route-card";
 
 export interface DocBooking extends PlannableBooking {
   id: string;
@@ -50,6 +51,12 @@ export interface DocDay {
   /** 1-based, in trip order. */
   number: number;
   city: string;
+  /** Planned in a city Bento knows by its main sights only: the sheet
+   *  prints `copy.mainSightsDay` under it, as the day box does. Read from
+   *  the day list's coverage, so on the shared sheet (no coverage for a
+   *  day's own city from `shared_trip()`) only days in a route city get it
+   *  (Q16). */
+  mainSights: boolean;
   entries: DocEntry[];
 }
 
@@ -63,7 +70,7 @@ export interface PlanDocument {
 
 export function planDocument(
   state: Pick<TripState, "cities" | "days"> & { prefs: Pick<Prefs, "pace"> },
-  dayList: [string, { cityName: string }][],
+  dayList: [string, { cityName: string; tier?: string }][],
   bookings: DocBooking[],
   places: Map<string, PlaceInput>,
   stations: Map<string, { name: string }>,
@@ -122,7 +129,7 @@ export function planDocument(
       merged.push(s.entry);
     }
     while (k < timed.length) merged.push(timed[k++].entry);
-    return { date, number: i + 1, city: meta.cityName, entries: merged };
+    return { date, number: i + 1, city: meta.cityName, mainSights: showsMainSights(meta.tier, stops.length), entries: merged };
   });
 
   const listed = bookings

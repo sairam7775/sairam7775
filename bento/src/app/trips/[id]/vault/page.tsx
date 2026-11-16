@@ -231,7 +231,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
         </div>
 
         <TripChat>
-          <Chat tripId={id} cityNames={chat.cityNames} initial={chat.messages} ask={ask} />
+          <Chat tripId={id} cityNames={chat.cityNames} cityTiers={chat.cityTiers} initial={chat.messages} ask={ask} />
         </TripChat>
       </div>
     </main>

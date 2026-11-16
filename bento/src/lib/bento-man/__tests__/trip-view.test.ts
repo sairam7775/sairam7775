@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "../store.memory";
-import { buildTripView, tripTravelDays } from "../trip-view";
+import { buildTripView, dayCoverage, tripTravelDays } from "../trip-view";
+import { copy } from "@/copy";
+import { planDocument } from "@/lib/trips/plan-document";
 import type { ItemRow } from "../store";
 
 const trip = { startDate: "2026-11-20", endDate: "2026-11-23" };
@@ -62,8 +64,8 @@ describe("buildTripView", () => {
       ] }],
     }).state();
     const view = buildTripView(state, "2026-11-21");
-    // A city absent from the accepted route keeps the page's id/stub fallback.
-    expect(view.selectedMeta).toEqual({ cityId: "nara-city", cityName: "nara-city", tier: "stub" });
+    // A day trip off the accepted route is named and covered as its own city.
+    expect(view.selectedMeta).toEqual({ cityId: "nara-city", cityName: "Nara", tier: "deep" });
     expect(view.selectedDay).toBe(state.days[0]);
     expect(view.dayItems?.[0]).toMatchObject({ mapName: "Stop", nameJa: "停止" });
     expect(view.stats).toEqual({ budgetMin: 360, activeMin: 405, overBy: 45, overFromIndex: 1, lunch: { startMin: 690, endMin: 750 } });
@@ -84,5 +86,53 @@ describe("buildTripView", () => {
     expect(empty.selected).toBeNull();
     expect(empty.selectedMeta).toBeNull();
     expect(empty.stats).toBeNull();
+  });
+});
+
+// A day trip is often to a city that isn't on the route (Miyajima from
+// Hiroshima): its box says how well Bento knows that city, not "not covered".
+describe("a saved day's coverage comes from its own city", () => {
+  const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
+  const route = [{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 5 }, { cityId: "hiroshima-city", nights: 2 }];
+  const at = async (date: string, cityId: string, stops = 1) => {
+    const state = await new MemoryStore({ trip: nov, cities: route, days: [{ date, cityId, items: Array.from({ length: stops }, (_, i) => item({ placeId: `p${i}`, sortOrder: i })) }] }).state();
+    const view = buildTripView(state, date);
+    return { meta: view.selectedMeta!, box: dayCoverage(view.selectedMeta!, view.selectedDay?.items.length ?? 0), chip: view.dayList.find(([d]) => d === date)![1].cityName };
+  };
+
+  it("a Miyajima day trip reads as main sights, offers Re-plan and carries the line", async () => {
+    const { meta, box, chip } = await at("2026-11-28", "miyajima");
+    expect(chip).toBe("Miyajima");
+    expect(meta).toEqual({ cityId: "miyajima", cityName: "Miyajima", tier: "outline" });
+    expect(box).toEqual({ words: copy.coverage.outline, editable: true, uncovered: false, mainSights: true });
+  });
+
+  it("a Nara day trip reads as well covered, offers Re-plan and has no line", async () => {
+    const { box, chip } = await at("2026-11-24", "nara-city");
+    expect(chip).toBe("Nara");
+    expect(box).toEqual({ words: copy.coverage.deep, editable: true, uncovered: false, mainSights: false });
+  });
+
+  it("a day trip to a city Bento doesn't cover stays uncovered, as before", async () => {
+    const { box, chip } = await at("2026-11-24", "takayama");
+    expect(chip).toBe("Takayama");
+    expect(box).toEqual({ words: copy.coverage.stub, editable: false, uncovered: true, mainSights: false });
+  });
+
+  it("days on the route are unchanged", async () => {
+    expect((await at("2026-11-23", "kyoto-city")).box).toEqual({ words: copy.coverage.deep, editable: true, uncovered: false, mainSights: false });
+    const view = buildTripView(await new MemoryStore({ trip: nov, cities: route }).state(), "2026-11-23");
+    expect(view.selectedMeta).toEqual({ cityId: "kyoto-city", cityName: "Kyoto", tier: "deep" });
+    expect(dayCoverage(view.selectedMeta!, 0)).toEqual({ words: copy.coverage.deep, editable: true, uncovered: false, mainSights: false });
+  });
+
+  it("the download names the day trip's city and carries the line, from the same view", async () => {
+    const state = await new MemoryStore({ trip: nov, cities: route, days: [{ date: "2026-11-28", cityId: "miyajima", items: [item({})] }] }).state();
+    const day = planDocument(state, buildTripView(state, null).dayList, [], new Map(), new Map()).days.find((d) => d.date === "2026-11-28")!;
+    expect(day).toMatchObject({ city: "Miyajima", mainSights: true });
+  });
+
+  it("a main-sights day with no stops yet has no line", async () => {
+    expect((await at("2026-11-28", "miyajima", 0)).box.mainSights).toBe(false);
   });
 });

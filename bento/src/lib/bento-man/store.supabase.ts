@@ -18,6 +18,14 @@ import { copy } from "@/copy";
 
 const toMin = (t: string | null): number | null => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : null);
 
+/** A day's own city from the join on `itinerary_days`, whichever shape
+ *  the client gives it (one row or a one-row list). */
+function dayCity(c: unknown): { name: string; tier: CoverageTier } | null {
+  const row = (Array.isArray(c) ? c[0] : c) as { name?: string; coverage_tier?: string } | null | undefined;
+  if (!row?.name) return null;
+  return { name: row.name, tier: (row.coverage_tier ?? "stub") as CoverageTier };
+}
+
 /** Why a route cannot be laid on the trip's dates, or null if it can. */
 /** The route as replace_trip_route takes it, laid on `trip`'s dates, or
  *  null. Refused when the route doesn't fit those dates. */
@@ -83,7 +91,7 @@ export class SupabaseStore implements TripStore {
       this.db.from("trips").select("id, title, start_date, end_date, party_size, status").eq("id", this.tripId).maybeSingle(),
       this.db.from("user_preferences").select("*").eq("user_id", this.userId).maybeSingle(),
       this.db.from("trip_cities").select("city_id, nights, sort_order, budget_band, reason, arrive_date, depart_date, cities(name, coverage_tier)").eq("trip_id", this.tripId).order("sort_order"),
-      this.db.from("itinerary_days").select("id, date, city_id, itinerary_items(id, place_id, sort_order, start_time, duration_min, locked, reason, reason_terms, arrive_mode, arrive_minutes, arrive_detail)").eq("trip_id", this.tripId).order("date"),
+      this.db.from("itinerary_days").select("id, date, city_id, cities(name, coverage_tier), itinerary_items(id, place_id, sort_order, start_time, duration_min, locked, reason, reason_terms, arrive_mode, arrive_minutes, arrive_detail)").eq("trip_id", this.tripId).order("date"),
       this.db.from("chat_messages").select("id, proposed_diff").eq("trip_id", this.tripId).eq("diff_status", "proposed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
     if (trip.error) throw trip.error;
@@ -105,6 +113,7 @@ export class SupabaseStore implements TripStore {
       id: d.id,
       date: d.date,
       cityId: d.city_id,
+      city: dayCity(d.cities),
       items: [...(d.itinerary_items ?? [])]
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((i) => ({

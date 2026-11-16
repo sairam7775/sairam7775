@@ -3,6 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { copy } from "@/copy";
 import { buildGraph } from "@/lib/transit/graph";
 import { SupabaseStore } from "../store.supabase";
+import { buildTripView, dayCoverage } from "../trip-view";
+import { planDocument } from "@/lib/trips/plan-document";
 import { computeDayDiff } from "../diff";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
@@ -295,6 +297,65 @@ describe("place backgrounds", () => {
     await expect(store.noteBackgroundAsk("nope")).resolves.toBeUndefined();
     expect(logged).toHaveBeenCalled();
     logged.mockRestore();
+  });
+});
+
+// A saved day's name and coverage come from its own city, read with the day
+// (itinerary_days joined to cities), so a day trip off the route is covered
+// as that city. MemoryStore fills the same field by hand; these pin the join.
+describe("a saved day's own city", () => {
+  const route = [{ city_id: "hiroshima-city", nights: 3, sort_order: 0, budget_band: null, reason: null, arrive_date: "2026-11-20", depart_date: "2026-11-23", cities: { name: "Hiroshima", coverage_tier: "deep" } }];
+  const stop = (id: string) => ({ id: `i-${id}`, place_id: id, sort_order: 0, start_time: "09:00:00", duration_min: 60, locked: false, reason: null, reason_terms: [], arrive_mode: null, arrive_minutes: null, arrive_detail: null });
+  const days = [
+    { id: "d1", date: "2026-11-20", city_id: "hiroshima-city", cities: { name: "Hiroshima", coverage_tier: "deep" }, itinerary_items: [stop("hir-peace-park")] },
+    { id: "d2", date: "2026-11-21", city_id: "miyajima", cities: { name: "Miyajima", coverage_tier: "outline" }, itinerary_items: [stop("miy-itsukushima")] },
+    // Some clients give a to-one join as a one-row list.
+    { id: "d3", date: "2026-11-22", city_id: "miyajima", cities: [{ name: "Miyajima", coverage_tier: "outline" }], itinerary_items: [] },
+    { id: "d4", date: "2026-11-23", city_id: null, cities: null, itinerary_items: [] },
+  ];
+  const loaded = () => {
+    const f = fixture();
+    f.rows.trip_cities = route;
+    f.rows.itinerary_days = structuredClone(days);
+    return f;
+  };
+
+  it("asks for each day's city with the day", async () => {
+    const { store, selectCalls } = loaded();
+    await store.state();
+    const select = selectCalls.find(([t]) => t === "itinerary_days")![1];
+    expect(select).toContain("cities(name, coverage_tier)");
+  });
+
+  it("fills the day's city on and off the route, and leaves it empty without one", async () => {
+    const { store } = loaded();
+    const state = await store.state();
+    expect(state.days.map((d) => d.city)).toEqual([
+      { name: "Hiroshima", tier: "deep" },
+      { name: "Miyajima", tier: "outline" },
+      { name: "Miyajima", tier: "outline" },
+      null,
+    ]);
+  });
+
+  it("a day whose city didn't come back falls back to the route, then to not covered", async () => {
+    const { store, rows } = loaded();
+    rows.itinerary_days = [
+      { id: "d1", date: "2026-11-20", city_id: "hiroshima-city", cities: null, itinerary_items: [] },
+      { id: "d2", date: "2026-11-21", city_id: "miyajima", cities: null, itinerary_items: [] },
+    ];
+    const view = buildTripView(await store.state(), null);
+    expect(view.dayList.slice(0, 2).map(([, m]) => [m.cityName, m.tier])).toEqual([["Hiroshima", "deep"], ["miyajima", "stub"]]);
+  });
+
+  it("carries an off-route main-sights day through the view and the download", async () => {
+    const { store } = loaded();
+    const state = await store.state();
+    const view = buildTripView(state, "2026-11-21");
+    expect(view.selectedMeta).toEqual({ cityId: "miyajima", cityName: "Miyajima", tier: "outline" });
+    expect(dayCoverage(view.selectedMeta!, view.selectedDay!.items.length)).toMatchObject({ words: copy.coverage.outline, editable: true, mainSights: true });
+    const doc = planDocument(state, view.dayList, [], new Map(), new Map());
+    expect(doc.days.map((d) => [d.city, d.mainSights])).toEqual([["Hiroshima", false], ["Miyajima", true], ["Miyajima", false], ["—", false]]);
   });
 });
 

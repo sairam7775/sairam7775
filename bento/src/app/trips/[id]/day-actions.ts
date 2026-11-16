@@ -7,7 +7,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { retimeDay } from "@/lib/engine/retime";
 import { travelFromGraph } from "@/lib/engine/travel";
-import { replanDay } from "@/lib/bento-man/tools";
+import { replanDay, type ReplanFailure } from "@/lib/bento-man/tools";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { clock } from "@/lib/bento-man/diff";
 import type { DayRow, ItemRow, TripStore } from "@/lib/bento-man/store";
@@ -75,12 +75,24 @@ export async function replanDayAction(formData: FormData) {
     ? pinned.map((i) => ({ op: "pin" as const, place_id: i.placeId, time: i.startMin == null ? undefined : clock(i.startMin) }))
     : [{ op: "start_at" as const, time: clock(day?.items[0]?.startMin ?? (state.prefs.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60)) }];
   const r = await replanDay(store, date, ops);
-  if ("error" in r) redirect(`/trips/${tripId}?day=${date}&error=${encodeURIComponent(r.error)}`);
+  // r.error is written for Bento Man (ids, tool calls): the page says why in
+  // its own words.
+  if ("error" in r) redirect(`/trips/${tripId}?day=${date}&error=${encodeURIComponent(replanError(r))}`);
   await store.append("assistant", copy.trip.replan.message(fmt(date), pinned.length, r.diff.summary), { summary: copy.trip.replan.summary(fmt(date)), days: [r.diff] });
   done(tripId, date);
 }
 
 // ------------------------------------------------------------------ inner
+
+function replanError(r: ReplanFailure): string {
+  const t = copy.trip.replan.errors;
+  switch (r.reason) {
+    case "not-a-day": return t.notADay;
+    case "not-covered": return t.notCovered(r.city);
+    case "unknown-place": return t.placeGone;
+    default: return t.failed;
+  }
+}
 
 async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) => ItemRow[]) {
   const [state, graph] = await Promise.all([store.state(), store.graph()]);

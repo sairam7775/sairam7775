@@ -25,7 +25,7 @@ const TOOL_LABEL: Record<string, string> = t.tools;
 
 /** `ask` arrives from a gap card's "Ask Bento Man": it starts in the box,
  *  ready to send or edit — never sent on the traveller's behalf. */
-export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; cityNames: Record<string, string>; initial: ChatMessage[]; ask?: string }) {
+export function Chat({ tripId, cityNames, cityTiers, initial, ask }: { tripId: string; cityNames: Record<string, string>; cityTiers?: Record<string, string>; initial: ChatMessage[]; ask?: string }) {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>(initial);
   // The server is the truth for a proposal's status. After Accept or
@@ -273,7 +273,7 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
                   <Working label={activity ?? t.thinking} />
                 )}
                 {m.content && activity && busy && m.id.startsWith("a-") && <Working label={activity} className="mt-2" />}
-                {m.proposal && m.status && <ProposalCard tripId={tripId} messageId={m.id} proposal={m.proposal} status={m.status} cityNames={cityNames} />}
+                {m.proposal && m.status && <ProposalCard tripId={tripId} messageId={m.id} proposal={m.proposal} status={m.status} cityNames={cityNames} cityTiers={cityTiers} />}
               </div>
             </div>
           ),
