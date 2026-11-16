@@ -339,11 +339,78 @@ describe("days", () => {
     expect(voiceLint(copy.mainSightsDay)).toEqual([]);
   });
 
-  it("replan_day names a place id it cannot find", async () => {
+  it("replan_day names a place id it cannot find, and says nothing was proposed", async () => {
     const store = routed();
-    const r = await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "remove", place_id: "kyt-nope" }] }, ctxFor(store));
+    const ctx = ctxFor(store);
+    const r = await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "remove", place_id: "kyt-nope" }] }, ctx);
     expect(r.isError).toBe(true);
-    expect(r.result).toMatch(/use get_place/);
+    expect(r.result).toBe("no place kyt-nope in Kyoto — use get_place to find the id. Nothing was proposed.");
+    expect(ctx.proposal).toBeNull();
+  });
+
+  // Live (eval-outline-r1, 3 of 6 runs): "Make the 28th a day trip to
+  // Miyajima" sent a Miyajima place to replan_day on a Hiroshima day, was told
+  // only to use get_place, looped, and then said a proposal existed.
+  const dayTripCall = `call plan_days with dates: [{"date":"2026-11-28","city_id":"miyajima"}].`;
+
+  it("replan_day says a place from another city is there, and names the day-trip call", async () => {
+    const ctx = ctxFor(routed());
+    const r = await runTool("replan_day", { date: "2026-11-28", ops: [{ op: "add", place_id: "miy-itsukushima" }] }, ctx);
+    expect(r.isError).toBe(true);
+    expect(r.result).toBe(`miy-itsukushima is in Miyajima, not Hiroshima. Nothing was proposed. For a day trip there, ${dayTripCall}`);
+    expect(ctx.proposal).toBeNull();
+  });
+
+  it("replan_day says a city id passed as a place is a city, and names the day-trip call", async () => {
+    const ctx = ctxFor(routed());
+    const r = await runTool("replan_day", { date: "2026-11-28", ops: [{ op: "pin", place_id: "miyajima" }] }, ctx);
+    expect(r.isError).toBe(true);
+    expect(r.result).toBe(`miyajima is a city, not a place in Hiroshima. Nothing was proposed. For a day trip there, ${dayTripCall}`);
+    expect(ctx.proposal).toBeNull();
+  });
+
+  it("the day-trip call the error names does plan the day trip", async () => {
+    const ctx = ctxFor(routed());
+    const r = parse(await runTool("plan_days", { dates: [{ date: "2026-11-28", city_id: "miyajima" }] }, ctx));
+    expect(r.proposed).toBe(true);
+    expect(ctx.proposal!.days[0].cityId).toBe("miyajima");
+  });
+
+  it("every other replan_day and plan_days error says nothing was proposed, without internal words", async () => {
+    const NOTHING = "Nothing was proposed.";
+    const cases: [string, unknown, () => MemoryStore][] = [
+      ["replan_day", { date: "2026-11-23" }, routed],
+      ["replan_day", { date: "2026-12-30", ops: [{ op: "start_at", time: "10:00" }] }, routed],
+      ["replan_day", { date: "2026-11-23", ops: [{ op: "pin" }] }, routed],
+      ["replan_day", { date: "2026-11-23", ops: [{ op: "avoid_category" }] }, routed],
+      ["replan_day", { date: "2026-11-23", ops: [{ op: "start_at" }] }, routed],
+      ["replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, () => new MemoryStore({ trip: nov, prefs: owner, cities: [{ cityId: "takayama", nights: 9 }] })],
+      ["plan_days", { dates: "soon" }, routed],
+      ["plan_days", {}, () => new MemoryStore({ prefs: owner })],
+      ["plan_days", { dates: [{ date: "2026-12-30" }] }, routed],
+      ["plan_days", { dates: [{ date: "2026-11-23", city_id: "atlantis" }] }, routed],
+      ["plan_days", {}, () => new MemoryStore({ trip: nov, prefs: owner })],
+      ["plan_days", {}, () => new MemoryStore({ trip: nov, prefs: owner, cities: [{ cityId: "takayama", nights: 9 }] })],
+    ];
+    for (const [tool, input, store] of cases) {
+      const ctx = ctxFor(store());
+      const r = await runTool(tool, input, ctx);
+      const label = `${tool} ${JSON.stringify(input)}: ${r.result}`;
+      expect(r.isError, label).toBe(true);
+      expect(r.result, label).toContain(NOTHING);
+      expect(r.result.split(NOTHING)).toHaveLength(2);
+      expect(r.result, label).not.toMatch(/\b(tiers?|stub|outline)\b/i);
+      expect(ctx.proposal, label).toBeNull();
+    }
+  });
+
+  it("plan_days with every day already planned says so and that nothing was proposed", async () => {
+    const store = routed();
+    const ctx = ctxFor(store);
+    await runTool("plan_days", {}, ctx);
+    await store.applyProposal(ctx.proposal!);
+    const r = await runTool("plan_days", {}, ctxFor(store));
+    expect(r.result).toBe("every day already has a plan — use replan_day with dates to change one. Nothing was proposed.");
   });
 });
 

@@ -457,6 +457,27 @@ function dayNarration(d: ReturnType<typeof computeDayDiff>, tier: CoverageTier) 
 
 export type ReplanOp = z.infer<typeof ReplanDay>["ops"][number];
 
+/** Said by every error result of replan_day and plan_days. Live, a model
+ *  told only what was wrong went on to tell the traveller a proposal was
+ *  waiting; an error says what was not done and names the working call. */
+const NOTHING_PROPOSED = "Nothing was proposed.";
+const notProposed = (msg: string) => (msg.includes(NOTHING_PROPOSED) ? msg : `${msg.replace(/[.\s]+$/, "")}. ${NOTHING_PROPOSED}`);
+
+/** Why a place id isn't in the day's city: it belongs to another city Bento
+ *  knows (or is that city's own id), with the call that plans a day trip
+ *  there, or it is unknown everywhere. */
+async function elsewhere(store: TripStore, cities: CityFacts[], placeId: string, date: string, day: CityFacts): Promise<string> {
+  const facts = factsMap(cities);
+  const asCity = facts.get(placeId);
+  const other = asCity ?? facts.get((await store.searchPlaces(placeId, null)).find((p) => p.id === placeId && p.cityId !== day.id)?.cityId ?? "");
+  if (!other || other.id === day.id) return `no place ${placeId} in ${day.name} — use get_place to find the id`;
+  const where = asCity ? `${placeId} is a city, not a place in ${day.name}.` : `${placeId} is in ${other.name}, not ${day.name}.`;
+  const next = other.tier === "stub"
+    ? `${copy.plan.route.notCovered(other.name)}.`
+    : `For a day trip there, call plan_days with dates: ${JSON.stringify([{ date, city_id: other.id }])}.`;
+  return `${where} ${NOTHING_PROPOSED} ${next}`;
+}
+
 /** One day re-planned around the traveller's pins and the given ops. Used
  *  by the replan_day tool and by the "re-plan this day" button, so a hand
  *  edit and a spoken one go through the same engine call. */
@@ -482,7 +503,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   for (const op of ops) {
     if (["pin", "unpin", "remove", "add"].includes(op.op)) {
       if (!op.place_id) return { error: `${op.op} needs place_id` };
-      if (!byId.has(op.place_id)) return { error: `no place ${op.place_id} in ${f.name} — use get_place to find the id` };
+      if (!byId.has(op.place_id)) return { error: await elsewhere(store, cities, op.place_id, date, f) };
     }
     switch (op.op) {
       case "pin":
@@ -530,6 +551,8 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
 
 export async function runTool(name: string, rawInput: unknown, ctx: ToolContext): Promise<ToolOutcome> {
   const fail = (msg: string): ToolOutcome => ({ result: msg, isError: true });
+  // plan_days and replan_day: an error also says that nothing was proposed.
+  const failNotProposed = (msg: string) => fail(notProposed(msg));
   // Dates proposed earlier this turn: every other tool plans on them.
   const store = ctx.proposal?.dates ? withProposedDates(ctx.store, ctx.proposal.dates) : ctx.store;
 
@@ -674,9 +697,9 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
 
     case "plan_days": {
       const p = PlanDays.safeParse(rawInput);
-      if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
+      if (!p.success) return failNotProposed(`invalid input: ${p.error.issues[0].message}`);
       const [accepted, cities, graph, bookings] = await Promise.all([store.state(), store.cities(), store.graph(), store.bookings()]);
-      if (!accepted.trip.startDate) return fail("the trip has no start date yet — set dates first");
+      if (!accepted.trip.startDate) return failNotProposed("the trip has no start date yet — set dates first");
       // A route proposed earlier in this turn is what these days will be
       // accepted alongside, so plan against it, not the old one: otherwise
       // the days land in cities the new route no longer visits.
@@ -690,16 +713,16 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         targets = [];
         for (const d of p.data.dates) {
           // A day outside the trip would be stored and shown as a day of it.
-          if (d.date < startDate || (endDate && d.date > endDate)) return fail(`${d.date} is outside the trip (${startDate} to ${endDate ?? "no end date"})`);
+          if (d.date < startDate || (endDate && d.date > endDate)) return failNotProposed(`${d.date} is outside the trip (${startDate} to ${endDate ?? "no end date"})`);
           const cityId = d.city_id ?? byDate.get(d.date);
-          if (!cityId) return fail(`${d.date} is not in the accepted route and no city_id was given`);
-          if (!facts.has(cityId)) return fail(`unknown city id: ${cityId}`);
+          if (!cityId) return failNotProposed(`${d.date} is not in the accepted route and no city_id was given`);
+          if (!facts.has(cityId)) return failNotProposed(`unknown city id: ${cityId}`);
           targets.push({ date: d.date, cityId });
         }
       } else {
         const existing = new Map(state.days.map((d) => [d.date, d]));
         targets = [...byDate.entries()].filter(([date]) => !(existing.get(date)?.items.length)).map(([date, cityId]) => ({ date, cityId }));
-        if (!targets.length) return fail(state.cities.length ? "every day already has a plan — use replan_day with dates to change one" : "no accepted route yet — propose a route first");
+        if (!targets.length) return failNotProposed(state.cities.length ? "every day already has a plan — use replan_day with dates to change one" : "no accepted route yet — propose a route first");
       }
       targets.sort((x, y) => x.date.localeCompare(y.date));
 
@@ -736,16 +759,16 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         tiers.push(f.tier);
         days.push(computeDayDiff((existing?.items ?? []).map((i) => ({ placeId: i.placeId, name: i.name, sortOrder: i.sortOrder, startMin: i.startMin, locked: i.locked })), plan, places));
       }
-      if (!days.length) return fail(skipped.join("; ") || "nothing to plan");
+      if (!days.length) return failNotProposed(skipped.join("; ") || "nothing to plan");
       ctx.proposal = mergeProposals(ctx.proposal, { summary: `${days.length} day${days.length === 1 ? "" : "s"}`, days });
       return { result: j({ proposed: true, note: "Shown to the traveller as a proposal with accept and reject. Not applied yet.", days: days.map((d, i) => dayNarration(d, tiers[i])), skipped }) };
     }
 
     case "replan_day": {
       const p = ReplanDay.safeParse(rawInput);
-      if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
+      if (!p.success) return failNotProposed(`invalid input: ${p.error.issues[0].message}`);
       const r = await replanDay(store, p.data.date, p.data.ops);
-      if ("error" in r) return fail(r.error);
+      if ("error" in r) return failNotProposed(r.error);
       ctx.proposal = mergeProposals(ctx.proposal, { summary: `${p.data.date} re-planned`, days: [r.diff] });
       return { result: j({ proposed: true, note: "Shown as a proposal; not applied yet.", day: dayNarration(r.diff, r.tier) }) };
     }
