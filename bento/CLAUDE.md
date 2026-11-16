@@ -542,10 +542,13 @@ Explained in `../docs/bento/30-software/transit.md`.
   `movingTo` is the stay it ends at; day trips there and back have none
   and no travel day.
 - `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.
-  Search state is (station, line); a line change pays `transferPenaltyMin`
+  Search state is (station, line, mode); a line change pays `transferPenaltyMin`
   (default 5). Walks never pay it — the walk is the transfer. The search
   minimises (minutes, changes, legs) in that order: `Route.minutes` first,
   so an exact tie on shown minutes goes to fewer `transfers`, then fewer legs.
+  Legs and changes split where `assemble` splits a leg: a new line or mode.
+  A full tie goes to the smaller path signature (line, mode, station per
+  edge), so the answer never depends on edge order.
 - Line names include the service where it matters: "JR Nara Line · Local"
   and "JR Nara Line · Miyakoji Rapid" are different lines.
 - Fares: a run of consecutive edges on one operator sums km and takes one
