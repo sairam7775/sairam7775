@@ -91,4 +91,13 @@ describe("route — exact ties on minutes", () => {
     expect(r.legs.map((l) => l.line)).toEqual(["walk", "M"]);
     expect(r.transfers).toBe(0);
   });
+
+  it("chooses between fully tied routes the same way whatever the edge order", () => {
+    // Two direct trains, equal on minutes, changes and legs.
+    const edges = [...ride("a", "d", "B", 10), ...ride("a", "d", "A", 10)];
+    for (let seed = 1; seed <= 25; seed++) {
+      expect(lines(shuffled(edges, seed)), `seed ${seed}`).toEqual(["A"]);
+      expect(lines(shuffled(edges, seed), "d", "a"), `seed ${seed} back`).toEqual(["A"]);
+    }
+  });
 });

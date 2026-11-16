@@ -51,19 +51,30 @@ const key = (s: State) => `${s.station} @ ${s.line} @ ${s.mode}${s.rode ? "" : "
 /** What the search minimises, in order: minutes as the traveller sees them
  *  (rides, walks and the change penalty: exactly `Route.minutes`), then
  *  changes of train (`Route.transfers`), then legs. Only exact ties on
- *  minutes reach the second and third, so no route gets slower. */
+ *  minutes reach the second and third, so no route gets slower. The last,
+ *  `sig`, settles routes tied on all three the same way whatever order the
+ *  edges come in: each edge adds its line, mode and arrival station, and
+ *  the smaller string wins. Edge tokens are joined with a separator that
+ *  sorts below every character in them, so comparing two signatures
+ *  compares their edges one by one, and adding an edge never makes a
+ *  signature smaller. That keeps the search order consistent. */
 interface Cost {
   min: number;
   changes: number;
   legs: number;
+  sig: string;
 }
 
-const ZERO: Cost = { min: 0, changes: 0, legs: 0 };
+const ZERO: Cost = { min: 0, changes: 0, legs: 0, sig: "" };
+
+const SEP = "\u0001";
+const edgeToken = (e: Edge) => `${e.line}\u0002${e.mode}\u0002${e.to}`;
 
 function less(a: Cost, b: Cost): boolean {
   if (a.min !== b.min) return a.min < b.min;
   if (a.changes !== b.changes) return a.changes < b.changes;
-  return a.legs < b.legs;
+  if (a.legs !== b.legs) return a.legs < b.legs;
+  return a.sig < b.sig;
 }
 
 class MinHeap {
@@ -140,6 +151,7 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
         min: c.min + e.minutes + (isTransfer ? penalty : 0),
         changes: c.changes + (newTrain && s.rode ? 1 : 0),
         legs: c.legs + (newLeg ? 1 : 0),
+        sig: c.sig === "" ? edgeToken(e) : c.sig + SEP + edgeToken(e),
       };
       const ns: State = { station: e.to, line: e.line, mode: e.mode, rode: s.rode || e.mode !== "walk" };
       const nk = key(ns);
