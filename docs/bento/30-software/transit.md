@@ -21,6 +21,7 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 
 - `bento/src/lib/transit/` is pure code: `buildGraph`, `route` and `describeRoute`.
 - **A change of train costs time.** The search tracks (station, line), and a line change pays a penalty (5 minutes by default). So Kyoto → Inari stays on one Local rather than taking the Rapid one stop and changing. Walks never pay the penalty: the walk *is* the transfer.
+- **Exact ties go to fewer changes.** When two routes show exactly the same total minutes (penalties included), the search takes the one with fewer changes of train, then the one with fewer legs (a new line or a new mode starts a leg, as it does in the route shown). Routes tied even then are settled by a fixed order of their line names and stations, so the same question always gets the same answer. So Asakusa → Shibuya is one Ginza Line ride, not the Asakusa Line and a change at Shimbashi, both 33 minutes. A faster route always wins, however many changes it has.
 - **Line names include the service** where it matters: "JR Nara Line · Local" and "JR Nara Line · Miyakoji Rapid" are different lines.
 - **Fares are bands, not sums.** A run of hops on one operator is one ticket, priced from `fares.ts` by its total distance. An edge with an exact fare stands alone.
   - An estimated fare is shown as `~¥`.

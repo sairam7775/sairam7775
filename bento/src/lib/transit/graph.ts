@@ -31,26 +31,60 @@ export function bothWays(e: Edge): Edge[] {
 
 // ---------------------------------------------------------------- Dijkstra
 
-/** Search state is (station, line arrived on), so a change of line can be
- *  charged as a transfer. Walking never pays the penalty: the walk is the
- *  transfer. */
+/** Search state is (station, line and mode arrived on), so a change of line
+ *  can be charged as a transfer, and a leg ends where `assemble` ends one: at
+ *  a new line or a new mode. Walking never pays the penalty: the walk is the
+ *  transfer. `rode` says whether a train has been ridden yet, so the next
+ *  ride after a walk can be counted as a change of train. */
 interface State {
   station: string;
   line: string;
+  mode: string;
+  rode: boolean;
 }
 
-// Station ids are slugs and line names use middle dots, so " @ " cannot
-// occur inside either half.
-const key = (s: State) => `${s.station} @ ${s.line}`;
+// Station ids are slugs, line names use middle dots and modes are single
+// words, so " @ " cannot occur inside any part. After a ride `rode` is
+// always true, so only walk-only states carry the marker.
+const key = (s: State) => `${s.station} @ ${s.line} @ ${s.mode}${s.rode ? "" : " @ -"}`;
+
+/** What the search minimises, in order: minutes as the traveller sees them
+ *  (rides, walks and the change penalty: exactly `Route.minutes`), then
+ *  changes of train (`Route.transfers`), then legs. Only exact ties on
+ *  minutes reach the second and third, so no route gets slower. The last,
+ *  `sig`, settles routes tied on all three the same way whatever order the
+ *  edges come in: each edge adds its line, mode and arrival station, and
+ *  the smaller string wins. Edge tokens are joined with a separator that
+ *  sorts below every character in them, so comparing two signatures
+ *  compares their edges one by one, and adding an edge never makes a
+ *  signature smaller. That keeps the search order consistent. */
+interface Cost {
+  min: number;
+  changes: number;
+  legs: number;
+  sig: string;
+}
+
+const ZERO: Cost = { min: 0, changes: 0, legs: 0, sig: "" };
+
+const SEP = "\u0001";
+const edgeToken = (e: Edge) => `${e.line}\u0002${e.mode}\u0002${e.to}`;
+
+function less(a: Cost, b: Cost): boolean {
+  if (a.min !== b.min) return a.min < b.min;
+  if (a.changes !== b.changes) return a.changes < b.changes;
+  if (a.legs !== b.legs) return a.legs < b.legs;
+  return a.sig < b.sig;
+}
 
 class MinHeap {
-  private a: { d: number; s: State }[] = [];
-  push(d: number, s: State) {
-    this.a.push({ d, s });
+  private a: { c: Cost; s: State }[] = [];
+  push(c: Cost, s: State) {
+    this.a.push({ c, s });
     let i = this.a.length - 1;
     while (i > 0) {
       const p = (i - 1) >> 1;
-      if (this.a[p].d <= this.a[i].d) break;
+      if (!less(this.a[i].c, this.a[p].c)) break;
       [this.a[p], this.a[i]] = [this.a[i], this.a[p]];
       i = p;
     }
@@ -65,8 +99,8 @@ class MinHeap {
         const l = 2 * i + 1;
         const r = l + 1;
         let m = i;
-        if (l < this.a.length && this.a[l].d < this.a[m].d) m = l;
-        if (r < this.a.length && this.a[r].d < this.a[m].d) m = r;
+        if (l < this.a.length && less(this.a[l].c, this.a[m].c)) m = l;
+        if (r < this.a.length && less(this.a[r].c, this.a[m].c)) m = r;
         if (m === i) break;
         [this.a[m], this.a[i]] = [this.a[i], this.a[m]];
         i = m;
@@ -88,32 +122,44 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
   }
 
   const penalty = opts.transferPenaltyMin ?? 5;
-  const dist = new Map<string, number>();
+  const dist = new Map<string, Cost>();
   const prev = new Map<string, { state: State; edge: Edge }>();
   const heap = new MinHeap();
 
-  const start: State = { station: fromId, line: "" };
-  dist.set(key(start), 0);
-  heap.push(0, start);
+  const start: State = { station: fromId, line: "", mode: "", rode: false };
+  dist.set(key(start), ZERO);
+  heap.push(ZERO, start);
 
   let best: State | null = null;
 
   while (heap.size) {
-    const { d, s } = heap.pop();
-    if (d > (dist.get(key(s)) ?? Infinity)) continue;
+    const { c, s } = heap.pop();
+    const known = dist.get(key(s));
+    if (known && less(known, c)) continue;
     if (s.station === toId) {
       best = s;
       break;
     }
     for (const e of g.out.get(s.station) ?? []) {
       const isTransfer = s.line !== "" && s.line !== e.line && e.mode !== "walk" && s.line !== "walk";
-      const nd = d + e.minutes + (isTransfer ? penalty : 0);
-      const ns: State = { station: e.to, line: e.line };
+      // The rules `assemble` uses: a new line or a new mode starts a new
+      // leg, and a new train after an earlier one is a change, even across
+      // a walk.
+      const newLeg = s.line !== e.line || s.mode !== e.mode;
+      const newTrain = newLeg && e.mode !== "walk";
+      const nc: Cost = {
+        min: c.min + e.minutes + (isTransfer ? penalty : 0),
+        changes: c.changes + (newTrain && s.rode ? 1 : 0),
+        legs: c.legs + (newLeg ? 1 : 0),
+        sig: c.sig === "" ? edgeToken(e) : c.sig + SEP + edgeToken(e),
+      };
+      const ns: State = { station: e.to, line: e.line, mode: e.mode, rode: s.rode || e.mode !== "walk" };
       const nk = key(ns);
-      if (nd < (dist.get(nk) ?? Infinity)) {
-        dist.set(nk, nd);
+      const old = dist.get(nk);
+      if (!old || less(nc, old)) {
+        dist.set(nk, nc);
         prev.set(nk, { state: s, edge: e });
-        heap.push(nd, ns);
+        heap.push(nc, ns);
       }
     }
   }
@@ -129,7 +175,7 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
     cur = p.state;
   }
 
-  return assemble(g, from, to, path, dist.get(key(best))!);
+  return assemble(g, from, to, path, dist.get(key(best))!.min);
 }
 
 // ---------------------------------------------------------------- legs & fares
