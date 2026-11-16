@@ -165,6 +165,8 @@ Explained in `../docs/bento/30-software/engine.md`.
   The traps must stay green: Arashiyama and Fushimi Inari never share a
   day; a Monday never fills with something closed on Mondays; "no hiking"
   means never.
+- The Arashiyama trap covers the whole area: every Kyoto seed place at an
+  Arashiyama station lists `kyt-fushimi-inari` in `conflicts`, both ways.
 
 ## Curation data (P5)
 

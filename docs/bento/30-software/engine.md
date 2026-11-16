@@ -64,7 +64,7 @@ It runs in milliseconds and costs nothing. It's unit-testable, so "Arashiyama an
 ## Tests and tools
 
 - Tests: `bento/src/lib/engine/__tests__/`, fixtures in `__fixtures__/kyoto.ts`. The traps must stay green:
-  - Arashiyama and Fushimi Inari never share a day;
+  - Arashiyama and Fushimi Inari never share a day. This covers the whole Arashiyama area: every Kyoto place at the Randen, Hankyu or JR Saga-Arashiyama station conflicts with Fushimi Inari on both sides (`arashiyama-area.test.ts`);
   - a Monday never fills with something closed on Mondays;
   - "no hiking" means never.
 - Try it: `npx tsx scripts/plan-day.ts` (add a date, or `--pin kyt-sanjusangendo@10:00`).

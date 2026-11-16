@@ -19,7 +19,7 @@ A guidebook says *Fushimi Inari: famous for its torii gates*. A local says go be
 | **Judgement fields** | durations (taste, typical, full), best time windows, crowd note, worth it if, skip if, signature score, conflicts with | **Hidden from travellers until the record is verified** |
 | Provenance | verification status, verified by, last verified, sources | The honesty gate |
 
-- `conflicts_with` stops the scheduler putting two places in one day (Arashiyama and Fushimi Inari, at opposite ends of Kyoto).
+- `conflicts_with` stops the scheduler putting two places in one day (Arashiyama and Fushimi Inari, at opposite ends of Kyoto). It works place to place, so an area-wide rule is listed on every place in the area, on both sides.
 - `verification_status` stops a drafted guess reaching a traveller.
 
 ## Rules
