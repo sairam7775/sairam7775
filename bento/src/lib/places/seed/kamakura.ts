@@ -31,7 +31,7 @@ export const kamakura: PlaceSeed[] = [
     station: "jomyoji", walk: 3, tags: ["shrines", "nature", "history"], energy: 0.2, crowd: 0.7, discovery: 0.3, signature: 0.7, physical: 0.3,
     taste: 25, typical: 45, full: 75, window: ["before 10:00"], opens: "09:00", closes: "16:00",
     crowdNote: "Busiest from 11:00 to 14:00 at weekends and in the autumn, with long waits for tea. At the 09:00 opening it is peaceful.",
-    tip: "The temple grounds are free; the bamboo garden costs ¥400. Matcha with dried sweets at the Kyuko-an tea room in the grove is ¥600, served until 15:30. The tea room is closed for renovation from 18 January 2027 until about mid-March 2027. The temple closes from 29 December to 3 January, and may close in severe weather. A Keikyu bus from stand 4 at Kamakura Station's East Exit takes about 12 minutes to the Jomyoji stop.",
+    tip: "The temple grounds are free; the bamboo garden costs ¥400. Matcha with dried sweets at the Kyuko-an tea room in the grove is ¥600, served until 15:30. The temple closes from 29 December to 3 January, and may close in severe weather. A Keikyu bus from stand 4 at Kamakura Station's East Exit takes about 12 minutes to the Jomyoji stop.",
     cost: 400, closedWeekdays: [], skipIf: ["limited_mobility"], seasons: ["sakura", "koyo"], sources: ["houkokuji.or.jp"] }),
 
   draft({ id: "kmk-komachi", city: c, name: "Komachi-dori", nameJa: "小町通り", category: "street", lat: 35.319633, lon: 139.551386,
@@ -77,11 +77,11 @@ export const kamakura: PlaceSeed[] = [
     cost: 0, closedWeekdays: [], skipIf: ["limited_mobility"], seasons: ["sakura", "koyo"], pairs: ["kmk-kotoku-in", "kmk-zeniarai"], sources: ["trip-kamakura.com/article/95.html"] }),
 
   draft({ id: "kmk-enoshima", city: c, name: "Enoshima Island", nameJa: "江の島", category: "island", lat: 35.3005, lon: 139.4808,
-    station: null, walk: null, tags: ["shrines", "nature", "food", "history"], energy: 0.7, crowd: 0.8, discovery: 0.2, signature: 0.85, physical: 0.7,
+    station: "enoshima", walk: 23, tags: ["shrines", "nature", "food", "history"], energy: 0.7, crowd: 0.8, discovery: 0.2, signature: 0.85, physical: 0.7,
     taste: 90, typical: 180, full: 300, window: ["before 10:00"],
     crowdNote: "Benzaiten Nakamise-dori, the main street up from the bridge, and the shrine grounds are packed on sunny weekends and holidays; early weekday mornings are calm.",
-    tip: "The island and Enoshima Shrine's grounds are free. The paid parts are the Enoshima Escar escalators (¥500), the Sea Candle tower (¥800), the Iwaya caves (¥500) and the shrine's Hoanden treasure hall (¥200); the one-day eno=pass (¥1,500) covers all four. Past the summit, the way down to Chigogafuchi and the caves is hundreds of steep stone steps, and the same back up. Katase-Enoshima Station on the Odakyu line is about 10 minutes' walk away.",
-    cost: 0, closedWeekdays: [], skipIf: ["limited_mobility"], pairs: ["kmk-sea-candle", "kmk-enosui"], sources: ["fujisawa-kanko.jp", "enoshimajinja.or.jp"] }),
+    tip: "Enoshima Shrine's grounds are free. The paid parts are the Enoshima Escar escalators (¥500), the Sea Candle tower (¥800), the Iwaya caves (¥500) and the shrine's Hoanden treasure hall (¥200); the one-day eno=pass (¥1,100) covers all four. Past the summit, the way down to Chigogafuchi and the caves is hundreds of steep stone steps, and the same back up. Katase-Enoshima Station on the Odakyu line is about 10 minutes' walk away.",
+    cost: 0, closedWeekdays: [], skipIf: ["limited_mobility"], pairs: ["kmk-sea-candle", "kmk-enosui"], sources: ["fujisawa-kanko.jp", "enoshimajinja.or.jp", "enoshimajinja.or.jp/access/", "fujisawa-kanko.jp/access/ticket.html"] }),
 
   draft({ id: "kmk-sea-candle", city: c, name: "Enoshima Sea Candle", nameJa: "江の島シーキャンドル", category: "viewpoint", lat: 35.299751, lon: 139.478595,
     station: "enoshima", walk: 25, tags: ["nature"], energy: 0.6, crowd: 0.8, discovery: 0.2, signature: 0.6, physical: 0.6,
@@ -91,9 +91,9 @@ export const kamakura: PlaceSeed[] = [
     cost: 800, closedWeekdays: [], pairs: ["kmk-enoshima"], sources: ["enoshima-seacandle.com"] }),
 
   draft({ id: "kmk-enosui", city: c, name: "Enoshima Aquarium", nameJa: "新江ノ島水族館", category: "aquarium", lat: 35.3097, lon: 139.4799,
-    station: null, walk: null, tags: ["nature"], energy: 0.25, crowd: 0.8, discovery: 0.2, signature: 0.5, physical: 0.2,
+    station: "enoshima", walk: 10, tags: ["nature"], energy: 0.25, crowd: 0.8, discovery: 0.2, signature: 0.5, physical: 0.2,
     taste: 60, typical: 120, full: 180, window: ["before 10:30", "after 15:00"], opens: "10:00", closes: "17:00", hoursVary: true,
     crowdNote: "Families and school groups fill it on sunny weekends and in the summer holidays; weekday mornings outside school holidays are far calmer.",
-    tip: "Adults ¥2,800; high-school students ¥1,800 with ID, elementary and junior-high students ¥1,300. Last entry is an hour before closing. The big Sagami Bay tank and the outdoor dolphin stadium are the highlights. It closes for a few days of maintenance in winter. Katase-Enoshima Station on the Odakyu line is 3 minutes away on foot.",
-    cost: 2800, closedWeekdays: [], pairs: ["kmk-enoshima"], sources: ["enosui.com"] }),
+    tip: "Adults ¥2,800; high-school students ¥1,800 with ID, elementary and junior-high students ¥1,300. Last entry is an hour before closing. The big Sagami Bay tank and the outdoor dolphin stadium are the highlights. It closes for a few days of maintenance in winter. Katase-Enoshima Station on the Odakyu line is 3 minutes away on foot; Enoshima Station on the Enoden is about 10.",
+    cost: 2800, closedWeekdays: [], pairs: ["kmk-enoshima"], sources: ["enosui.com", "enosui.com/access.php"] }),
 ];
