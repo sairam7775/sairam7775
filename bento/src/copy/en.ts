@@ -797,6 +797,15 @@ export const en = {
     // repeated his instructions (bento-man/guard.ts).
     refused: "That one isn't mine to answer. Ask me about Japan or the trip and I'm all yours.",
     withheld: "That stays in the box. Ask me about Japan or the trip instead.",
+    // Said after a reply that claims a change or a proposal on a turn that
+    // made none (bento-man/honesty.ts).
+    notChanged: "Nothing in the plan has changed yet: I couldn't make that change. Tell me again what you'd like and I'll try a different way.",
+    // When a turn ends with a proposal and no words of his own.
+    suggestion: "Here is what I'd suggest.",
+    // When a turn runs out of tool rounds with a proposal and no words of
+    // his own: the proposal may be a step towards the request, not all of it.
+    cappedSuggestion: "I've put a suggestion below. It may not be exactly what you asked for, so check it before you accept.",
+    noReply: "I didn't manage a reply that time. Try again.",
   },
 
   vault: {

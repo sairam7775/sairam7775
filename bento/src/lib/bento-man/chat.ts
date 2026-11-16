@@ -11,6 +11,7 @@ import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResul
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
 import { clean, cleanToolResult, GuardedStream, leaksPrompt, travellerMessage } from "./guard";
+import { needsNotChanged } from "./honesty";
 import { SYSTEM_PROMPT } from "./prompt";
 import type { TripStore } from "./store";
 import { runTool, TOOLS, type ToolContext } from "./tools";
@@ -122,6 +123,8 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   const usageByModel: UsageByModel = {};
   let stopReason: string | null = null;
   let servedBy = provider.model;
+  /** The last tool round ran with no model call left to close the turn. */
+  let ranOut = false;
 
   // A turn that dies after a model call still cost money. The partial
   // usage rides on the error so the caller can record it (E2).
@@ -208,20 +211,38 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       results.push({ id: use.id, name: use.name, content: cleanToolResult(outcome.result), isError: outcome.isError || undefined });
     }
     messages.push({ role: "user", content: results });
+    if (i === maxIterations - 1) ranOut = true;
   }
 
   } catch (e) {
     throw fail(e);
   }
 
-  let text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
+  // Out of tool rounds with no closing words: whatever was proposed may be a
+  // step towards the request, not all of it, so it isn't called "what I'd
+  // suggest"; with nothing proposed, there was no reply.
+  let corrected = false;
+  let text = texts.join("\n\n");
+  if (!text || ranOut) {
+    const closing = !ctx.proposal ? copy.chat.noReply : ranOut ? copy.chat.cappedSuggestion : copy.chat.suggestion;
+    text = text ? `${text}\n\n${closing}` : closing;
+    corrected = true;
+  }
   if (stream.withheld || leaksPrompt(text)) {
     console.warn("Bento Man: withheld a reply that repeated the system prompt.");
     text = WITHHELD_TEXT;
   }
-  // The refused call's text may be on screen already; "done" would replace
-  // it, but only after the save below, which can fail.
-  if (stopReason === "refusal") opts.events?.onReplace?.(text);
+  // The honesty net (honesty.ts): a reply claiming a change or a proposal
+  // on a turn that made none keeps its words, with the truth after them.
+  const appliedAtOnce = toolCalls.some((c) => c.ok && (c.name === "set_trip_dates" || c.name === "set_preferences"));
+  if (needsNotChanged(text, { proposed: ctx.proposal != null, appliedAtOnce, pendingEarlier: state.pendingProposal != null })) {
+    text = `${text}\n\n${copy.chat.notChanged}`;
+    corrected = true;
+  }
+  // The refused call's text may be on screen already, and a corrected reply
+  // differs from what streamed; "done" would replace it, but only after the
+  // save below, which can fail.
+  if (stopReason === "refusal" || corrected) opts.events?.onReplace?.(text);
   let assistantMessageId: string | null = null;
   if (persist) {
     // The model has been paid by now: if saving the reply fails, the usage
