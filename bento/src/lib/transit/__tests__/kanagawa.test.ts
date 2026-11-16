@@ -191,3 +191,59 @@ describe("route — Kanagawa", () => {
     expect(r.unpricedRides).toBe(1);
   });
 });
+
+describe("Kanagawa services", () => {
+  // Every seeded service, its stations in order. Each must be exactly the
+  // adjacent pairs of its list, both ways: a missing hop fails here.
+  const services: [line: string, mode: string, stops: string[]][] = [
+    ["JR Yokosuka Line", "rail", ["tokyo", "shimbashi", "shinagawa", "yokohama", "ofuna", "kita-kamakura", "kamakura"]],
+    ["JR Tokaido Line", "rail", ["tokyo", "shimbashi", "shinagawa", "yokohama", "ofuna", "fujisawa"]],
+    ["JR Shonan-Shinjuku Line", "rail", ["shinjuku", "shibuya", "yokohama", "ofuna", "kita-kamakura", "kamakura"]],
+    ["Tokyu Toyoko Line · Limited Express", "rail", ["shibuya", "yokohama", "minatomirai", "motomachi-chukagai"]],
+    ["Minatomirai Line · Local", "rail", ["yokohama", "shin-takashima", "minatomirai", "bashamichi", "nihon-odori", "motomachi-chukagai"]],
+    ["JR Negishi Line", "rail", ["yokohama", "sakuragicho", "kannai", "ishikawacho", "negishi"]],
+    ["Yokohama Subway Blue Line", "rail", ["yokohama", "shin-yokohama"]],
+    ["Enoden Line", "rail", ["kamakura", "hase", "enoshima", "fujisawa"]],
+    ["Keikyu Bus", "bus", ["kamakura", "jomyoji"]],
+    ["Yokohama City Bus · 58/101", "bus", ["negishi", "honmoku"]],
+  ];
+
+  it("lists every service the seed has", () => {
+    const seeded = [...new Set(kanagawa.edges.map((e) => `${e.line} / ${e.mode}`))].sort();
+    expect(seeded).toEqual(services.map(([line, mode]) => `${line} / ${mode}`).sort());
+  });
+
+  it.each(services)("%s runs hop by hop, both ways", (line, mode, stops) => {
+    const pairs = kanagawa.edges.filter((e) => e.line === line && e.mode === mode).map((e) => `${e.from}>${e.to}`).sort();
+    const expected = stops.slice(1).flatMap((to, i) => [`${stops[i]}>${to}`, `${to}>${stops[i]}`]).sort();
+    expect(pairs).toEqual(expected);
+  });
+});
+
+describe("Kanagawa notes read right in each direction", () => {
+  const notesOf = (from: string, to: string, line: string) =>
+    kanagawa.edges.filter((e) => e.from === from && e.to === to && e.line === line).map((e) => e.note ?? "").join(" ");
+
+  it("tells the traveller where to board the bus only on the way out", () => {
+    expect(notesOf("kamakura", "jomyoji", "Keikyu Bus")).toContain("stand 4 at the East Exit");
+    expect(notesOf("jomyoji", "kamakura", "Keikyu Bus")).not.toMatch(/stand|Get off at Jomyoji/);
+    expect(notesOf("negishi", "honmoku", "Yokohama City Bus · 58/101")).toContain("stand 1 at Negishi Station");
+    expect(notesOf("honmoku", "negishi", "Yokohama City Bus · 58/101")).not.toMatch(/stand|Get off at Honmoku/);
+  });
+
+  it("names the train for Zushi only towards Kamakura", () => {
+    const line = "JR Shonan-Shinjuku Line";
+    expect(notesOf("shibuya", "yokohama", line)).toContain("Zushi");
+    for (const [from, to] of [["shibuya", "shinjuku"], ["yokohama", "shibuya"], ["ofuna", "yokohama"]]) {
+      expect(notesOf(from, to, line), `${from}→${to}`).not.toContain("Zushi");
+    }
+  });
+
+  it("keeps outbound-only directions off the return trains", () => {
+    expect(notesOf("tokyo", "shimbashi", "JR Yokosuka Line")).toContain("Leaves Tokyo");
+    expect(notesOf("shimbashi", "tokyo", "JR Yokosuka Line")).not.toContain("Leaves Tokyo");
+    const toyoko = "Tokyu Toyoko Line · Limited Express";
+    expect(notesOf("shibuya", "yokohama", toyoko)).toContain("stay on for Minatomirai");
+    expect(notesOf("yokohama", "shibuya", toyoko)).not.toContain("stay on for Minatomirai");
+  });
+});

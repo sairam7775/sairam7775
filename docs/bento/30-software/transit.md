@@ -25,7 +25,7 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 - **Fares are bands, not sums.** A run of hops on one operator is one ticket, priced from `fares.ts` by its total distance. An edge with an exact fare stands alone.
   - An estimated fare is shown as `~¥`.
   - A ride with no fare table, or no distance, is counted as **unpriced**, never charged ¥0 or shown as free.
-- **Notes ride on the hops.** "The Rapid doesn't stop at Inari" is data on the edge, so it appears on every route that uses it.
+- **Notes ride on the hops.** "The Rapid doesn't stop at Inari" is data on the edge, so it appears on every route that uses it. `bothWays` copies a note to the return hop, so a note that only reads right one way (where to board a bus, which train to take outbound) is given per direction instead, or left off the return.
 - Travellers see train legs twice: on a route proposal (saved with it), and on each travel day of the plan, worked out again from the accepted route each time the page loads, so the two always match.
 
 ## How the graph is loaded
@@ -33,7 +33,8 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 - **The product reads the whole graph from the database** (`bento/src/lib/transit/load.ts`, `loadGraph`), and each server instance keeps it for ten minutes.
 - **It is read a page at a time.** Supabase's API answers at most 1,000 rows per request by default and drops the rest without an error, and the seed already has more than 1,000 edges. So `selectAll` (`bento/src/lib/supabase/select-all.ts`) reads each table in order of its key, 1,000 rows a request, with an exact row count, until every row has arrived. This works even if the project's row limit is set lower than 1,000.
   - If any page fails, the whole load fails and nothing is cached; a partial graph is never used.
-  - The city list (`city_coverage`) and a city's places (`places_public`) are read the same way (`bento/src/lib/bento-man/store.supabase.ts`, `bento/src/lib/engine/load.ts`).
+  - If the row count changes between pages (a row added or removed mid-read), the read starts again from the first page, since the offsets have shifted. After three tries it fails rather than return a table with a row skipped or repeated.
+  - The city list (`city_coverage`) and a city's places (`places_public`) are read the same way (`bento/src/lib/bento-man/store.supabase.ts`, `bento/src/lib/engine/load.ts`), and so are the admin lists (curation progress, a city's places, the review queues, backgrounds) and the trips page's check for a saved route.
 - **Where a trip lands in each city** is its hub station (`CITY_HUBS` and `hubFor` in `bento/src/lib/engine/route.ts`): Tokyo Station for Tokyo, Yokohama Station for Yokohama, Kamakura Station for Kamakura, the main station of each corridor city. A city with no entry lands at its station with the smallest id, the same on every load, whatever order the stations arrive in. Legs between cities on a route start and end at hubs, and Bento Man's `route_between` uses a city's hub when it is given a city rather than a station or a place.
 
 ## The networks

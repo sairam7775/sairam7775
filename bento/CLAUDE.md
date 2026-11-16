@@ -567,7 +567,9 @@ Explained in `../docs/bento/30-software/transit.md`.
 - `loadGraph` (and every whole-table reference read) pages through
   `selectAll` (`lib/supabase/select-all.ts`): the API stops at 1,000 rows
   a request without an error. A failed page fails the load; never cache
-  or return part of a table. An unmapped city's hub is its smallest
+  or return part of a table. If the row count changes between pages, the
+  read starts again (three tries, then it throws). Admin lists and the
+  trips page's `trip_cities` read page the same way. An unmapped city's hub is its smallest
   station id (`hubFor`), never "whichever came first".
 - `seed/tokyo.ts` is Tokyo's core network (every Metro, Toei and Yamanote
   station, both airports, the Shinkansen to Kyoto and Shin-Osaka). No ODPT
