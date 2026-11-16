@@ -34,6 +34,8 @@ describe("GeminiProvider", () => {
     const body = JSON.parse(options?.body as string);
     expect(body.systemInstruction).toEqual({ parts: [{ text: request.system }] });
     expect(body.generationConfig).toEqual({ maxOutputTokens: 24000, candidateCount: 1 });
+    expect(body.safetySettings).toHaveLength(4);
+    for (const s of body.safetySettings) expect(s.threshold).toBe("BLOCK_ONLY_HIGH");
     expect(body.contents).toEqual([{ role: "user", parts: [{ text: "Hello" }] }]);
     const preferences = body.tools[0].functionDeclarations[0];
     expect(preferences.name).toBe("set_preferences");

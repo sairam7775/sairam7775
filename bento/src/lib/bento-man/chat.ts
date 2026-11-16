@@ -5,10 +5,12 @@
  *  Prompt caching (§09): the system prompt and tool list are byte-stable;
  *  everything that changes per turn — today's date, the trip state — rides
  *  in the final user message, after the cache breakpoint. */
+import { copy } from "@/copy";
 import { addUsage, CHAT_INPUT_BOUND, CHAT_MAX_OUTPUT_TOKENS, costUsd, estimateInputTokens, totalUsage, ZERO_USAGE, type Usage, type UsageByModel } from "./cost";
 import { ProviderCallError, type ChatProvider, type ModelMessage, type ToolResult } from "./provider";
 import { buildContext } from "./context";
 import type { Proposal } from "./diff";
+import { clean, cleanToolResult, GuardedStream, leaksPrompt, travellerMessage } from "./guard";
 import { SYSTEM_PROMPT } from "./prompt";
 import type { TripStore } from "./store";
 import { runTool, TOOLS, type ToolContext } from "./tools";
@@ -16,6 +18,10 @@ import { runTool, TOOLS, type ToolContext } from "./tools";
 export interface ChatEvents {
   onText?: (delta: string) => void;
   onTool?: (name: string, phase: "start" | "end", ok: boolean) => void;
+  /** The whole reply so far, to replace what streamed: sent when a call is
+   *  refused, before the reply is saved, so a failed save can't leave the
+   *  refused call's text on screen. */
+  onReplace?: (text: string) => void;
 }
 
 export interface RunOptions {
@@ -84,10 +90,13 @@ export interface RunResult {
 /** Adaptive thinking comes out of this too, so leave room: a truncated
  *  turn can cut a tool_use block in half. */
 const MAX_TOKENS = CHAT_MAX_OUTPUT_TOKENS;
-const REFUSAL_TEXT = "I can't help with that one. Ask me about the trip and I will.";
+const REFUSAL_TEXT = copy.chat.refused;
+/** Said instead of a reply that repeated the system prompt (guard.ts). */
+const WITHHELD_TEXT = copy.chat.withheld;
 
 export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
-  const { store, provider, today, message, events } = opts;
+  const { store, provider, today } = opts;
+  const message = clean(opts.message);
   const maxIterations = opts.maxIterations ?? 8;
   const persist = opts.persist ?? true;
 
@@ -95,7 +104,17 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   if (persist) await store.append("user", message);
 
   const context = buildContext(state, cities, today);
-  const messages = conversation(history, `${context}\n\n${message}`);
+  // Earlier turns of either role are stored rows the traveller can write
+  // themselves, so they are cleaned like the message.
+  const said = history.map((h) => ({ ...h, content: clean(h.content) }));
+  const messages = conversation(said, `${context}\n\n${travellerMessage(message)}`);
+
+  // Every call's text streams through one guard (guard.ts), joined as the
+  // final reply is, so nothing that could start a prompt leak is sent, even
+  // across a tool round. The final text below replaces the stream on the
+  // client ("done"), and a leak is swapped there as a whole.
+  const stream = new GuardedStream((delta) => opts.events?.onText?.(delta));
+  const events: ChatEvents | undefined = opts.events && { ...opts.events, onText: (delta) => stream.push(delta) };
 
   const ctx: ToolContext = { store, today, proposal: null };
   const texts: string[] = [];
@@ -150,13 +169,18 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     servedBy = msg.model;
     stopReason = msg.stopReason;
 
-    if (msg.text.trim()) texts.push(msg.text.trim());
-
     if (msg.stopReason === "refusal") {
+      // A provider can stream text before it decides to block (Gemini's
+      // SAFETY). None of that call's text is kept: the reply is the earlier
+      // calls' checked text and the refusal copy, sent to replace what
+      // streamed ("replace", below) before anything is saved. Nothing more
+      // streams this turn.
+      stream.stop();
       texts.push(REFUSAL_TEXT);
-      events?.onText?.(REFUSAL_TEXT);
       break;
     }
+    stream.endCall();
+    if (msg.text.trim()) texts.push(msg.text.trim());
     if (msg.stopReason === "max_tokens") {
       // A cut-off turn can hold half a tool call. Never run it.
       texts.push("That answer ran long and got cut off. Ask me again, or narrower.");
@@ -179,7 +203,9 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       }
       toolCalls.push({ name: use.name, input: use.input, ok: !outcome.isError });
       events?.onTool?.(use.name, "end", !outcome.isError);
-      results.push({ id: use.id, name: use.name, content: outcome.result, isError: outcome.isError || undefined });
+      // Tool results carry stored text (titles, preferences, place notes):
+      // cleaned at the boundary, byte-identical when nothing needs it.
+      results.push({ id: use.id, name: use.name, content: cleanToolResult(outcome.result), isError: outcome.isError || undefined });
     }
     messages.push({ role: "user", content: results });
   }
@@ -188,7 +214,14 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     throw fail(e);
   }
 
-  const text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
+  let text = texts.join("\n\n") || (ctx.proposal ? "Here is what I'd suggest." : "I didn't manage a reply that time. Try again.");
+  if (stream.withheld || leaksPrompt(text)) {
+    console.warn("Bento Man: withheld a reply that repeated the system prompt.");
+    text = WITHHELD_TEXT;
+  }
+  // The refused call's text may be on screen already; "done" would replace
+  // it, but only after the save below, which can fail.
+  if (stopReason === "refusal") opts.events?.onReplace?.(text);
   let assistantMessageId: string | null = null;
   if (persist) {
     // The model has been paid by now: if saving the reply fails, the usage

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { onAsk } from "./ask-event";
+import { nextContent, type ChatStreamEvent } from "./chat-stream";
 import { useRouter } from "next/navigation";
 import { BentoManFigure } from "@/components/mascot/figure";
 import type { Proposal } from "@/lib/bento-man/diff";
@@ -21,12 +22,6 @@ export interface ChatMessage {
 }
 
 const TOOL_LABEL: Record<string, string> = t.tools;
-
-type Event =
-  | { type: "text"; delta: string }
-  | { type: "tool"; name: string; phase: "start" | "end"; ok: boolean }
-  | { type: "done"; messageId: string | null; text: string; proposal: Proposal | null }
-  | { type: "error"; message: string };
 
 /** `ask` arrives from a gap card's "Ask Bento Man": it starts in the box,
  *  ready to send or edit — never sent on the traveller's behalf. */
@@ -157,14 +152,13 @@ export function Chat({ tripId, cityNames, initial, ask }: { tripId: string; city
           const line = buffer.slice(0, idx).trim();
           buffer = buffer.slice(idx + 2);
           if (!line.startsWith("data: ")) continue;
-          const ev = JSON.parse(line.slice(6)) as Event;
-          if (ev.type === "text") {
-            content += ev.delta;
+          const ev = JSON.parse(line.slice(6)) as ChatStreamEvent;
+          content = nextContent(content, ev);
+          if (ev.type === "text" || ev.type === "replace") {
             patch({ content });
           } else if (ev.type === "tool") {
             setActivity(ev.phase === "start" ? (TOOL_LABEL[ev.name] ?? t.working) : null);
             if (ev.phase === "end") tools.push(ev.ok ? ev.name : `${ev.name}:failed`);
-            if (ev.phase === "end" && content) content += "\n\n";
           } else if (ev.type === "done") {
             patch({ id: ev.messageId ?? draftId, content: ev.text, proposal: ev.proposal, status: ev.proposal ? "proposed" : null });
             track("bento_man_replied", {

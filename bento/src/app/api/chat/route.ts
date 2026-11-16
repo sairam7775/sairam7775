@@ -100,6 +100,7 @@ export async function POST(req: NextRequest) {
           events: {
             onText: (delta) => send({ type: "text", delta }),
             onTool: (name, phase, ok) => send({ type: "tool", name, phase, ok }),
+            onReplace: (text) => send({ type: "replace", text }),
           },
         });
         // The days' bases stay in the stored row for Accept; the card doesn't use them.

@@ -5,6 +5,7 @@ import type { CityFacts } from "@/lib/engine/route";
 import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
 import { clock } from "./diff";
+import { clean } from "./guard";
 import { nightsBetween, type TripState } from "./store";
 
 /** How well Bento knows a city, in the words the traveller sees on the
@@ -12,11 +13,17 @@ import { nightsBetween, type TripState } from "./store";
  *  repeats is what the page says ("main sights only", not "outline"). */
 export const coverageWords = (tier: CoverageTier) => copy.coverage[tier].toLowerCase();
 
+/** A free-text field on one line, cleaned (guard.ts), so a trip title, a
+ *  saved preference or a stored summary can't add lines that look like
+ *  trip state. The traveller can write any of these rows themselves. */
+const field = (s: string) => clean(s).replace(/\s+/g, " ").trim();
+const list = (xs: string[], none: string) => xs.map(field).join(", ") || none;
+
 export function buildContext(state: TripState, cities: CityFacts[], today: string): string {
   const { trip, prefs } = state;
   const lines: string[] = [];
   lines.push(`today: ${today}`);
-  lines.push(`trip: ${trip.title ?? "untitled"} · ${trip.startDate ?? "start unset"} → ${trip.endDate ?? "end unset"}` +
+  lines.push(`trip: ${trip.title ? field(trip.title) : "untitled"} · ${trip.startDate ?? "start unset"} → ${trip.endDate ?? "end unset"}` +
     (nightsBetween(trip.startDate, trip.endDate) != null ? ` · ${nightsBetween(trip.startDate, trip.endDate)} nights` : "") +
     ` · ${trip.partySize} travelling · status ${trip.status}`);
 
@@ -28,16 +35,16 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
     lines.push("preferences: not set yet (onboarding)");
   } else {
     lines.push(
-      `preferences: pace ${prefs.pace} · interests ${prefs.interestTags.join(", ") || "none"} · energy ${prefs.energy} · crowd tolerance ${prefs.crowdTolerance} · discovery ${prefs.discovery}` +
-        ` · never ${prefs.excludes.join(", ") || "nothing"} · mobility ${prefs.mobility.join(", ") || "none"} · dietary ${prefs.dietary.join(", ") || "none"}`,
+      `preferences: pace ${prefs.pace} · interests ${list(prefs.interestTags, "none")} · energy ${prefs.energy} · crowd tolerance ${prefs.crowdTolerance} · discovery ${prefs.discovery}` +
+        ` · never ${list(prefs.excludes, "nothing")} · mobility ${list(prefs.mobility, "none")} · dietary ${list(prefs.dietary, "none")}`,
     );
   }
 
   if (state.cities.length) {
     lines.push("route:");
     for (const c of state.cities) {
-      lines.push(`  ${c.sortOrder + 1}. ${c.name} (${c.cityId}) · ${c.nights} night${c.nights === 1 ? "" : "s"} · ${coverageWords(c.tier)}` +
-        (c.arriveDate ? ` · ${c.arriveDate} → ${c.departDate}` : "") + (c.budgetBand ? ` · budget ${c.budgetBand}` : "") + (c.reason ? ` · ${c.reason}` : ""));
+      lines.push(`  ${c.sortOrder + 1}. ${field(c.name)} (${c.cityId}) · ${c.nights} night${c.nights === 1 ? "" : "s"} · ${coverageWords(c.tier)}` +
+        (c.arriveDate ? ` · ${c.arriveDate} → ${c.departDate}` : "") + (c.budgetBand ? ` · budget ${c.budgetBand}` : "") + (c.reason ? ` · ${field(c.reason)}` : ""));
     }
   } else {
     lines.push("route: none yet");
@@ -49,7 +56,7 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
       lines.push(`  ${d.date} · ${d.cityId ?? "no city"}:`);
       if (!d.items.length) lines.push("    (empty)");
       for (const it of d.items) {
-        lines.push(`    ${it.startMin != null ? clock(it.startMin) : "--:--"} ${it.name} (${it.placeId})${it.locked ? " [pinned]" : ""}${it.durationMin ? ` · ${it.durationMin} min` : ""}`);
+        lines.push(`    ${it.startMin != null ? clock(it.startMin) : "--:--"} ${field(it.name)} (${it.placeId})${it.locked ? " [pinned]" : ""}${it.durationMin ? ` · ${it.durationMin} min` : ""}`);
       }
     }
   } else {
@@ -57,7 +64,7 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
   }
 
   if (state.pendingProposal) {
-    lines.push(`pending proposal (not yet accepted): ${state.pendingProposal.summary}`);
+    lines.push(`pending proposal (not yet accepted): ${field(state.pendingProposal.summary)}`);
   }
 
   const known = cities.filter((c) => c.tier !== "stub");

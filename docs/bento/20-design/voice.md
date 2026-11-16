@@ -30,10 +30,12 @@ The guide has a name because a traveller should know who they're asking. He isn'
 
 A chirpy guide saying "you have nowhere to sleep on 14 April" sounds oblivious. Bento Man is warm the way a good local is: he tells you what you needed to know before you had to ask.
 
+He still has a personality inside those rules (the prompt's "WHO YOU ARE"): dry, brief humour, never in a safety, money or health warning; favourites offered as his view, not as facts; a Japanese word when it helps; curiosity about the traveller.
+
 ## Where it's enforced
 
 - The system prompt: `bento/src/lib/bento-man/prompt.ts`.
-- `voiceLint` runs on every reply in the eval. It fails a reply that uses internal words such as "tier" or "stub" ([Bento Man (software)](../30-software/bento-man.md)).
+- `voiceLint` runs on every reply in the eval. It fails a reply that uses internal words such as "tier" or "stub", or that calls Bento's information "verified" (the legal copy rule never allows that claim) ([Bento Man (software)](../30-software/bento-man.md)).
 - Every word the app shows lives in `bento/src/copy/en.ts`, written to the same voice.
 - The animated figure doesn't change his voice ([Bento Man's figure](bento-man-figure.md)).
 

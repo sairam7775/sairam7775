@@ -28,6 +28,7 @@ last_reviewed: 2026-11-13
 | S9 | Stored booking references are encrypted at rest (AES-256-GCM), never logged, never put in a model prompt. Pasted confirmations are redacted before the model reads them, as a best effort for labelled references ([booking vault](../10-product/booking-vault.md)) |
 | S10 | Admin pages and actions need an admin **and** a second factor this session (`requireAdmin()`) |
 | S11 | The scheduled job's bearer check is timing-safe; the server doesn't advertise its software |
+| S12 | Chat input can't reach anyone else's data: Bento Man's tools reach only the signed-in traveller's own trip. In code, everything the model reads from outside Bento's own code (messages, stored rows, tool results) is cleaned of hidden characters and of Bento's framing names, and a reply repeating eight or more consecutive words of his instructions is withheld, with at most one word of that run streamed first, across tool rounds too. Words are compared after case, NFKC and invisible and default-ignorable characters are set aside; look-alike letters, hyphens or spaces inside words and filler words between them are known gaps. Prompt passages that are advice for the traveller, the emergency numbers first, are listed in code and never withheld. A refused call's streamed text is replaced on screen before the reply is saved. Keeping to scope and refusing paraphrase or translation of his instructions are model behaviour, checked by the live eval only ([Bento Man (software)](../30-software/bento-man.md)) |
 
 ## How it's checked
 

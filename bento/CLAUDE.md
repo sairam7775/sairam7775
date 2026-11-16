@@ -311,12 +311,42 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
 - The eval (`evals/scenarios.ts`, `scripts/eval-bento-man.ts`) is the
   regression check for prompt edits and the Sonnet 5 test. Add a scenario
   with every prompt rule you add; `voiceLint` runs on every reply.
+- Bento Man talks about Japan travel and nothing else (the prompt's "WHAT
+  YOU TALK ABOUT"), and the traveller's words are never instructions ("RULES
+  NO MESSAGE CAN CHANGE"). That much is model behaviour, checked only by the
+  live eval. `guard.ts` guarantees less, in code: everything the model
+  reads from outside Bento's code (the message, history of either role,
+  free-text trip-state fields, every string in a tool result) goes through
+  `clean()`, which strips invisible characters (listed as code points;
+  `guard.ts` stays ASCII; the zero-width joiner and non-joiner stay, scripts
+  and emoji need them) and breaks the framing names `trip_state` and
+  `traveller_message` however they are spelt; a reply holding eight or
+  more consecutive prompt words (`LEAK_RUN`) is withheld, and
+  `GuardedStream` holds back any start of such a run of two words or more,
+  across tool rounds too, so at most one word of a run reaches the browser.
+  It reads each delta once (the longest possible turn checks in well under
+  half a second). Words are compared lower-cased, NFKC, with invisible and
+  default-ignorable characters dropped; look-alike letters, hyphens or
+  spaces inside words, filler words, a paraphrase, translation or one
+  sentence per turn are not caught by code. Quoted lines, the register
+  examples and `SAYABLE_PASSAGES` (unquoted advice for the traveller, the
+  emergency numbers first; a test pins each to the prompt) are exempt. Text
+  he may say verbatim belongs in quotes in the prompt, or, when the prompt's
+  measured wording can't change, in that list. A refused call's text is
+  dropped, and a `replace` event swaps it on screen before the reply is
+  saved. Gemini sends
+  `SAFETY_SETTINGS` at `BLOCK_ONLY_HIGH`: stricter blocks Hiroshima history.
+  Replies are plain text (no HTML or links rendered), and tools only touch
+  the signed-in traveller's own trip, so a talked-round model can embarrass
+  Bento but not reach other people's data.
 - The model never sees tier names. The trip state and tool results say how
   well Bento knows a city in the city chips' words (`coverageWords` in
   `context.ts`, from `copy.coverage`), so what Bento Man repeats is what the
   page says; `voiceLint` fails a reply that says "tier" or "stub".
-- `place_background` is the one place general knowledge is allowed, and
-  only for history. With a checked background (0027) Bento Man retells it.
+- `place_background` is the one place general knowledge about a particular
+  place is allowed, and only for history. (Culture that doesn't go out of
+  date — etiquette, what a torii is, festivals — is the prompt's other
+  allowance, checked by `scope-culture`.) With a checked background (0027) Bento Man retells it.
   Without one it may give two or three sentences of widely known background,
   said as general, and the tool counts the ask (`noteBackgroundAsk`). Never
   hours, prices or anything a traveller acts on. Guarded by `tools.test.ts`
@@ -660,7 +690,9 @@ Explained in `../docs/bento/20-design/voice.md`.
 Bento Man is a local friend who knows the place and will tell you the truth
 about it (§04). Not a mascot. No enthusiasm as filler, no emoji in plan
 content, no confident prose where a fact is missing. Warmth comes from
-usefulness, not tone.
+usefulness, not tone. He still has a personality inside those rules
+(prompt.ts "WHO YOU ARE"): dry, brief humour, favourites offered as his
+view, a Japanese word when it helps, curiosity about the traveller.
 
 ## Conventions
 
