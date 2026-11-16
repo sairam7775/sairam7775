@@ -463,12 +463,19 @@ export type ReplanOp = z.infer<typeof ReplanDay>["ops"][number];
 const NOTHING_PROPOSED = "Nothing was proposed.";
 const notProposed = (msg: string) => (msg.includes(NOTHING_PROPOSED) ? msg : `${msg.replace(/[.\s]+$/, "")}. ${NOTHING_PROPOSED}`);
 
+/** A city Bento lists, by its id or its name, any case ("nara" is Nara,
+ *  whose id is "nara-city"). */
+function cityNamed(cities: CityFacts[], given: string): CityFacts | undefined {
+  const key = given.trim().toLowerCase();
+  return cities.find((c) => c.id.toLowerCase() === key) ?? cities.find((c) => c.name.toLowerCase() === key);
+}
+
 /** Why a place id isn't in the day's city: it belongs to another city Bento
- *  knows (or is that city's own id), with the call that plans a day trip
- *  there, or it is unknown everywhere. */
+ *  knows (or is that city, by id or name), with the call that plans a day
+ *  trip there, or it is unknown everywhere. */
 async function elsewhere(store: TripStore, cities: CityFacts[], placeId: string, date: string, day: CityFacts): Promise<string> {
   const facts = factsMap(cities);
-  const asCity = facts.get(placeId);
+  const asCity = cityNamed(cities, placeId);
   const other = asCity ?? facts.get((await store.searchPlaces(placeId, null)).find((p) => p.id === placeId && p.cityId !== day.id)?.cityId ?? "");
   if (!other || other.id === day.id) return `no place ${placeId} in ${day.name} — use get_place to find the id`;
   const where = asCity ? `${placeId} is a city, not a place in ${day.name}.` : `${placeId} is in ${other.name}, not ${day.name}.`;
@@ -478,16 +485,23 @@ async function elsewhere(store: TripStore, cities: CityFacts[], placeId: string,
   return `${where} ${NOTHING_PROPOSED} ${next}`;
 }
 
+/** Why a day couldn't be re-planned, for a page to say in its own words:
+ *  `error` is written for Bento Man (ids, the call to make instead) and is
+ *  never shown to the traveller. */
+export type ReplanFailure =
+  | { error: string; reason: "not-a-day" | "unknown-place" | "bad-op" }
+  | { error: string; reason: "not-covered"; city: string };
+
 /** One day re-planned around the traveller's pins and the given ops. Used
  *  by the replan_day tool and by the "re-plan this day" button, so a hand
  *  edit and a spoken one go through the same engine call. */
-export async function replanDay(store: TripStore, date: string, ops: ReplanOp[]): Promise<{ diff: ReturnType<typeof computeDayDiff>; tier: CoverageTier } | { error: string }> {
+export async function replanDay(store: TripStore, date: string, ops: ReplanOp[]): Promise<{ diff: ReturnType<typeof computeDayDiff>; tier: CoverageTier } | ReplanFailure> {
   const [state, cities, graph, bookings] = await Promise.all([store.state(), store.cities(), store.graph(), store.bookings()]);
   const existing = state.days.find((d) => d.date === date);
   const cityId = existing?.cityId ?? plannedDates(state).get(date);
-  if (!cityId) return { error: `${date} is not a day of this trip` };
+  if (!cityId) return { error: `${date} is not a day of this trip`, reason: "not-a-day" };
   const f = factsMap(cities).get(cityId);
-  if (!f || f.tier === "stub") return { error: copy.plan.route.notCovered(f?.name ?? cityId) };
+  if (!f || f.tier === "stub") return { error: copy.plan.route.notCovered(f?.name ?? cityId), reason: "not-covered", city: f?.name ?? cityId };
 
   const all = await store.places(cityId);
   const byId = new Map(all.map((x) => [x.id, x]));
@@ -502,8 +516,8 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   let dayStartMin: number | undefined = firstStop && !firstStop.locked ? firstStop.startMin ?? undefined : undefined;
   for (const op of ops) {
     if (["pin", "unpin", "remove", "add"].includes(op.op)) {
-      if (!op.place_id) return { error: `${op.op} needs place_id` };
-      if (!byId.has(op.place_id)) return { error: await elsewhere(store, cities, op.place_id, date, f) };
+      if (!op.place_id) return { error: `${op.op} needs place_id`, reason: "bad-op" };
+      if (!byId.has(op.place_id)) return { error: await elsewhere(store, cities, op.place_id, date, f), reason: "unknown-place" };
     }
     switch (op.op) {
       case "pin":
@@ -519,12 +533,12 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
         excluded.add(op.place_id!);
         break;
       case "avoid_category":
-        if (!op.category) return { error: "avoid_category needs category" };
+        if (!op.category) return { error: "avoid_category needs category", reason: "bad-op" };
         avoidCategories.add(op.category.toLowerCase());
         break;
       case "start_at": {
         const m = parseHHMM(op.time);
-        if (m == null) return { error: "start_at needs time HH:MM" };
+        if (m == null) return { error: "start_at needs time HH:MM", reason: "bad-op" };
         dayStartMin = m;
         break;
       }

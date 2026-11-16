@@ -517,6 +517,13 @@ export const en = {
       message: (day: string, pinned: number, summary: string) =>
         `Re-planned ${day}${pinned ? ` around the ${pinned} stop${pinned === 1 ? "" : "s"} you pinned` : ""}. ${summary}. Accept it to replace the day, or reject it and keep what you have.`,
       summary: (day: string) => `${day} re-planned`,
+      // When "Re-plan this day" can't make a plan. Nothing on the day changed.
+      errors: {
+        notADay: "That date isn't a day of this trip any more, so there was nothing to re-plan.",
+        notCovered: (city: string) => `Bento doesn't know ${city} well enough yet to re-plan a day there. Your day is as it was.`,
+        placeGone: "A stop you pinned on this day can't be planned with any more. Unpin it, then re-plan the day. Your day is as it was.",
+        failed: "That day couldn't be re-planned just now. Your day is as it was; try again in a moment.",
+      },
     },
   },
 
