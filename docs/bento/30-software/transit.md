@@ -25,7 +25,7 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 - **Fares are bands, not sums.** A run of hops on one operator is one ticket, priced from `fares.ts` by its total distance. An edge with an exact fare stands alone.
   - An estimated fare is shown as `~¥`.
   - A ride with no fare table, or no distance, is counted as **unpriced**, never charged ¥0 or shown as free.
-- **Notes ride on the hops.** "The Rapid doesn't stop at Inari" is data on the edge, so it appears on every route that uses it.
+- **Notes ride on the hops.** "The Rapid doesn't stop at Inari" is data on the edge, so it appears on every route that uses it. `bothWays` copies a note to the return hop, so a note that only reads right one way (where to board a bus, which train to take outbound) is given per direction instead, or left off the return.
 - Travellers see train legs twice: on a route proposal (saved with it), and on each travel day of the plan, worked out again from the accepted route each time the page loads, so the two always match.
 
 ## How the graph is loaded
