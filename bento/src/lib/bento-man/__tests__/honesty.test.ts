@@ -8,6 +8,7 @@ import { ZERO_USAGE } from "../cost";
 import { claimsChange, needsNotChanged } from "../honesty";
 import type { ChatProvider, ModelRequest, ModelResult, ToolCall } from "../provider";
 import { MemoryStore } from "../store.memory";
+import { runTool, type ToolContext } from "../tools";
 
 // Live replies, days-main-sights (eval-outline-r1, gemini-3.1-flash-lite).
 const LIVE_NO_PROPOSAL = [
@@ -51,15 +52,61 @@ const INNOCENT = [
   copy.chat.notChanged,
 ];
 
+// A negation elsewhere in the sentence doesn't negate the claim (review F-02),
+// and the bare "I" takes the same verbs as "I have" (F-07).
+const CLAIMS_DESPITE_NEGATION = [
+  "I have added a day trip to Miyajima on November 28th, so you don't need to worry about the ferry.",
+  "I have added a day trip to Miyajima on November 28th, not Hiroshima.",
+  "I have created a proposal for Miyajima on the 28th, but nothing is fixed until you accept.",
+  "I planned a day trip to Miyajima on the 28th, which I can adjust if you'd like.",
+  "I created a new proposal for the 28th.",
+  "I changed the 28th to a Miyajima day.",
+  "I moved Itsukushima Shrine to the morning.",
+  "I built the 28th around the shrine.",
+  "I drafted a Miyajima day.",
+  "I generated a plan for the 28th.",
+  "I set up the 28th as a day trip.",
+];
+const NOT_CLAIMS = [
+  "I have not added Miyajima to the 28th.",
+  "I couldn't add Itsukushima Shrine to a Hiroshima day.",
+  "Nothing has been added to the 28th.",
+  "I don't think I've added it yet.",
+  "I've changed nothing yet.",
+  "I planned to ask you first.",
+  "I changed my mind about the ferry: the JR one is simpler.",
+  "No proposal is waiting for your OK.",
+];
+
 describe("claimsChange", () => {
   for (const c of CLAIMS) it(`catches: ${c.slice(0, 60)}`, () => expect(claimsChange(c)).not.toBeNull());
   for (const c of INNOCENT) it(`lets through: ${c.slice(0, 60)}`, () => expect(claimsChange(c)).toBeNull());
+  for (const c of CLAIMS_DESPITE_NEGATION) it(`catches despite a negation or a bare I: ${c.slice(0, 60)}`, () => expect(claimsChange(c)).toBe("done"));
+  for (const c of NOT_CLAIMS) it(`lets a negated claim through: ${c.slice(0, 60)}`, () => expect(claimsChange(c)).toBeNull());
 });
 
 describe("needsNotChanged", () => {
-  const none = { proposed: false, appliedAtOnce: false, pendingEarlier: false };
-  it("adds the line to a claim on a turn that changed nothing", () => {
-    for (const c of LIVE_NO_PROPOSAL) expect(needsNotChanged(c, none), c).toBe(true);
+  const none = { proposed: false, appliedAtOnce: false, pendingEarlier: false, failedChange: false };
+  // The live replies came after replan_day refused (a failed plan change).
+  const failed = { ...none, failedChange: true };
+  it("adds the line to a claim on a turn whose change failed", () => {
+    for (const c of LIVE_NO_PROPOSAL) expect(needsNotChanged(c, failed), c).toBe(true);
+  });
+  it("adds the line when a proposal is said to be waiting and none exists anywhere", () => {
+    expect(needsNotChanged(LIVE_NO_PROPOSAL[0], none)).toBe(true);
+    expect(needsNotChanged("You will find that proposal below.", none)).toBe(true);
+  });
+  // Review F-01: true replies about earlier turns.
+  it("leaves a description of a proposal still waiting from an earlier turn alone", () => {
+    const text = "I have proposed 3 nights in Kyoto and 2 nights in Osaka. You will find that proposal waiting below.";
+    expect(needsNotChanged(text, { ...none, pendingEarlier: true })).toBe(false);
+    expect(needsNotChanged("I've updated the dates to Nov 20–29; they are waiting for your OK.", { ...none, pendingEarlier: true })).toBe(false);
+  });
+  it("leaves a recalled change from an earlier turn alone when nothing failed this turn", () => {
+    expect(needsNotChanged("I have updated your preferences to standard pace.", none)).toBe(false);
+  });
+  it("still adds the line to a claim of a new change after a failed change, with an earlier proposal waiting", () => {
+    expect(needsNotChanged("I have added a day trip to Miyajima on the 28th.", { ...failed, pendingEarlier: true })).toBe(true);
   });
   it("leaves a reply after a real proposal alone", () => {
     expect(needsNotChanged(LIVE_REAL_PROPOSAL, { ...none, proposed: true })).toBe(false);
@@ -67,9 +114,8 @@ describe("needsNotChanged", () => {
   it("leaves a reply alone when dates or preferences were applied at once", () => {
     expect(needsNotChanged("I've updated your trip to start on the 22nd.", { ...none, appliedAtOnce: true })).toBe(false);
   });
-  it("lets 'waiting for your OK' through while an earlier proposal still waits, but not a claim of a new change", () => {
+  it("lets 'waiting for your OK' through while an earlier proposal still waits", () => {
     expect(needsNotChanged("That route is waiting for your OK on the card below.", { ...none, pendingEarlier: true })).toBe(false);
-    expect(needsNotChanged("I have added a day trip to Miyajima on the 28th.", { ...none, pendingEarlier: true })).toBe(true);
   });
 });
 
@@ -127,6 +173,33 @@ describe("a turn that claims a change it didn't make", () => {
     expect(r.text).toBe(LIVE_REAL_PROPOSAL);
     expect(saved).toBe(LIVE_REAL_PROPOSAL);
     expect(order).toEqual(["saved"]);
+  });
+
+  it("leaves a description of an earlier, still waiting proposal alone on a turn with no tool call", async () => {
+    const store = routed();
+    const ctx: ToolContext = { store, today: "2026-09-15", proposal: null };
+    await runTool(PLAN_MIYAJIMA.name, PLAN_MIYAJIMA.input, ctx);
+    await store.append("assistant", "Miyajima on the 28th is on the card.", ctx.proposal);
+    const text = "I have proposed a day trip to Miyajima on the 28th. You will find that proposal waiting below.";
+    const { r, order } = await turn([result({ text })], store);
+    expect(r.text).toBe(text);
+    expect(order).toEqual(["saved"]);
+  });
+
+  it("leaves a recalled earlier change alone on a turn with no tool call", async () => {
+    const text = "I have updated your preferences to standard pace, so the days keep to about seven hours.";
+    const { r } = await turn([result({ text })]);
+    expect(r.text).toBe(text);
+  });
+
+  it("ends a turn out of tool rounds that claimed a change with one closing line, not two", async () => {
+    const claim = "I have added a day trip to Miyajima on the 28th.";
+    const { r, beforeDone, saved } = await turn([uses(ADD_MIYAJIMA, claim)], routed(), 2);
+    expect(r.proposal).toBeNull();
+    expect(r.text).toBe(`${claim}\n\n${claim}\n\n${copy.chat.notChanged}`);
+    expect(r.text).not.toContain(copy.chat.noReply);
+    expect(saved).toBe(r.text);
+    expect(beforeDone).toBe(r.text);
   });
 
   it("leaves an honest reply alone when nothing was proposed", async () => {
