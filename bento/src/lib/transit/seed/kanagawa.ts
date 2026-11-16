@@ -67,12 +67,22 @@ export const stations: Station[] = [
 
 const e = (partial: Omit<Edge, "mode"> & { mode?: Edge["mode"] }): Edge => ({ mode: "rail", stops: 1, ...partial });
 
+/** Both directions of a hop whose note only reads right one way (`bothWays`
+ *  copies the note): the return gets `back`, or no note at all. */
+function outAndBack(out: Edge, back?: string): Edge[] {
+  const ret: Edge = { ...out, from: out.to, to: out.from };
+  delete ret.note;
+  if (back) ret.note = back;
+  return [out, ret];
+}
+
 const YOKOSUKA = "JR Yokosuka Line";
 const TOKAIDO = "JR Tokaido Line";
 const SHONAN_SHINJUKU = "JR Shonan-Shinjuku Line";
 const SHONAN_SHINJUKU_NOTE = "Take a train for Zushi: trains for Odawara turn off at Ofuna onto the Tokaido Line.";
 const TOYOKO = "Tokyu Toyoko Line · Limited Express";
 const TOYOKO_NOTE = "Most trains run through onto the Minatomirai Line: stay on for Minatomirai and Motomachi-Chukagai.";
+const TOYOKO_COMMUTER = "On weekday mornings and evenings the Commuter Limited Express runs instead and also stops at Hiyoshi.";
 const MINATOMIRAI = "Minatomirai Line · Local";
 const NEGISHI = "JR Negishi Line";
 const NEGISHI_NOTE = "Keihin-Tohoku Line trains from Tokyo run through onto this line.";
@@ -87,8 +97,9 @@ export const edges: Edge[] = [
   // City Tourist Association "about 30"; Visit Kanagawa says 25); together
   // Tokyo – Kamakura 60 (Visit Kanagawa "1 hr"; Hokoku-ji "about 60"). Each
   // split by km and dwell.
-  ...bothWays(e({ from: "tokyo", to: "shimbashi", line: YOKOSUKA, operator: "jr-east", km: 1.9, minutes: 2,
-    note: "Leaves Tokyo from the underground Yokosuka and Sobu Line platforms." })),
+  ...outAndBack(e({ from: "tokyo", to: "shimbashi", line: YOKOSUKA, operator: "jr-east", km: 1.9, minutes: 2,
+    note: "Leaves Tokyo from the underground Yokosuka and Sobu Line platforms." }),
+    "Arrives at Tokyo on the underground Yokosuka and Sobu Line platforms."),
   ...bothWays(e({ from: "shimbashi", to: "shinagawa", line: YOKOSUKA, operator: "jr-east", km: 4.9, minutes: 5 })),
   ...bothWays(e({ from: "shinagawa", to: "yokohama", line: YOKOSUKA, operator: "jr-east", km: 22.0, minutes: 23, stops: 4 })),
   ...bothWays(e({ from: "yokohama", to: "ofuna", line: YOKOSUKA, operator: "jr-east", km: 17.7, minutes: 24, stops: 4 })),
@@ -122,9 +133,9 @@ export const edges: Edge[] = [
   // Yokosuka Line trains on its tracks, so the same 30 to Kamakura.
   // Shinjuku – Kamakura comes to 66; Visit Kanagawa gives 65, Hokoku-ji
   // about 53.
-  ...bothWays(e({ from: "shinjuku", to: "shibuya", line: SHONAN_SHINJUKU, operator: "jr-east", km: 3.4, minutes: 4, note: SHONAN_SHINJUKU_NOTE })),
-  ...bothWays(e({ from: "shibuya", to: "yokohama", line: SHONAN_SHINJUKU, operator: "jr-east", km: 29.2, minutes: 32, stops: 6, note: SHONAN_SHINJUKU_NOTE })),
-  ...bothWays(e({ from: "yokohama", to: "ofuna", line: SHONAN_SHINJUKU, operator: "jr-east", km: 17.7, minutes: 24, stops: 4, note: SHONAN_SHINJUKU_NOTE })),
+  ...outAndBack(e({ from: "shinjuku", to: "shibuya", line: SHONAN_SHINJUKU, operator: "jr-east", km: 3.4, minutes: 4, note: SHONAN_SHINJUKU_NOTE })),
+  ...outAndBack(e({ from: "shibuya", to: "yokohama", line: SHONAN_SHINJUKU, operator: "jr-east", km: 29.2, minutes: 32, stops: 6, note: SHONAN_SHINJUKU_NOTE })),
+  ...outAndBack(e({ from: "yokohama", to: "ofuna", line: SHONAN_SHINJUKU, operator: "jr-east", km: 17.7, minutes: 24, stops: 4, note: SHONAN_SHINJUKU_NOTE })),
   ...bothWays(e({ from: "ofuna", to: "kita-kamakura", line: SHONAN_SHINJUKU, operator: "jr-east", km: 2.3, minutes: 3 })),
   ...bothWays(e({ from: "kita-kamakura", to: "kamakura", line: SHONAN_SHINJUKU, operator: "jr-east", km: 2.2, minutes: 3 })),
 
@@ -137,8 +148,8 @@ export const edges: Edge[] = [
   // Chukagai to Shibuya and about 7 to Yokohama in the daytime, so
   // Shibuya – Yokohama is 28 (ja.wikipedia: 26 at fastest; Visit Kanagawa:
   // 25–30); the 7 is split by km.
-  ...bothWays(e({ from: "shibuya", to: "yokohama", line: TOYOKO, operator: "tokyu", km: 24.2, minutes: 28, stops: 5,
-    note: `${TOYOKO_NOTE} On weekday mornings and evenings the Commuter Limited Express runs instead and also stops at Hiyoshi.` })),
+  ...outAndBack(e({ from: "shibuya", to: "yokohama", line: TOYOKO, operator: "tokyu", km: 24.2, minutes: 28, stops: 5,
+    note: `${TOYOKO_NOTE} ${TOYOKO_COMMUTER}` }), TOYOKO_COMMUTER),
   ...bothWays(e({ from: "yokohama", to: "minatomirai", line: TOYOKO, operator: "minatomirai", km: 1.7, minutes: 3,
     note: "Limited Expresses skip Shin-Takashima, Bashamichi and Nihon-odori: change to a Local for those." })),
   ...bothWays(e({ from: "minatomirai", to: "motomachi-chukagai", line: TOYOKO, operator: "minatomirai", km: 2.4, minutes: 4, stops: 1 })),
@@ -179,10 +190,12 @@ export const edges: Edge[] = [
   // Hokoku-ji's access page: Keikyu bus from stand 4 at Kamakura Station
   // East Exit, about 12 minutes to Jomyoji. Keikyu Bus publishes fares only
   // through a journey-search tool, so this ride is unpriced.
-  ...bothWays(e({ from: "kamakura", to: "jomyoji", line: "Keikyu Bus", mode: "bus", operator: "keikyu-bus", minutes: 12,
+  // The access page describes the way out only, so the return has no note.
+  ...outAndBack(e({ from: "kamakura", to: "jomyoji", line: "Keikyu Bus", mode: "bus", operator: "keikyu-bus", minutes: 12,
     note: "From stand 4 at the East Exit: buses for Kamakura Reien, Kanazawa-hakkei or Highland. Get off at Jomyoji." })),
   // Sankeien's access page: city bus 58 or 101 from stand 1 at Negishi,
   // 10 minutes to Honmoku. Yokohama City Bus's flat fare, ¥220 cash or IC.
-  ...bothWays(e({ from: "negishi", to: "honmoku", line: "Yokohama City Bus · 58/101", mode: "bus", operator: "yokohama-city-bus", minutes: 10, fareJpy: 220,
+  // The way out only, as for Jomyoji: the return has no note.
+  ...outAndBack(e({ from: "negishi", to: "honmoku", line: "Yokohama City Bus · 58/101", mode: "bus", operator: "yokohama-city-bus", minutes: 10, fareJpy: 220,
     note: "From stand 1 at Negishi Station. Get off at Honmoku." })),
 ];
