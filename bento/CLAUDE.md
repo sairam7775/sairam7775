@@ -256,6 +256,17 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
 - Every tool validates its input with Zod and returns a JSON string. A
   bad input is an `is_error` result the model can recover from, never a
   throw. Tools that change the plan write to `ctx.proposal`, nothing else.
+- An error result says what was not done and names the working call: every
+  `plan_days` / `replan_day` error ends "Nothing was proposed.", and
+  `replan_day` given another city's place (or a city id) says which city
+  and gives the `plan_days` day-trip call with the real date and city id.
+- The honesty net (`honesty.ts`): a reply claiming a change or a waiting
+  proposal on a turn that proposed and applied nothing gets
+  `copy.chat.notChanged` appended, sent as a `replace` before the save.
+  Pattern-based: a paraphrase can slip through; the eval's
+  `honestAboutProposal` grades the same claims. A turn out of tool rounds
+  says `copy.chat.cappedSuggestion` (or `noReply`), never "Here is what
+  I'd suggest".
 - A `Proposal` (`diff.ts`) is validated on the way into `chat_messages`
   and again on the way out. `acceptProposal` is the only writer of
   `trip_cities`, `itinerary_days` and `itinerary_items` from the chat.
