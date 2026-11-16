@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { selectAll } from "@/lib/supabase/select-all";
 import { Tour } from "@/components/tour/tour";
 import { tourSeen } from "@/components/tour/seen";
 import { AppHeader } from "@/components/app-header";
@@ -46,11 +47,12 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
     .order("created_at", { ascending: false });
 
   // Ended trips with a plan and no answer yet get a "How did it go?" link.
-  const [{ data: routed }, { data: reviewed }] = await Promise.all([
-    supabase.from("trip_cities").select("trip_id"),
+  // trip_cities has a row per city of every trip, so it is paged.
+  const [routed, { data: reviewed }] = await Promise.all([
+    selectAll((from, to) => supabase.from("trip_cities").select("trip_id", { count: "exact" }).order("id").range(from, to)),
     supabase.from("trip_reviews").select("trip_id"),
   ]);
-  const hasRoute = new Set((routed ?? []).map((r) => r.trip_id));
+  const hasRoute = new Set(routed.map((r) => r.trip_id));
   const hasReview = new Set((reviewed ?? []).map((r) => r.trip_id));
   const today = new Date().toISOString().slice(0, 10);
 
