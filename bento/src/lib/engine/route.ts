@@ -80,6 +80,8 @@ export const CITY_HUBS: Record<string, string> = {
   "hiroshima-city": "hiroshima",
   himeji: "himeji",
   miyajima: "miyajima-pier",
+  yokohama: "yokohama",
+  kamakura: "kamakura",
 };
 
 /** Packing up, checking out, getting to the station, checking in at the
