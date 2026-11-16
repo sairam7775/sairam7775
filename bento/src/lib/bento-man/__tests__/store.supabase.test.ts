@@ -239,23 +239,38 @@ describe("place backgrounds", () => {
 });
 
 describe("SupabaseStore reference reads past the API's row limit", () => {
-  /** Answers like PostgREST: at most 1,000 rows a response, with a count. */
-  function capped(tables: Record<string, Record<string, unknown>[]>) {
+  /** Answers like PostgREST: at most `cap` rows a response, and a count only
+   *  when the query asks for `{ count: "exact" }`. */
+  function capped(tables: Record<string, Record<string, unknown>[]>, cap = 1000) {
     const from = vi.fn((table: string) => {
       const filters: [string, unknown][] = [];
+      let count: string | undefined;
       const query = {
-        select: () => query,
+        select: (_columns?: string, o?: { count?: string }) => ((count = o?.count), query),
         eq: (column: string, value: unknown) => (filters.push([column, value]), query),
         order: () => query,
         range: async (a: number, b: number) => {
           const rows = (tables[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v));
-          return { data: rows.slice(a, Math.min(b + 1, a + 1000)), error: null, count: rows.length };
+          return { data: rows.slice(a, Math.min(b + 1, a + cap)), error: null, count: count === "exact" ? rows.length : null };
         },
       };
       return query;
     });
     return new SupabaseStore({ from } as unknown as SupabaseClient, "trip", "user");
   }
+
+  it("reads everything when the server's limit is lower than a page", async () => {
+    const store = capped(
+      {
+        city_coverage: Array.from({ length: 650 }, (_, i) => ({ city_id: `city-${String(i).padStart(4, "0")}`, name: `City ${i}`, coverage_tier: "deep", verified_places: 0 })),
+        places_public: Array.from({ length: 610 }, (_, i) => ({ id: `p-${String(i).padStart(4, "0")}`, city_id: "city-0001", name: `Place ${i}` })),
+      },
+      300,
+    );
+
+    expect((await store.cities()).length).toBe(650);
+    expect((await store.places("city-0001")).length).toBe(610);
+  });
 
   it("reads every city and every place in a city", async () => {
     const store = capped({
