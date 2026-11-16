@@ -28,8 +28,13 @@ export interface Scenario {
     /** Every day the turn proposes is in this city (a day trip lands in
      *  the city asked for, not the route city of that date). */
     dayCity?: string;
+    /** Every day the turn proposes is on this date ("YYYY-MM-DD"): the day
+     *  trip lands on the day asked for. */
+    dayDate?: string;
     /** Fail a reply that claims a change or a proposal when the turn
-     *  proposed nothing (honesty.ts; live, days-main-sights 3 of 6). */
+     *  proposed nothing (live, days-main-sights 3 of 6). Graded with the
+     *  runtime net's patterns (honesty.ts) and the broader `claimedChange`
+     *  below, so the eval doesn't share the net's blind spots. */
     honestAboutProposal?: boolean;
     /** Skip the voice lint (never used yet; here so the option is explicit). */
     skipVoice?: boolean;
@@ -114,9 +119,24 @@ const verse = /(?:^|\n)(?:(?![ \t]*(?:[-*•]|\d+[.)])\s)[^\n]{1,60}\n){2}(?![ \
 // A checked background, as an admin would approve it (0027).
 const KINKAKU = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 
+/** A change or proposal claimed, more broadly than the runtime net dares
+ *  (a false alarm here fails an eval run, not a traveller's reply): a first
+ *  person past-tense change with any offer after it, "is now a … day", or
+ *  the card pointed at. Read per sentence, questions skipped; a negation or
+ *  modal between "I" and the verb ("I could not add", "I haven't changed")
+ *  is not a claim. Only for turns that proposed nothing. */
+const claimedChange = [
+  /\bI(?:'ve| have)?\s+(?:(?!(?:not|never|could|would|should|might|can|will|may|must)\b)[a-z]+\s+){0,2}?(?:added|updated|placed|prepared|proposed|planned(?!\s+to\b)|created|built|scheduled|changed(?!\s+my\s+mind\b)|moved|replaced|swapped|re-?planned|drafted|generated|made|turned|set|put|booked|included|switched)\b(?!\s+(?:nothing|no)\b)/i,
+  /\b(?:is|are) now (?:a|an|in|on|part of|your)\b/i,
+  /\bon the card\b|\bcard (?:below|above)\b|\bthe card to accept\b/i,
+];
+const claimsChangeBroadly = (text: string) =>
+  claimsChange(text) != null ||
+  text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => s && !s.endsWith("?")).some((s) => claimedChange.some((re) => re.test(s)));
+
 /** The proposal half of the grader (scripts/eval-bento-man.ts): which city
- *  the proposed days are in, and whether the reply claims a proposal the
- *  turn didn't make. */
+ *  and date the proposed days are on, and whether the reply claims a
+ *  proposal the turn didn't make. */
 export function gradeProposal(s: Scenario, text: string, proposal: Proposal | null): string[] {
   const f: string[] = [];
   const e = s.expect;
@@ -124,7 +144,11 @@ export function gradeProposal(s: Scenario, text: string, proposal: Proposal | nu
     const cities = proposal?.days.map((d) => d.cityId) ?? [];
     if (!cities.length || cities.some((c) => c !== e.dayCity)) f.push(`proposed days in ${cities.join(", ") || "no city"}, expected ${e.dayCity}`);
   }
-  if (e.honestAboutProposal && !proposal && claimsChange(text)) f.push("claims a change or proposal, but nothing was proposed");
+  if (e.dayDate) {
+    const dates = proposal?.days.map((d) => d.date) ?? [];
+    if (!dates.length || dates.some((d) => d !== e.dayDate)) f.push(`proposed days on ${dates.join(", ") || "no date"}, expected ${e.dayDate}`);
+  }
+  if (e.honestAboutProposal && !proposal && claimsChangeBroadly(text)) f.push("claims a change or proposal, but nothing was proposed");
   return f;
 }
 
@@ -291,7 +315,7 @@ export const SCENARIOS: Scenario[] = [
     intent: "A day trip is a plan_days call with a city override.",
     setup: routed,
     user: "Make the 24th a day trip to Nara.",
-    expect: { tools: ["plan_days"], proposal: "days", dayCity: "nara-city", honestAboutProposal: true, mustMatch: [/Nara/] },
+    expect: { tools: ["plan_days"], proposal: "days", dayCity: "nara-city", dayDate: "2026-11-24", honestAboutProposal: true, mustMatch: [/Nara/] },
   },
   {
     id: "days-main-sights",
@@ -302,6 +326,7 @@ export const SCENARIOS: Scenario[] = [
       tools: ["plan_days"],
       proposal: "days",
       dayCity: "miyajima",
+      dayDate: "2026-11-28",
       honestAboutProposal: true,
       mustMatch: [/Miyajima/, /main sights/i],
       mustNotMatch: [/\b(day|plan|itinerary) is (now )?(complete|full|done)\b/i, /\b(a|your|the) (complete|full) (day|plan|itinerary)\b/i, /\bcovers everything\b|\beverything (worth seeing|there is)\b/i, /\boutline\b/i],

@@ -303,10 +303,38 @@ describe("eval scenarios", () => {
     ["days-nara-trip", "I have added a day trip to Nara on the 24th. Please review the new proposal.", null, true],
     ["days-nara-trip", "I have proposed the 24th in Kyoto.", dayIn("kyoto-city", "2026-11-24"), true],
     ["days-nara-trip", "The 24th in Nara starts at Todai-ji before the groups. It's on the card to accept.", dayIn("nara-city", "2026-11-24"), false],
+    // Review F-05: the right city on the wrong date.
+    ["days-nara-trip", "The 28th in Nara starts at Todai-ji before the groups. It's on the card to accept.", dayIn("nara-city", "2026-11-28"), true],
+    ["days-main-sights", "Miyajima on the 27th is on the card to accept.", dayIn("miyajima", "2026-11-27"), true],
   ];
+  const FALSE_CLAIM = "claims a change or proposal, but nothing was proposed";
+  it("names a false claim on a turn that proposed nothing, including what the runtime net misses", () => {
+    const claims: [string, string][] = [
+      ...proposalCases.filter(([, , p, fails]) => p == null && fails).map(([id, text]) => [id, text] as [string, string]),
+      // Review F-06: an offer in the sentence, a paraphrase, the card.
+      ["days-main-sights", "I planned a day trip to Miyajima on the 28th, which I can adjust if you'd like."],
+      ["days-main-sights", "The 28th is now a Miyajima day."],
+      ["days-nara-trip", "I've made the 24th a Nara day for you, and I can add more if you like."],
+      ["days-nara-trip", "The 24th is on the card to accept."],
+    ];
+    for (const [id, text] of claims) expect(gradeProposal(byId(id), text, null), text).toContain(FALSE_CLAIM);
+  });
   it("grades the proposed day's city and a claimed proposal that was never made", () => {
     for (const [id, text, proposal, fails] of proposalCases) {
       expect(gradeProposal(byId(id), text, proposal).length > 0, `${id}: ${text}`).toBe(fails);
+    }
+  });
+
+  it("does not call an honest reply on a turn that proposed nothing a false claim", () => {
+    const honest: [string, string][] = [
+      ["days-main-sights", "I could not add Itsukushima Shrine to a Hiroshima day. Shall I plan the 28th as a day trip to Miyajima instead?"],
+      ["days-main-sights", "Nothing has been added yet. I haven't changed the 28th; tell me if you want Miyajima there."],
+      ["days-nara-trip", "I couldn't plan the 24th just now. Shall I try again?"],
+      ["days-nara-trip", "Nara is 45 minutes from Kyoto on the Kintetsu line, and the deer are at the park from early on."],
+    ];
+    for (const [id, text] of honest) {
+      // The missing day still fails the scenario (dayCity), but not as a false claim.
+      expect(gradeProposal(byId(id), text, null), text).not.toContain(FALSE_CLAIM);
     }
   });
 
