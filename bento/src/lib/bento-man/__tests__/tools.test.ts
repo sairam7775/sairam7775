@@ -39,10 +39,23 @@ describe("tool definitions", () => {
   it("the voice lint catches a claim that Bento's information is verified", () => {
     // Legal copy rule (bento/CLAUDE.md, "Legal pages"): never "verified" or
     // "checked" about Bento's information. Live replies said all three of these.
-    for (const claim of ["I have verified information for Kyoto, Osaka and Nara.", "There's no verified duration for it.", "Bento's verified data says two hours."]) {
+    for (const claim of [
+      "I have verified information for Kyoto, Osaka and Nara.", "There's no verified duration for it.", "Bento's verified data says two hours.",
+      "I have verified the opening hours.", "That time is verified in my records.", "Kyoto has 41 verified places.",
+      // Subject first (Codex review).
+      "Our hours are verified.", "Bento's information is verified.", "My places are all independently verified.", "The data here has been verified.",
+    ]) {
       expect(voiceLint(claim).map((v) => v.rule), claim).toEqual(["claim"]);
     }
-    for (const fine of ["That record is unverified, so I won't guess.", "Its hours aren't verified yet, so check before you go.", "Bento has it on file.", "I verify nothing myself; Bento's records are what I go by."]) {
+    for (const fine of [
+      "That record is unverified, so I won't guess.", "Its hours aren't verified yet, so check before you go.", "Bento has it on file.", "I verify nothing myself; Bento's records are what I go by.",
+      // "Verified" about something other than Bento's information.
+      "Your identity may need to be verified at the hotel.",
+      "Those hours are not independently verified, so check before you go.",
+      "Have your passport ready; it is verified at check-in.",
+      "Once the ryokan has verified your booking, they email a confirmation.",
+      "Your JR Pass exchange order is verified at the ticket office before they print the pass.",
+    ]) {
       expect(voiceLint(fine), fine).toEqual([]);
     }
   });
@@ -68,6 +81,14 @@ describe("tool definitions", () => {
     expect(SYSTEM_PROMPT).toMatch(/never a reason to skip a tool/);
     expect(SYSTEM_PROMPT).not.toMatch(/names a place, call get_place first/);
     expect(SYSTEM_PROMPT).toContain("- Facts. Use get_place before describing a place and route_between before describing a journey.");
+  });
+  it("the prompt keeps customs rules to the official source and models no decline line (variant X3)", () => {
+    // Measured on 49dde40 (gemini-3.1-flash-lite): customs allowance stated
+    // from memory 0 of 6 with X3, 5 of 6 before; the code-decline example
+    // line is gone with it.
+    expect(SYSTEM_PROMPT).toContain("Customs, medicine-import and visa rules are not yours to state, even roughly:");
+    expect(SYSTEM_PROMPT).not.toContain("Help people stay inside the rules on customs, medicines and visas");
+    expect(SYSTEM_PROMPT).not.toMatch(/isn't in my box/);
   });
   it("the voice lint catches Bento's internal words for coverage", () => {
     expect(voiceLint("Takayama is at stub tier.").map((v) => v.rule)).toEqual(["jargon"]);

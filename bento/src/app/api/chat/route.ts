@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
           events: {
             onText: (delta) => send({ type: "text", delta }),
             onTool: (name, phase, ok) => send({ type: "tool", name, phase, ok }),
+            onReplace: (text) => send({ type: "replace", text }),
           },
         });
         send({ type: "done", messageId: result.assistantMessageId, text: result.text, proposal: result.proposal });
