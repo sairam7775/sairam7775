@@ -8,6 +8,7 @@ import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
 import { firstHoldThen, runBentoMan } from "@/lib/bento-man/chat";
 import { chainBoundUsd, configuredEffort, configuredFallbacks, configuredModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
+import { proposalForClient } from "@/lib/bento-man/diff";
 import { createMockClient, mockModeEnabled } from "@/lib/bento-man/mock";
 import { AnthropicProvider } from "@/lib/bento-man/provider.anthropic";
 import { GeminiProvider } from "@/lib/bento-man/provider.gemini";
@@ -102,7 +103,8 @@ export async function POST(req: NextRequest) {
             onReplace: (text) => send({ type: "replace", text }),
           },
         });
-        send({ type: "done", messageId: result.assistantMessageId, text: result.text, proposal: result.proposal });
+        // The days' bases stay in the stored row for Accept; the card doesn't use them.
+        send({ type: "done", messageId: result.assistantMessageId, text: result.text, proposal: result.proposal && proposalForClient(result.proposal) });
       } catch (e) {
         // A turn that died after a model call still spent money (E2).
         send({ type: "error", message: friendly(e, keyVariable) });

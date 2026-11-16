@@ -11,7 +11,8 @@ code:
   - bento/src/lib/analytics/url.ts
   - bento/supabase/migrations/0020_trip_sharing.sql
   - bento/supabase/migrations/0024_share_expiry.sql
-last_reviewed: 2026-11-13
+  - bento/supabase/migrations/0030_renew_trip_share.sql
+last_reviewed: 2026-11-14
 ---
 
 # Trip sharing
@@ -49,7 +50,8 @@ A traveller can give the people they're travelling with a **link to their trip p
 - **"Until the trip ends"** works through the whole last day of the trip (UTC), and follows the trip's dates if they change later.
 - Bento's share actions work out every expiry from the traveller's choice, the trip's stored end date and the server's clock. A time sent by the browser is ignored. (The database itself would let a trip's owner change their own link's expiry directly; see Access below.)
 - "Until the trip ends" is refused for a trip that has ended or has no end date, before the current link is touched.
-- **Make a new link** deletes the old link and creates one with a new address; the old address stops working at once.
+- **Make a new link** deletes the old link and creates one with a new address in one database step (`renew_trip_share`), so the old address stops working at once. A failure inside the database rolls everything back and the old link keeps working. If the database finishes but its reply is lost on the way back, the traveller sees a failure although the link changed; the trip page shows the current link once it reloads. Two renews at once queue behind each other on the trip and leave one link.
+- "Until the trip ends" is checked again inside that step, by the same rule as the shared page, so a date change made in between can't leave a new link that never opens.
 - Pressing **Share** a second time on an already shared trip keeps the existing link.
 - The trip page, the shared page and the download agree on whether a link still works: they use one rule (`shareIsActive`, the same as the database's `shared_trip()`).
 - The link's address is the key:
@@ -81,19 +83,21 @@ A traveller can give the people they're travelling with a **link to their trip p
 - **If the shared plan can't be loaded,** because the database call fails or returns data in an unexpected shape, Bento's general error page appears: "That didn't load." with "It's on our side, not yours", and a way to try again. An unexpected shape is Bento's fault, so it's never shown as a switched-off link, and never as part of a plan.
 - **If changing the sharing fails:** the traveller returns to the trip page with "Couldn't change sharing for this trip. Try again in a moment."
   - A refused choice (such as "until the trip ends" for a trip that's over) is caught **before** the old link is touched.
-  - **Known gap:** making a new link is two steps, deleting the old link and then creating the new one. If the second step fails, the old link is gone and the trip is left **not shared**; sharing it again fixes it. Making this one database step would close the gap.
+  - **If making a new link fails,** the traveller sees "Couldn't make a new link. Try again in a moment." When the database step failed, nothing changed: the delete and the insert are one transaction, so the old link still works. (Only a reply lost after the database finished can mean the link did change.) Either way the trip page shows the link as it stands. A trip that isn't the traveller's, or "until the trip ends" for a trip that has ended by then, is refused with nothing changed.
 
 ## Code and tests
 
 - Expiry rules: [share-expiry.ts](../../../bento/src/lib/trips/share-expiry.ts), tested in [share-expiry.test.ts](../../../bento/src/lib/trips/__tests__/share-expiry.test.ts).
 - Turning sharing on, renewing and stopping: `shareTrip`, `renewShareLink` and `stopSharing` in [actions.ts](../../../bento/src/app/trips/[id]/actions.ts).
-  - [share-actions.test.ts](../../../bento/src/app/trips/[id]/share-actions.test.ts) tests `shareTrip`: the stored expiry and the refused choices.
-  - **Not covered by automated tests yet:** renewing, stopping, and a second tap on Share. These are checked by hand against the acceptance criteria above.
+  - [share-actions.test.ts](../../../bento/src/app/trips/[id]/share-actions.test.ts) tests `shareTrip` (the stored expiry and the refused choices) and `renewShareLink` (one `renew_trip_share` call with the server's expiry, and a failure or refusal shown as a failure).
+  - [renew-trip-share.test.ts](../../../bento/src/lib/db/renew-trip-share.test.ts) reads 0030 and checks it runs with the caller's rights, a safe search path and signed-in-only grants, and that no migration lets travellers write a token.
+  - **Not covered by automated tests yet:** stopping, a second tap on Share, and the function on a real database (it was run once on a local copy of the migrations, not in CI). These are checked by hand against the acceptance criteria above.
 - The shared page: [bento/src/app/shared/[token]/page.tsx](../../../bento/src/app/shared/[token]/page.tsx), and the "link doesn't open" page next to it.
 - The sheet the shared page and the download share: [shared-plan.ts](../../../bento/src/lib/trips/shared-plan.ts), tested in [shared-plan.test.ts](../../../bento/src/lib/trips/__tests__/shared-plan.test.ts).
 - Database:
   - [0020_trip_sharing.sql](../../../bento/supabase/migrations/0020_trip_sharing.sql): the `trip_shares` table, the token and `shared_trip()`;
-  - [0024_share_expiry.sql](../../../bento/supabase/migrations/0024_share_expiry.sql): expiry.
+  - [0024_share_expiry.sql](../../../bento/supabase/migrations/0024_share_expiry.sql): expiry;
+  - [0030_renew_trip_share.sql](../../../bento/supabase/migrations/0030_renew_trip_share.sql): `renew_trip_share()`, a new link in one transaction.
 - Address scrubbing for analytics: [url.ts](../../../bento/src/lib/analytics/url.ts).
 - The words on screen are in `copy.share` in [en.ts](../../../bento/src/copy/en.ts).
 - The rules agents must keep are in [bento/CLAUDE.md](../../../bento/CLAUDE.md), "Sharing".

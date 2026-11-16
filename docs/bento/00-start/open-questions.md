@@ -32,9 +32,9 @@ Where the original spec, the notes and the code disagree, or where something pla
 
 | # | Gap | Note |
 |---|---|---|
-| Q11 | "Make a new link" is two steps; if the second fails, the trip is left not shared | [trip sharing](../10-product/trip-sharing.md); a code fix would make it one database step |
+| Q11 | Fixed in code: "Make a new link" is one database step now (`renew_trip_share`, 0030), so a failure in the database leaves the old link working | [trip sharing](../10-product/trip-sharing.md); closed once 0030 runs on the live database before the code is deployed |
 | Q12 | Outline cities get full day plans, though the spec meant suggestions only | Decided: keep planning them, and label each planned day "Planned from the main sights here. There may be more worth adding." on the proposal card, the day box and the downloaded sheet, and in the tool result Bento Man reads ([coverage](../10-product/coverage.md)). The companions' shared sheet labels only days in a city on the route, not yet a day trip off it (Q16) |
-| Q13 | An older proposal can overwrite a day the traveller edited by hand since | [proposals and diffs](../10-product/proposals-and-diffs.md): only date proposals check for staleness |
+| Q13 | Partly addressed: an older day proposal no longer overwrites a day edited by hand since; date proposals that also carry days still can | [proposals and diffs](../10-product/proposals-and-diffs.md): 0031 compares each day's saved base under the hand-edit lock; `apply_proposal` returns `stale_day`, closes the card and applies nothing. Proposals stored before 0031 and date proposals with days are unchecked (those need each day's original date). Run on PGlite, single connection: true concurrency not exercised. |
 | Q14 | The Bento Man evaluation's model costs aren't counted against the caps | [costs](../40-non-functional/costs.md) |
 | Q15 | Platforms aren't part of train legs yet | [transit](../30-software/transit.md) |
 | Q16 | On the companions' shared sheet, a day trip to a city off the route shows the city's id instead of its name, and no main-sights line | [coverage](../10-product/coverage.md): `shared_trip()` returns coverage only for the route's cities. The fix is a reviewed migration so it also returns each day's city name and coverage level, then `shared-plan.ts` fills `DayRow.city` and the test pinning today's behaviour changes |

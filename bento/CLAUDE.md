@@ -179,8 +179,9 @@ Explained in `../docs/bento/50-operations/curation.md` and `../docs/bento/30-sof
 - A `station` in a seed record must be a station id in the transit seed
   (it is a foreign key). A place only a bus or a walk serves gets
   `station: null` and pays the engine's 45-minute fallback; add the stop
-  to the transit seed (`kansai-sanyo.ts`, `tokyo.ts`) instead when the
-  route matters.
+  to the transit seed (the network's file in `transit/seed/`) instead when
+  the route matters. A new city's file is registered in
+  `places/seed/index.ts`.
 - `conflicts` and `pairs` must point at existing ids in the same batch;
   the exporter fails otherwise.
 - Hours are same-day: `closes` must be after `opens`. An overnight venue
@@ -283,7 +284,21 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   counts; `curation_progress` stays admin-only because it counts drafts.
 - Accepting a proposal (`apply_proposal`) and changing the dates
   (`update_trip_dates`) are each ONE database function (0015): never add a
-  second write after them from TypeScript. A date change that would put a
+  second write after them from TypeScript. Each day of a proposal carries
+  `base`, the day as SAVED when it was made (not as a route proposed in the
+  same turn leaves it), compared before any write under the trip lock
+  shared with `replace_day_items` (0031). `apply_proposal` returns
+  `'applied'` or `'stale_day'`: a mismatch closes only that proposal as
+  rejected, applies nothing and returns normally so the close commits;
+  every other failure raises. The store reads no value (null or "") as applied (the
+  pre-0031 void function, so either deploy order is safe), and any other
+  value as an unknown outcome (`outcomeUnknown`: claim neither).
+  `dayBase` (diff.ts) and 0031's `order by` share one total order: change
+  both together. `base` never goes to the browser (`proposalForClient`).
+  Proposals without a base and date proposals with days are unchecked
+  (Q13); the latter need each day's original date before a sound check.
+  Run on PGlite on one connection; true concurrency not exercised.
+  A date change that would put a
   planned stop on a day it is closed, or a ticketed stop on a day with no
   ticket, is refused (`shift.ts`). Accepting a route drops planned days the
   new calendar gives to another city (day trips included: re-propose them).
@@ -517,8 +532,16 @@ Explained in `../docs/bento/10-product/trip-sharing.md`.
   traveller can write only their own share row's `expires_at` and
   `until_trip_end` (column grants and the existing own-trip-shares policy);
   the server derives them from the validated choice, stored trip end date
-  and server clock. A new link is a delete and an insert, so the old
-  address stops working.
+  and server clock. A new link is a delete and an insert in ONE database
+  function (`renew_trip_share`, 0030, security invoker, so RLS and these
+  grants still apply), so the old address stops working. A failure inside
+  the database rolls back and leaves the old link working; a reply lost
+  after the commit shows a failure although the link changed, and the page
+  shows the current link after reload. It locks the owned trip row first
+  (FOR UPDATE, like `apply_proposal`), so renews queue and can't deadlock
+  with a trip deletion, and re-checks "until the trip ends" by
+  `shared_trip()`'s rule under that lock. Never split it back into two
+  calls from TypeScript, and only a returned token counts as success.
 - `/shared/[token]` reads the plan from `shared_trip()` alone (definer
   rights; the visitor may have no account). It returns the route, the days'
   stops with only the facts the sheet shows (through `places_public`), and
@@ -612,14 +635,41 @@ Explained in `../docs/bento/30-software/transit.md`.
 - `seed/kansai-sanyo.ts` is the one source of truth for the corridor; the
   tests, the CLI and `supabase/seed_transit.sql` all derive from it. Never
   edit the SQL by hand.
+- Every network is registered in `seed/index.ts` (places: `places/seed/index.ts`);
+  the exporters, the CLI and the seed tests read only the index, and
+  `all-seeds.test.ts` fails on a seed file it doesn't list, a station id
+  used twice, a repeated (from, to, line) edge, an edge to an unknown
+  station or a place id used twice. A new network goes in a NEW file,
+  registered there, with its city's hub in `CITY_HUBS` (`engine/route.ts`)
+  in the same change. Edit seed files directly; never regenerate
+  `tokyo.ts` from the tools that first built it. `MemoryStore` keeps
+  importing the corridor files alone, on purpose.
+- `loadGraph` (and every whole-table reference read) pages through
+  `selectAll` (`lib/supabase/select-all.ts`): the API stops at 1,000 rows
+  a request without an error. A failed page fails the load; never cache
+  or return part of a table. If the row count changes between pages, the
+  read starts again (three tries, then it throws). Admin lists and the
+  trips page's `trip_cities` read page the same way. An unmapped city's hub is its smallest
+  station id (`hubFor`), never "whichever came first".
 - `seed/tokyo.ts` is Tokyo's core network (every Metro, Toei and Yamanote
   station, both airports, the Shinkansen to Kyoto and Shin-Osaka). No ODPT
   data: the repo is public and ODPT's licence forbids redistributing it.
   Order and km come from ja.wikipedia line tables, positions from Wikidata,
   minutes from each line's published end-to-end time. Its Shinkansen edges
-  end at Kansai stations, so build the graph from both seeds. JR East has
+  end at Kansai stations, so build the graph from every seed (the index). JR East has
   no fare table yet, so JR rides count as unpriced. Walks carry 3 minutes
   of waiting because walks never pay the transfer penalty.
+- `seed/kanagawa.ts` is Yokohama and Kamakura (Enoshima's stations are
+  `cityId: "kamakura"`, where its places are filed); Hakone goes in the
+  same file later. Same sources as Tokyo; the two bus stops (no open
+  position) sit at the Wikidata position of the place each serves, marked
+  approximate. JR minutes follow published journey times from official
+  visitor pages, the larger where they differ (not JR East's site).
+  Priced only from
+  operators' own fare pages: Minatomirai and Enoden bands in `fares.ts`,
+  exact fares on the Blue Line and city bus edges; JR East, Tokyu and
+  Keikyu Bus are unpriced. The Toyoko Limited Express keeps one line name
+  onto the Minatomirai Line, so the through train is one leg.
 
 ## Walkthrough
 

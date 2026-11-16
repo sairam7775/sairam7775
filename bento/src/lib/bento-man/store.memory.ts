@@ -13,7 +13,8 @@ import { miyajima } from "@/lib/places/seed/miyajima";
 import { himeji } from "@/lib/places/seed/himeji";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import type { CoverageTier } from "@/lib/types";
-import type { Proposal } from "./diff";
+import { baseMatches, type Proposal } from "./diff";
+import { copy } from "@/copy";
 import { allocateDates } from "@/lib/engine/route";
 import { DEFAULT_PREFS, nightsBetween, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripCityRow, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
@@ -235,7 +236,16 @@ export class MemoryStore implements TripStore {
     } else this.days.push({ date: day.date, cityId: day.cityId, items });
   }
 
-  async applyProposal(p: Proposal): Promise<void> {
+  async applyProposal(p: Proposal, messageId?: string): Promise<void> {
+    const message = messageId ? this.messages.find((m) => m.id === messageId) : this.messages.find((m) => m.proposal === p && m.status === "proposed");
+    if (messageId && message?.status !== "proposed") throw new Error(copy.trip.proposals.answered);
+    // Combined date/day proposals retain their previous behaviour until
+    // every day carries its original date (tools may plan before a shift).
+    if (!p.dates && p.days.some((d) => d.base !== undefined &&
+      !baseMatches(d.base, this.days.find((x) => x.date === d.date)?.items ?? []))) {
+      if (message) message.status = "rejected";
+      throw new Error(copy.trip.proposals.staleDay);
+    }
     if (p.dates) {
       const d = p.dates;
       if (this.trip.startDate !== d.before.startDate || this.trip.endDate !== d.before.endDate) {

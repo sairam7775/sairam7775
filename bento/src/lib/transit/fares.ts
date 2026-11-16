@@ -24,6 +24,17 @@ const BANDS: Record<string, [number, number][]> = {
   "tokyo-metro": [[6, 178], [11, 209], [19, 252], [27, 293], [40, 324]],
   "toei-subway": [[4, 178], [9, 220], [15, 272], [21, 325], [27, 377], [46, 430]],
   rinkai: [[3, 210], [6, 272], [9, 335], [13, 398]],
+  /** Kanagawa (Yokohama and Kamakura), from the operators' own fare pages,
+   *  November 2026. Each band table reproduces every station pair of the
+   *  operator's published table, using ja.wikipedia's operating km.
+   *  Minatomirai Line: IC fares (¥200 / ¥230 by ticket), 2023-03-18 table at
+   *  mm21railway.co.jp/info/ticket.html; the ¥20 change discount with some
+   *  Tokyu, Keikyu and Sotetsu stations is not modelled. Enoden: the one fare
+   *  enoden.co.jp/train/fare/ publishes. JR East, Tokyu and Keikyu Bus have
+   *  no table. The Blue Line and city bus rides carry exact fares on their
+   *  edges in seed/kanagawa.ts. */
+  minatomirai: [[3, 193], [5, 224]],
+  enoden: [[2, 200], [4, 220], [7, 260], [10, 310]],
   /** Flat fares. */
   hiroden: [[999, 240]],
   "kyoto-bus": [[999, 230]],

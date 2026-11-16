@@ -49,6 +49,14 @@ export async function acceptProposal(formData: FormData) {
     await store.applyProposal(proposal, messageId);
   } catch (e) {
     const why = e instanceof Error ? e.message : copy.trip.proposals.notAppliedUnknown;
+    if (why === copy.trip.proposals.staleDay || why === copy.trip.proposals.outcomeUnknown) {
+      // The RPC committed something (the rejection, or an outcome we
+      // couldn't read), so refresh both pages that show the card and the
+      // plan, and say it alone: neither is "That didn't apply".
+      revalidatePath(`/trips/${tripId}`);
+      revalidatePath(`/trips/${tripId}/vault`);
+      redirect(`/trips/${tripId}?error=${encodeURIComponent(why)}`);
+    }
     redirect(`/trips/${tripId}?error=${encodeURIComponent(copy.trip.proposals.notApplied(why))}`);
   }
 
@@ -100,8 +108,9 @@ const ShareForm = z.object({
 const StopShareForm = z.object({ tripId: z.string().uuid(), from: z.enum(["trip", "print"]).default("trip") });
 
 /** Sharing the plan by link (0020/0024). The database makes the token; a new
- *  link is the old row deleted and a fresh one inserted, so the old address
- *  stops working at once. Expiry is derived from a choice and stored trip
+ *  link is the old row deleted and a fresh one inserted in one database
+ *  function (`renew_trip_share`, 0030), so the old address stops working at
+ *  once and a failure in the database leaves it working. Expiry is derived from a choice and stored trip
  *  dates, never from a timestamp sent by the browser. */
 export async function shareTrip(formData: FormData) {
   await changeShare(formData, "on");
@@ -132,7 +141,7 @@ async function changeShare(formData: FormData, how: "on" | "renew" | "off") {
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) redirect("/sign-in");
-  const failed = `/trips/${tripId}?error=${encodeURIComponent(copy.share.failed)}#share`;
+  const failed = `/trips/${tripId}?error=${encodeURIComponent(how === "renew" ? copy.share.renewFailed : copy.share.failed)}#share`;
   let expiry: ShareExpiry = { expires_at: null, until_trip_end: false };
   if (how !== "off") {
     const { data: trip, error } = await db.from("trips").select("end_date").eq("id", tripId).maybeSingle();
@@ -147,11 +156,22 @@ async function changeShare(formData: FormData, how: "on" | "renew" | "off") {
       redirect(failed);
     }
   }
-  if (how !== "on") {
+  if (how === "renew") {
+    // One transaction (0030): a failure in the database rolls back and the old
+    // link keeps working. It re-checks "until the trip ends" under the trip lock.
+    // A refusal is an error, so only a returned token counts as a new link.
+    const { data: token, error } = await db.rpc("renew_trip_share", {
+      p_trip: tripId,
+      p_expires_at: expiry.expires_at,
+      p_until_trip_end: expiry.until_trip_end,
+    });
+    if (error || typeof token !== "string" || !/^[0-9a-f]{32}$/.test(token)) redirect(failed);
+  }
+  if (how === "off") {
     const { error } = await db.from("trip_shares").delete().eq("trip_id", tripId);
     if (error) redirect(failed);
   }
-  if (how !== "off") {
+  if (how === "on") {
     const { error } = await db.from("trip_shares").insert({ trip_id: tripId, ...expiry });
     // Already shared (a second tap): the link there is stays.
     if (error && error.code !== "23505") redirect(failed);

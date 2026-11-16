@@ -5,6 +5,7 @@ import { buildGraph } from "@/lib/transit/graph";
 import { SupabaseStore } from "../store.supabase";
 import { buildTripView, dayCoverage } from "../trip-view";
 import { planDocument } from "@/lib/trips/plan-document";
+import { computeDayDiff } from "../diff";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
 
@@ -21,7 +22,7 @@ function fixture() {
   const from = vi.fn((table: string) => {
     const query = Object.assign(Promise.resolve({ data: structuredClone(rows[table]), error: errors[table] ?? null }), {
       select: (columns: string) => { selectCalls.push([table, columns]); return query; },
-      eq: () => query, in: () => query, order: () => query, limit: () => query,
+      eq: () => query, in: () => query, order: () => query, limit: () => query, range: () => query,
       maybeSingle: () => query, single: () => query,
       upsert: async (row: Record<string, unknown>) => {
         rows[table] = row;
@@ -39,7 +40,10 @@ function fixture() {
     if (rpcErrors[name]) return { error: rpcErrors[name] };
     if (name === "update_trip_dates") Object.assign(trip, args.p_patch);
     if (name === "replace_day_items") rows.itinerary_days = [{ date: args.p_date, city_id: args.p_city, itinerary_items: [] }];
-    if (name === "apply_proposal") rows.chat_messages = null;
+    if (name === "apply_proposal") {
+      rows.chat_messages = null;
+      return { data: "applied", error: null };
+    }
     return { error: null };
   });
   const db = { from, rpc } as unknown as SupabaseClient;
@@ -49,6 +53,62 @@ function fixture() {
 }
 
 describe("request-local SupabaseStore reads", () => {
+  it("passes a populated base unchanged and keeps old proposals without one", async () => {
+    const { store, rpc } = fixture();
+    const diff = computeDayDiff([{ placeId: "a", name: "A", sortOrder: 0, startMin: 540, locked: true }], {
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
+      fareKind: "exact", considered: [], warnings: [],
+    });
+    await store.applyProposal({ summary: "Plan", days: [diff] }, "message");
+    expect(diff.base).toHaveLength(1);
+    expect(rpc).toHaveBeenLastCalledWith("apply_proposal", expect.objectContaining({
+      p_days: [expect.objectContaining({ base: diff.base })],
+    }));
+    delete diff.base;
+    await store.applyProposal({ summary: "Old", days: [diff] }, "message");
+    expect((rpc.mock.calls.at(-1)![1].p_days as object[])[0]).not.toHaveProperty("base");
+  });
+  it("does not turn an RPC failure into a stale refusal", async () => {
+    const { store, rpcErrors } = fixture();
+    rpcErrors.apply_proposal = new Error("write failed");
+    await expect(store.applyProposal({ summary: "Plan", days: [] }, "message")).rejects.toThrow("write failed");
+  });
+  it("takes the outcome from the RPC itself: 'applied' resolves, with no second query", async () => {
+    const { store, rpc, count } = fixture();
+    rpc.mockResolvedValueOnce({ data: "applied", error: null });
+    await expect(store.applyProposal({ summary: "Plan", days: [] }, "message")).resolves.toBeUndefined();
+    expect(count("chat_messages")).toBe(0);
+  });
+  it("passes an empty base to p_days and maps 'stale_day' to copy", async () => {
+    const { store, rpc } = fixture();
+    const diff = computeDayDiff([], {
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
+      fareKind: "exact", considered: [], warnings: [],
+    });
+    rpc.mockResolvedValueOnce({ data: "stale_day", error: null });
+    await expect(store.applyProposal({ summary: "Plan", days: [diff] }, "message")).rejects.toThrow(copy.trip.proposals.staleDay);
+    expect(rpc).toHaveBeenCalledWith("apply_proposal", expect.objectContaining({
+      p_days: [expect.objectContaining({ base: [] })],
+    }));
+  });
+  it("treats no value as applied: the function before 0031 returns void (null, or \"\" where void is sent as an empty string), and only once it has applied", async () => {
+    for (const data of [null, undefined, ""]) {
+      const { store, rpc } = fixture();
+      rpc.mockResolvedValueOnce({ data: data as unknown as string, error: null });
+      await expect(store.applyProposal({ summary: "Plan", days: [] }, "message"), String(data)).resolves.toBeUndefined();
+    }
+  });
+  it("says the outcome is unknown for any other value, claiming neither success nor a stale refusal", async () => {
+    expect(copy.trip.proposals.outcomeUnknown).toEqual(expect.any(String));
+    for (const data of ["accepted", "Applied", "stale", 1]) {
+      const { store, rpc } = fixture();
+      // What a misbehaving database could send; the mock's type only knows strings.
+      rpc.mockResolvedValueOnce({ data: data as string, error: null });
+      await expect(store.applyProposal({ summary: "Plan", days: [] }, "message"), String(data)).rejects.toThrow(copy.trip.proposals.outcomeUnknown);
+    }
+  });
   it("shares concurrent and sequential state/city reads and keeps stores isolated", async () => {
     const { store, db, count } = fixture();
     const [first, second] = await Promise.all([store.state(), store.state()]);
@@ -296,5 +356,50 @@ describe("a saved day's own city", () => {
     expect(dayCoverage(view.selectedMeta!, view.selectedDay!.items.length)).toMatchObject({ words: copy.coverage.outline, editable: true, mainSights: true });
     const doc = planDocument(state, view.dayList, [], new Map(), new Map());
     expect(doc.days.map((d) => [d.city, d.mainSights])).toEqual([["Hiroshima", false], ["Miyajima", true], ["Miyajima", false], ["—", false]]);
+  });
+});
+
+describe("SupabaseStore reference reads past the API's row limit", () => {
+  /** Answers like PostgREST: at most `cap` rows a response, and a count only
+   *  when the query asks for `{ count: "exact" }`. */
+  function capped(tables: Record<string, Record<string, unknown>[]>, cap = 1000) {
+    const from = vi.fn((table: string) => {
+      const filters: [string, unknown][] = [];
+      let count: string | undefined;
+      const query = {
+        select: (_columns?: string, o?: { count?: string }) => ((count = o?.count), query),
+        eq: (column: string, value: unknown) => (filters.push([column, value]), query),
+        order: () => query,
+        range: async (a: number, b: number) => {
+          const rows = (tables[table] ?? []).filter((r) => filters.every(([c, v]) => r[c] === v));
+          return { data: rows.slice(a, Math.min(b + 1, a + cap)), error: null, count: count === "exact" ? rows.length : null };
+        },
+      };
+      return query;
+    });
+    return new SupabaseStore({ from } as unknown as SupabaseClient, "trip", "user");
+  }
+
+  it("reads everything when the server's limit is lower than a page", async () => {
+    const store = capped(
+      {
+        city_coverage: Array.from({ length: 650 }, (_, i) => ({ city_id: `city-${String(i).padStart(4, "0")}`, name: `City ${i}`, coverage_tier: "deep", verified_places: 0 })),
+        places_public: Array.from({ length: 610 }, (_, i) => ({ id: `p-${String(i).padStart(4, "0")}`, city_id: "city-0001", name: `Place ${i}` })),
+      },
+      300,
+    );
+
+    expect((await store.cities()).length).toBe(650);
+    expect((await store.places("city-0001")).length).toBe(610);
+  });
+
+  it("reads every city and every place in a city", async () => {
+    const store = capped({
+      city_coverage: Array.from({ length: 1200 }, (_, i) => ({ city_id: `city-${String(i).padStart(4, "0")}`, name: `City ${i}`, coverage_tier: "deep", verified_places: 0 })),
+      places_public: Array.from({ length: 1005 }, (_, i) => ({ id: `p-${String(i).padStart(4, "0")}`, city_id: "city-0001", name: `Place ${i}` })),
+    });
+
+    expect((await store.cities()).length).toBe(1200);
+    expect((await store.places("city-0001")).length).toBe(1005);
   });
 });

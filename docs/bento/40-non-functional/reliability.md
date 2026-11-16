@@ -6,7 +6,7 @@ code:
   - bento/supabase/migrations/0015_atomic_trip_edits.sql
   - bento/src/lib/bento-man/provider.ts
   - bento/src/app/api/cron/
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-14
 ---
 
 # Reliability
@@ -24,17 +24,18 @@ last_reviewed: 2026-11-13
 
 ## How it's checked
 
-- Database functions tested on PGlite before being applied (migrations 0015, 0028, 0029).
+- Database functions tested on PGlite before being applied (migrations 0015, 0028, 0029, 0030, 0031; one connection, so two requests truly at once are not exercised).
+  - 0030 (`renew_trip_share`): all migrations replayed on one PGlite connection, run as the owner, another account, no account and `anon`, including a forced insert failure and the "until the trip ends" re-check. Two renews were run one after another only: PGlite has one connection, so renews really at the same moment, and a renew meeting a trip deletion, were not exercised.
+- Known gap for 0031: no test runs an Accept and a hand edit on two connections at once. The repo has no multi-connection database harness and PGlite is single-connection, so the shared trip lock is checked only in the migration's text (`bento/src/lib/db/stale-proposals.test.ts`).
 - Unit tests for the provider's retry and fallback: `bento/src/lib/bento-man/__tests__/provider.gemini.test.ts`.
 - `knowledge/checklists/verification.md` (shared knowledge base) for every change.
 
 ## Evidence
 
-- Migrations `0015_atomic_trip_edits.sql`, `0016_date_proposals.sql`, `0028_trip_dates_guard.sql`.
+- Migrations `0015_atomic_trip_edits.sql`, `0016_date_proposals.sql`, `0028_trip_dates_guard.sql`, `0030_renew_trip_share.sql`, `0031_stale_proposals.sql`.
 - The analytics-deletion retry: `bento/src/app/api/cron/` (Vercel cron, needs `CRON_SECRET`).
 
 ## Known gaps
 
-- "Make a new link" for a shared trip is two steps; if the second fails, the trip is left not shared ([trip sharing](../10-product/trip-sharing.md)).
 - No backup or restore runbook. Supabase's free plan has limited backups; check the plan before relying on it.
 - No uptime or error-rate target, and no alerting beyond Vercel's and Supabase's dashboards.

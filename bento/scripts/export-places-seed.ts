@@ -7,16 +7,8 @@
  * record a human has verified is never overwritten by a re-export — the
  * signature stands until someone withdraws it in /admin.
  */
-import { kyoto } from "../src/lib/places/seed/kyoto";
-import { osaka } from "../src/lib/places/seed/osaka";
-import { nara } from "../src/lib/places/seed/nara";
-import { hiroshima } from "../src/lib/places/seed/hiroshima";
-import { miyajima } from "../src/lib/places/seed/miyajima";
-import { himeji } from "../src/lib/places/seed/himeji";
-import { tokyo } from "../src/lib/places/seed/tokyo";
+import { allPlaces as all } from "../src/lib/places/seed";
 import type { PlaceSeed } from "../src/lib/places/seed/types";
-
-const all: PlaceSeed[] = [...kyoto, ...osaka, ...nara, ...hiroshima, ...miyajima, ...himeji, ...tokyo];
 
 const seen = new Set<string>();
 for (const p of all) {

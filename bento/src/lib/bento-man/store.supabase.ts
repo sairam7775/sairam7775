@@ -4,8 +4,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlaceInput } from "@/lib/engine/types";
 import { rowToPlace } from "@/lib/engine/load";
-import { CITY_HUBS, allocateDates, type CityFacts } from "@/lib/engine/route";
+import { allocateDates, hubFor, type CityFacts } from "@/lib/engine/route";
 import { loadGraph } from "@/lib/transit/load";
+import { selectAll } from "@/lib/supabase/select-all";
 import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
@@ -48,6 +49,7 @@ function dayRows(p: Proposal) {
   return p.days.map((d) => ({
     date: d.date,
     city_id: d.cityId ?? "",
+    ...(d.base !== undefined ? { base: d.base } : {}),
     items: d.after.map((it, i) => dayItemRow({
       placeId: it.placeId, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked, reason: it.reason,
       reasonTerms: it.reasonTerms, arriveMode: it.arriveMode, arriveMinutes: it.arriveMinutes, arriveDetail: it.arriveDetail,
@@ -291,14 +293,14 @@ export class SupabaseStore implements TripStore {
   }
 
   private async loadCities(): Promise<CityFacts[]> {
-    const { data, error } = await this.db.from("city_coverage").select("city_id, name, coverage_tier, transit_note, verified_places");
-    if (error) throw error;
+    // Every city, past the API's row limit: whole-Japan coverage outgrows one page.
+    const data = await selectAll((from, to) =>
+      this.db.from("city_coverage").select("city_id, name, coverage_tier, transit_note, verified_places", { count: "exact" }).order("city_id").range(from, to),
+    );
     const graph = await this.graph();
-    this.tierCache = new Map((data ?? []).map((c) => [c.city_id, c.coverage_tier as CoverageTier]));
-    return (data ?? []).map((c) => {
-      const hub = CITY_HUBS[c.city_id];
-      let hubStation: string | null = hub && graph.stations.has(hub) ? hub : null;
-      if (!hubStation) for (const s of graph.stations.values()) if (s.cityId === c.city_id) { hubStation = s.id; break; }
+    this.tierCache = new Map(data.map((c) => [c.city_id, c.coverage_tier as CoverageTier]));
+    return data.map((c) => {
+      const hubStation = hubFor(c.city_id, graph);
       return { id: c.city_id, name: c.name, tier: c.coverage_tier as CoverageTier, verifiedPlaces: Number(c.verified_places ?? 0), transitNote: c.transit_note ?? null, hubStation };
     });
   }
@@ -309,9 +311,11 @@ export class SupabaseStore implements TripStore {
   }
 
   async places(cityId: string): Promise<PlaceInput[]> {
-    const [tier, { data, error }] = await Promise.all([this.tierOf(cityId), this.db.from("places_public").select("*").eq("city_id", cityId)]);
-    if (error) throw error;
-    return (data ?? []).map((r) => rowToPlace(r, tier));
+    const [tier, data] = await Promise.all([
+      this.tierOf(cityId),
+      selectAll((from, to) => this.db.from("places_public").select("*", { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
+    ]);
+    return data.map((r) => rowToPlace(r, tier));
   }
 
   async searchPlaces(query: string, cityId?: string | null): Promise<PlaceInput[]> {
@@ -380,7 +384,7 @@ export class SupabaseStore implements TripStore {
     // One transaction: claiming the proposal, the route (and the days it
     // orphans), every day, and closing the older proposals. A failure
     // anywhere leaves the trip, and the proposal, exactly as they were.
-    const { error } = await this.db.rpc("apply_proposal", {
+    const { data: outcome, error } = await this.db.rpc("apply_proposal", {
       p_trip: this.tripId,
       p_message: messageId,
       p_route: routeRows(p, meta),
@@ -390,6 +394,18 @@ export class SupabaseStore implements TripStore {
     });
     if (error) throw error;
     this.stateCache = null;
+    // No value, with no error: the database doesn't have 0031 yet. That
+    // function returns void and either raises or has applied and
+    // committed, so no value means applied. A void result is null, or ""
+    // where it is sent as an empty string (Postgres prints void as "").
+    // 0031's function never returns null or "".
+    if (outcome == null || outcome === "" || outcome === "applied") return;
+    // A day changed since the proposal was made: the RPC returns (so its
+    // close of the proposal commits) instead of raising, and applied nothing.
+    if (outcome === "stale_day") throw new Error(copy.trip.proposals.staleDay);
+    // Anything else: the call finished but we can't say what it did, so
+    // claim neither success nor failure.
+    throw new Error(copy.trip.proposals.outcomeUnknown);
   }
 
   /** A proposal that moves the dates: the date change (as setTripDates

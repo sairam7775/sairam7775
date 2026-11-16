@@ -506,6 +506,8 @@ export const en = {
       body: "Give Bento Man the dates and a route and each day gets a compartment here, sized to the time it takes.",
     },
     proposals: {
+      staleDay: "The plan has changed since I suggested this, so I've set my suggestion aside. Ask me again and I'll plan from how it looks now.",
+      outcomeUnknown: "Check the plan below: I couldn't confirm whether that went through. If it didn't, ask me again.",
       answered: "That proposal has already been answered.",
       unreadable: "That proposal can't be read any more. Ask Bento Man again.",
       notApplied: (why: string) => `That didn't apply: ${why}`,
@@ -751,6 +753,8 @@ export const en = {
     stop: "Stop sharing",
     stopConfirm: "Stop sharing this plan? The link stops working for everyone who has it.",
     failed: "Couldn't change sharing for this trip. Try again in a moment.",
+    // After this the page reads the link again, so it shows whichever link works.
+    renewFailed: "Couldn't make a new link. Try again in a moment.",
     printHint: "The link in this plan opens only for you. Share the trip to give your companions a link that works for them.",
     // The shared page.
     viewerNote: "A trip plan shared with you on Bento. This page always shows the latest version.",

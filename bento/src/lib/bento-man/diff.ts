@@ -31,10 +31,18 @@ export const DiffItemSchema = z.object({
 });
 export type DiffItem = z.infer<typeof DiffItemSchema>;
 
+const DayBaseItemSchema = z.object({
+  placeId: z.string(), sortOrder: z.number().int(), locked: z.boolean(),
+  startMin: z.number().int().nullable(), durationMin: z.number().int().nullable(),
+  arriveMode: z.string().nullable(), arriveMinutes: z.number().int().nullable(), arriveDetail: z.string().nullable(),
+});
+
 export const DayDiffSchema = z.object({
   kind: z.literal("day"),
   date: z.string(),
   cityId: z.string(),
+  /** Absent on legacy proposals; [] means the day was empty. */
+  base: z.array(DayBaseItemSchema).optional(),
   /** The day as it would be, in order, each item flagged against today. */
   after: z.array(DiffItemSchema),
   /** What the proposal drops. */
@@ -119,6 +127,19 @@ export function parseProposal(raw: unknown): Proposal | null {
   return r.success ? r.data : null;
 }
 
+/** The proposal as the browser gets it: without each day's `base`, which
+ *  only the accept check on the server reads (from the stored row). */
+export function proposalForClient(p: Proposal): Proposal {
+  return {
+    ...p,
+    days: p.days.map((d) => {
+      const day = { ...d };
+      delete day.base;
+      return day;
+    }),
+  };
+}
+
 /** An itinerary item as it exists today. Enough to diff against. */
 export interface ExistingItem {
   placeId: string;
@@ -126,9 +147,73 @@ export interface ExistingItem {
   sortOrder: number;
   startMin: number | null;
   locked: boolean;
+  durationMin?: number | null;
+  arriveMode?: string | null;
+  arriveMinutes?: number | null;
+  arriveDetail?: string | null;
 }
 
-export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: { id: string; nameJa?: string | null }[] = []): DayDiff {
+type DayBaseItem = z.infer<typeof DayBaseItemSchema>;
+
+// Nulls last, as Postgres sorts ascending. Strings by code point, which is
+// the byte order of UTF-8 and so of `collate "C"`; numbers as numbers;
+// false before true.
+function cmp(a: string | number | boolean | null, b: string | number | boolean | null): number {
+  if (a === b) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  if (typeof a === "string" && typeof b === "string") {
+    const x = [...a], y = [...b];
+    for (let i = 0; i < Math.min(x.length, y.length); i++) {
+      const d = x[i].codePointAt(0)! - y[i].codePointAt(0)!;
+      if (d) return d;
+    }
+    return x.length - y.length;
+  }
+  return Number(a) - Number(b);
+}
+
+/** One total order over every compared field, so two stops that share a
+ *  sort order still come out the same way here and in 0031's
+ *  `order by i.sort_order, i.place_id collate "C" nulls last, <start
+ *  minute> nulls last, i.duration_min nulls last, i.locked, i.arrive_mode
+ *  collate "C" nulls last, i.arrive_minutes nulls last, i.arrive_detail
+ *  collate "C" nulls last`. Change both together. Stops equal on every
+ *  field are identical in the base, so their order can't matter. */
+function byBaseOrder(a: DayBaseItem, b: DayBaseItem): number {
+  return a.sortOrder - b.sortOrder
+    || cmp(a.placeId, b.placeId)
+    || cmp(a.startMin, b.startMin)
+    || cmp(a.durationMin, b.durationMin)
+    || cmp(a.locked, b.locked)
+    || cmp(a.arriveMode, b.arriveMode)
+    || cmp(a.arriveMinutes, b.arriveMinutes)
+    || cmp(a.arriveDetail, b.arriveDetail);
+}
+
+/** Only fields hand edits write: no generated row ids or display names. */
+export function dayBase(items: ExistingItem[]): DayBaseItem[] {
+  return items.map((i) => ({
+    placeId: i.placeId, sortOrder: i.sortOrder, locked: i.locked, startMin: i.startMin,
+    durationMin: i.durationMin ?? null, arriveMode: i.arriveMode ?? null,
+    arriveMinutes: i.arriveMinutes ?? null, arriveDetail: i.arriveDetail ?? null,
+  })).sort(byBaseOrder);
+}
+
+/** The accept check: the stored base, as stored (the database doesn't
+ *  re-sort it either), against the day as saved now. */
+export function baseMatches(base: DayBaseItem[], saved: ExistingItem[]): boolean {
+  const now = dayBase(saved);
+  const keys: (keyof DayBaseItem)[] = ["placeId", "sortOrder", "locked", "startMin", "durationMin", "arriveMode", "arriveMinutes", "arriveDetail"];
+  return base.length === now.length && base.every((b, i) => keys.every((k) => (b[k] ?? null) === (now[i][k] ?? null)));
+}
+
+/** `existing` is the day the plan is compared with (change flags, removed
+ *  stops). `saved` is the day as stored for that date, recorded as `base`
+ *  for the stale check at accept. They differ only when the caller plans
+ *  against a working state, such as a route proposed earlier in the turn
+ *  that drops the day's saved city. */
+export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: { id: string; nameJa?: string | null }[] = [], saved: ExistingItem[] = existing): DayDiff {
   const afterIds = new Set(plan.items.map((it) => it.placeId));
   // "Moved" means its place in the sequence changed relative to the other
   // stops that survived — not that the clock shifted because something
@@ -181,6 +266,7 @@ export function computeDayDiff(existing: ExistingItem[], plan: DayPlan, places: 
     kind: "day",
     date: plan.date,
     cityId: plan.cityId,
+    base: dayBase(saved),
     after,
     removed,
     summary,
