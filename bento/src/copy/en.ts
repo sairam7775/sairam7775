@@ -740,6 +740,8 @@ export const en = {
     stop: "Stop sharing",
     stopConfirm: "Stop sharing this plan? The link stops working for everyone who has it.",
     failed: "Couldn't change sharing for this trip. Try again in a moment.",
+    // After this the page reads the link again, so it shows whichever link works.
+    renewFailed: "Couldn't make a new link. Try again in a moment.",
     printHint: "The link in this plan opens only for you. Share the trip to give your companions a link that works for them.",
     // The shared page.
     viewerNote: "A trip plan shared with you on Bento. This page always shows the latest version.",
