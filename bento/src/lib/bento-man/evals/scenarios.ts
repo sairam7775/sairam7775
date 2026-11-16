@@ -116,12 +116,20 @@ const dinnerAffirmed = new RegExp(
   ].join("|"),
   "i",
 );
-// A day or plan called complete, full or done, with no negation before it in
-// its clause: "do not feel this day is complete" and "never assume the plan is
-// complete" say the opposite, and "isn't complete" never matches at all.
-const NEGATION = String.raw`\b(?:not|never|cannot|can't|don't|doesn't|didn't|won't|shouldn't|wouldn't)\b`;
+// A day or plan called complete, full or done, unless something before it in
+// its clause says otherwise: "do not feel this day is complete", "never assume
+// the plan is complete", "No plan is complete without Miyajima", "let me know
+// if the day is complete". A clause ends at punctuation, a dash or a joining
+// word (as in honesty.ts), so "I did not add the ferry and the day is
+// complete" still claims it. "Not only" is not a negation; "not only is the
+// day complete" is itself the claim.
+const EXCUSE = String.raw`\b(?:not(?!\s+only\b)|never|cannot|no|if|whether)\b|n't\b`;
+const JOINER = String.raw`\b(?:so|but|and|because|which|while|though|although)\b`;
+const BREAK = String.raw`[.,;:?!\n–—]|\s-\s`;
+const SUBJECT = String.raw`(?:day|plan|itinerary)`;
 const calledComplete = new RegExp(
-  String.raw`(?:^|[.,;:?!\n])(?:(?!${NEGATION})[^.,;:?!\n])*?\b(?:day|plan|itinerary) is (?:now )?(?:complete|full|done)\b`,
+  String.raw`(?:^|${BREAK}|${JOINER})(?:(?!${EXCUSE}|${JOINER}|${BREAK})[\s\S])*?` +
+    String.raw`\b(?:${SUBJECT} is|not only is (?:the|your|this) ${SUBJECT}) (?:now )?(?:complete|full|done)\b`,
   "i",
 );
 // Verse: three or more short lines in a row that aren't list items.
