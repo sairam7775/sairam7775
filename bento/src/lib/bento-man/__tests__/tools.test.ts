@@ -41,6 +41,8 @@ describe("tool definitions", () => {
     for (const claim of [
       "I have verified information for Kyoto, Osaka and Nara.", "There's no verified duration for it.", "Bento's verified data says two hours.",
       "I have verified the opening hours.", "That time is verified in my records.", "Kyoto has 41 verified places.",
+      // Subject first (Codex review).
+      "Our hours are verified.", "Bento's information is verified.", "My places are all independently verified.", "The data here has been verified.",
     ]) {
       expect(voiceLint(claim).map((v) => v.rule), claim).toEqual(["claim"]);
     }
