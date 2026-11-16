@@ -68,4 +68,27 @@ describe("route — exact ties on minutes", () => {
       expect(lines(shuffled(tieOnChanges, seed), "d", "a"), `seed ${seed} back`).toEqual(["M"]);
     }
   });
+
+  it("counts a change of mode on one line name as a change, as the legs do", () => {
+    // Rail L 1 + bus L 9 is two legs and one change; rail M 2 + 8 is one.
+    const railThenBus: Edge[] = [
+      ...ride("a", "b", "L", 1),
+      ...bothWays({ from: "b", to: "d", line: "L", mode: "bus", operator: "test", km: 1, minutes: 9 }),
+    ];
+    const viaH = [...ride("a", "h", "M", 2), ...ride("h", "d", "M", 8)];
+    for (let seed = 1; seed <= 25; seed++) {
+      for (const [from, to] of [["a", "d"], ["d", "a"]]) {
+        const r = route(buildGraph(stations, shuffled([...railThenBus, ...viaH], seed)), from, to)!;
+        expect(r.minutes).toBe(10);
+        expect(r.legs.map((l) => l.line), `seed ${seed} from ${from}`).toEqual(["M"]);
+        expect(r.transfers).toBe(0);
+      }
+    }
+    // Walk 2 then rail M 8 is two legs and no change, so it must also beat
+    // the rail-then-bus route, which only looks like one leg by line name.
+    const walkThenM = [...walk("a", "h", 2), ...ride("h", "d", "M", 8)];
+    const r = route(buildGraph(stations, [...railThenBus, ...walkThenM]), "a", "d")!;
+    expect(r.legs.map((l) => l.line)).toEqual(["walk", "M"]);
+    expect(r.transfers).toBe(0);
+  });
 });

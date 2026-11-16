@@ -31,20 +31,22 @@ export function bothWays(e: Edge): Edge[] {
 
 // ---------------------------------------------------------------- Dijkstra
 
-/** Search state is (station, line arrived on), so a change of line can be
- *  charged as a transfer. Walking never pays the penalty: the walk is the
+/** Search state is (station, line and mode arrived on), so a change of line
+ *  can be charged as a transfer, and a leg ends where `assemble` ends one: at
+ *  a new line or a new mode. Walking never pays the penalty: the walk is the
  *  transfer. `rode` says whether a train has been ridden yet, so the next
  *  ride after a walk can be counted as a change of train. */
 interface State {
   station: string;
   line: string;
+  mode: string;
   rode: boolean;
 }
 
-// Station ids are slugs and line names use middle dots, so " @ " cannot
-// occur inside either half. After a ride `rode` is always true, so only
-// walk-only states carry the marker.
-const key = (s: State) => `${s.station} @ ${s.line}${s.rode ? "" : " @ -"}`;
+// Station ids are slugs, line names use middle dots and modes are single
+// words, so " @ " cannot occur inside any part. After a ride `rode` is
+// always true, so only walk-only states carry the marker.
+const key = (s: State) => `${s.station} @ ${s.line} @ ${s.mode}${s.rode ? "" : " @ -"}`;
 
 /** What the search minimises, in order: minutes as the traveller sees them
  *  (rides, walks and the change penalty: exactly `Route.minutes`), then
@@ -113,7 +115,7 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
   const prev = new Map<string, { state: State; edge: Edge }>();
   const heap = new MinHeap();
 
-  const start: State = { station: fromId, line: "", rode: false };
+  const start: State = { station: fromId, line: "", mode: "", rode: false };
   dist.set(key(start), ZERO);
   heap.push(ZERO, start);
 
@@ -129,16 +131,17 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
     }
     for (const e of g.out.get(s.station) ?? []) {
       const isTransfer = s.line !== "" && s.line !== e.line && e.mode !== "walk" && s.line !== "walk";
-      // The rules `assemble` uses: a new line starts a new leg, and a new
-      // train after an earlier one is a change, even across a walk.
-      const newLeg = s.line !== e.line;
+      // The rules `assemble` uses: a new line or a new mode starts a new
+      // leg, and a new train after an earlier one is a change, even across
+      // a walk.
+      const newLeg = s.line !== e.line || s.mode !== e.mode;
       const newTrain = newLeg && e.mode !== "walk";
       const nc: Cost = {
         min: c.min + e.minutes + (isTransfer ? penalty : 0),
         changes: c.changes + (newTrain && s.rode ? 1 : 0),
         legs: c.legs + (newLeg ? 1 : 0),
       };
-      const ns: State = { station: e.to, line: e.line, rode: s.rode || e.mode !== "walk" };
+      const ns: State = { station: e.to, line: e.line, mode: e.mode, rode: s.rode || e.mode !== "walk" };
       const nk = key(ns);
       const old = dist.get(nk);
       if (!old || less(nc, old)) {
