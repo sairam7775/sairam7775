@@ -228,10 +228,16 @@ export function releasable(text: string, ended = false): number {
 /** How far a word goes on into new text, from its start. */
 const CONTINUES = new RegExp(`(?:[\\p{L}\\p{N}]|${IGNORABLE})*`, "uy");
 const NEXT_WORD = new RegExp(TOKEN.source, "gu");
-/** No prompt word is anywhere near this long, even padded with invisible
- *  characters, so a longer word is never normalised or kept whole. */
+/** No prompt word is anywhere near this long, so a longer word is never
+ *  normalised or kept whole. It bounds a word's visible characters only:
+ *  ignorable ones are dropped first (they can be padded without limit and
+ *  the whole-text check ignores them), and NFKC can't shrink a word this
+ *  long to a prompt word's length. */
 const MAX_WORD = 1024;
 const NOT_A_PROMPT_WORD = "#";
+const PLAIN = /^[A-Za-z0-9]*$/;
+/** A word, or a piece of one, without its ignorable characters. */
+const bare = (raw: string) => (PLAIN.test(raw) ? raw : raw.replace(IGNORABLE_ALL, ""));
 /** A run of trailing words that is the start of a leak: its words, how
  *  many, and where it begins. The first k - 1 words of a start are a start
  *  too, so every start ending at a new word extends one ending at the word
@@ -250,9 +256,11 @@ function extend(starts: Start[], word: string, start: number): Start[] {
 const heldAt = (starts: Start[]) => starts.reduce((at, s) => (s.k >= MIN_HELD ? Math.min(at, s.start) : at), Infinity);
 /** A leak is a start of LEAK_RUN - 1 words and one more. */
 const leaksWith = (starts: Start[], word: string) => starts.some((s) => s.k === LEAK_RUN - 1 && LEAKS.has(`${s.run} ${word}`));
-const PLAIN = /^[A-Za-z0-9]*$/;
-const wordOf = (raw: string) =>
-  raw.length > MAX_WORD ? NOT_A_PROMPT_WORD : PLAIN.test(raw) ? raw.toLowerCase() : raw.replace(IGNORABLE_ALL, "").normalize("NFKC").replace(IGNORABLE_ALL, "").toLowerCase();
+/** A word as the prompt's words are compared. `raw` may already be bare. */
+const wordOf = (raw: string) => {
+  const b = bare(raw);
+  return b.length > MAX_WORD ? NOT_A_PROMPT_WORD : PLAIN.test(b) ? b.toLowerCase() : b.normalize("NFKC").replace(IGNORABLE_ALL, "").toLowerCase();
+};
 
 /** A reply as it streams to the browser, across every model call of a
  *  turn. It keeps one text, joined between calls the way the final reply is
@@ -285,7 +293,9 @@ export class GuardedStream {
    *  longest of them begins. */
   private starts: Start[] = [];
   private wordsHeld = Infinity;
-  /** The word that reaches the end of the text, which may go on. */
+  /** The word that reaches the end of the text, which may go on: where it
+   *  starts, and its characters so far without the ignorable ones (kept to
+   *  MAX_WORD and a little more). */
   private tail: { start: number; raw: string } | null = null;
   /** Half of a surrogate pair, held until its other half arrives. */
   private pending = "";
@@ -346,7 +356,7 @@ export class GuardedStream {
       CONTINUES.lastIndex = 0;
       CONTINUES.exec(s);
       from = CONTINUES.lastIndex;
-      if (this.tail.raw.length <= MAX_WORD) this.tail.raw += s.slice(0, from);
+      if (this.tail.raw.length <= MAX_WORD) this.tail.raw += bare(s.slice(0, from));
       if (from < s.length) {
         this.finish(this.tail.raw, this.tail.start);
         this.tail = null;
@@ -356,7 +366,7 @@ export class GuardedStream {
     NEXT_WORD.lastIndex = from;
     for (let m = NEXT_WORD.exec(s); m; m = NEXT_WORD.exec(s)) {
       if (m.index + m[0].length === s.length) {
-        this.tail = { start: at + m.index, raw: m[0] };
+        this.tail = { start: at + m.index, raw: bare(m[0]) };
         NEXT_WORD.lastIndex = 0;
         break;
       }
