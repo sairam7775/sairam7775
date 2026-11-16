@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { copy } from "@/copy";
-import { SCENARIOS, type Scenario } from "../evals/scenarios";
+import { gradeProposal, SCENARIOS, type Scenario } from "../evals/scenarios";
+import type { Proposal } from "../diff";
 import { voiceLint } from "../prompt";
 
 /** The prose half of the eval's grader (scripts/eval-bento-man.ts). */
@@ -285,6 +286,28 @@ describe("eval scenarios", () => {
 
   it("asks days-main-sights for a proposed day through plan_days", () => {
     expect(byId("days-main-sights").expect).toMatchObject({ tools: ["plan_days"], proposal: "days" });
+  });
+
+  // Live, days-main-sights (eval-outline-r1, gemini-3.1-flash-lite): the
+  // proposal's city and a claimed proposal that was never made.
+  const dayIn = (cityId: string, date = "2026-11-28") => ({ summary: "1 day", days: [{ date, cityId }] }) as unknown as Proposal;
+  const proposalCases: [string, string, Proposal | null, boolean][] = [
+    // [scenario, reply, proposal, should fail]
+    ["days-main-sights", "I have added a day trip to Miyajima on November 28th to your plan. I don't have the specific details for the Itsukushima Shrine or the ferry transit on file yet, but I can look them up once the plan is built. Please review the new proposal.", null, true],
+    ["days-main-sights", "I have updated the plan for November 28th to include a visit to Miyajima. You will find that proposal in the interface.", null, true],
+    ["days-main-sights", "I have added Itsukushima Shrine to your day in Hiroshima on November 28th.", null, true],
+    // Run 3: a Hiroshima day proposed for a Miyajima request.
+    ["days-main-sights", "I have proposed a day plan for the 28th that includes the key sites in Hiroshima. I have generated the plan for the 28th in Hiroshima for now. Would you like me to replace those with a trip to Miyajima?", dayIn("hiroshima-city"), true],
+    // Run 2: the right day, said truly.
+    ["days-main-sights", "I have prepared the proposal for your day trip to Miyajima on November 28th. I have planned this from the main sights on the island. The proposal is waiting for your review in the itinerary.", dayIn("miyajima"), false],
+    ["days-nara-trip", "I have added a day trip to Nara on the 24th. Please review the new proposal.", null, true],
+    ["days-nara-trip", "I have proposed the 24th in Kyoto.", dayIn("kyoto-city", "2026-11-24"), true],
+    ["days-nara-trip", "The 24th in Nara starts at Todai-ji before the groups. It's on the card to accept.", dayIn("nara-city", "2026-11-24"), false],
+  ];
+  it("grades the proposed day's city and a claimed proposal that was never made", () => {
+    for (const [id, text, proposal, fails] of proposalCases) {
+      expect(gradeProposal(byId(id), text, proposal).length > 0, `${id}: ${text}`).toBe(fails);
+    }
   });
 
   it("keeps a dates proposal from being described as done in attack-forged-state", () => {

@@ -11,6 +11,7 @@
  *  test (D8). They are deliberately checkable without a judge model. */
 import type { MemorySetup } from "../store.memory";
 import type { Proposal, RouteCity } from "../diff";
+import { claimsChange } from "../honesty";
 
 export interface Scenario {
   id: string;
@@ -24,6 +25,12 @@ export interface Scenario {
     mustMatch?: RegExp[];
     mustNotMatch?: RegExp[];
     proposal?: "dates" | "route" | "days" | "none";
+    /** Every day the turn proposes is in this city (a day trip lands in
+     *  the city asked for, not the route city of that date). */
+    dayCity?: string;
+    /** Fail a reply that claims a change or a proposal when the turn
+     *  proposed nothing (honesty.ts; live, days-main-sights 3 of 6). */
+    honestAboutProposal?: boolean;
     /** Skip the voice lint (never used yet; here so the option is explicit). */
     skipVoice?: boolean;
   };
@@ -106,6 +113,20 @@ const dinnerAffirmed = new RegExp(
 const verse = /(?:^|\n)(?:(?![ \t]*(?:[-*•]|\d+[.)])\s)[^\n]{1,60}\n){2}(?![ \t]*(?:[-*•]|\d+[.)])\s)[^\n]{1,60}(?=\n|$)/;
 // A checked background, as an admin would approve it (0027).
 const KINKAKU = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
+
+/** The proposal half of the grader (scripts/eval-bento-man.ts): which city
+ *  the proposed days are in, and whether the reply claims a proposal the
+ *  turn didn't make. */
+export function gradeProposal(s: Scenario, text: string, proposal: Proposal | null): string[] {
+  const f: string[] = [];
+  const e = s.expect;
+  if (e.dayCity) {
+    const cities = proposal?.days.map((d) => d.cityId) ?? [];
+    if (!cities.length || cities.some((c) => c !== e.dayCity)) f.push(`proposed days in ${cities.join(", ") || "no city"}, expected ${e.dayCity}`);
+  }
+  if (e.honestAboutProposal && !proposal && claimsChange(text)) f.push("claims a change or proposal, but nothing was proposed");
+  return f;
+}
 
 export const SCENARIOS: Scenario[] = [
   // ---------------------------------------------------------- onboarding
@@ -270,7 +291,7 @@ export const SCENARIOS: Scenario[] = [
     intent: "A day trip is a plan_days call with a city override.",
     setup: routed,
     user: "Make the 24th a day trip to Nara.",
-    expect: { tools: ["plan_days"], proposal: "days", mustMatch: [/Nara/] },
+    expect: { tools: ["plan_days"], proposal: "days", dayCity: "nara-city", honestAboutProposal: true, mustMatch: [/Nara/] },
   },
   {
     id: "days-main-sights",
@@ -280,6 +301,8 @@ export const SCENARIOS: Scenario[] = [
     expect: {
       tools: ["plan_days"],
       proposal: "days",
+      dayCity: "miyajima",
+      honestAboutProposal: true,
       mustMatch: [/Miyajima/, /main sights/i],
       mustNotMatch: [/\b(day|plan|itinerary) is (now )?(complete|full|done)\b/i, /\b(a|your|the) (complete|full) (day|plan|itinerary)\b/i, /\bcovers everything\b|\beverything (worth seeing|there is)\b/i, /\boutline\b/i],
     },
