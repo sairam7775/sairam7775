@@ -31,6 +31,7 @@ The target is every destination in Japan, about 2,000 records (decision [D2](../
 ## Today
 
 - **Planned in depth:** Kyoto, Osaka, Nara, Hiroshima, Miyajima and Himeji (an en-route stop), the Kansai–Sanyo corridor, plus Tokyo.
+- **Drafted, not yet verified:** Kamakura (with Enoshima, 13 places) and Yokohama (12 places). Their drafts are in the seed, but they keep the lightest coverage until their places are verified and the city is promoted.
 - **Everything else** exists with less depth, and Bento says so.
 
 ## Acceptance criteria
