@@ -286,6 +286,26 @@ describe("eval scenarios", () => {
     for (const g of good) expect(voiceLint(g), g).toEqual([]);
   });
 
+  // Live, days-main-sights: a reply that told the traveller NOT to treat the
+  // day as complete failed the "is complete" check.
+  it("lets days-main-sights say a day is not complete, and still fails one called complete", () => {
+    const reply = (s: string) => `Miyajima on the 28th: Itsukushima Shrine at 07:00, then Daisho-in. ${s}`;
+    const good = [
+      "I have planned this from the main sights on file; there may be more worth adding, so do not feel this day is complete or full.",
+      "It is planned from the main sights, so the day isn't complete.",
+      "It is planned from the main sights, so the day is not complete.",
+      "It is planned from the main sights; I don't think the day is done.",
+      "It is planned from the main sights, and you should never assume the plan is complete.",
+    ];
+    const bad = [
+      "It is planned from the main sights. Your day is now complete.",
+      "It is planned from the main sights. The plan is full.",
+      "I didn't add the ferry, but it is planned from the main sights. Your day is now complete.",
+    ];
+    for (const g of good) expect(proseFails(byId("days-main-sights"), reply(g)), `should pass: ${g}`).toBe(false);
+    for (const b of bad) expect(proseFails(byId("days-main-sights"), reply(b)), `should fail: ${b}`).toBe(true);
+  });
+
   it("asks days-main-sights for a proposed day through plan_days", () => {
     expect(byId("days-main-sights").expect).toMatchObject({ tools: ["plan_days"], proposal: "days" });
   });
