@@ -42,11 +42,11 @@ The weights are configuration (`bento/src/lib/engine/score.ts`), not constants; 
 4. **Grow:** add the place that gains the most score for the least extra travel, until the time is spent or nothing helps.
 5. **Order:** reorder to cut total travel time.
 6. **Time:** set clock times from opening hours, train legs and meal slots, carrying slack forward.
-7. **Validate:** re-check every hard rule on the finished day; on a failure, drop the offender and refill. A pinned stop is never dropped: when one would be reached after it closes, the unpinned stop just before it goes instead ("left out to leave time to reach … before it closes"), one per pass. A pinned stop can still run late when the pins alone don't fit.
+7. **Validate:** re-check every hard rule on the finished day; on a failure, drop the offender and refill. A pinned stop is never dropped: when one would be reached after it closes, the nearest unpinned stop between it and the pin before it goes instead ("left out to leave time to reach … before it closes"), one per pass, and only if that really brings the pin earlier. It looks at each late pin in turn. A pin that is late whatever is dropped (its start is fixed by its own time, its opening time or the pin before it, or its visit is longer than its hours) keeps the stops around it and stays late.
 
 It's greedy insertion with local search: not optimal, and it doesn't need to be. It needs to be right, fast and explainable.
 
-`planDay` returns timed stops with a reason each, meals, budget and slack, the day's cost, and **everything left out, with the term that removed it**. `planTrip` runs the days in order, so no place is used twice, and keeps a place pinned to one day off every other day, so an earlier day can't take it first.
+`planDay` returns timed stops with a reason each, meals, budget and slack, the day's cost, and **everything left out, with the term that removed it**. `planTrip` runs the days in order, so no place is used twice, and keeps a place pinned to one day off every other day, so an earlier day can't take it first. Bento Man's `plan_days` doesn't do this yet (it plans day by day from saved pins; changing it changes a tool result and needs a live eval), so starting a ready-made trip will plan through `planTrip`.
 
 ## Rules it keeps
 

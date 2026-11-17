@@ -363,19 +363,40 @@ export function planDay(input: DayInput): DayPlan {
   let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], endMin: dayStart, fares: 0, fareKind: "exact", unpriced: 0 };
   const isLocked = (id: string) => seq.find((d) => d.place.id === id)?.locked === true;
   const unlockedViolations = () => timed.violations.filter((v) => !isLocked(v.placeId));
-  // A pin is never dropped, so when one is reached after closing, the stop
-  // the planner chose just before it goes instead (one per pass): the pin
-  // was the traveller's choice, the stop was ours.
+  // A pin is never dropped, so when one is reached after closing, a stop
+  // the planner chose before it goes instead (one per pass): the pin was
+  // the traveller's choice, the stop was ours. Only when that helps: a pin
+  // whose start is fixed (its own time, its opening time, the pin before
+  // it) or whose visit is longer than its hours is late whatever we drop.
+  const pinDrop = (): Rejected[] => {
+    const lateIds = new Set(timed.violations.filter((v) => isLocked(v.placeId)).map((v) => v.placeId));
+    for (let at = 0; at < seq.length; at++) {
+      const pin = seq[at];
+      if (!pin.locked || !lateIds.has(pin.place.id)) continue;
+      const item = timed.items.find((i) => i.placeId === pin.place.id);
+      if (!item) continue;
+      let prevPin = -1;
+      for (let k = at - 1; k >= 0; k--) if (seq[k].locked) { prevPin = k; break; }
+      const prevEnd = prevPin >= 0 ? timed.items.find((i) => i.placeId === seq[prevPin].place.id)?.endMin ?? dayStart : dayStart;
+      const floor = Math.max(parseClock(pin.place.opensAt) ?? 0, prevEnd, pin.lockedStart ?? 0);
+      const closes = parseClock(pin.place.closesAt) ?? 24 * 60;
+      if (item.startMin <= floor || floor + pin.durationMin > closes) continue;
+      const before = seq.slice(prevPin + 1, at).filter((d) => !d.locked).pop();
+      if (!before) continue;
+      // Try it: keep the drop only if the pin really starts earlier.
+      const saved = seq;
+      seq = seq.filter((d) => d !== before);
+      const start = time().items.find((i) => i.placeId === pin.place.id)?.startMin ?? item.startMin;
+      seq = saved;
+      if (start < item.startMin) {
+        return [{ placeId: before.place.id, name: before.place.name, stage: "validate", term: "hours", detail: copy.plan.leftOut.makesPinLate(pin.place.name) }];
+      }
+    }
+    return [];
+  };
   const toDrop = (): Rejected[] => {
     const own = unlockedViolations();
-    if (own.length) return own;
-    const late = timed.violations.find((v) => isLocked(v.placeId));
-    if (!late) return [];
-    const at = seq.findIndex((d) => d.place.id === late.placeId);
-    const before = seq.slice(0, at).filter((d) => !d.locked).pop();
-    return before
-      ? [{ placeId: before.place.id, name: before.place.name, stage: "validate", term: "hours", detail: copy.plan.leftOut.makesPinLate(late.name) }]
-      : [];
+    return own.length ? own : pinDrop();
   };
   let stale = false;
   for (let round = 0; round < MAX_VALIDATE_ROUNDS; round++) {
