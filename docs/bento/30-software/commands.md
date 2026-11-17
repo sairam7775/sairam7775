@@ -23,6 +23,8 @@ Run in `bento/`.
 
 **Before calling a change done:** `npm run typecheck`, `npm run lint`, `npm test` and `npm run build` all pass.
 
+**On every pull request,** GitHub runs lint, typecheck and the tests on the merged code (`.github/workflows/bento-checks.yml`), and Vercel runs the build.
+
 ## Scripts
 
 | Script | Does |
