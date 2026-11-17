@@ -3,6 +3,7 @@ import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed";
 import { kyoto as kyotoSeed } from "@/lib/places/seed/kyoto";
 import { hiroshima as hiroshimaSeed } from "@/lib/places/seed/hiroshima";
+import { tokyo as tokyoSeed } from "@/lib/places/seed/tokyo";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { copy } from "@/copy";
 import { parseClock } from "../filter";
@@ -60,10 +61,25 @@ describe("planDay and pins", () => {
       const closes = parseClock(hiroshima.find((p) => p.id === id)!.closesAt);
       if (closes != null) expect(item!.endMin, id).toBeLessThanOrEqual(closes);
     }
-    expect(plan.items.map((i) => i.placeId)).not.toContain("hir-kagura");
-    expect(plan.considered.find((r) => r.placeId === "hir-kagura")).toMatchObject({
-      stage: "validate", detail: copy.plan.leftOut.makesPinLate("Hiroshima Castle"),
-    });
+    // The kagura may stay, but only after the pins that close before it opens.
+    const order = plan.items.map((i) => i.placeId);
+    if (order.includes("hir-kagura"))
+      for (const id of ["hir-shukkeien", "hir-castle"]) expect(order.indexOf("hir-kagura"), id).toBeGreaterThan(order.indexOf(id));
+    expect(pinDrops(plan)).toEqual([]);
+  });
+
+  it("doesn't choose a stop that would make a pin late, rather than choosing and dropping it", () => {
+    // Meiji Jingu closes at 16:00 (its shortest hours). On a packed day the
+    // planner used to fill the morning in front of it, then drop stops again
+    // to reach it in time.
+    const tokyo = tokyoSeed.map((s) => seedToPlaceInput(s));
+    for (const date of ["2027-05-11", "2027-05-12", "2027-05-13", "2027-05-14", "2027-05-15", "2027-05-16", "2027-05-17"]) {
+      const plan = planDay({ date, cityId: "tokyo-city", places: tokyo, travel, traveller, locked: [{ placeId: "tky-meiji-jingu" }] });
+      const meiji = plan.items.find((i) => i.placeId === "tky-meiji-jingu")!;
+      expect(meiji.endMin, date).toBeLessThanOrEqual(16 * 60);
+      expect(pinDrops(plan), date).toEqual([]);
+      expect(plan.items.length, date).toBeGreaterThan(3);
+    }
   });
 
   it("keeps its stops when a pin is late because of its own fixed time", () => {
@@ -82,8 +98,9 @@ describe("planDay and pins", () => {
 
   it("looks past a late pin it can't help to one it can", () => {
     // A is pinned at 09:00 and overruns its 09:30 closing: nothing can help
-    // it. X, chosen by the planner, opens at noon and holds B (closes 13:30)
-    // until after closing; dropping X is what helps B.
+    // it. X opens at noon and, put before B (closes 13:30), would hold B
+    // until after closing. A being late must not stop the planner from
+    // keeping B in its hours: X goes after B, or not at all.
     const base: PlaceInput = {
       id: "", cityId: "test-city", name: "", category: "temple", interestTags: [], energy: 0.3, crowdLevel: 0.3,
       discovery: 0.5, signature: 0.9, physicalDemand: null, durationTasteMin: 60, durationTypicalMin: 60,
@@ -103,6 +120,8 @@ describe("planDay and pins", () => {
     });
     const b = plan.items.find((i) => i.placeId === "b")!;
     expect(b.endMin).toBeLessThanOrEqual(13 * 60 + 30);
-    expect(plan.considered.find((r) => r.placeId === "x")).toMatchObject({ stage: "validate", detail: copy.plan.leftOut.makesPinLate("B") });
+    const order = plan.items.map((i) => i.placeId);
+    if (order.includes("x")) expect(order.indexOf("x")).toBeGreaterThan(order.indexOf("b"));
+    else expect(plan.considered.find((r) => r.placeId === "x")?.detail).toBe(copy.plan.leftOut.makesPinLate("B"));
   });
 });
