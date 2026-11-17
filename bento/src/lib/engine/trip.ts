@@ -37,12 +37,16 @@ export interface TripPlan {
 
 /** Plans every day in order, so a place used on Tuesday is not offered
  *  again on Thursday, and totals cost per city — a ryokan night in one
- *  city must not read as overspending in another. */
+ *  city must not read as overspending in another. A place pinned to one
+ *  day is kept off every other day, so an earlier day can't take it first. */
 export function planTrip(input: TripInput): TripPlan {
   const used = new Set<string>();
   const days: DayPlan[] = [];
+  const pinnedOn = new Map<string, string>();
+  for (const d of input.days) for (const l of d.locked ?? []) if (!pinnedOn.has(l.placeId)) pinnedOn.set(l.placeId, d.date);
 
   for (const d of input.days) {
+    const pinnedElsewhere = [...pinnedOn].filter(([, date]) => date !== d.date).map(([id]) => id);
     const plan = planDay({
       date: d.date,
       cityId: d.cityId,
@@ -51,7 +55,7 @@ export function planTrip(input: TripInput): TripPlan {
       travel: input.travel,
       locked: d.locked,
       bookedPlaceIds: input.bookedPlaceIds,
-      usedPlaceIds: [...used],
+      usedPlaceIds: [...used, ...pinnedElsewhere],
       weights: input.weights,
     });
     for (const it of plan.items) used.add(it.placeId);

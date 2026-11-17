@@ -4,7 +4,7 @@ status: accepted
 code:
   - bento/src/lib/engine/
   - bento/scripts/plan-day.ts
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-17
 ---
 
 # The engine: recommender and scheduler
@@ -42,11 +42,11 @@ The weights are configuration (`bento/src/lib/engine/score.ts`), not constants; 
 4. **Grow:** add the place that gains the most score for the least extra travel, until the time is spent or nothing helps.
 5. **Order:** reorder to cut total travel time.
 6. **Time:** set clock times from opening hours, train legs and meal slots, carrying slack forward.
-7. **Validate:** re-check every hard rule on the finished day; on a failure, drop the offender and refill.
+7. **Validate:** re-check every hard rule on the finished day; on a failure, drop the offender and refill. A pinned stop is never dropped: when one would be reached after it closes, the unpinned stop just before it goes instead ("left out to leave time to reach … before it closes"), one per pass. A pinned stop can still run late when the pins alone don't fit.
 
 It's greedy insertion with local search: not optimal, and it doesn't need to be. It needs to be right, fast and explainable.
 
-`planDay` returns timed stops with a reason each, meals, budget and slack, the day's cost, and **everything left out, with the term that removed it**. `planTrip` runs the days in order, so no place is used twice.
+`planDay` returns timed stops with a reason each, meals, budget and slack, the day's cost, and **everything left out, with the term that removed it**. `planTrip` runs the days in order, so no place is used twice, and keeps a place pinned to one day off every other day, so an earlier day can't take it first.
 
 ## Rules it keeps
 
@@ -54,6 +54,7 @@ It's greedy insertion with local search: not optimal, and it doesn't need to be.
 - A busy place that would miss its quiet window costs 30 minutes in ordering.
 - Scores shown on stops are recomputed against the final order, so "your third temple today" is the third one shown.
 - Hard rules live in `filter.ts` and never become penalties.
+- Untimed pins keep the order they were given; the planner fills around them but doesn't reorder them.
 - It never invents a travel time. A place with no station costs a flat 45 minutes and a warning.
 - **Known gaps:** opening windows are soft except for the anchor; season tags are optional and neutral when absent.
 

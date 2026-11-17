@@ -361,14 +361,29 @@ export function planDay(input: DayInput): DayPlan {
 
   // 7 VALIDATE — drop what the hours reject, refill, re-time. Bounded.
   let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], endMin: dayStart, fares: 0, fareKind: "exact", unpriced: 0 };
-  const unlockedViolations = () => timed.violations.filter((v) => !seq.find((d) => d.place.id === v.placeId)?.locked);
+  const isLocked = (id: string) => seq.find((d) => d.place.id === id)?.locked === true;
+  const unlockedViolations = () => timed.violations.filter((v) => !isLocked(v.placeId));
+  // A pin is never dropped, so when one is reached after closing, the stop
+  // the planner chose just before it goes instead (one per pass): the pin
+  // was the traveller's choice, the stop was ours.
+  const toDrop = (): Rejected[] => {
+    const own = unlockedViolations();
+    if (own.length) return own;
+    const late = timed.violations.find((v) => isLocked(v.placeId));
+    if (!late) return [];
+    const at = seq.findIndex((d) => d.place.id === late.placeId);
+    const before = seq.slice(0, at).filter((d) => !d.locked).pop();
+    return before
+      ? [{ placeId: before.place.id, name: before.place.name, stage: "validate", term: "hours", detail: copy.plan.leftOut.makesPinLate(late.name) }]
+      : [];
+  };
   let stale = false;
   for (let round = 0; round < MAX_VALIDATE_ROUNDS; round++) {
     grow();
     order();
     timed = time();
     stale = false;
-    const drop = unlockedViolations();
+    const drop = toDrop();
     if (!drop.length) break;
     considered.push(...drop);
     seq = seq.filter((d) => !drop.some((v) => v.placeId === d.place.id));
@@ -383,7 +398,7 @@ export function planDay(input: DayInput): DayPlan {
   while (stale) {
     order();
     timed = time();
-    const drop = unlockedViolations();
+    const drop = toDrop();
     stale = drop.length > 0;
     if (stale) {
       considered.push(...drop);
