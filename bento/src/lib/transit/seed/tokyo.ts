@@ -696,8 +696,14 @@ export const edges: Edge[] = [
   ...bothWays(e({ from: "nippori", to: "narita-t2-t3", line: "Keisei Skyliner", operator: "keisei", km: 61, minutes: 36, note: "Every seat reserved. Buy at the Keisei counter or online before you board." })),
   ...bothWays(e({ from: "narita-t2-t3", to: "narita-t1", line: "Keisei Skyliner", operator: "keisei", km: 1, minutes: 3 })),
   // ---- JR Narita Express
-  ...bothWays(e({ from: "tokyo", to: "narita-t2-t3", line: "JR Narita Express", operator: "jr-east", km: 79.2, minutes: 53, note: "Every seat reserved. Leaves from the deep underground platforms at Tokyo: allow ten minutes to reach them." })),
-  ...bothWays(e({ from: "narita-t2-t3", to: "narita-t1", line: "JR Narita Express", operator: "jr-east", km: 1.1, minutes: 3 })),
+  // One edge per terminal, each with the whole fare: the base fare is the
+  // same to both, and the limited express charge is on top, so the JR East
+  // band table must not price any part of a Narita Express ride. ¥3,140
+  // (fare ¥1,410 + charge) from Japan Guide's Narita Airport page
+  // (japan-guide.com/e/e2027.html, read November 2026); JR East's own
+  // pages refuse automated reads. Check it against JR East before launch.
+  ...bothWays(e({ from: "tokyo", to: "narita-t2-t3", line: "JR Narita Express", operator: "jr-east", km: 79.2, minutes: 53, fareJpy: 3140, note: "Every seat reserved. Leaves from the deep underground platforms at Tokyo: allow ten minutes to reach them." })),
+  ...bothWays(e({ from: "tokyo", to: "narita-t1", line: "JR Narita Express", operator: "jr-east", km: 80.3, minutes: 56, stops: 2, fareJpy: 3140, note: "Every seat reserved. Leaves from the deep underground platforms at Tokyo: allow ten minutes to reach them." })),
   // ---- Keisei Oshiage Line
   ...bothWays(e({ from: "oshiage", to: "keisei-takasago", line: "Keisei Oshiage Line", operator: "keisei", km: 6.9, minutes: 13, stops: 6, note: "Many Toei Asakusa Line trains carry on to Keisei-Takasago without a change." })),
   // ---- Keisei Kanamachi Line
