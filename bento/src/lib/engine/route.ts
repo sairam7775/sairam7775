@@ -137,7 +137,9 @@ export function assessRoute(
         toCityId: b,
         movingTo,
         minutes: r.minutes,
-        fareJpy: r.fareJpy,
+        // Part of a fare is not the fare: a leg with any ride Bento can't
+        // price has no fare figure (its summary says what is missing).
+        fareJpy: (r.unpricedRides ?? 0) > 0 ? null : r.fareJpy,
         fareKind: r.fareKind,
         summary: d.summary,
         lines: d.lines,

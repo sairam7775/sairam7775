@@ -637,8 +637,9 @@ Explained in `../docs/bento/30-software/transit.md`.
 - Fares: a run of consecutive edges on one operator sums km and takes one
   band from `fares.ts`. An edge with `fareJpy` set is exact and stands
   alone. `fareKind: "estimate"` must render as `~¥`. A run with no fare
-  table or no km is counted in `unpricedRides`, never charged ¥0 or
-  shown as "free".
+  table, no km, or km past the table's end is counted in `unpricedRides`,
+  never charged ¥0 or shown as "free". A route leg (`assessRoute`) with
+  any unpriced ride gets `fareJpy: null`, so a part never reads as the fare.
 - `seed/kansai-sanyo.ts` is the one source of truth for the corridor; the
   tests, the CLI and `supabase/seed_transit.sql` all derive from it. Never
   edit the SQL by hand.

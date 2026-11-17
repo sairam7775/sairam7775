@@ -64,6 +64,13 @@ describe("route — Tokyo", () => {
     expect(r.fareJpy).toBe(155);
   });
 
+  it("never shows a ride on an operator with no fare table as free", () => {
+    const r = route(g, "shimbashi", "odaiba-kaihinkoen")!;
+    expect(r.legs.map((l) => l.line)).toEqual(["Yurikamome"]);
+    expect(r.unpricedRides).toBe(1);
+    expect(r.fareJpy).toBe(0);
+  });
+
   it("joins Tokyo to Kansai by the direct Nozomi", () => {
     const r = route(g, "tokyo", "kyoto")!;
     expect(r.legs).toHaveLength(1);

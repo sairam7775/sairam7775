@@ -24,8 +24,21 @@ describe("JR East fares", () => {
 
   it("a change of JR line on the way is still one ticket: Tokyo → Kamakura via Ofuna", () => {
     const r = route(g, "tokyo", "kamakura")!;
-    expect(r.legs.length).toBeGreaterThanOrEqual(1);
-    expect(r.legs.reduce((s, l) => s + l.fareJpy, 0)).toBe(1034);
+    expect(r.legs.map((l) => [l.line, l.to.id])).toEqual([
+      ["JR Tokaido Line", "ofuna"],
+      ["JR Shonan-Shinjuku Line", "kamakura"],
+    ]);
+    // One band for the 51.0 km ridden, charged once on the first leg; the
+    // two legs priced alone would be ¥902 + ¥155.
+    expect(r.legs.map((l) => l.fareJpy)).toEqual([1034, 0]);
+    expect(r.fareJpy).toBe(1034);
+    expect(r.fareJpy).not.toBe(bandFare("jr-east", 46.5)! + bandFare("jr-east", 4.5)!);
+  });
+
+  it("leaves a JR ride past the end of the table unpriced, not charged the last band", () => {
+    expect(bandFare("jr-east", 100)).toBe(1782);
+    expect(bandFare("jr-east", 100.1)).toBeNull();
+    expect(bandFare("jr-east", 476.3)).toBeNull();
   });
 
   it("matches the published fares at band edges", () => {
