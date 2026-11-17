@@ -22,9 +22,9 @@
  *    "Getting Around", as of September 2022) and the other official pages
  *    named at each line. Where two sources differ, the larger figure is
  *    used.
- *  - Fares: only from the operators' own fare pages (see fares.ts). JR
- *    East, Tokyu and Keikyu Bus have no table, so their rides count as
- *    unpriced, never free.
+ *  - Fares: from the operators' own fare pages, and JR East's March 2026
+ *    table from secondary sources (see fares.ts). Tokyu and Keikyu Bus
+ *    have no table, so their rides count as unpriced, never free.
  *
  *  Every number here is a SEED VALUE: check minutes and fares against the
  *  operators' timetables before launch, and after each March timetable

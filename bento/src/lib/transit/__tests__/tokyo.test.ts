@@ -57,11 +57,11 @@ describe("route — Tokyo", () => {
     expect(r.fareKind).toBe("estimate");
   });
 
-  it("never shows a JR ride as free while JR East's fare table is missing", () => {
+  it("prices a JR ride from JR East's table: Tokyo → Kanda is 1.3 km, ¥155", () => {
     const r = route(g, "tokyo", "kanda")!;
     expect(r.legs[0].operator).toBe("jr-east");
-    expect(r.unpricedRides).toBe(1);
-    expect(r.fareJpy).toBe(0);
+    expect(r.unpricedRides).toBe(0);
+    expect(r.fareJpy).toBe(155);
   });
 
   it("joins Tokyo to Kansai by the direct Nozomi", () => {

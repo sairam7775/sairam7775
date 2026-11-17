@@ -73,13 +73,13 @@ describe("Kanagawa transit seed", () => {
 });
 
 describe("route — Kanagawa", () => {
-  it("Tokyo → Kamakura by JR in under an hour, never priced as free", () => {
+  it("Tokyo → Kamakura by JR in under an hour, one ticket at JR East's IC fare", () => {
     const r = route(g, "tokyo", "kamakura")!;
     expect(r.legs.every((l) => l.operator === "jr-east")).toBe(true);
     expect(r.minutes).toBeGreaterThanOrEqual(50);
     expect(r.minutes).toBeLessThanOrEqual(60);
-    expect(r.fareJpy).toBe(0);
-    expect(r.unpricedRides).toBe(1);
+    expect(r.fareJpy).toBe(1034);
+    expect(r.unpricedRides).toBe(0);
     // The published figures favour a change at Ofuna (54) over the direct
     // train (60); the traveller is told about the train with no change.
     if (r.transfers > 0) expect(r.legs[0].notes.join(" ")).toContain("Yokosuka Line runs there from Tokyo without a change");
@@ -98,7 +98,8 @@ describe("route — Kanagawa", () => {
     expect(r.legs.map((l) => l.line)).toEqual(["JR Shonan-Shinjuku Line"]);
     expect(r.transfers).toBe(0);
     expect(r.minutes).toBe(66); // 36 to Yokohama (Visit Kanagawa) + 30 on to Kamakura
-    expect(r.unpricedRides).toBe(1);
+    expect(r.fareJpy).toBe(1034); // 54.8 km, the 51–60 km band
+    expect(r.unpricedRides).toBe(0);
   });
 
   it("Shibuya → Yokohama takes the Toyoko Limited Express, faster than the Shonan-Shinjuku Line", () => {
@@ -115,9 +116,9 @@ describe("route — Kanagawa", () => {
     expect(r.legs[0].to.id).toBe("yokohama");
     expect(r.minutes).toBeGreaterThanOrEqual(30);
     expect(r.minutes).toBeLessThanOrEqual(45);
-    // The Minatomirai part is priced; the JR part is not, and is not free.
-    expect(r.fareJpy).toBe(224);
-    expect(r.unpricedRides).toBe(1);
+    // Two tickets: JR to Yokohama (¥528), then the Minatomirai Line (¥224).
+    expect(r.fareJpy).toBe(528 + 224);
+    expect(r.unpricedRides).toBe(0);
   });
 
   it("Shibuya → Minatomirai is one through train: Toyoko Line onto the Minatomirai Line", () => {
@@ -172,8 +173,9 @@ describe("route — Kanagawa", () => {
       ["bus", "honmoku"],
     ]);
     expect(r.minutes).toBe(26); // 11 on the train, a 5-minute change, 10 on the bus
+    expect(r.legs[0].fareJpy).toBe(209); // JR, 7.1 km
     expect(r.legs[1].fareJpy).toBe(220);
-    expect(r.unpricedRides).toBe(1); // the JR leg
+    expect(r.unpricedRides).toBe(0);
   });
 
   it("Yokohama → Shin-Yokohama is the Blue Line at its exact IC fare", () => {
@@ -188,7 +190,8 @@ describe("route — Kanagawa", () => {
     const r = route(g, "enoshima", "tokyo")!;
     expect(r.legs.map((l) => l.line)).toEqual(["Enoden Line", "JR Tokaido Line"]);
     expect(r.legs[0].fareJpy).toBe(220);
-    expect(r.unpricedRides).toBe(1);
+    expect(r.legs[1].fareJpy).toBe(1034); // Fujisawa → Tokyo, 51.1 km
+    expect(r.unpricedRides).toBe(0);
   });
 });
 

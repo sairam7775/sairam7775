@@ -19,11 +19,28 @@ const BANDS: Record<string, [number, number][]> = {
   nankai: [[3, 160], [6, 200], [10, 260], [15, 310], [20, 370], [30, 470], [40, 590], [50, 700]],
   /** Tokyo, IC fares checked on the operators' pages, October 2026. They
    *  include the barrier-free surcharge; a Metro–Toei change is charged as
-   *  two runs (the ¥70 through discount is not modelled). JR East has no
-   *  table yet: its March 2026 fares could not be read. */
+   *  two runs (the ¥70 through discount is not modelled). */
   "tokyo-metro": [[6, 178], [11, 209], [19, 252], [27, 293], [40, 324]],
   "toei-subway": [[4, 178], [9, 220], [15, 272], [21, 325], [27, 377], [46, 430]],
   rinkai: [[3, 210], [6, 272], [9, 335], [13, 398]],
+  /** JR East trunk lines (幹線), IC fares from 14 March 2026, when the
+   *  cheaper Yamanote and Tokyo-area tables were folded into this one, so
+   *  it covers every JR East ride in the Tokyo and Kanagawa seeds. JR
+   *  East's own pages refuse automated reads, so: the ticket fares per band
+   *  from jr-group.jp/higashinihon-fare/ ("2026年3月改定"), and the IC fare
+   *  of each band (a few yen less) from published IC fares from Tokyo,
+   *  tairayukiblog.hatenablog.jp (2026-01-11 and 2026-01-21, e.g. Yokohama
+   *  528, Kamakura 1,034, Hiratsuka 1,221, Narita Airport 1,408, Kimitsu
+   *  1,595, Yorii 1,782); each matches its ticket band. Read November 2026.
+   *  Fractional km round up, as JR's do (bandFare's inclusive upper km).
+   *  Not modelled: pair-specific special fares (e.g. Tokyo–Odawara) and
+   *  limited express charges (the Narita Express carries its fare on its
+   *  edges). Rides over 100 km are not in the seeds. */
+  "jr-east": [
+    [3, 155], [6, 199], [10, 209], [15, 253], [20, 341], [25, 440], [30, 528],
+    [35, 616], [40, 715], [45, 803], [50, 902], [60, 1034], [70, 1221],
+    [80, 1408], [90, 1595], [100, 1782],
+  ],
   /** Kanagawa (Yokohama and Kamakura), from the operators' own fare pages,
    *  November 2026. Each band table reproduces every station pair of the
    *  operator's published table, using ja.wikipedia's operating km.

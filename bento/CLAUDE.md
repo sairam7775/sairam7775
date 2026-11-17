@@ -663,8 +663,10 @@ Explained in `../docs/bento/30-software/transit.md`.
   data: the repo is public and ODPT's licence forbids redistributing it.
   Order and km come from ja.wikipedia line tables, positions from Wikidata,
   minutes from each line's published end-to-end time. Its Shinkansen edges
-  end at Kansai stations, so build the graph from every seed (the index). JR East has
-  no fare table yet, so JR rides count as unpriced. Walks carry 3 minutes
+  end at Kansai stations, so build the graph from every seed (the index). JR East
+  rides take its March 2026 trunk-line IC table (`fares.ts`); the Narita
+  Express carries its whole fare (with the limited express charge) on its
+  edges, one per terminal, so no part of it is band-priced. Walks carry 3 minutes
   of waiting because walks never pay the transfer penalty.
 - `seed/kanagawa.ts` is Yokohama and Kamakura (Enoshima's stations are
   `cityId: "kamakura"`, where its places are filed); Hakone goes in the
@@ -672,10 +674,10 @@ Explained in `../docs/bento/30-software/transit.md`.
   position) sit at the Wikidata position of the place each serves, marked
   approximate. JR minutes follow published journey times from official
   visitor pages, the larger where they differ (not JR East's site).
-  Priced only from
+  Priced from
   operators' own fare pages: Minatomirai and Enoden bands in `fares.ts`,
-  exact fares on the Blue Line and city bus edges; JR East, Tokyu and
-  Keikyu Bus are unpriced. The Toyoko Limited Express keeps one line name
+  exact fares on the Blue Line and city bus edges; JR East by its band
+  table (as in Tokyo); Tokyu and Keikyu Bus are unpriced. The Toyoko Limited Express keeps one line name
   onto the Minatomirai Line, so the through train is one leg.
 
 ## Walkthrough

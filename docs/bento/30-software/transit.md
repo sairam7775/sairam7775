@@ -6,7 +6,7 @@ code:
   - bento/scripts/route.ts
   - bento/scripts/export-transit-seed.ts
   - bento/src/lib/supabase/select-all.ts
-last_reviewed: 2026-11-15
+last_reviewed: 2026-11-17
 ---
 
 # Transit: train legs a first-timer can follow
@@ -54,9 +54,10 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 - Walks carry 3 minutes of waiting, because walks never pay the transfer penalty.
 - **No ODPT data.** The repo is public, and ODPT's licence forbids redistributing its data. That differs from the original spec, which planned GTFS-JP and ODPT feeds ([open questions](../00-start/open-questions.md)).
 - **Known gaps:**
-  - JR East has no fare table yet, so JR rides in Tokyo are unpriced;
-  - Yurikamome, airport lines and private railways in Tokyo are unpriced too, because the sources conflicted.
-  - In Kanagawa, only operators whose own fare page could be read are priced: the Minatomirai Line and the Enoden by band (each table matches every station pair the operator publishes; IC fares where both are published), the Blue Line ride and the Yokohama City Bus ride as exact fares on their edges. JR East, Tokyu and Keikyu Bus rides are unpriced. A Toyoko train running through onto the Minatomirai Line is one leg with two fares.
+  - JR East rides in Tokyo and Kanagawa are priced by one band table, its trunk-line IC fares from 14 March 2026, when the cheaper Yamanote and Tokyo-area tables were folded into it. JR East's own pages refuse automated reads, so the table comes from a fare site (jr-group.jp) and published IC fares from Tokyo (sources in `fares.ts`); check it against JR East before launch. Pair-specific special fares (such as Tokyo–Odawara) are not modelled.
+  - The Narita Express carries its whole fare, limited express charge included (¥3,140, from Japan Guide), on its edges: one edge from Tokyo to each Narita terminal, so no part of the ride is band-priced. There is no `narita-airport` station: the airports are their terminal stations (`narita-t1`, `narita-t2-t3`, `haneda-t3`, `haneda-t1-t2`), and a Narita trip lands at `narita-t1`. A test keeps a route from each to Tokyo Station (`__tests__/airports.test.ts`).
+  - Yurikamome, the Skyliner, Keikyu, the Tokyo Monorail and other private railways in Tokyo are unpriced, because the sources conflicted (Keisei's own pages give two different Skyliner fares).
+  - In Kanagawa, the other operators are priced only where their own fare page could be read: the Minatomirai Line and the Enoden by band (each table matches every station pair the operator publishes; IC fares where both are published), the Blue Line ride and the Yokohama City Bus ride as exact fares on their edges. Tokyu and Keikyu Bus rides are unpriced. A Toyoko train running through onto the Minatomirai Line is one leg with two fares.
   - Kanagawa's JR minutes follow published journey times, not timetables, and JR East's own pages were not used. With them, Tokyo → Kamakura changes at Ofuna (54 minutes) rather than taking the direct Yokosuka Line train (60), and Yokohama → Kamakura changes there too (29 against 30); the leg carries a note about the direct train. Preferring one-seat rides would be an engine change.
   - Where the Yokosuka and Shonan–Shinjuku lines share track (Yokohama to Kamakura), both have the same minutes, so a route may name either for those stops. Shibuya → Kamakura ties at 62 minutes between the direct Shonan–Shinjuku train and a Toyoko–Tokaido–Yokosuka route with two changes, and the search may return the latter.
   - Not modelled in Kanagawa: the Shonan–Shinjuku Line's trains for Odawara, the Keikyu Line, the Shinkansen and the Tokyu Shin-Yokohama Line to Shin-Yokohama, the Odakyu Line and the Shonan Monorail to Enoshima, and walks between nearby stations in Yokohama.
