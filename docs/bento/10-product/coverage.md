@@ -7,7 +7,7 @@ code:
   - bento/src/lib/bento-man/context.ts
   - bento/src/lib/bento-man/tools.ts
   - bento/src/lib/trips/route-card.ts
-last_reviewed: 2026-11-14
+last_reviewed: 2026-11-17
 ---
 
 # Coverage: honest about how well Bento knows a place
@@ -35,7 +35,7 @@ The target is every destination in Japan, about 2,000 records (decision [D2](../
 ## Today
 
 - **Planned in depth:** Kyoto, Osaka, Nara, Hiroshima, Miyajima and Himeji (an en-route stop), the Kansai–Sanyo corridor, plus Tokyo.
-- **Drafted, not yet verified:** Kamakura (with Enoshima, 13 places) and Yokohama (12 places). Their drafts are in the seed, but they keep the lightest coverage until their places are verified and the city is promoted.
+- **Drafted, not yet verified:** Kamakura (with Enoshima, 13 places) and Yokohama (12 places). Their drafts are in the seed, but they keep the lightest coverage until their places are verified and the city is promoted. Himeji has two more drafts (the Museum of Literature and Otokoyama Haisuichi Park) beside its six verified places, so it can reach outline once they are signed off.
 - **Everything else** exists with less depth, and Bento says so.
 
 ## Acceptance criteria

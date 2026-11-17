@@ -2,7 +2,7 @@ import { draft, type PlaceSeed } from "./types";
 
 const c = "himeji";
 
-/** Himeji — 6 drafts. An en-route cluster, not a stay (D15). Seed values. */
+/** Himeji — 8 drafts. An en-route cluster, not a stay (D15). Seed values. */
 export const himeji: PlaceSeed[] = [
   draft({ id: "hmj-castle", city: c, name: "Himeji Castle", nameJa: "姫路城", category: "castle", lat: 34.8394, lon: 134.6939,
     station: "himeji", walk: 15, tags: ["history"], energy: 0.5, crowd: 0.8, discovery: 0.05, signature: 0.95, physical: 0.5,
@@ -45,4 +45,23 @@ export const himeji: PlaceSeed[] = [
     crowdNote: "A wide boulevard, never crowded.",
     tip: "The straight kilometre from the station to the castle gate, with the keep framed at the end of it the whole way. Walk it rather than take the bus; the covered arcades either side have lunch.",
     cost: 0, pairs: ["hmj-castle"], sources: ["wikivoyage"] }),
+
+  // Position: Wikidata Q11447552. Hours, closing days, price and the bus
+  // from the museum's own pages; architect and dates from ja.wikipedia.
+  draft({ id: "hmj-literature-museum", city: c, name: "Himeji City Museum of Literature", nameJa: "姫路文学館", category: "museum", lat: 34.8418, lon: 134.6877,
+    station: null, walk: null, tags: ["art", "history"], energy: 0.1, crowd: 0.1, discovery: 0.7, signature: 0.2,
+    taste: 30, typical: 60, full: 90, opens: "10:00", closes: "17:00", closedWeekdays: [1],
+    crowdNote: "Quiet. Most castle visitors never come round to this side.",
+    tip: "Two concrete buildings by Tadao Ando on the castle's west side, worth seeing for the architecture alone. The main hall tells the castle's history and Harima's writers; the south building, with the Shiba Ryotaro room and a café, is free. Closed Mondays (open on a public holiday, closed the day after). Shinki Bus from Himeji Station, about 6 minutes to Ichinohashi Bungakukan-mae, then 4 minutes' walk north.",
+    cost: 450, pairs: ["hmj-otokoyama"], sources: ["himejibungakukan.jp/riyou/", "himejibungakukan.jp/riyou/access/", "himejibungakukan.jp/gaiyou/sisetu/", "ja.wikipedia.org/wiki/姫路文学館"] }),
+
+  // Position: OpenStreetMap (© OpenStreetMap contributors, ODbL), the park's
+  // sign; it has no Wikidata item. Steps, the view and the bus from Himeji's
+  // tourism site. No hours are published: a public hillside park.
+  draft({ id: "hmj-otokoyama", city: c, name: "Otokoyama Haisuichi Park", nameJa: "男山配水池公園", category: "viewpoint", lat: 34.8409, lon: 134.6897,
+    station: null, walk: null, tags: ["shrines", "offbeat"], energy: 0.4, crowd: 0.15, discovery: 0.8, signature: 0.3, physical: 0.6,
+    taste: 20, typical: 40, full: 60,
+    crowdNote: "A local's viewpoint. A handful of photographers at most.",
+    tip: "198 stone steps up a hill north-west of the castle to a small park on top of the city's old reservoir, with the whole keep and its three smaller towers in one view. On the way up is the little Senhime Tenmangu, said to enshrine the god Princess Senhime worshipped. The bus stop is Ichinohashi Bungakukan-mae / Otokoyama Senhime Tenmangu, 5 minutes' walk; the Museum of Literature is at the same stop.",
+    cost: 0, skipIf: ["limited_mobility"], pairs: ["hmj-literature-museum"], sources: ["himeji-kanko.jp/feature/50/", "himeji-kanko.jp/spot/120/", "openstreetmap.org/node/2844163558"] }),
 ];
