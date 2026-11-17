@@ -244,6 +244,32 @@ describe("a call that ends in a refusal", () => {
     expect(onScreen()).not.toContain("trick");
   });
 
+  const leakAfterText = () => {
+    const reply = `Here is how I work. ${SENTENCE}.`;
+    return vi.fn<ChatProvider["call"]>().mockImplementationOnce(streams(reply, result({ text: reply })));
+  };
+
+  it("tells the browser once to replace a withheld reply, before it is saved", async () => {
+    const store = new MemoryStore();
+    const order: string[] = [];
+    const append = store.append.bind(store);
+    store.append = (role, ...rest) => { if (role === "assistant") order.push("saved"); return append(role, ...rest); };
+    const { done, onScreen } = browser(leakAfterText(), store, order);
+    const answer = await done;
+    expect(answer.text).toBe(copy.chat.withheld);
+    expect(order.filter((x) => x !== "text")).toEqual(["replace", "saved"]);
+    expect(onScreen()).toBe(copy.chat.withheld);
+  });
+
+  it("leaves the withheld copy on screen, not the streamed draft, when saving the reply then fails", async () => {
+    const store = new MemoryStore();
+    const append = store.append.bind(store);
+    store.append = (role, ...rest) => (role === "assistant" ? Promise.reject(new Error("database down")) : append(role, ...rest));
+    const { done, onScreen } = browser(leakAfterText(), store);
+    await expect(done).rejects.toThrow("database down");
+    expect(onScreen()).toBe(copy.chat.withheld);
+  });
+
   it("keeps earlier calls' checked text and drops only the refused call's", async () => {
     const first = "Checking the dates for your trip now.";
     const call = vi.fn<ChatProvider["call"]>()

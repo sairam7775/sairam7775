@@ -232,6 +232,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     console.warn("Bento Man: withheld a reply that repeated the system prompt.");
     text = WITHHELD_TEXT;
     closing = null;
+    corrected = true;
   }
   // The honesty net (honesty.ts): a reply claiming a change or a proposal
   // on a turn that made none keeps its words, with the truth after them.
@@ -244,7 +245,8 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     corrected = true;
   }
   if (closing) text = text ? `${text}\n\n${closing}` : closing;
-  // The refused call's text may be on screen already, and a corrected reply
+  // The refused call's text may be on screen already, and a corrected or
+  // withheld reply
   // differs from what streamed; "done" would replace it, but only after the
   // save below, which can fail.
   if (stopReason === "refusal" || corrected) opts.events?.onReplace?.(text);
