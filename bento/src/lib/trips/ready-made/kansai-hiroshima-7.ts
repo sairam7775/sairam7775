@@ -1,7 +1,7 @@
 import type { ReadyMadeTrip } from "./types";
 
-/** Nara as a day trip from Osaka; Himeji a stop on the train from Kyoto
- *  to Hiroshima. */
+/** Nara as a day trip from Osaka. Day 5 is planned as a day in Himeji: the
+ *  ride on to Hiroshima that evening, and the luggage, aren't planned. */
 export const kansaiHiroshima7: ReadyMadeTrip = {
   id: "kansai-hiroshima-7",
   days: 7,
@@ -17,12 +17,12 @@ export const kansaiHiroshima7: ReadyMadeTrip = {
     { day: 5, cityId: "himeji" },
   ],
   mustSee: [
-    ["osk-osaka-castle", "osk-kuromon", "osk-dotonbori"],
-    ["nra-todaiji", "nra-nara-park", "nra-kasuga-taisha"],
-    ["kyt-fushimi-inari", "kyt-kiyomizu", "kyt-gion"],
-    ["kyt-arashiyama-bamboo", "kyt-tenryuji", "kyt-kinkakuji"],
+    ["osk-dotonbori"],
+    ["nra-todaiji", "nra-kasuga-taisha"],
+    ["kyt-kiyomizu", "kyt-gion"],
+    ["kyt-arashiyama-bamboo", "kyt-kinkakuji"],
     ["hmj-castle", "hmj-kokoen"],
-    ["hir-peace-park", "hir-atomic-dome", "hir-peace-museum"],
-    ["hir-shukkeien", "hir-castle", "hir-okonomimura"],
+    ["hir-peace-park", "hir-peace-museum"],
+    ["hir-shukkeien"],
   ],
 };

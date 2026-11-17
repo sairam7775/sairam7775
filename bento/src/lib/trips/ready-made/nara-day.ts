@@ -5,5 +5,5 @@ export const naraDay: ReadyMadeTrip = {
   days: 1,
   route: [{ cityId: "nara-city", nights: 0 }],
   dayTrips: [{ day: 1, cityId: "nara-city" }],
-  mustSee: [["nra-todaiji", "nra-nara-park", "nra-kasuga-taisha"]],
+  mustSee: [["nra-todaiji", "nra-kasuga-taisha"]],
 };

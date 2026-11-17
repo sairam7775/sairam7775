@@ -7,7 +7,7 @@ export const kyoto2: ReadyMadeTrip = {
   route: [{ cityId: "kyoto-city", nights: 1 }],
   dayTrips: [],
   mustSee: [
-    ["kyt-fushimi-inari", "kyt-kiyomizu", "kyt-gion"],
-    ["kyt-arashiyama-bamboo", "kyt-tenryuji", "kyt-kinkakuji"],
+    ["kyt-kiyomizu"],
+    ["kyt-arashiyama-bamboo"],
   ],
 };

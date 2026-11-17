@@ -5,5 +5,5 @@ export const osakaDay: ReadyMadeTrip = {
   days: 1,
   route: [{ cityId: "osaka-city", nights: 0 }],
   dayTrips: [{ day: 1, cityId: "osaka-city" }],
-  mustSee: [["osk-osaka-castle", "osk-kuromon", "osk-dotonbori"]],
+  mustSee: [["osk-osaka-castle"]],
 };

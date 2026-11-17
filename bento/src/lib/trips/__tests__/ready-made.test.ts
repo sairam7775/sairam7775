@@ -30,7 +30,10 @@ const facts = new Map<string, CityFacts>(
 
 // Each day of the week (Monday 10 to Sunday 16 May 2027), then one start
 // in each season. The trips run on from there, so every day of a long trip
-// meets several weekdays too.
+// meets several weekdays too. What a season changes is the scoring (season
+// tags) only: a place has one set of hours all year (the shortest, when they
+// vary), and public holidays and year-end closures aren't in the data, so
+// none of those is tested here.
 const WEEK = ["2027-05-10", "2027-05-11", "2027-05-12", "2027-05-13", "2027-05-14", "2027-05-15", "2027-05-16"];
 const SEASONS = { winter: "2027-01-20", spring: "2027-04-01", summer: "2027-07-17", autumn: "2026-11-24" };
 const STARTS = [...WEEK, ...Object.values(SEASONS)];
@@ -86,6 +89,13 @@ describe("ready-made trips", () => {
         expect(new Set(all).size).toBe(all.length);
       });
 
+      if (trip.days > 1) {
+        it("keeps the arrival and departure days light: one must-see at most", () => {
+          expect(trip.mustSee[0].length, "day 1").toBeLessThanOrEqual(1);
+          expect(trip.mustSee[trip.days - 1].length, `day ${trip.days}`).toBeLessThanOrEqual(1);
+        });
+      }
+
       it("gives every zero-night city one day, and every stay at least one of its own", () => {
         const zero = trip.route.filter((c) => c.nights === 0).map((c) => c.cityId).sort();
         expect(trip.dayTrips.map((d) => d.cityId).sort()).toEqual(zero);
@@ -115,7 +125,7 @@ describe("ready-made trips", () => {
         });
       });
 
-      it("plans every day and keeps every must-see, open and in its hours, on each weekday and in each season", () => {
+      it("plans every day and keeps every must-see, open and in its hours, for a start on each weekday and with each season's scoring", () => {
         const bad: string[] = [];
         for (const start of STARTS)
           for (const pace of PACES)
@@ -147,6 +157,12 @@ describe("ready-made trips", () => {
                   for (const y of day.items)
                     if ((placeById.get(x.placeId)!.conflicts ?? []).includes(y.placeId)) bad.push(`${at}: ${x.placeId} with ${y.placeId}`);
                 for (const w of day.warnings) if (/pinned/i.test(w)) bad.push(`${at}: ${w}`);
+                // A full day has at least one stop the planner chose, and no
+                // chosen stop had to make way for a must-see.
+                const full = trip.days === 1 || (i > 0 && i < trip.days - 1);
+                if (full && !day.items.some((x) => !x.locked)) bad.push(`${at}: nothing chosen around the must-sees`);
+                const madeWay = new Set(must.map((id) => copy.plan.leftOut.makesPinLate(placeById.get(id)!.name)));
+                for (const r of day.considered) if (r.stage === "validate" && madeWay.has(r.detail)) bad.push(`${at}: ${r.placeId} ${r.detail}`);
               });
             }
         expect(bad).toEqual([]);

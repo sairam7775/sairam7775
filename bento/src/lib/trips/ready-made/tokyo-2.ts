@@ -6,7 +6,7 @@ export const tokyo2: ReadyMadeTrip = {
   route: [{ cityId: "tokyo-city", nights: 1 }],
   dayTrips: [],
   mustSee: [
-    ["tky-sensoji", "tky-ueno-park", "tky-akihabara"],
-    ["tky-meiji-jingu", "tky-takeshita", "tky-shibuya-crossing"],
+    ["tky-sensoji"],
+    ["tky-meiji-jingu"],
   ],
 };

@@ -5,5 +5,5 @@ export const yokohamaDay: ReadyMadeTrip = {
   days: 1,
   route: [{ cityId: "yokohama", nights: 0 }],
   dayTrips: [{ day: 1, cityId: "yokohama" }],
-  mustSee: [["ykh-chinatown", "ykh-yamashita", "ykh-red-brick"]],
+  mustSee: [["ykh-chinatown"]],
 };

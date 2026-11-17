@@ -10,10 +10,10 @@ export const osakaKyotoNara5: ReadyMadeTrip = {
   ],
   dayTrips: [{ day: 4, cityId: "nara-city" }],
   mustSee: [
-    ["osk-osaka-castle", "osk-dotonbori"],
-    ["osk-sumiyoshi-taisha", "osk-kuromon", "osk-shinsekai"],
-    ["kyt-fushimi-inari", "kyt-kiyomizu", "kyt-gion"],
-    ["nra-todaiji", "nra-nara-park", "nra-kasuga-taisha"],
-    ["kyt-arashiyama-bamboo", "kyt-tenryuji", "kyt-kinkakuji"],
+    ["osk-dotonbori"],
+    ["osk-osaka-castle"],
+    ["kyt-kiyomizu", "kyt-gion"],
+    ["nra-todaiji", "nra-kasuga-taisha"],
+    ["kyt-arashiyama-bamboo"],
   ],
 };

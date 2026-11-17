@@ -49,6 +49,9 @@ export interface ReadyMadeTrip {
   /** One list per day, in order: up to three place ids, in that day's city,
    *  that the engine keeps (as pins). It fills the rest of the day around
    *  them, but never reorders pins: list them in visiting order, the one
-   *  that closes earliest first. */
+   *  that closes earliest first. The first and last day of a longer trip
+   *  carry one at most (the traveller is arriving or leaving), and every
+   *  full day leaves room for at least one stop the planner chooses, at
+   *  every pace: in practice two must-sees a day, one when they are long. */
   mustSee: string[][];
 }

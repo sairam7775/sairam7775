@@ -7,5 +7,5 @@ export const miyajimaDay: ReadyMadeTrip = {
   days: 1,
   route: [{ cityId: "miyajima", nights: 0 }],
   dayTrips: [{ day: 1, cityId: "miyajima" }],
-  mustSee: [["miy-itsukushima", "miy-great-torii", "miy-daishoin"]],
+  mustSee: [["miy-itsukushima", "miy-great-torii"]],
 };

@@ -64,14 +64,16 @@ It's greedy insertion with local search: not optimal, and it doesn't need to be.
 
 Implementation: partial (package 1B of the ready-made trips plan; nothing starts one yet, and no page or Bento Man tool reads them).
 
-A ready-made trip is **saved input to the planner, never a hand-written itinerary**: its cities with nights, which day is a day trip, and up to three must-see places per day. The engine builds the days for the traveller's own dates and pace, so a trip states no times, fares or durations.
+A ready-made trip is **saved input to the planner, never a hand-written itinerary**: its cities with nights, which day is a day trip, and up to three must-see places per day (the first trips use two at most). The engine builds the days for the traveller's own dates and pace, so a trip states no times, fares or durations.
 
 - `bento/src/lib/trips/ready-made/`: `types.ts` (the shape, and `READY_MADE_CITIES`, the nine cities a trip may use), one file per trip, `index.ts` (the list). Titles, summaries and a reason per city are in `copy.readyMade.trips`.
 - A trip of _n_ days has _n_ − 1 nights, the way a trip's end date works: the last day is spent in the last city. A zero-night city has its day named in `dayTrips`; a one-day trip is a single zero-night city.
-- Must-sees are pins, listed in visiting order (the one that closes earliest first), because the planner doesn't reorder pins.
+- Must-sees are pins, listed in visiting order (the one that closes earliest first), because the planner doesn't reorder pins. The first and last day of a longer trip carry one at most (arriving, leaving); a full day has two at most, one when they are long, so the planner still chooses something around them at every pace.
+- A day spent in a zero-night city between two stays (Himeji, between Kyoto or Osaka and Hiroshima) is planned as an ordinary day in that city. The ride on to the next stay that evening and the luggage aren't planned, and the words don't promise "get off and get back on".
 - `readyMadeToPlan(trip, startDate)` turns one into the planner's inputs: the route in `propose_route`'s shape (with reasons), every date with its city and pins (`planTrip`'s days), and the day-trip dates in `plan_days`'s shape.
-- `bento/src/lib/trips/__tests__/ready-made.test.ts` checks every trip against the seeds: ids exist and sit in that day's city, nights add up, `assessRoute` isn't overpacked and knows every train, no two must-sees on a day conflict, and `planTrip` fills every day and keeps every must-see open and within its hours for a start on each weekday and in each season, at each pace.
-- **Before a trip is published,** every city it uses must be outline or deep on the live site: the planner refuses a city it doesn't know. The test treats every seed place as verified and can't see live tiers. Holidays and year-end closures aren't in the place data, so they aren't checked.
+- `bento/src/lib/trips/__tests__/ready-made.test.ts` checks every trip against the seeds: ids exist and sit in that day's city, nights add up, `assessRoute` isn't overpacked and knows every train, no two must-sees on a day conflict, the first and last days are light, and `planTrip` fills every day, chooses at least one stop of its own on every full day, never has to drop a stop to reach a must-see, and keeps every must-see open and within its hours. That is checked for a start on each weekday and a start in each season, at each pace, with a 07:00 and a 09:00 start.
+- What a season changes there is only the scoring (season tags). A place has one set of hours all year (the shortest, when they vary), so the test can't catch an hours change by season. Public holidays and year-end closures aren't in the place data, so they aren't checked either.
+- **Before a trip is published,** every city it uses must be outline or deep on the live site: the planner refuses a city it doesn't know. The test treats every seed place as verified and can't see live tiers.
 
 ## Why not ask a model
 

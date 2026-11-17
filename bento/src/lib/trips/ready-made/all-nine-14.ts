@@ -1,7 +1,8 @@
 import type { ReadyMadeTrip } from "./types";
 
-/** Four bases for nine cities: the other five are day trips or, for
- *  Himeji, a stop on the train. Two must-sees a day keeps it easy. */
+/** Four bases for nine cities: the other five are day trips, and day 11
+ *  is planned as a day in Himeji (the ride on to Hiroshima that evening,
+ *  and the luggage, aren't planned). Two must-sees a day at most. */
 export const allNine14: ReadyMadeTrip = {
   id: "all-nine-14",
   days: 14,
@@ -24,19 +25,19 @@ export const allNine14: ReadyMadeTrip = {
     { day: 13, cityId: "miyajima" },
   ],
   mustSee: [
-    ["tky-sensoji", "tky-ueno-park"],
+    ["tky-sensoji"],
     ["tky-meiji-jingu", "tky-shibuya-crossing"],
     ["kmk-kotoku-in", "kmk-tsurugaoka"],
     ["tky-tsukiji-outer", "tky-hamarikyu"],
-    ["ykh-chinatown", "ykh-yamashita"],
+    ["ykh-chinatown"],
     ["kyt-kiyomizu", "kyt-gion"],
-    ["kyt-fushimi-inari", "kyt-nijo-castle"],
-    ["nra-todaiji", "nra-nara-park"],
+    ["kyt-fushimi-inari", "kyt-nishiki-market"],
+    ["nra-todaiji", "nra-kasuga-taisha"],
     ["kyt-arashiyama-bamboo", "kyt-kinkakuji"],
-    ["osk-osaka-castle", "osk-dotonbori"],
+    ["osk-osaka-castle"],
     ["hmj-castle", "hmj-kokoen"],
     ["hir-peace-park", "hir-peace-museum"],
     ["miy-itsukushima", "miy-great-torii"],
-    ["hir-shukkeien", "hir-okonomimura"],
+    ["hir-shukkeien"],
   ],
 };

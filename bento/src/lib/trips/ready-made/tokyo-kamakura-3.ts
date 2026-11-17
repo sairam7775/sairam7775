@@ -9,8 +9,8 @@ export const tokyoKamakura3: ReadyMadeTrip = {
   ],
   dayTrips: [{ day: 2, cityId: "kamakura" }],
   mustSee: [
-    ["tky-sensoji", "tky-ueno-park", "tky-akihabara"],
-    ["kmk-kotoku-in", "kmk-hasedera", "kmk-tsurugaoka"],
-    ["tky-meiji-jingu", "tky-takeshita", "tky-shibuya-crossing"],
+    ["tky-sensoji"],
+    ["kmk-kotoku-in", "kmk-tsurugaoka"],
+    ["tky-meiji-jingu"],
   ],
 };

@@ -5,5 +5,5 @@ export const kyotoEast: ReadyMadeTrip = {
   days: 1,
   route: [{ cityId: "kyoto-city", nights: 0 }],
   dayTrips: [{ day: 1, cityId: "kyoto-city" }],
-  mustSee: [["kyt-kiyomizu", "kyt-ninenzaka", "kyt-gion"]],
+  mustSee: [["kyt-kiyomizu", "kyt-gion"]],
 };

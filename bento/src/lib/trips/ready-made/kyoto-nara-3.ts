@@ -9,8 +9,8 @@ export const kyotoNara3: ReadyMadeTrip = {
   ],
   dayTrips: [{ day: 2, cityId: "nara-city" }],
   mustSee: [
-    ["kyt-fushimi-inari", "kyt-kiyomizu", "kyt-gion"],
-    ["nra-todaiji", "nra-nara-park", "nra-kasuga-taisha"],
-    ["kyt-arashiyama-bamboo", "kyt-tenryuji", "kyt-kinkakuji"],
+    ["kyt-kiyomizu"],
+    ["nra-todaiji", "nra-kasuga-taisha"],
+    ["kyt-fushimi-inari"],
   ],
 };
