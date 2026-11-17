@@ -60,6 +60,16 @@ const BANDS: Record<string, [number, number][]> = {
    *  edges in seed/kanagawa.ts. */
   minatomirai: [[3, 193], [5, 224]],
   enoden: [[2, 200], [4, 220], [7, 260], [10, 310]],
+  /** Hakone, from hakonenavi.jp, November 2026. Hakone Tozan Train between
+   *  the three stations seeded (Hakone-Yumoto, Chokoku-no-Mori, Gora), from
+   *  the Tozan fare table (hakone-tozan_fee_260730.pdf): ¥460 from Yumoto to
+   *  either, ¥160 between the two. That table is not by distance, so this
+   *  band holds only for those three. Odawara – Yumoto and the cable car
+   *  carry exact fares on their edges in seed/hakone.ts. Hakone Ropeway: one
+   *  flat adult fare of ¥2,000 for any section since 1 October 2025, so the
+   *  two sections ridden together cost one fare. */
+  "hakone-tozan": [[1, 160], [9, 460]],
+  "hakone-ropeway": [[999, 2000]],
   /** Flat fares. */
   hiroden: [[999, 240]],
   "kyoto-bus": [[999, 230]],
