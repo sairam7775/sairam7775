@@ -19,6 +19,18 @@ const kyoto = kyotoSeed.map((s) => seedToPlaceInput(s));
 const hiroshima = hiroshimaSeed.map((s) => seedToPlaceInput(s));
 const traveller = { pace: "packed" as const, interestTags: [], energy: 0.5, crowdTolerance: 0.6, discovery: 0.5, excludes: [], mobility: [], budgetBand: null };
 
+/** Timing warnings ("opens at", "pinned for") that name a place the day
+ *  doesn't hold. (A name inside the name of a place the day does hold
+ *  doesn't count.) The "has no station" warnings are left out on purpose:
+ *  they still name places growth only looked at, a known gap whose fix
+ *  changes plan_days' result and so waits for a live eval. */
+const absentNamed = (plan: ReturnType<typeof planDay>, places: PlaceInput[]) => {
+  const inDay = places.filter((p) => plan.items.some((i) => i.placeId === p.id));
+  return plan.warnings.filter((w) => /opens at|is pinned for/.test(w)).filter((w) =>
+    places.some((p) => !inDay.includes(p) && w.includes(p.name) && !inDay.some((q) => q.name.includes(p.name) && w.includes(q.name))),
+  );
+};
+
 /** Dropped to make room for a pin, as opposed to dropped for its own hours. */
 const pinDrops = (plan: ReturnType<typeof planDay>) =>
   plan.considered.filter((r) => r.stage === "validate" && /leave time to reach/.test(r.detail));
@@ -79,6 +91,23 @@ describe("planDay and pins", () => {
       expect(meiji.endMin, date).toBeLessThanOrEqual(16 * 60);
       expect(pinDrops(plan), date).toEqual([]);
       expect(plan.items.length, date).toBeGreaterThan(3);
+    }
+  });
+
+  it("warns only about the day it returns, not the ones it tried", () => {
+    // replan_day and plan_days re-pin saved stops at their times. Every place
+    // tried in front of the 15:30 garden used to leave "pinned for 15:30 but
+    // the day only reaches it by …" behind, and "… opens at …" for places
+    // that never made the day.
+    for (const pace of ["relaxed", "standard", "packed"] as const) {
+      const plan = planDay({
+        date: "2027-05-19", cityId: "hiroshima-city", places: hiroshima, travel,
+        traveller: { ...traveller, pace },
+        locked: [{ placeId: "hir-shukkeien", startMin: 15 * 60 + 30 }],
+      });
+      expect(plan.items.find((i) => i.placeId === "hir-shukkeien")!.startMin, pace).toBe(15 * 60 + 30);
+      expect(plan.warnings.filter((w) => /pinned for/.test(w)), pace).toEqual([]);
+      expect(absentNamed(plan, hiroshima), pace).toEqual([]);
     }
   });
 

@@ -74,6 +74,9 @@ export function planDay(input: DayInput): DayPlan {
     if (!leg) {
       leg = { mode: "estimate", minutes: FALLBACK_TRAVEL_MIN, fareJpy: 0, fareKind: "estimate",
         detail: copy.plan.warnings.noTrainData(FALLBACK_TRAVEL_MIN, a.name, b.name), lines: [] };
+      // Known gap: growing prices legs to places that never make the day, so
+      // these can name a place the day doesn't hold. Saying them only for the
+      // final legs changes plan_days' result, which needs a live eval first.
       for (const p of [a, b]) {
         if (p.nearestStation) continue;
         const msg = copy.plan.warnings.noStation(p.name, FALLBACK_TRAVEL_MIN);
@@ -319,10 +322,13 @@ export function planDay(input: DayInput): DayPlan {
   };
 
   // 6 TIME — clock times from opening hours, transit and a lunch slot.
-  const time = (): { items: PlannedItem[]; meals: Meal[]; violations: Rejected[]; endMin: number; fares: number; fareKind: "exact" | "estimate"; unpriced: number } => {
+  // Its warnings are returned, not pushed: it also runs on trial days that
+  // are thrown away, and only the day returned may warn.
+  const time = (): { items: PlannedItem[]; meals: Meal[]; violations: Rejected[]; warnings: string[]; endMin: number; fares: number; fareKind: "exact" | "estimate"; unpriced: number } => {
     const items: PlannedItem[] = [];
     const meals: Meal[] = [];
     const violations: Rejected[] = [];
+    const warnings: string[] = [];
     let tNow = dayStart;
     let fares = 0;
     let fareKind: "exact" | "estimate" = "exact";
@@ -399,11 +405,11 @@ export function planDay(input: DayInput): DayPlan {
       meals.push({ kind: "lunch", startMin: tNow, endMin: tNow + LUNCH_MIN });
       tNow += LUNCH_MIN;
     }
-    return { items, meals, violations, endMin: tNow, fares, fareKind, unpriced };
+    return { items, meals, violations, warnings, endMin: tNow, fares, fareKind, unpriced };
   };
 
   // 7 VALIDATE — drop what the hours reject, refill, re-time. Bounded.
-  let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], endMin: dayStart, fares: 0, fareKind: "exact", unpriced: 0 };
+  let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], warnings: [], endMin: dayStart, fares: 0, fareKind: "exact", unpriced: 0 };
   const isLocked = (id: string) => seq.find((d) => d.place.id === id)?.locked === true;
   const unlockedViolations = () => timed.violations.filter((v) => !isLocked(v.placeId));
   // A pin is never dropped, so when one is reached after closing, a stop
@@ -470,6 +476,8 @@ export function planDay(input: DayInput): DayPlan {
     }
   }
 
+  // What the returned day's timing found (never a trial's).
+  warnings.push(...timed.warnings);
   if (timed.unpriced) {
     warnings.push(copy.plan.warnings.unpriced(timed.unpriced));
   }
