@@ -53,7 +53,7 @@ A trip stores its cities, nights, day trips and a few must-see places per day. T
 Other facts a builder needs:
 
 - **Trains between these cities exist** in the seed: Tokyo to Kyoto, Shin-Osaka to Hiroshima, Kyoto to Nara, Hiroshima to Miyajima, Tokyo to Kamakura and Yokohama, Kansai Airport to Osaka and Kyoto. Check with `npx tsx scripts/route.ts <from> <to>`.
-- **Gaps found:** `route.ts narita-airport tokyo` finds no route (the station id may differ, or the link is missing: find out which). Tokyo to Kamakura and Yokohama have no fare yet.
+- **Airports:** the station ids are `narita-t1`, `narita-t2-t3`, `haneda-t1-t2` and `haneda-t3` (there is no `narita-airport`). Routes from all four into Tokyo exist. Tokyo to Kamakura and Yokohama had no fare (package 1A adds them).
 - **A planner refuses a stub city.** A trip that includes one would fail, so every city in a published trip must be outline or deep on live.
 - **Today's route suggestion** is a fixed table for the Kansai–Sanyo corridor only (`suggestRoute` in `bento/src/lib/engine/route.ts`). Ready-made trips replace it in Phase 1.
 - **Starting a trip today** goes through a short form (`bento/src/lib/trips/guided-start.ts`, `bento/src/app/trips/plan/`) and then the chat.
@@ -81,7 +81,7 @@ These are the workspace standards (`knowledge/AI-DEVELOPMENT.md`). In short:
 ### 1A. Finish the nine cities' data
 
 - Add two Himeji places (draft, fact-check, seed file `bento/src/lib/places/seed/himeji.ts`), so it can reach outline.
-- Find out why Narita Airport has no route to Tokyo and fix the seed or the id. Check Haneda the same way.
+- Pin routes from all four airport terminals into Tokyo with a test (the ids are above). Add fares where they are missing.
 - Add fares for Tokyo to Kamakura and Tokyo to Yokohama ([transit](../30-software/transit.md)).
 - **Done when:** on live, all nine cities are outline or deep; `route.ts` returns a route between every pair of neighbouring cities used in 1B and from each arrival airport; the all-seeds tests pass.
 
