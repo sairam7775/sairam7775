@@ -157,6 +157,14 @@ describe("ready-made trips", () => {
                   for (const y of day.items)
                     if ((placeById.get(x.placeId)!.conflicts ?? []).includes(y.placeId)) bad.push(`${at}: ${x.placeId} with ${y.placeId}`);
                 for (const w of day.warnings) if (/pinned/i.test(w)) bad.push(`${at}: ${w}`);
+                // Timing warnings speak only of this day's stops. ("Has no
+                // station" warnings can still name places growth only looked
+                // at: a known gap, see engine.md.)
+                const inDay = new Set(day.items.map((x) => x.name));
+                for (const w of day.warnings.filter((x) => /opens at/.test(x))) {
+                  const named = w.replace(/ opens at .*$/, "");
+                  if (!inDay.has(named)) bad.push(`${at}: warns about ${named}, not in the day`);
+                }
                 // A full day has at least one stop the planner chose, and no
                 // chosen stop had to make way for a must-see.
                 const full = trip.days === 1 || (i > 0 && i < trip.days - 1);
