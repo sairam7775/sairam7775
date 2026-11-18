@@ -4,12 +4,14 @@
  *  tested. (The eval's MemoryStore loads the corridor files on its own, on
  *  purpose.) */
 import type { PlaceSeed } from "./types";
+import { hakone } from "./hakone";
 import { himeji } from "./himeji";
 import { hiroshima } from "./hiroshima";
 import { kamakura } from "./kamakura";
 import { kyoto } from "./kyoto";
 import { miyajima } from "./miyajima";
 import { nara } from "./nara";
+import { nikko } from "./nikko";
 import { osaka } from "./osaka";
 import { tokyo } from "./tokyo";
 import { yokohama } from "./yokohama";
@@ -24,6 +26,8 @@ export const placeSeeds: { file: string; places: PlaceSeed[] }[] = [
   { file: "tokyo.ts", places: tokyo },
   { file: "yokohama.ts", places: yokohama },
   { file: "kamakura.ts", places: kamakura },
+  { file: "hakone.ts", places: hakone },
+  { file: "nikko.ts", places: nikko },
 ];
 
 export const allPlaces: PlaceSeed[] = placeSeeds.flatMap((s) => s.places);
