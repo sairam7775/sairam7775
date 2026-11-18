@@ -160,7 +160,7 @@ describe("route — Hakone", () => {
   it("Moto-Hakone → Hakone-Yumoto is the Tozan bus at its fare", () => {
     const r = route(g, "moto-hakone-ko", "hakone-yumoto")!;
     expect(r.legs.map((l) => l.mode)).toEqual(["bus"]);
-    expect(r.minutes).toBe(35);
+    expect(r.minutes).toBe(40);
     expect(r.fareJpy).toBe(1210);
   });
 });
@@ -170,15 +170,17 @@ describe("route — Nikko", () => {
     const r = route(g, "tokyo", "tobu-nikko")!;
     expect(r.legs.map((l) => l.to.id)).toEqual(["utsunomiya", "jr-nikko", "tobu-nikko"]);
     expect(r.minutes).toBe(105); // 47 + 5 + 45 + 8
-    expect(r.unpricedRides).toBe(1); // one JR East run past the band table's 100 km
-    expect(r.fareJpy).toBe(0);
+    expect(r.unpricedRides).toBe(1); // the Shinkansen: past the band table's 100 km
+    expect(r.fareJpy).toBe(803); // the Nikko Line's exact fare stands alone
   });
 
-  it("Utsunomiya → Nikko alone is within JR East's band table", () => {
+  it("Utsunomiya → Nikko carries the local line's exact fare, not a trunk-line band", () => {
     const r = route(g, "utsunomiya", "jr-nikko")!;
     expect(r.legs.map((l) => l.line)).toEqual(["JR Nikko Line"]);
-    expect(r.fareJpy).toBe(803); // 40.5 km
+    expect(r.fareJpy).toBe(803);
+    expect(r.fareKind).toBe("exact");
     expect(r.unpricedRides).toBe(0);
+    for (const e of nikko.edges.filter((x) => x.line === "JR Nikko Line")) expect(e.fareJpy, `${e.from}→${e.to}`).toBe(803);
   });
 
   it("has no one-stop Shinkansen hop between Tokyo and Ueno", () => {

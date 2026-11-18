@@ -688,10 +688,11 @@ Explained in `../docs/bento/30-software/transit.md`.
   across its two sections. The ships run a loop, one fare however far, so
   each through ride is its own hop and the Hakone-machi–Moto-Hakone
   crossing has its own line name: a change onto it pays the penalty, so a
-  through ride is never priced as two. JR East rides take its band table,
-  so the Shinkansen to Utsunomiya (past 100 km) is unpriced and the JR
-  Nikko Line alone is banded; JR Central, Tobu and Tobu Bus rides are
-  unpriced. There is no Tokyo–Ueno Shinkansen hop: it would pull Tokyo
+  through ride is never priced as two. The Shinkansen to Utsunomiya is
+  past JR East's band table (100 km), so unpriced; the JR Nikko Line is a
+  local line (dearer table) with an exact fare on its edge, so a station
+  added on it needs its own exact fare. JR Central, Tobu and Tobu Bus
+  rides are unpriced. The Tozan bus is 40 minutes each way. There is no Tokyo–Ueno Shinkansen hop: it would pull Tokyo
   routes onto a one-stop Shinkansen ride.
 
 ## Walkthrough

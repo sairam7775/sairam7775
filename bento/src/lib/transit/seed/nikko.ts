@@ -17,9 +17,9 @@
  *    approximate at each stop.
  *  - Minutes: see each line; where published figures differ the larger is
  *    used, as in kanagawa.ts.
- *  - Fares: JR East by its band table (fares.ts), which ends at 100 km, so
- *    the Shinkansen to Utsunomiya and any JR ride through it are unpriced;
- *    the JR Nikko Line alone is banded. Tobu's limited express charge
+ *  - Fares: the Shinkansen to Utsunomiya is past the end of JR East's band
+ *    table (100 km), so it is unpriced; the JR Nikko Line is a local line
+ *    and carries its own exact fare. Tobu's limited express charge
  *    depends on the train and the day (japan-guide.com gives ¥2,850–3,540
  *    in all from Asakusa), and Tobu Bus publishes no fare table that could
  *    be read. Those rides count as unpriced, never free. For the
@@ -89,7 +89,13 @@ export const edges: Edge[] = [
   // ---- JR Nikko Line, Utsunomiya – Nikko, every train all stations (five
   // between). About 45 minutes (Toshogu's access page); JR East's timetable
   // shows 42 and 43 for the 08:46 and 12:15 locals, November 2026.
-  ...bothWays(e({ from: "utsunomiya", to: "jr-nikko", line: NIKKO_LINE, operator: "jr-east", km: 40.5, minutes: 45, stops: 6 })),
+  // Fare: exact ¥803 IC (¥810 by ticket), Utsunomiya – Nikko, from Ekitan
+  // and NAVITIME route searches (reviewer's fact-check, November 2026). The
+  // Nikko Line is a local line (地方交通線), priced from JR East's dearer
+  // local-line table, not the trunk-line bands in fares.ts; the band for
+  // 40.5 km happens to give the same ¥803. A station added on this line
+  // later must carry its own exact fare, never take the band table.
+  ...bothWays(e({ from: "utsunomiya", to: "jr-nikko", line: NIKKO_LINE, operator: "jr-east", km: 40.5, minutes: 45, stops: 6, fareJpy: 803 })),
 
   // ---- JR Nikko – Tobu-Nikko on foot: a few minutes apart (about 5 by
   // JR East's travel magazine and other guides; about 260 m between the

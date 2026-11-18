@@ -73,10 +73,14 @@ export const edges: Edge[] = [
   // access, updated October 2025); Odakyu's own pages say about 80, so the
   // larger is used. Fare: ¥1,270 fare + ¥1,200 limited express charge =
   // ¥2,470 (Odakyu's Romancecar page for the charge; the total from
-  // japan-guide and Ekitan's Hakone Romancecar guide, August 2026). Stops:
-  // Machida and Odawara on every train (Ekitan), so 3 arrivals.
+  // japan-guide and Ekitan's Hakone Romancecar guide, August 2026). Stops
+  // vary by train: most call at Machida and Odawara, some also at Ebina,
+  // Hon-Atsugi or Isehara, and the Super Hakone runs nonstop from Shinjuku
+  // to Odawara (59 minutes at fastest since March 2026, Ekitan). The 85
+  // minutes and 3 arrivals are kept as the conservative figures for a
+  // typical train, not the fastest.
   ...bothWays(e({ from: "shinjuku", to: "hakone-yumoto", line: ROMANCECAR, operator: "odakyu", km: 88.6, minutes: 85, stops: 3, fareJpy: 2470,
-    note: "All seats are reserved; the fare shown includes the limited express charge. Some trains also stop at Ebina, Hon-Atsugi or Isehara." })),
+    note: "All seats are reserved; the fare shown includes the limited express charge. Stops vary by train." })),
 
   // ---- Tokaido Shinkansen Kodama to Odawara. Minutes from JR East's
   // timetable for Kodama 813, November 2026: Tokyo 09:27, Shinagawa 09:34,
@@ -134,14 +138,16 @@ export const edges: Edge[] = [
   ...bothWays(e({ from: "hakone-machi-ko", to: "moto-hakone-ko", line: CRUISE_SHORT, mode: "ferry", operator: "hakone-cruise", minutes: 10, fareJpy: 600 })),
 
   // ---- Hakone Tozan Bus, lines H and K, Hakone-Yumoto – Moto-Hakone-ko.
-  // From Yumoto, Hakone Shrine's access page gives 60 minutes and
-  // japan-guide.com (Lake Ashi page) 35, so the larger is used; towards
-  // Yumoto, japan-guide.com gives 35 (Visit Kanagawa: 30 by the express
-  // bus). Fare ¥1,210 since 1 October 2025 (hakonenavi.jp notices of the
+  // Minutes: 40 both ways. Published figures for lines H and K: 35 each
+  // way (japan-guide.com, Lake Ashi page, both directions), about 38 by
+  // line H (Kanagawa Tourism Association, cedar avenue page), 40 to
+  // Onshi-koen-mae, one stop beyond (tabi-mag.jp), 30 by the express bus
+  // (Visit Kanagawa). Hakone Shrine's access page gives 60 from Yumoto; it
+  // is the one outlier and is not used. Fare ¥1,210 since 1 October 2025 (hakonenavi.jp notices of the
   // Tozan bus fare revision, July and September 2025, ¥1,080 before;
   // japan-guide.com's Lake Ashi page also gives ¥1,210). No km: no source
   // gives the road distance.
-  e({ from: "hakone-yumoto", to: "moto-hakone-ko", line: BUS, mode: "bus", operator: "hakone-tozan-bus", minutes: 60, fareJpy: 1210,
+  e({ from: "hakone-yumoto", to: "moto-hakone-ko", line: BUS, mode: "bus", operator: "hakone-tozan-bus", minutes: 40, fareJpy: 1210,
     note: "Lines H or K from the bus stands at Hakone-Yumoto Station. Get off at Moto-Hakone-ko." }),
-  e({ from: "moto-hakone-ko", to: "hakone-yumoto", line: BUS, mode: "bus", operator: "hakone-tozan-bus", minutes: 35, fareJpy: 1210 }),
+  e({ from: "moto-hakone-ko", to: "hakone-yumoto", line: BUS, mode: "bus", operator: "hakone-tozan-bus", minutes: 40, fareJpy: 1210 }),
 ];
