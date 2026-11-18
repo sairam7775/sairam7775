@@ -5,7 +5,7 @@
  *  visitor rides: every station serves a place, joins two lines, or is
  *  where a line ends. Skipped stations are counted in `stops` and their km
  *  kept in the hop, so no station is added just for its distance. Hakone
- *  goes later in this file.
+ *  has its own file, hakone.ts: its lines meet these only in Tokyo.
  *
  *  Sources (the full list, with dates, is kept outside the repo):
  *  - Station order and operating km: each line's station table on

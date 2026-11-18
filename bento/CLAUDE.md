@@ -670,8 +670,7 @@ Explained in `../docs/bento/30-software/transit.md`.
   edges, one per terminal, so no part of it is band-priced. Walks carry 3 minutes
   of waiting because walks never pay the transfer penalty.
 - `seed/kanagawa.ts` is Yokohama and Kamakura (Enoshima's stations are
-  `cityId: "kamakura"`, where its places are filed); Hakone goes in the
-  same file later. Same sources as Tokyo; the two bus stops (no open
+  `cityId: "kamakura"`, where its places are filed). Same sources as Tokyo; the two bus stops (no open
   position) sit at the Wikidata position of the place each serves, marked
   approximate. JR minutes follow published journey times from official
   visitor pages, the larger where they differ (not JR East's site).
@@ -680,6 +679,21 @@ Explained in `../docs/bento/30-software/transit.md`.
   exact fares on the Blue Line and city bus edges; JR East by its band
   table (as in Tokyo); Tokyu and Keikyu Bus are unpriced. The Toyoko Limited Express keeps one line name
   onto the Minatomirai Line, so the through train is one leg.
+- `seed/hakone.ts` (Romancecar, Shinkansen to Odawara, the Tozan line and
+  mountain train, cable car, both ropeway sections, the Lake Ashi ships,
+  the Tozan bus) and `seed/nikko.ts` (Tobu limited express, Tohoku
+  Shinkansen and JR Nikko Line, the Tobu bus to Chuzenji and Ryuzu) are
+  their own networks; hubs Hakone-Yumoto and Tobu-Nikko. Same sources and
+  rule (the larger published time). The ropeway's flat fare is one band
+  across its two sections. The ships run a loop, one fare however far, so
+  each through ride is its own hop and the Hakone-machi–Moto-Hakone
+  crossing has its own line name: a change onto it pays the penalty, so a
+  through ride is never priced as two. The Shinkansen to Utsunomiya is
+  past JR East's band table (100 km), so unpriced; the JR Nikko Line is a
+  local line (dearer table) with an exact fare on its edge, so a station
+  added on it needs its own exact fare. JR Central, Tobu and Tobu Bus
+  rides are unpriced. The Tozan bus is 40 minutes each way. There is no Tokyo–Ueno Shinkansen hop: it would pull Tokyo
+  routes onto a one-stop Shinkansen ride.
 
 ## Walkthrough
 
