@@ -943,6 +943,145 @@ export const en = {
     },
   },
 
+  // Ready-made trips (lib/trips/ready-made): a title, a one-line summary and
+  // a reason per city on the route. No times, fares or durations: the
+  // planner works those out for the traveller's own dates.
+  readyMade: {
+    trips: {
+      "tokyo-highlights": {
+        title: "Tokyo highlights",
+        summary: "The forest shrine at Meiji Jingu and old Tokyo at Senso-ji, with more of the city between them.",
+        reasons: { "tokyo-city": "The sights most first visits start with, the new side of the city and the old." },
+      },
+      "kyoto-east": {
+        title: "Kyoto's east side",
+        summary: "Kiyomizu-dera and Gion, and the old streets between them.",
+        reasons: { "kyoto-city": "The slopes of Higashiyama: Kyoto's best-known temple and the streets around it." },
+      },
+      "kyoto-arashiyama": {
+        title: "Kyoto: Arashiyama",
+        summary: "The bamboo grove and Tenryu-ji, and more of Arashiyama around them.",
+        reasons: { "kyoto-city": "Kyoto's western edge, where the hills meet the river." },
+      },
+      "osaka-day": {
+        title: "Osaka in a day",
+        summary: "Osaka Castle, and the rest of the day in the city around it.",
+        reasons: { "osaka-city": "The castle first, then a city known for its food and its neon." },
+      },
+      "nara-day": {
+        title: "Nara in a day",
+        summary: "Todai-ji's Great Buddha and Kasuga Taisha, with the deer park between them.",
+        reasons: { "nara-city": "Japan's first capital, and the main sights sit close together in one park." },
+      },
+      "kamakura-day": {
+        title: "Kamakura in a day",
+        summary: "The Great Buddha and Tsurugaoka Hachimangu, and the temples between them.",
+        reasons: { kamakura: "The old samurai capital by the sea, an easy trip from Tokyo or Yokohama." },
+      },
+      "yokohama-day": {
+        title: "Yokohama in a day",
+        summary: "Chinatown, and the harbour and streets around it.",
+        reasons: { yokohama: "A port city with a different feel from Tokyo, close enough for a day." },
+      },
+      "miyajima-day": {
+        title: "Miyajima from Hiroshima",
+        summary: "Itsukushima Shrine and its floating torii, and more of the island around them.",
+        reasons: { miyajima: "The island shrine is a short trip from Hiroshima: train, then the ferry across." },
+      },
+      "tokyo-2": {
+        title: "Tokyo",
+        summary: "Senso-ji and old Tokyo on the first day, Meiji Jingu and the west side on the second.",
+        reasons: { "tokyo-city": "East Tokyo first, the old city; then the west side, younger and louder." },
+      },
+      "kyoto-2": {
+        title: "Kyoto",
+        summary: "Kiyomizu-dera and the east side on the first day, Arashiyama on the second.",
+        reasons: { "kyoto-city": "The two halves of Kyoto most people come for, one day each." },
+      },
+      "tokyo-kamakura-3": {
+        title: "Tokyo with Kamakura",
+        summary: "Tokyo, with a day by the sea in Kamakura in the middle.",
+        reasons: {
+          "tokyo-city": "The base: old Tokyo on the first day, the west side on the last.",
+          kamakura: "A day trip for the Great Buddha and the temples, back in Tokyo for the night.",
+        },
+      },
+      "kyoto-nara-3": {
+        title: "Kyoto with Nara",
+        summary: "Kyoto, with a day in Nara in the middle.",
+        reasons: {
+          "kyoto-city": "Sleep in Kyoto: Kiyomizu-dera on the first day, Fushimi Inari on the last.",
+          "nara-city": "A day trip for Todai-ji and the deer, back to Kyoto for dinner.",
+        },
+      },
+      "tokyo-kamakura-yokohama-5": {
+        title: "Tokyo, Kamakura and Yokohama",
+        summary: "Tokyo as the base, with a day in Kamakura and a day in Yokohama.",
+        reasons: {
+          "tokyo-city": "One hotel for the whole trip, so no packing up.",
+          kamakura: "Temples, the Great Buddha and the sea, as a day trip.",
+          yokohama: "Chinatown and the harbour, as a day trip.",
+        },
+      },
+      "osaka-kyoto-nara-5": {
+        title: "Osaka, Kyoto and Nara",
+        summary: "Land in Osaka, move to Kyoto, and see Nara as a day trip.",
+        reasons: {
+          "osaka-city": "Where the airport is: Dotonbori on the first evening, the castle the next day.",
+          "kyoto-city": "The temples and gardens most people come for.",
+          "nara-city": "A day trip from Kyoto for Todai-ji and the deer.",
+        },
+      },
+      "classic-7": {
+        title: "Tokyo, Kyoto and Osaka",
+        summary: "The classic first visit: Tokyo, then the Shinkansen to Kyoto, with a day in Osaka.",
+        reasons: {
+          "tokyo-city": "Old and new Tokyo, and a day for the market and the bay.",
+          "kyoto-city": "The base for the second half: temples, gardens and the old streets.",
+          "osaka-city": "A day trip from Kyoto for the castle and the city around it.",
+        },
+      },
+      "kansai-hiroshima-7": {
+        title: "Osaka, Kyoto, Nara, Himeji and Hiroshima",
+        summary: "The west of Japan: Osaka and Nara, Kyoto, a day at Himeji Castle, then Hiroshima.",
+        reasons: {
+          "osaka-city": "Where the airport is, and the base for the first part of the trip.",
+          "nara-city": "A day trip from Osaka for Todai-ji and the deer.",
+          "kyoto-city": "The east side and Arashiyama.",
+          himeji: "A day for the castle and its garden, before going on to Hiroshima.",
+          "hiroshima-city": "The Peace Park and its museum, and a quieter last day.",
+        },
+      },
+      "tokyo-to-miyajima-10": {
+        title: "Tokyo to Hiroshima",
+        summary: "Tokyo, Kyoto with Nara, a night in Osaka, then Hiroshima and Miyajima.",
+        reasons: {
+          "tokyo-city": "Old and new Tokyo, and the market at Tsukiji.",
+          "kyoto-city": "The heart of the trip: temples, gardens and Arashiyama.",
+          "nara-city": "A day trip from Kyoto for Todai-ji and the deer.",
+          "osaka-city": "A night on the way west, with a day at the castle.",
+          "hiroshima-city": "The Peace Park, and the base for Miyajima.",
+          miyajima: "A day trip to the island shrine and its floating torii.",
+        },
+      },
+      "all-nine-14": {
+        title: "All nine, at an easy pace",
+        summary: "Tokyo with Kamakura and Yokohama, Kyoto with Nara, Osaka, Himeji, Hiroshima and Miyajima, with fewer moves than cities.",
+        reasons: {
+          "tokyo-city": "The first base, with two day trips from it.",
+          kamakura: "A day trip from Tokyo for the Great Buddha and the temples.",
+          yokohama: "A day trip from Tokyo for Chinatown and the harbour.",
+          "kyoto-city": "The second base, with time to slow down.",
+          "nara-city": "A day trip from Kyoto for Todai-ji and the deer.",
+          "osaka-city": "A night on the way west, with a day at the castle.",
+          himeji: "A day for the castle and its garden, before going on to Hiroshima.",
+          "hiroshima-city": "The last base: the Peace Park, then Miyajima.",
+          miyajima: "A day trip to the island shrine.",
+        },
+      },
+    },
+  },
+
   // Sentences the planner builds: why a stop was chosen, what was left out,
   // what doesn't fit. Bento Man reads these too, so they stay factual.
   plan: {
