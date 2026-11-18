@@ -22,7 +22,7 @@ export const hakone: PlaceSeed[] = [
     station: "owakudani", walk: 3, tags: ["nature"], energy: 0.3, crowd: 0.8, discovery: 0.1, signature: 0.9, physical: 0.2,
     taste: 20, typical: 45, full: 90, window: ["before 11:00"], opens: "09:00", closes: "16:15", hoursVary: true,
     crowdNote: "The ropeway station and the viewing area are busiest from late morning to mid-afternoon, especially at weekends. The first cabins of the day are the quietest.",
-    tip: "The volcanic valley is reached by the Hakone Ropeway, which runs until 16:15 in December and January and longer the rest of the year, and stops in bad weather and for maintenance, so check before going up. Looking around is free. A guided walk on the nature trail runs four times a day (from 10:00, 11:30, 13:00 and 14:30), with an ¥800 safety contribution.",
+    tip: "The volcanic valley is reached by the Hakone Ropeway, which runs until 16:15 in December and January and longer the rest of the year, and stops in bad weather and for maintenance, so check before going up. Looking around is free. A guided walk on the nature trail runs four times a day (from 10:00, 11:30, 13:00 and 14:30), with an ¥800 safety contribution: it must be booked ahead on hakone.or.jp, is guided in Japanese only and is paid cashless only.",
     cost: 0, closedWeekdays: [], pairs: ["hkn-lake-ashi-cruise"], sources: ["hakonenavi.jp/hakone-ropeway/", "hakonenavi.jp/spot/24859", "hakone.or.jp/od-booking/"] }),
 
   // No timetable could be read for the ships' first and last sailings, so
@@ -45,7 +45,7 @@ export const hakone: PlaceSeed[] = [
     station: null, walk: null, tags: ["art", "nature"], energy: 0.3, crowd: 0.4, discovery: 0.4, signature: 0.5, physical: 0.2,
     taste: 60, typical: 90, full: 150,
     crowdNote: "Rarely crowded except on weekend afternoons when a major exhibition is on.",
-    tip: "Adults ¥2,200. Last entry 16:30. Open every day, but it closes for a few days between exhibitions. A free shuttle from behind Gora Station (the hotel and inn bus area, car park 4) takes 8 minutes and runs about every 30 minutes, 13 times a day; seats are limited. A taxi from Gora costs about ¥1,800.",
+    tip: "Adults ¥2,200. Last entry 16:30. Open every day, but it can close for up to a few weeks between exhibitions: check the calendar. A free shuttle from behind Gora Station (the hotel and inn bus area, car park 4) takes 8 minutes and runs about every 30 minutes, 13 times a day; seats are limited. A taxi from Gora costs about ¥1,800.",
     opens: "09:00", closes: "17:00", cost: 2200, closedWeekdays: [], sources: ["polamuseum.or.jp", "polamuseum.or.jp/info/", "polamuseum.or.jp/info/access/"] }),
 
   draft({ id: "hkn-yumoto", city: c, name: "Hakone-Yumoto onsen town", nameJa: "箱根湯本", category: "street", lat: 35.2324, lon: 139.1069,
