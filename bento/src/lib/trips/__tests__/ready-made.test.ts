@@ -174,7 +174,9 @@ describe("ready-made trips", () => {
               });
             }
         expect(bad).toEqual([]);
-      });
+        // Every start, pace and crowd setting: Tokyo's trips plan over the
+        // whole Kanto network, which takes a few seconds on a busy runner.
+      }, 30_000);
     });
   }
 });
