@@ -1015,6 +1015,7 @@ export const en = {
       further: (extra: number) => `further from the rest of the day (+${extra} min)`,
       slightlyLower: (why: string) => `scored a little lower: ${why}`,
       closesBefore: (closes: string, arrive: string, visit: number) => `closes at ${closes}; you'd arrive at ${arrive} and need ${visit} min`,
+      makesPinLate: (pinned: string) => `left out to leave time to reach ${pinned} before it closes`,
     },
     // Notes under a planned day.
     warnings: {
