@@ -200,8 +200,9 @@ The place counts are estimates from 8 to 12 places per destination. The pace is 
 
 | Package | Status | Pull request |
 |---|---|---|
-| 1A | Not started | |
-| 1B | Not started | |
+| 1A | Done 18 Nov 2026 (Himeji drafts, JR East fares, airport route tests) | #90, #91 |
+| 1B | Built and reviewed; waits for a live Bento Man evaluation | |
 | 1C | Not started | |
 | 1D | Not started | |
 | 1E | Not started | |
+| 2: Hakone, Nikko | Transit and 20 place drafts merged 18 Nov 2026; drafts wait for the live load and owner sign-off | #92, #93 |
