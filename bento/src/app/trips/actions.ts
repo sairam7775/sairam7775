@@ -7,7 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/friendly-errors";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { guidedTitle, parseGuidedStart, starterMessage } from "@/lib/trips/guided-start";
-import { parseReadyMadeStart, startReadyMade } from "@/lib/trips/ready-made/start";
+import { parseReadyMadeStart, startReadyMade, TRIP_CAP } from "@/lib/trips/ready-made/start";
+import { SupabaseCatalogue } from "@/lib/trips/ready-made/catalogue";
 import type { PrefsPatch } from "@/lib/bento-man/store";
 import { copy } from "@/copy";
 
@@ -53,7 +54,9 @@ export async function startGuidedTrip(_prev: GuidedStartState, formData: FormDat
   return { ok: true, tripId: trip.id, starter: starterMessage(g) };
 }
 
-export type ReadyMadeStartState = { ok: false; error: string } | null;
+/** On a refusal, what was sent comes back too: React resets the form's
+ *  uncontrolled fields after an action, so the picker puts these back. */
+export type ReadyMadeStartState = { ok: false; error: string; values: { trip: string; startDate: string; people: string } } | null;
 
 /** "Start from a ready-made trip": creates the trip, saves its route and
  *  every day planned by the engine with the must-sees pinned, through the
@@ -65,14 +68,23 @@ export async function startReadyMadeTrip(_prev: ReadyMadeStartState, formData: F
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/trips/plan");
 
-  const parsed = parseReadyMadeStart(formData);
-  if (!parsed.ok) return parsed;
+  const sent = (k: string) => {
+    const v = formData.get(k);
+    return typeof v === "string" ? v.slice(0, 40) : "";
+  };
+  const values = { trip: sent("trip"), startDate: sent("startDate"), people: sent("people") };
 
-  // Catalogue reads (city_coverage, places_public, the train graph) don't
-  // touch a trip, so this store has none yet.
-  const catalogue = new SupabaseStore(supabase, "", user.id);
+  const parsed = parseReadyMadeStart(formData);
+  if (!parsed.ok) return { ...parsed, values };
+
   const result = await startReadyMade({
-    catalogue,
+    tripCount: async () => {
+      // RLS: only this traveller's own trips are counted.
+      const { count, error } = await supabase.from("trips").select("id", { count: "exact", head: true });
+      if (error) throw error;
+      return count ?? 0;
+    },
+    catalogue: new SupabaseCatalogue(supabase),
     create: async (meta) => {
       // Inserted as the traveller, like any trip: RLS, the trip cap and the
       // write allowance apply.
@@ -83,6 +95,10 @@ export async function startReadyMadeTrip(_prev: ReadyMadeStartState, formData: F
         end_date: meta.endDate,
         party_size: meta.partySize,
       }).select("id").single();
+      // The trip cap's own refusal (enforce_row_cap: 54000, "at most …"; the
+      // write allowance shares the code, not the words), for a start that
+      // passed the count while another was being made.
+      if (error?.code === "54000" && error.message.startsWith("at most ")) throw new Error(copy.readyMade.picker.errors.tooManyTrips(TRIP_CAP));
       if (error || !trip) throw new Error(dbErrorMessage(error, copy.readyMade.picker.errors.create));
       return { id: trip.id, store: new SupabaseStore(supabase, trip.id, user.id) };
     },
@@ -91,10 +107,14 @@ export async function startReadyMadeTrip(_prev: ReadyMadeStartState, formData: F
       if (error) throw error;
     },
   }, parsed.value).catch((err) => {
+    // startReadyMade catches every failure from creating the trip onwards
+    // (it deletes the trip and returns a refusal), so anything thrown out
+    // of it came from the reads before: the trip count, coverage, places
+    // or the train graph. Nothing was written.
     console.error("Ready-made start failed before the trip was made:", err instanceof Error ? err.message : err);
     return { ok: false as const, error: copy.readyMade.picker.errors.failed };
   });
-  if (!result.ok) return result;
+  if (!result.ok) return { ...result, values };
 
   revalidatePath("/trips");
   redirect(`/trips/${result.tripId}`);

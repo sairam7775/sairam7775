@@ -32,6 +32,19 @@ export interface ReadyMadeStart {
 }
 
 const TRIP_IDS = readyMadeTrips.map((t) => t.id) as [ReadyMadeTripId, ...ReadyMadeTripId[]];
+/** The most trips an account keeps: the database's own cap
+ *  (`enforce_row_cap('user_id', '100')` on `trips`, 0029). Checked here
+ *  first only so a full account is told before the catalogue is read; the
+ *  database still enforces it. */
+export const TRIP_CAP = 100;
+
+/** Today's date in Japan, "YYYY-MM-DD". */
+export function tokyoToday(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
+
+const dayBefore = (iso: string) => new Date(Date.parse(`${iso}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
+
 const isRealDate = (s: string) => !Number.isNaN(Date.parse(`${s}T00:00:00Z`)) && new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s;
 
 const Answers = z.object({
@@ -41,15 +54,18 @@ const Answers = z.object({
 });
 
 /** The picker's form, checked: a trip on the list, a real start date
- *  (required: the engine plans closing days on real dates), and 1 to 20
- *  people. */
-export function parseReadyMadeStart(form: FormData): { ok: true; value: ReadyMadeStart } | { ok: false; error: string } {
+ *  (required: the engine plans closing days on real dates) that hasn't
+ *  gone by in Japan, and 1 to 20 people. A day's slack: a traveller west of
+ *  Japan may still be on yesterday's date there, and a page left open over
+ *  midnight in Tokyo shouldn't fail. */
+export function parseReadyMadeStart(form: FormData, now: Date = new Date()): { ok: true; value: ReadyMadeStart } | { ok: false; error: string } {
   const field = (k: string) => {
     const v = form.get(k);
     return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
   };
   const parsed = Answers.safeParse({ tripId: field("trip"), startDate: field("startDate"), people: field("people") ?? "1" });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  if (parsed.data.startDate < dayBefore(tokyoToday(now))) return { ok: false, error: e.past };
   return { ok: true, value: parsed.data };
 }
 
@@ -65,6 +81,8 @@ export function availableReadyMade(tiers: Map<string, CoverageTier>): ReadyMadeT
 }
 
 export interface ReadyMadeStartDeps {
+  /** How many trips the traveller has now (their own, under RLS). */
+  tripCount: () => Promise<number>;
   /** What every traveller can read: coverage from `city_coverage`, places
    *  from `places_public`, and the train graph. Read before anything is
    *  written, so a refused start writes nothing. */
@@ -82,6 +100,11 @@ export type ReadyMadeStartResult = { ok: true; tripId: string } | { ok: false; e
 export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeStart): Promise<ReadyMadeStartResult> {
   const trip = readyMadeTrips.find((t) => t.id === input.tripId);
   if (!trip) return { ok: false, error: e.trip };
+
+  // A full account is told so before anything else is read. Not a race-
+  // proof check: two starts at once can both pass it, and then the
+  // database's cap refuses the second insert, which `create` reports.
+  if ((await deps.tripCount()) >= TRIP_CAP) return { ok: false, error: e.tooManyTrips(TRIP_CAP) };
 
   // Checked again here, whatever the page offered: the page may be old, or
   // the form hand-made.

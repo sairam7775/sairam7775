@@ -1099,6 +1099,8 @@ export const en = {
       errors: {
         trip: "Pick one of the trips.",
         startDate: "Pick the first day of your trip.",
+        past: "That day has already gone in Japan. Pick a first day from today on.",
+        tooManyTrips: (cap: number) => `You have ${cap} trips, the most Bento keeps. Delete one you no longer need, then start this one.`,
         notYet: "That trip can't be started right now. Pick another one.",
         failed: "That trip didn't start. Try again in a moment.",
         create: "start the trip",
