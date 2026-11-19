@@ -122,16 +122,14 @@ describe("route — Tokyo", () => {
   });
 });
 
-describe("route — inside Tokyo the fastest route stands", () => {
+describe("route — inside a city the fastest route stands", () => {
   // Between cities a route with fewer changes may be up to 20 minutes
   // slower; inside a city that would double short hops. Over every seed,
   // so the Kanagawa lines through Shibuya are in the graph too.
   const all = buildGraph(allStations, allEdges);
   it.each([
-    ["shibuya", "tochomae"],
-    ["aoyama-itchome", "yurakucho"],
-    ["aoyama-itchome", "nijubashimae"],
-    ["omotesando", "shinanomachi"],
+    ["omotesando", "shinanomachi"], // 17 minutes; the window would take 33
+    ["nijo", "katsura"], // Kyoto, in the same graph: 21; the window would take 38
   ])("%s → %s keeps the fastest route, with its change", (a, b) => {
     const r = route(all, a, b)!;
     const fastest = route(all, a, b, { fewerChangesSlackMin: 0 })!;
@@ -141,5 +139,20 @@ describe("route — inside Tokyo the fastest route stands", () => {
     // The window would have swapped it for a much slower route.
     expect(fewer.transfers).toBeLessThan(fastest.transfers);
     expect(fewer.minutes).toBeGreaterThanOrEqual(fastest.minutes + 10);
+  });
+});
+
+describe("route — a walk at either end doesn't dodge the window", () => {
+  const all = buildGraph(allStations, allEdges);
+  // Each pair is in two cities (Wakoshi has none), so the window is on. A
+  // train plus a long walk used to count as "no change" and win.
+  it.each([
+    ["tofukuji", "kintetsu-nara"],
+    ["shinjuku", "wakoshi"],
+  ])("%s → %s keeps the faster route", (a, b) => {
+    const r = route(all, a, b)!;
+    const fastest = route(all, a, b, { fewerChangesSlackMin: 0 })!;
+    expect(r.minutes).toBe(fastest.minutes);
+    expect(r.legs.map((l) => l.line)).toEqual(fastest.legs.map((l) => l.line));
   });
 });

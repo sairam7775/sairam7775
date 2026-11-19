@@ -628,16 +628,23 @@ Explained in `../docs/bento/30-software/transit.md`.
   Search state is (station, line, mode); a line change pays `transferPenaltyMin`
   (default 5). Walks never pay it — the walk is the transfer. Between
   stations not in the same city (no city counts as another), the answer
-  is the route with the fewest `transfers` among those at most
+  is the route with the fewest window changes among those at most
   `FEWER_CHANGES_SLACK_MIN` (20, `graph.ts`; the owner's figure) slower
-  than the fastest `Route.minutes`, then the fastest of those, then fewer
-  legs. So Shinjuku → Hakone-Yumoto is the Romancecar and Asakusa →
-  Tobu-Nikko the Tobu train. Inside one city it's the fastest route, so
-  day timings don't stretch (20 minutes would double short hops);
-  `fewerChangesSlackMin` overrides either way. With the window on, the
-  change count is part of the search state (best route per station per
-  change count); once the fastest arrives, and wherever an earlier state
-  at the same station/line/mode had fewer changes, states are pruned.
+  than the fastest `Route.minutes` (shown minutes, penalties included),
+  then the fastest of those, then fewer changes, then fewer legs. A window
+  change (`Cost.windowChanges`) is NOT `Route.transfers`: it counts each
+  new leg that is a walk, or a ride straight after a ride, so a long walk
+  at either end can't pass for "no change". Its increment must depend only
+  on (station, line, mode, rode) and the edge, or the pruning is unsound.
+  So Shinjuku → Hakone-Yumoto is the Romancecar and Asakusa → Tobu-Nikko
+  the Tobu train. Inside one city it's the fastest route (20 minutes would
+  double short hops); `fewerChangesSlackMin` overrides either way, and
+  `travelFromGraph` (day timings) always passes 0. Fares aren't weighed.
+  With the window on, the count is part of the search state (best route
+  per station per count); once the fastest arrives, and wherever an
+  earlier state at the same station/line/mode had fewer, states are
+  pruned. `route-brute.test.ts` checks it against every path on small
+  random graphs.
   Legs and changes split where `assemble` splits a leg: a new line or mode.
   A full tie goes to the smaller path signature (line, mode, station per
   edge), so the answer never depends on edge order.
