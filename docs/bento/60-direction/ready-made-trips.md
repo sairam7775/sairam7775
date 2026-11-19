@@ -184,7 +184,7 @@ The place counts are estimates from 8 to 12 places per destination. The pace is 
 ## Not decided yet
 
 1. The Phase 1 trip list (1B): the owner edits and approves it.
-2. Where the picker sits for a new traveller (1C).
+2. ~~Where the picker sits for a new traveller (1C).~~ Decided: beside the current form.
 3. Whether a signed-out visitor can read a ready-made trip before making an account. It would help people find Bento, and it needs its own design.
 4. How a flight between cities is stored and shown (Phase 3).
 5. Which models may draft places, beyond the current recipe.
@@ -202,7 +202,7 @@ The place counts are estimates from 8 to 12 places per destination. The pace is 
 |---|---|---|
 | 1A | Done 18 Nov 2026 (Himeji drafts, JR East fares, airport route tests) | #90, #91 |
 | 1B | Built and reviewed; waits for a live Bento Man evaluation | |
-| 1C | Not started | |
+| 1C | Built 19 Nov 2026: the picker sits beside the form (the owner's choice); trips through a city that isn't planned on live are hidden. Waits for review and a signed-in run in a real browser | |
 | 1D | Not started | |
 | 1E | Not started | |
 | 2: Hakone, Nikko | Transit and 20 place drafts merged 18 Nov 2026; drafts wait for the live load and owner sign-off | #92, #93 |

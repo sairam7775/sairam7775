@@ -37,6 +37,7 @@ The failure of every chat-based planner: the traveller spends an hour refining a
 ## What it doesn't do
 
 - The model never writes to the itinerary tables. `acceptProposal` is the only writer of route and day changes from the chat.
+- Starting a ready-made trip ("Plan a Japan trip", then "Start this trip") goes through the same step: the engine's plan is stored as a proposal with the trip's first message and applied at once, because pressing Start is the traveller's acceptance ([engine](../30-software/engine.md), "Ready-made trips"). It is not a second way to write an itinerary.
 - It doesn't regenerate untouched days.
 
 ## Failure behaviour

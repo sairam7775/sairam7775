@@ -33,7 +33,7 @@ bento/
       places/seed/        drafted place records, one file per city
       bento-man/          prompt, tools, proposals, stores, the chat loop, evaluation
       vault/              gap detector, encryption, redaction, booking reader
-      trips/              sharing expiry, shared plan, reviews, guided start
+      trips/              sharing expiry, shared plan, reviews, guided start, ready-made trips
       guards/             spend cap, rate limits, sign-in limits
       security/           content security policy, bearer checks
       supabase/           server and service-role clients, cookie options
