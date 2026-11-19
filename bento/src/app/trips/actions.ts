@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { dbErrorMessage } from "@/lib/friendly-errors";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { guidedTitle, parseGuidedStart, starterMessage } from "@/lib/trips/guided-start";
+import { parseReadyMadeStart, startReadyMade } from "@/lib/trips/ready-made/start";
 import type { PrefsPatch } from "@/lib/bento-man/store";
 import { copy } from "@/copy";
 
@@ -50,6 +51,53 @@ export async function startGuidedTrip(_prev: GuidedStartState, formData: FormDat
 
   revalidatePath("/trips");
   return { ok: true, tripId: trip.id, starter: starterMessage(g) };
+}
+
+export type ReadyMadeStartState = { ok: false; error: string } | null;
+
+/** "Start from a ready-made trip": creates the trip, saves its route and
+ *  every day planned by the engine with the must-sees pinned, through the
+ *  proposal path (lib/trips/ready-made/start.ts), then opens it. Nothing
+ *  calls the model. Coverage is checked here again from `city_coverage`,
+ *  whatever the page offered, and places come from `places_public`. */
+export async function startReadyMadeTrip(_prev: ReadyMadeStartState, formData: FormData): Promise<ReadyMadeStartState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/sign-in?next=/trips/plan");
+
+  const parsed = parseReadyMadeStart(formData);
+  if (!parsed.ok) return parsed;
+
+  // Catalogue reads (city_coverage, places_public, the train graph) don't
+  // touch a trip, so this store has none yet.
+  const catalogue = new SupabaseStore(supabase, "", user.id);
+  const result = await startReadyMade({
+    catalogue,
+    create: async (meta) => {
+      // Inserted as the traveller, like any trip: RLS, the trip cap and the
+      // write allowance apply.
+      const { data: trip, error } = await supabase.from("trips").insert({
+        user_id: user.id,
+        title: meta.title,
+        start_date: meta.startDate,
+        end_date: meta.endDate,
+        party_size: meta.partySize,
+      }).select("id").single();
+      if (error || !trip) throw new Error(dbErrorMessage(error, copy.readyMade.picker.errors.create));
+      return { id: trip.id, store: new SupabaseStore(supabase, trip.id, user.id) };
+    },
+    discard: async (id) => {
+      const { error } = await supabase.from("trips").delete().eq("id", id);
+      if (error) throw error;
+    },
+  }, parsed.value).catch((err) => {
+    console.error("Ready-made start failed before the trip was made:", err instanceof Error ? err.message : err);
+    return { ok: false as const, error: copy.readyMade.picker.errors.failed };
+  });
+  if (!result.ok) return result;
+
+  revalidatePath("/trips");
+  redirect(`/trips/${result.tripId}`);
 }
 
 const newTrip = z.object({

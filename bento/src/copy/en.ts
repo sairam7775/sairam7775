@@ -1080,6 +1080,30 @@ export const en = {
         },
       },
     },
+    // The picker on "Plan a Japan trip" (trips/plan/ready-made-picker.tsx,
+    // lib/trips/ready-made/start.ts). Only trips whose every city Bento
+    // plans are listed, so nothing here says "not yet".
+    picker: {
+      title: "Or start from a ready-made trip",
+      intro: "A well-trodden route with the places it's known for. Pick one and Bento plans every day for your dates, with those places kept in. You can change anything after.",
+      length: "How many days?",
+      days: (n: number) => (n === 1 ? "1 day" : `${n} days`),
+      trip: "Pick a trip",
+      startDate: "First day",
+      startHint: "Bento plans around what's open on each day, so it needs your real dates.",
+      people: "How many of you?",
+      submit: "Start this trip",
+      pending: "Planning your days…",
+      // Saved in the trip's chat with the plan, as the first message.
+      started: (title: string) => `Started from the ready-made trip “${title}”. The route and every day are planned for your dates, with the trip's main places pinned. Re-plan any day, or ask me to change something.`,
+      errors: {
+        trip: "Pick one of the trips.",
+        startDate: "Pick the first day of your trip.",
+        notYet: "That trip can't be started right now. Pick another one.",
+        failed: "That trip didn't start. Try again in a moment.",
+        create: "start the trip",
+      },
+    },
   },
 
   // Sentences the planner builds: why a stop was chosen, what was left out,

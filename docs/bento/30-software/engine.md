@@ -62,7 +62,7 @@ It's greedy insertion with local search: not optimal, and it doesn't need to be.
 
 ## Ready-made trips
 
-Implementation: partial (package 1B of the ready-made trips plan; nothing starts one yet, and no page or Bento Man tool reads them).
+Implementation: partial (packages 1B and 1C of the ready-made trips plan: the trips, and starting one from "Plan a Japan trip"; no Bento Man tool reads them yet).
 
 A ready-made trip is **saved input to the planner, never a hand-written itinerary**: its cities with nights, which day is a day trip, and up to three must-see places per day (the first trips use two at most). The engine builds the days for the traveller's own dates and pace, so a trip states no times, fares or durations.
 
@@ -74,6 +74,7 @@ A ready-made trip is **saved input to the planner, never a hand-written itinerar
 - `bento/src/lib/trips/__tests__/ready-made.test.ts` checks every trip against the seeds: ids exist and sit in that day's city, nights add up, `assessRoute` isn't overpacked and knows every train, no two must-sees on a day conflict, the first and last days are light, and `planTrip` fills every day, chooses at least one stop of its own on every full day, never has to drop a stop to reach a must-see, and keeps every must-see open and within its hours. That is checked for a start on each weekday and a start in each season, at each pace, with a 07:00 and a 09:00 start.
 - What a season changes there is only the scoring (season tags). A place has one set of hours all year (the shortest, when they vary), so the test can't catch an hours change by season. Public holidays and year-end closures aren't in the place data, so they aren't checked either.
 - **Before a trip is published,** every city it uses must be outline or deep on the live site: the planner refuses a city it doesn't know. The test treats every seed place as verified and can't see live tiers.
+- **Starting one** (`bento/src/lib/trips/ready-made/start.ts`, called by `startReadyMadeTrip` in `bento/src/app/trips/actions.ts`): the traveller picks a trip, a start date (required: closing days need real dates) and a party size. The picker lists only trips whose every city, day trips included, is outline or deep in `city_coverage` (`availableReadyMade`); the others are left out, not shown as "coming". The action checks that again, and that every must-see is in `places_public`, before writing anything. It then creates the trip (as the traveller, so RLS, the trip cap and the write allowance apply; no rate limit applies to creating a trip, here or in the other forms), runs `planTrip` with the traveller's saved preferences and the must-sees pinned, checks every pin is in the plan, and saves the route and the days as one proposal stored with a first chat message and applied at once through `applyProposal` (`apply_proposal`): the same path, and the same single database step, as an accepted chat proposal. If saving fails, the new trip is deleted. Nothing calls the model. Tests: `bento/src/lib/trips/__tests__/ready-made-start.test.ts` (memory store).
 
 ## Why not ask a model
 

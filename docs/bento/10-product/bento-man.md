@@ -16,7 +16,7 @@ Bento Man is the guide a traveller talks to on each trip page. He asks what kind
 
 ## User journey
 
-1. On a trip page, the conversation panel is on the right. A first message may be waiting from "Plan a Japan trip", the guided start; nothing is sent until the traveller presses Send.
+1. On a trip page, the conversation panel is on the right. A first message may be waiting from "Plan a Japan trip", the guided start; nothing is sent until the traveller presses Send. A trip started from a ready-made one opens already planned, with one message from Bento that says so; no model was called to make it.
 2. Up to seven skippable onboarding questions. The answers are stored where the traveller can read and correct them, never inferred silently.
 3. A route: Bento Man checks it first. Five cities in nine nights comes back over-packed, with the arithmetic (nights per city, two hours per city change, hours on trains, the share of waking time spent moving).
 4. Days, changes ("too many temples on the 23rd", "be at Sanjusangen-do at 10") and date moves all come back as [proposals](proposals-and-diffs.md) to accept or reject.
