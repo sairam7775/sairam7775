@@ -73,16 +73,15 @@ describe("Kanagawa transit seed", () => {
 });
 
 describe("route — Kanagawa", () => {
-  it("Tokyo → Kamakura by JR in under an hour, one ticket at JR East's IC fare", () => {
+  it("Tokyo → Kamakura is the direct Yokosuka Line train, one ticket at JR East's IC fare", () => {
     const r = route(g, "tokyo", "kamakura")!;
-    expect(r.legs.every((l) => l.operator === "jr-east")).toBe(true);
-    expect(r.minutes).toBeGreaterThanOrEqual(50);
-    expect(r.minutes).toBeLessThanOrEqual(60);
+    // A change at Ofuna is 54 minutes; the direct train's 60 is inside the
+    // window, so the train with no change wins.
+    expect(r.legs.map((l) => l.line)).toEqual(["JR Yokosuka Line"]);
+    expect(r.transfers).toBe(0);
+    expect(r.minutes).toBe(60);
     expect(r.fareJpy).toBe(1034);
     expect(r.unpricedRides).toBe(0);
-    // The published figures favour a change at Ofuna (54) over the direct
-    // train (60); the traveller is told about the train with no change.
-    if (r.transfers > 0) expect(r.legs[0].notes.join(" ")).toContain("Yokosuka Line runs there from Tokyo without a change");
   });
 
   it("the direct Yokosuka Line train to Kamakura is in the graph at the published 60 minutes", () => {

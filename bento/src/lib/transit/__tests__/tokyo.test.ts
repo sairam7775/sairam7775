@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildGraph, route } from "../graph";
+import { buildGraph, FEWER_CHANGES_SLACK_MIN, route } from "../graph";
+import { edges as allEdges, stations as allStations } from "../seed";
 import * as kansai from "../seed/kansai-sanyo";
 import * as tokyo from "../seed/tokyo";
 import { tokyo as tokyoPlaces } from "@/lib/places/seed/tokyo";
@@ -118,5 +119,27 @@ describe("route — Tokyo", () => {
       const r = route(g, a, b)!;
       expect(r.legs.map((l) => l.line), `${a}→${b}`).toEqual(["JR Chuo-Sobu Line · Local"]);
     }
+  });
+});
+
+describe("route — inside Tokyo the fastest route stands", () => {
+  // Between cities a route with fewer changes may be up to 20 minutes
+  // slower; inside a city that would double short hops. Over every seed,
+  // so the Kanagawa lines through Shibuya are in the graph too.
+  const all = buildGraph(allStations, allEdges);
+  it.each([
+    ["shibuya", "tochomae"],
+    ["aoyama-itchome", "yurakucho"],
+    ["aoyama-itchome", "nijubashimae"],
+    ["omotesando", "shinanomachi"],
+  ])("%s → %s keeps the fastest route, with its change", (a, b) => {
+    const r = route(all, a, b)!;
+    const fastest = route(all, a, b, { fewerChangesSlackMin: 0 })!;
+    const fewer = route(all, a, b, { fewerChangesSlackMin: FEWER_CHANGES_SLACK_MIN })!;
+    expect(r.minutes).toBe(fastest.minutes);
+    expect(r.legs.map((l) => l.line)).toEqual(fastest.legs.map((l) => l.line));
+    // The window would have swapped it for a much slower route.
+    expect(fewer.transfers).toBeLessThan(fastest.transfers);
+    expect(fewer.minutes).toBeGreaterThanOrEqual(fastest.minutes + 10);
   });
 });

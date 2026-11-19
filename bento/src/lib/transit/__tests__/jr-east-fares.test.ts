@@ -23,7 +23,8 @@ describe("JR East fares", () => {
   });
 
   it("a change of JR line on the way is still one ticket: Tokyo → Kamakura via Ofuna", () => {
-    const r = route(g, "tokyo", "kamakura")!;
+    // The fastest route changes at Ofuna; the default takes the direct train.
+    const r = route(g, "tokyo", "kamakura", { fewerChangesSlackMin: 0 })!;
     expect(r.legs.map((l) => [l.line, l.to.id])).toEqual([
       ["JR Tokaido Line", "ofuna"],
       ["JR Shonan-Shinjuku Line", "kamakura"],

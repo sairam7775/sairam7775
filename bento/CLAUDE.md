@@ -626,9 +626,18 @@ Explained in `../docs/bento/30-software/transit.md`.
   and no travel day.
 - `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.
   Search state is (station, line, mode); a line change pays `transferPenaltyMin`
-  (default 5). Walks never pay it — the walk is the transfer. The search
-  minimises (minutes, changes, legs) in that order: `Route.minutes` first,
-  so an exact tie on shown minutes goes to fewer `transfers`, then fewer legs.
+  (default 5). Walks never pay it — the walk is the transfer. Between
+  stations not in the same city (no city counts as another), the answer
+  is the route with the fewest `transfers` among those at most
+  `FEWER_CHANGES_SLACK_MIN` (20, `graph.ts`; the owner's figure) slower
+  than the fastest `Route.minutes`, then the fastest of those, then fewer
+  legs. So Shinjuku → Hakone-Yumoto is the Romancecar and Asakusa →
+  Tobu-Nikko the Tobu train. Inside one city it's the fastest route, so
+  day timings don't stretch (20 minutes would double short hops);
+  `fewerChangesSlackMin` overrides either way. With the window on, the
+  change count is part of the search state (best route per station per
+  change count); once the fastest arrives, and wherever an earlier state
+  at the same station/line/mode had fewer changes, states are pruned.
   Legs and changes split where `assemble` splits a leg: a new line or mode.
   A full tie goes to the smaller path signature (line, mode, station per
   edge), so the answer never depends on edge order.
