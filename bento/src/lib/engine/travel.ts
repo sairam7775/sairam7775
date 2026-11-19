@@ -19,7 +19,10 @@ export function travelFromGraph(graph: Graph): TravelFn {
         const minutes = Math.max(3, Math.round((wa + wb) * 0.8));
         leg = { mode: "walk", minutes, fareJpy: 0, fareKind: "exact", detail: copy.plan.transit.walkOnly(minutes), lines: [] };
       } else {
-        const r = placeRoute(graph, { stationId: a.nearestStation, walkMin: wa }, { stationId: b.nearestStation, walkMin: wb });
+        // A day's hops always take the fastest route, whatever city each
+        // station is filed under: the fewer-changes window is for journeys
+        // between cities, and 20 minutes would double a short hop.
+        const r = placeRoute(graph, { stationId: a.nearestStation, walkMin: wa }, { stationId: b.nearestStation, walkMin: wb }, { fewerChangesSlackMin: 0 });
         if (r) {
           const lines = r.legs.map((l) => describeLeg(l, r.fareKind));
           const first = r.legs.find((l) => l.mode !== "walk");

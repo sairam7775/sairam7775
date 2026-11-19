@@ -41,17 +41,32 @@ interface State {
   line: string;
   mode: string;
   rode: boolean;
+  /** Window changes so far (see `Cost.windowChanges`), when the window is
+   *  on; always 0 when it is off. Part of the state, so the search keeps the
+   *  best route to a station for each count, not only the fastest one. */
+  windowChanges: number;
 }
 
 // Station ids are slugs, line names use middle dots and modes are single
 // words, so " @ " cannot occur inside any part. After a ride `rode` is
 // always true, so only walk-only states carry the marker.
-const key = (s: State) => `${s.station} @ ${s.line} @ ${s.mode}${s.rode ? "" : " @ -"}`;
+const baseKey = (s: State) => `${s.station} @ ${s.line} @ ${s.mode}${s.rode ? "" : " @ -"}`;
+const key = (s: State) => `${baseKey(s)} @ ${s.windowChanges}`;
 
-/** What the search minimises, in order: minutes as the traveller sees them
- *  (rides, walks and the change penalty: exactly `Route.minutes`), then
- *  changes of train (`Route.transfers`), then legs. Only exact ties on
- *  minutes reach the second and third, so no route gets slower. The last,
+/** Travellers would rather stay on one train than save a few minutes with a
+ *  change. So between two stations not in the same city, `route` takes the
+ *  route with the fewest window changes (`Cost.windowChanges`) among those
+ *  at most this many minutes slower than the fastest route (minutes as
+ *  shown, change penalties included), then the fastest of those, then the
+ *  tie rules below. Inside one city it takes the fastest. The owner's
+ *  figure. */
+export const FEWER_CHANGES_SLACK_MIN = 20;
+
+/** The order the search explores routes in: minutes as the traveller sees
+ *  them (rides, walks and the change penalty: exactly `Route.minutes`), then
+ *  changes of train (`Route.transfers`), then legs. `route` then trades up
+ *  to FEWER_CHANGES_SLACK_MIN minutes for fewer window changes; among routes
+ *  with the same window changes this order decides. The last,
  *  `sig`, settles routes tied on all three the same way whatever order the
  *  edges come in: each edge adds its line, mode and arrival station, and
  *  the smaller string wins. Edge tokens are joined with a separator that
@@ -63,9 +78,16 @@ interface Cost {
   changes: number;
   legs: number;
   sig: string;
+  /** What the window counts, which is not `Route.transfers`: each new leg
+   *  that is a walk, or a ride straight after a ride. So a walk at either
+   *  end counts (a train and a long walk is not "no change"), and a walk
+   *  between two trains counts once, as the change it is. It depends only
+   *  on the state and the edge, as the pruning in `route` needs. Not in
+   *  `less`. */
+  windowChanges: number;
 }
 
-const ZERO: Cost = { min: 0, changes: 0, legs: 0, sig: "" };
+const ZERO: Cost = { min: 0, changes: 0, legs: 0, sig: "", windowChanges: 0 };
 
 const SEP = "\u0001";
 const edgeToken = (e: Edge) => `${e.line}\u0002${e.mode}\u0002${e.to}`;
@@ -122,23 +144,53 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
   }
 
   const penalty = opts.transferPenaltyMin ?? 5;
+  // Only between cities. Inside one city the hops are short, and 20 minutes
+  // more can double one (Shibuya → Tochomae: 11 minutes with a change, 23
+  // without), which would make a day's timings silly.
+  const sameCity = from.cityId != null && from.cityId === to.cityId;
+  const slack = opts.fewerChangesSlackMin ?? (sameCity ? 0 : FEWER_CHANGES_SLACK_MIN);
+  // With no window the fastest route is the answer, and window changes
+  // needn't be part of the state: every state keeps the count at 0.
+  const window = slack > 0;
   const dist = new Map<string, Cost>();
   const prev = new Map<string, { state: State; edge: Edge }>();
   const heap = new MinHeap();
 
-  const start: State = { station: fromId, line: "", mode: "", rode: false };
+  const start: State = { station: fromId, line: "", mode: "", rode: false, windowChanges: 0 };
   dist.set(key(start), ZERO);
   heap.push(ZERO, start);
 
+  // States come off the heap in the order of `less`, and the window
+  // changes are part of the state. So the first arrival is the fastest
+  // route (T minutes), and the first arrival with k window changes is the
+  // best route (in `less` order) of those with exactly k. After the first
+  // arrival only a route with fewer window changes than the best so far,
+  // within T + slack, can replace it; nothing else is explored. A state
+  // reached with more window changes than an earlier one at the same
+  // station, line and mode is dropped too: the earlier one was no slower,
+  // and whatever follows adds the same to both.
   let best: State | null = null;
+  let bestWindowChanges = Infinity;
+  let limit = Infinity;
+  const fewestAt = new Map<string, number>();
+  const hopeless = (c: Cost, s: State) =>
+    c.min > limit || c.windowChanges >= bestWindowChanges || (fewestAt.get(baseKey(s)) ?? Infinity) < c.windowChanges;
 
   while (heap.size) {
     const { c, s } = heap.pop();
     const known = dist.get(key(s));
     if (known && less(known, c)) continue;
+    if (hopeless(c, s)) continue;
     if (s.station === toId) {
+      if (!best) limit = c.min + slack;
       best = s;
-      break;
+      bestWindowChanges = c.windowChanges;
+      if (!window || c.windowChanges === 0) break;
+      continue;
+    }
+    if (window) {
+      const bk = baseKey(s);
+      if (!fewestAt.has(bk)) fewestAt.set(bk, c.windowChanges);
     }
     for (const e of g.out.get(s.station) ?? []) {
       const isTransfer = s.line !== "" && s.line !== e.line && e.mode !== "walk" && s.line !== "walk";
@@ -152,8 +204,10 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
         changes: c.changes + (newTrain && s.rode ? 1 : 0),
         legs: c.legs + (newLeg ? 1 : 0),
         sig: c.sig === "" ? edgeToken(e) : c.sig + SEP + edgeToken(e),
+        windowChanges: window ? c.windowChanges + (newLeg && (e.mode === "walk" || (s.rode && s.line !== "walk")) ? 1 : 0) : 0,
       };
-      const ns: State = { station: e.to, line: e.line, mode: e.mode, rode: s.rode || e.mode !== "walk" };
+      const ns: State = { station: e.to, line: e.line, mode: e.mode, rode: s.rode || e.mode !== "walk", windowChanges: nc.windowChanges };
+      if (hopeless(nc, ns)) continue;
       const nk = key(ns);
       const old = dist.get(nk);
       if (!old || less(nc, old)) {

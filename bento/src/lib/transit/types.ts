@@ -67,4 +67,9 @@ export interface Route {
 export interface RouteOptions {
   /** Minutes charged for changing line at a station. Default 5. */
   transferPenaltyMin?: number;
+  /** Take the route with the fewest changes among those at most this many
+   *  minutes slower than the fastest. Default FEWER_CHANGES_SLACK_MIN (20)
+   *  between stations not in the same city, 0 (the fastest route) inside
+   *  one city. */
+  fewerChangesSlackMin?: number;
 }

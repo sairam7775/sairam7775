@@ -93,10 +93,16 @@ describe("route — Hakone", () => {
     expect(r.unpricedRides).toBe(1);
   });
 
-  it("Shinjuku → Hakone-Yumoto takes no longer than the Romancecar's 85 minutes", () => {
+  it("Shinjuku → Hakone-Yumoto takes the direct Romancecar (85) over the Shinkansen and a change (69)", () => {
     const r = route(g, "shinjuku", "hakone-yumoto")!;
-    expect(r.minutes).toBeGreaterThanOrEqual(50);
-    expect(r.minutes).toBeLessThanOrEqual(85);
+    expect(r.legs.map((l) => l.line)).toEqual(["Odakyu Romancecar"]);
+    expect(r.transfers).toBe(0);
+    expect(r.minutes).toBe(85);
+    expect(r.fareJpy).toBe(2470);
+    // The fastest route is still the one with changes, inside the window.
+    const fastest = route(g, "shinjuku", "hakone-yumoto", { fewerChangesSlackMin: 0 })!;
+    expect(fastest.minutes).toBe(69);
+    expect(fastest.transfers).toBeGreaterThan(0);
   });
 
   it("the Romancecar runs Shinjuku → Hakone-Yumoto without a change, at its published fare", () => {
@@ -188,10 +194,14 @@ describe("route — Nikko", () => {
     expect(hop).toEqual([]);
   });
 
-  it("Asakusa → Tobu-Nikko takes no longer than the Tobu limited express's two hours", () => {
+  it("Asakusa → Tobu-Nikko takes the direct Tobu limited express (120) over the Shinkansen and changes (110)", () => {
     const r = route(g, "asakusa", "tobu-nikko")!;
-    expect(r.minutes).toBeGreaterThanOrEqual(90);
-    expect(r.minutes).toBeLessThanOrEqual(120);
+    expect(r.legs.map((l) => l.line)).toEqual(["Tobu Limited Express · Kegon"]);
+    expect(r.transfers).toBe(0);
+    expect(r.minutes).toBe(120);
+    const fastest = route(g, "asakusa", "tobu-nikko", { fewerChangesSlackMin: 0 })!;
+    expect(fastest.minutes).toBe(110);
+    expect(fastest.transfers).toBeGreaterThan(0);
   });
 
   it("the Tobu limited express runs Asakusa → Tobu-Nikko without a change, unpriced", () => {
