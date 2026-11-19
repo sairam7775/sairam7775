@@ -4,7 +4,7 @@ import { AnalyticsUser } from "@/components/analytics/analytics";
 import { createClient } from "@/lib/supabase/server";
 import { monthOptions } from "@/lib/trips/guided-start";
 import { READY_MADE_CITIES } from "@/lib/trips/ready-made";
-import { availableReadyMade } from "@/lib/trips/ready-made/start";
+import { availableReadyMade, tokyoToday } from "@/lib/trips/ready-made/start";
 import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
 import { GuidedForm } from "./guided-form";
@@ -46,7 +46,7 @@ export default async function PlanATrip() {
         <section aria-labelledby="ready-made-title" className="tile up mt-6 p-6 sm:p-8">
           <h2 id="ready-made-title" className="text-2xl font-bold tracking-tight">{r.title}</h2>
           <p className="mt-2 text-[0.95rem] text-ink-2">{r.intro}</p>
-          <ReadyMadePicker trips={trips} today={new Date().toISOString().slice(0, 10)} />
+          <ReadyMadePicker trips={trips} today={tokyoToday()} />
         </section>
       )}
     </main>

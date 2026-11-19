@@ -20,13 +20,22 @@ const pill = "inline-flex min-h-10 cursor-pointer items-center rounded-full bord
 
 /** Choose a length, then one of its trips, then the first day and the
  *  party. Only trips the server found startable are passed in; the action
- *  checks again. */
+ *  checks again. `today` is today's date in Japan. */
 export function ReadyMadePicker({ trips, today }: { trips: PickerTrip[]; today: string }) {
   const [state, action] = useActionState<ReadyMadeStartState, FormData>(startReadyMadeTrip, null);
   const lengths = [...new Set(trips.map((x) => x.days))].sort((a, b) => a - b);
   const [length, setLength] = useState(lengths[0]);
-  const [chosen, setChosen] = useState<string | null>(null);
+  // A trip of the chosen length is always selected, so the form never
+  // stops on an empty choice.
+  const [chosen, setChosen] = useState(trips.find((x) => x.days === lengths[0])?.id ?? "");
   const shown = trips.filter((x) => x.days === length);
+  const choose = (n: number) => {
+    setLength(n);
+    setChosen(trips.find((x) => x.days === n)?.id ?? "");
+  };
+  // After a refusal React resets the uncontrolled fields to their defaults,
+  // so the defaults are what was sent.
+  const sent = state?.values;
 
   return (
     <form action={action} className="mt-6 flex flex-col gap-7">
@@ -37,7 +46,7 @@ export function ReadyMadePicker({ trips, today }: { trips: PickerTrip[]; today: 
         <div className="mt-3 flex flex-wrap gap-2">
           {lengths.map((n) => (
             <label key={n}>
-              <input type="radio" name="length" value={n} checked={length === n} onChange={() => { setLength(n); setChosen(null); }} className="peer sr-only" />
+              <input type="radio" name="length" value={n} checked={length === n} onChange={() => choose(n)} className="peer sr-only" />
               <span className={pill}>{t.days(n)}</span>
             </label>
           ))}
@@ -48,11 +57,11 @@ export function ReadyMadePicker({ trips, today }: { trips: PickerTrip[]; today: 
         <legend className="text-[1.05rem] font-bold">{t.trip}</legend>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
           {shown.map((x) => (
-            <label key={x.id}>
-              <input type="radio" name="trip" value={x.id} required checked={chosen === x.id} onChange={() => setChosen(x.id)} className="peer sr-only" />
-              <span className="flex h-full cursor-pointer flex-col gap-1 rounded-tile border border-rule px-4 py-3 peer-checked:border-accent peer-checked:bg-lacquer peer-checked:text-rice peer-focus-visible:ring-2 peer-focus-visible:ring-accent hover:bg-sunk">
+            <label key={x.id} className="group">
+              <input type="radio" name="trip" value={x.id} checked={chosen === x.id} onChange={() => setChosen(x.id)} className="peer sr-only" />
+              <span className="flex h-full cursor-pointer flex-col gap-1 rounded-tile border border-rule px-4 py-3 text-ink peer-checked:border-accent peer-checked:bg-lacquer peer-checked:text-rice peer-focus-visible:ring-2 peer-focus-visible:ring-accent hover:bg-sunk">
                 <span className="font-medium">{x.title}</span>
-                <span className="text-[0.84rem] opacity-80">{x.summary}</span>
+                <span className="text-[0.84rem] text-ink-2 group-has-[:checked]:text-rice">{x.summary}</span>
               </span>
             </label>
           ))}
@@ -62,12 +71,12 @@ export function ReadyMadePicker({ trips, today }: { trips: PickerTrip[]; today: 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
           <label htmlFor="ready-start" className={fieldLabel}>{t.startDate}</label>
-          <DateInput id="ready-start" name="startDate" required min={today} aria-describedby="ready-start-hint" className={fieldInput} />
+          <DateInput id="ready-start" name="startDate" required min={today} defaultValue={sent?.startDate ?? ""} aria-describedby="ready-start-hint" className={fieldInput} />
           <p id="ready-start-hint" className="text-[0.84rem] text-ink-3">{t.startHint}</p>
         </div>
         <div className="flex flex-col gap-1.5">
           <label htmlFor="ready-people" className={fieldLabel}>{t.people}</label>
-          <input id="ready-people" name="people" type="number" min={1} max={20} defaultValue={1} inputMode="numeric" className={fieldInput} />
+          <input id="ready-people" name="people" type="number" min={1} max={20} step={1} defaultValue={sent?.people || 1} inputMode="numeric" className={fieldInput} />
         </div>
       </div>
 
