@@ -18,12 +18,13 @@ export const hiroshima: PlaceSeed[] = [
     tip: "You cannot go in; you walk around it. Come early or at night when it is lit, and stand on the far bank of the river for the view the photographs use.",
     cost: 0, pairs: ["hir-peace-park"], sources: ["wikivoyage"] }),
 
+  // Closed 30–31 Dec (休館日 「12月30日及び31日」): hpmmuseum.jp, read 20 Nov 2026.
   draft({ id: "hir-peace-museum", city: c, name: "Peace Memorial Museum", nameJa: "広島平和記念資料館", category: "museum", lat: 34.3915, lon: 132.4530,
     station: "genbaku-domu-mae", walk: 8, tags: ["history"], energy: 0.15, crowd: 0.85, discovery: 0.05, signature: 0.95,
     taste: 60, typical: 100, full: 150, window: ["before 09:00"], opens: "08:30", closes: "18:00", hoursVary: true,
     crowdNote: "The queue to get in can be an hour by late morning; the exhibits inside are shoulder to shoulder. At 8:30 you walk straight in.",
     tip: "Two hundred yen and the reason to come to Hiroshima. It is hard. Go first thing, before you are tired, and give yourself the rest of the morning to sit by the river afterwards.",
-    cost: 200, pairs: ["hir-peace-park"], sources: ["hpmmuseum.jp"] }),
+    cost: 200, pairs: ["hir-peace-park"], closedYearly: ["12-30..12-31"], sources: ["hpmmuseum.jp"] }),
 
   draft({ id: "hir-childrens-monument", city: c, name: "Children's Peace Monument", nameJa: "原爆の子の像", category: "memorial", lat: 34.3935, lon: 132.4525,
     station: "genbaku-domu-mae", walk: 5, tags: ["history"], energy: 0.05, crowd: 0.6, discovery: 0.1, signature: 0.7,
@@ -32,12 +33,13 @@ export const hiroshima: PlaceSeed[] = [
     tip: "Sadako Sasaki's statue, and the millions of paper cranes sent every year from schools around the world. Fold one before you come; there is a place to leave it.",
     cost: 0, pairs: ["hir-peace-park"], sources: ["wikivoyage"] }),
 
+  // Closed 30–31 Dec (休館日 「12月30日・12月31日」): hiro-tsuitokinenkan.go.jp/visit/, read 20 Nov 2026.
   draft({ id: "hir-memorial-hall", city: c, name: "Peace Memorial Hall for the Victims", nameJa: "国立広島原爆死没者追悼平和祈念館", category: "museum", lat: 34.3920, lon: 132.4520,
     station: "genbaku-domu-mae", walk: 6, tags: ["history"], energy: 0.1, crowd: 0.3, discovery: 0.5, signature: 0.6,
     taste: 20, typical: 40, full: 60, opens: "08:30", closes: "17:00", hoursVary: true,
     crowdNote: "Quiet — most people go to the museum and miss this.",
     tip: "Free, underground, and a different register from the museum: a single circular room and the names. If the museum was too much, this is where to sit.",
-    cost: 0, pairs: ["hir-peace-museum"], sources: ["hiro-tsuitokinenkan.go.jp"] }),
+    cost: 0, pairs: ["hir-peace-museum"], closedYearly: ["12-30..12-31"], sources: ["hiro-tsuitokinenkan.go.jp"] }),
 
   draft({ id: "hir-orizuru-tower", city: c, name: "Orizuru Tower", nameJa: "おりづるタワー", category: "viewpoint", lat: 34.3948, lon: 132.4548,
     station: "genbaku-domu-mae", walk: 2, tags: ["popculture"], energy: 0.1, crowd: 0.4, discovery: 0.3, signature: 0.5,
@@ -60,19 +62,21 @@ export const hiroshima: PlaceSeed[] = [
     tip: "Inside the castle grounds; the Carp baseball team prays here before each season. Ten minutes on the way to the keep.",
     cost: 0, pairs: ["hir-castle"], sources: ["wikivoyage"] }),
 
+  // Closed 29–31 Dec (休園日 「12月29日～31日」): shukkeien.jp, read 20 Nov 2026.
   draft({ id: "hir-shukkeien", city: c, name: "Shukkeien Garden", nameJa: "縮景園", category: "garden", lat: 34.4000, lon: 132.4680,
     station: "shukkeien-mae", walk: 2, tags: ["nature"], energy: 0.2, crowd: 0.3, discovery: 0.5, signature: 0.6,
     taste: 30, typical: 50, full: 80, opens: "09:00", closes: "17:00", hoursVary: true,
     crowdNote: "Calm. Busiest for the maples in late November and still not crowded.",
     tip: "A 1620 stroll garden, rebuilt after the bomb, with a pond you cross on a rainbow-arched bridge. The best hour of quiet in Hiroshima. The prefectural art museum is next door.",
-    cost: 260, seasons: ["koyo", "sakura"], pairs: ["hir-prefectural-art"], sources: ["shukkeien.jp"] }),
+    cost: 260, seasons: ["koyo", "sakura"], pairs: ["hir-prefectural-art"], closedYearly: ["12-29..12-31"], sources: ["shukkeien.jp"] }),
 
+  // Closed 25 Dec – 1 Jan (休館日 「年末年始 (12/25～1/1)」): hpam.jp/museum/, read 20 Nov 2026.
   draft({ id: "hir-prefectural-art", city: c, name: "Hiroshima Prefectural Art Museum", nameJa: "広島県立美術館", category: "museum", lat: 34.3997, lon: 132.4672,
     station: "shukkeien-mae", walk: 2, tags: ["art"], energy: 0.1, crowd: 0.2, discovery: 0.5, signature: 0.4,
     taste: 40, typical: 75, full: 120, opens: "09:00", closes: "17:00", closedWeekdays: [1],
     crowdNote: "Quiet.",
     tip: "Closed Mondays. Dalí's 'Dream of Venus' and a strong local collection; the third-floor window frames Shukkeien. A combined ticket with the garden is cheaper.",
-    cost: 510, pairs: ["hir-shukkeien"], sources: ["hpam.jp"] }),
+    cost: 510, pairs: ["hir-shukkeien"], closedYearly: ["12-25..01-01"], sources: ["hpam.jp"] }),
 
   draft({ id: "hir-museum-of-art", city: c, name: "Hiroshima Museum of Art", nameJa: "ひろしま美術館", category: "museum", lat: 34.3990, lon: 132.4600,
     station: "kamiyacho-higashi", walk: 5, tags: ["art"], energy: 0.1, crowd: 0.2, discovery: 0.55, signature: 0.5,
@@ -123,12 +127,13 @@ export const hiroshima: PlaceSeed[] = [
     tip: "A wooded hill east of the centre with the city's contemporary art museum on top and a view over the delta. A good place to walk off the Peace Park. Fifteen minutes from Hijiyama-shita tram stop, uphill.",
     cost: 0, skipIf: ["limited_mobility"], seasons: ["sakura", "koyo"], pairs: ["hir-mocha"], sources: ["wikivoyage"] }),
 
+  // Closed 27 Dec – 1 Jan (休館日 「年末年始（12月27日—1月1日）」): hiroshima-moca.jp/moca/guide, read 20 Nov 2026.
   draft({ id: "hir-mocha", city: c, name: "Hiroshima City Museum of Contemporary Art", nameJa: "広島市現代美術館", category: "museum", lat: 34.3845, lon: 132.4735,
     station: null, walk: null, tags: ["art"], energy: 0.15, crowd: 0.2, discovery: 0.6, signature: 0.4,
     taste: 40, typical: 75, full: 120, opens: "10:00", closes: "17:00", closedWeekdays: [1],
     crowdNote: "Quiet.",
     tip: "Closed Mondays. Reopened 2023 after renovation, on top of Hijiyama; a strong collection on the theme of the city. Kurokawa's building is half the reason.",
-    cost: 400, pairs: ["hir-hijiyama"], sources: ["hiroshima-moca.jp"] }),
+    cost: 400, pairs: ["hir-hijiyama"], closedYearly: ["12-27..01-01"], sources: ["hiroshima-moca.jp"] }),
 
   draft({ id: "hir-fudoin", city: c, name: "Fudoin", nameJa: "不動院", category: "temple", lat: 34.4270, lon: 132.4750,
     station: null, walk: null, tags: ["shrines", "history"], energy: 0.15, crowd: 0.1, discovery: 0.9, signature: 0.5,

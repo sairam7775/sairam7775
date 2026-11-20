@@ -37,6 +37,9 @@ export interface PlaceInput {
   closedWeekdays: number[];
   /** "YYYY-MM-DD" */
   closedDates: string[];
+  /** Closed on these dates every year: "MM-DD..MM-DD" (wrapping the year,
+   *  "12-28..01-01") or "MM-DD". See closures.ts. */
+  closedYearly?: string[];
   conflictsWith: string[];
   pairsWith: string[];
   verificationStatus: VerificationStatus;

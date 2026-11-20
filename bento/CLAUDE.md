@@ -151,8 +151,14 @@ Explained in `../docs/bento/30-software/engine.md`.
   validate. Rejects are returned in `considered` with the term that
   removed them. Per-slot `alternatives` are kept so a swap has options.
 - Hard rules live in `filter.ts` and never become penalties: stub tier,
-  unverified, excluded, a hard mobility `skip_if`, closed today, booking
+  unverified, excluded, a hard mobility `skip_if`, closed today (that
+  weekday, a one-off date, or a date it closes every year), booking
   required and not booked.
+- Yearly closures (`closedYearly`, `closures.ts`) are month-day ranges,
+  `"12-28..01-01"`, wrapping the year when the end is before the start.
+  `closedYearlyOn` is the one check: the filter (a pin stays, with a
+  warning), `shift.ts` (date changes) and `get_place`'s `closed_every_year`
+  all use it.
 - The anchor holds position 0 through growth and ordering. Timed pins are
   slotted where the clock reaches them. Ordering charges 30 min for a busy
   place that would miss its quiet window.
@@ -202,6 +208,13 @@ Explained in `../docs/bento/50-operations/curation.md` and `../docs/bento/30-sof
   for a day's budget, so a day with a paid stop reads as `~¥`.
 - Categories are free text but keep to the list in `seed/types.ts`;
   `closedWeekdays` uses 0 = Sunday.
+- Year-end and other yearly closures are `closedYearly: ["12-28..01-01"]`
+  (`places.closed_yearly`, 0032), only as the place's own site publishes
+  them, with a comment naming the page and the date read; shrines are
+  usually open at New Year. The seed upsert can't reach verified rows, so
+  every value is also set by id in a migration (0032's updates);
+  `db/yearly-closures.test.ts` keeps the two equal and the exporter refuses
+  a malformed range.
 - `/admin/review` is the sign-off queue. `verifyPlace` redirects to the
   `back` field so the next draft loads without a round trip to the list;
   `back` must start with `/admin/`.

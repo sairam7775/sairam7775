@@ -53,6 +53,10 @@ export interface PlaceSeed {
   hoursVary?: boolean;
   /** 0 = Sunday */
   closedWeekdays?: number[];
+  /** Closed on these dates every year, such as the year-end break:
+   *  "MM-DD..MM-DD" (an end before the start wraps the year: "12-28..01-01")
+   *  or one "MM-DD". Only from the place's own published closing days. */
+  closedYearly?: string[];
   conflicts?: string[];
   pairs?: string[];
   seasons?: string[];

@@ -5,7 +5,7 @@ code:
   - bento/src/lib/places/seed/
   - bento/scripts/export-places-seed.ts
   - bento/src/app/admin/
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-20
 ---
 
 # Curation: how place records are written and checked
@@ -34,6 +34,7 @@ Adding or correcting places for a city, or promoting a city's coverage.
    - Hours are same-day: `closes` after `opens`. An overnight venue gets `closes: "23:59"`, with the real time in the tip.
    - Seasonal hours: store the **shortest** hours of the year with `hoursVary: true`.
    - Prices: `cost` is adult entry to the main paid part; change it only when the price moves to another band.
+   - Year-end and other yearly closures: `closedYearly: ["12-28..01-01"]` (MM-DD ranges; an end before the start wraps the year), only as the place's own site publishes them, with a comment above the record naming the page and the date read. A verified place doesn't get it from the seed: add the same update by id to a migration, as 0032 does (a test keeps the two equal).
 2. Generate the SQL: `npx tsx scripts/export-places-seed.ts > supabase/seed_places_draft.sql`. The exporter refuses duplicate ids and dangling links.
 3. Load it as drafts. The upsert only touches rows still in draft, so a re-export can't overwrite a verified record.
 4. **Sign off in `/admin/review`:** one draft at a time, every field on screen.
@@ -61,6 +62,7 @@ Adding or correcting places for a city, or promoting a city's coverage.
 | Prices and fares | Quarterly | They change rarely |
 | Booking release windows | Monthly | Policies change |
 | Holidays and festivals | Yearly | Published a year ahead |
+| Year-end closures (`closedYearly`) | Yearly, in November | Some places publish only this winter's dates, and they can move |
 | Closures and disruptions | Never | A cached app can't know a line is down. Link to the official status and say so |
 
 Agent rules: [bento/CLAUDE.md](../../../bento/CLAUDE.md), "Curation data (P5)". Source: spec §10; `bento/README.md` "Curation".

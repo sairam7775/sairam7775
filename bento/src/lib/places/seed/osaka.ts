@@ -4,12 +4,13 @@ const c = "osaka-city";
 
 /** Osaka — 28 drafts. Seed values throughout; verify hours and prices. */
 export const osaka: PlaceSeed[] = [
+  // Main tower closed 28 Dec – 1 Jan (休館日 「12月28日～1月1日」): osakacastle.net/guide/, read 20 Nov 2026.
   draft({ id: "osk-osaka-castle", city: c, name: "Osaka Castle", nameJa: "大阪城", category: "castle", lat: 34.6873, lon: 135.5262,
     station: "osakajokoen", walk: 15, tags: ["history"], energy: 0.35, crowd: 0.75, discovery: 0.1, signature: 0.8, physical: 0.4,
     taste: 45, typical: 90, full: 150, window: ["before 09:30"], opens: "09:00", closes: "18:00",
     crowdNote: "The keep is a museum with a lift queue. Weekend afternoons the wait for the lift is longer than the visit.",
     tip: "The keep is a 1931 concrete reconstruction with a museum inside; the view from the top and the walls and moats outside are the real castle. Walk the outer wall before going in.",
-    cost: 600, pairs: ["osk-castle-park"], seasons: ["sakura"], sources: ["osakacastle.net"] }),
+    cost: 600, pairs: ["osk-castle-park"], seasons: ["sakura"], closedYearly: ["12-28..01-01"], sources: ["osakacastle.net"] }),
 
   draft({ id: "osk-castle-park", city: c, name: "Osaka Castle Park", nameJa: "大阪城公園", category: "park", lat: 34.6900, lon: 135.5300,
     station: "osakajokoen", walk: 5, tags: ["nature"], energy: 0.3, crowd: 0.4, discovery: 0.2, signature: 0.4,
@@ -109,12 +110,13 @@ export const osaka: PlaceSeed[] = [
     tip: "A shrine style older than Buddhism's arrival, with the steeply arched red bridge everyone photographs. Take a local train on the Nankai Main Line from Namba, about twelve minutes, then a three-minute walk from Sumiyoshi-taisha station.",
     cost: 0, sources: ["sumiyoshitaisha.net"] }),
 
+  // Closed 28 Dec – 4 Jan (休館日 「年末年始(12月28日～1月4日）」): osakamushis.jp, read 20 Nov 2026.
   draft({ id: "osk-museum-of-history", city: c, name: "Osaka Museum of History", nameJa: "大阪歴史博物館", category: "museum", lat: 34.6830, lon: 135.5200,
     station: "tanimachi-4chome", walk: 2, tags: ["history"], energy: 0.15, crowd: 0.3, discovery: 0.5, signature: 0.5,
     taste: 45, typical: 90, full: 120, opens: "09:30", closes: "17:00", closedWeekdays: [2],
     crowdNote: "Quiet. School groups on weekday mornings.",
     tip: "Closed Tuesdays. Start on the top floor — the reconstructed Naniwa palace hall — and work down through the centuries. The window view of Osaka Castle from up there is the best free castle photograph in the city.",
-    cost: 600, pairs: ["osk-osaka-castle"], sources: ["osakamushis.jp"] }),
+    cost: 600, pairs: ["osk-osaka-castle"], closedYearly: ["12-28..01-04"], sources: ["osakamushis.jp"] }),
 
   draft({ id: "osk-nakanoshima-park", city: c, name: "Nakanoshima Park", nameJa: "中之島公園", category: "park", lat: 34.6925, lon: 135.5100,
     station: "osaka", walk: 15, tags: ["nature"], energy: 0.2, crowd: 0.3, discovery: 0.5, signature: 0.4,
@@ -130,12 +132,13 @@ export const osaka: PlaceSeed[] = [
     tip: "Closed Mondays. Opened 2022, a black cube with Modigliani and Dalí in the permanent collection and strong design shows. The National Museum of Art is next door — one ticket each, plan both.",
     cost: 1500, pairs: ["osk-national-museum-art"], sources: ["nakka-art.jp"] }),
 
+  // Closed 28 Dec – 4 Jan (休館日 「年末年始（2026年12月28日（月）– 2027年1月4日（月））」, this winter's dates): nmao.go.jp/visit/admission/, read 20 Nov 2026.
   draft({ id: "osk-national-museum-art", city: c, name: "National Museum of Art, Osaka", nameJa: "国立国際美術館", category: "museum", lat: 34.6915, lon: 135.4915,
     station: "osaka", walk: 18, tags: ["art"], energy: 0.15, crowd: 0.3, discovery: 0.5, signature: 0.4,
     taste: 45, typical: 75, full: 120, opens: "10:00", closes: "17:00", closedWeekdays: [1],
     crowdNote: "Quiet unless a headline show is on.",
     tip: "Closed Mondays. Entirely underground, beneath a steel sculpture that looks like bamboo. Contemporary and postwar Japanese art, cheaply.",
-    cost: 430, pairs: ["osk-nakanoshima-museum"], sources: ["nmao.go.jp"] }),
+    cost: 430, pairs: ["osk-nakanoshima-museum"], closedYearly: ["12-28..01-04"], sources: ["nmao.go.jp"] }),
 
   draft({ id: "osk-shinsaibashi-suji", city: c, name: "Shinsaibashi-suji", nameJa: "心斎橋筋商店街", category: "shopping", lat: 34.6740, lon: 135.5015,
     station: "shinsaibashi", walk: 1, tags: ["shopping"], energy: 0.2, crowd: 0.85, discovery: 0.1, signature: 0.4,

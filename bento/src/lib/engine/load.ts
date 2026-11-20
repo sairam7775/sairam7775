@@ -49,6 +49,8 @@ export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
     hoursVary: r.hours_vary === true,
     closedWeekdays: r.closed_weekdays ?? [],
     closedDates: r.closed_dates ?? [],
+    // Absent before 0032: no yearly closures, as before.
+    closedYearly: r.closed_yearly ?? [],
     conflictsWith: r.conflicts_with ?? [],
     pairsWith: r.pairs_with ?? [],
     verificationStatus: r.verification_status,

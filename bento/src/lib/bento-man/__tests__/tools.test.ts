@@ -631,6 +631,13 @@ describe("facts", () => {
     expect(r.matches[0].hours).toMatch(/^at least 09:00–16:50; hours change with the season/);
   });
 
+  it("get_place states a closure that comes every year next to the hours, and only for places that have one", async () => {
+    const castle = parse(await runTool("get_place", { query: "osk-osaka-castle" }, ctxFor(new MemoryStore())));
+    expect(castle.matches[0]).toMatchObject({ id: "osk-osaka-castle", hours: "09:00–18:00", closed_every_year: "28 Dec – 1 Jan" });
+    const inari = parse(await runTool("get_place", { query: "fushimi inari" }, ctxFor(new MemoryStore())));
+    expect(inari.matches[0]).not.toHaveProperty("closed_every_year");
+  });
+
   it("get_place says when nothing matches", async () => {
     const r = parse(await runTool("get_place", { query: "Skytree" }, ctxFor(new MemoryStore())));
     expect(r.matches).toEqual([]);

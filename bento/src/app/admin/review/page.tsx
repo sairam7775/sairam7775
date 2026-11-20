@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireAdmin } from "@/lib/admin";
 import { selectAll } from "@/lib/supabase/select-all";
 import { costBandWords } from "@/lib/engine/cost-band";
+import { yearlyRangeWords } from "@/lib/engine/closures";
 import { AppHeader } from "@/components/app-header";
 import { verifyPlace } from "../actions";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
@@ -125,6 +126,7 @@ export default async function Review({ searchParams }: PageProps<"/admin/review"
             <Field k="Cost" v={next.cost_jpy != null ? `¥${next.cost_jpy.toLocaleString("en")} · travellers see ${costBandWords(next.cost_jpy)}` : null} />
             <Field k="Hours" v={next.opens_at || next.closes_at ? `${String(next.opens_at ?? "").slice(0, 5)}–${String(next.closes_at ?? "").slice(0, 5)}${next.hours_vary ? " · varies by season (shortest hours)" : ""}` : "always open"} />
             <Field k="Closed" v={next.closed_weekdays?.length ? next.closed_weekdays.map((d: number) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join(", ") : null} />
+            <Field k="Closed every year" v={next.closed_yearly?.length ? next.closed_yearly.map(yearlyRangeWords).join(", ") : null} />
             <Field k="Booking" v={`${next.booking_req}${next.booking_lead_days ? ` · ${next.booking_lead_days} days ahead` : ""}`} />
             <Field k="Station" v={next.nearest_station ? `${next.nearest_station} · ${next.station_walk_min} min walk` : "no station — bus or walk"} />
             <Field k="Conflicts with" v={next.conflicts_with?.join(", ")} />

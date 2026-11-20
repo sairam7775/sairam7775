@@ -35,6 +35,7 @@ export function seedToPlaceInput(
     hoursVary: s.hoursVary ?? false,
     closedWeekdays: s.closedWeekdays ?? [],
     closedDates: [],
+    closedYearly: s.closedYearly ?? [],
     conflictsWith: s.conflicts ?? [],
     pairsWith: s.pairs ?? [],
     verificationStatus: opts.status ?? "verified",

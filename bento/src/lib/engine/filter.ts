@@ -1,4 +1,5 @@
 import { chooseDuration, HARD_MOBILITY } from "./score";
+import { closedYearlyOn, yearlyRangeWords } from "./closures";
 import type { PlaceInput, Rejected, TravellerInput } from "./types";
 import { copy } from "@/copy";
 
@@ -65,6 +66,10 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
   }
   if (p.closedDates.includes(ctx.date)) {
     return reject("closed", copy.plan.leftOut.closedDate);
+  }
+  const yearly = closedYearlyOn(p, ctx.date);
+  if (yearly) {
+    return reject("closed", copy.plan.leftOut.closedYearly(yearlyRangeWords(yearly)));
   }
 
   if (p.bookingReq === "required" && !ctx.bookedPlaceIds.has(p.id)) {

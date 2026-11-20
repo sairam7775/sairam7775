@@ -1,6 +1,7 @@
 import { bookingHoldsPlace } from "@/lib/vault/match";
 import type { TicketLike } from "@/lib/vault/match";
 import type { PlaceInput } from "@/lib/engine/types";
+import { closedYearlyOn, yearlyRangeWords } from "@/lib/engine/closures";
 import { shiftDate, type DayRow, type TripCityRow } from "./store";
 import { copy } from "@/copy";
 
@@ -28,8 +29,10 @@ export function shiftConflicts(
     for (const it of d.items) {
       const p = placesById.get(it.placeId);
       if (!p) continue;
+      const yearly = closedYearlyOn(p, to);
       if (p.closedWeekdays.includes(weekday)) out.push(copy.plan.dates.closedOn(p.name, WEEKDAY[weekday], fmt(to)));
       else if (p.closedDates.includes(to)) out.push(copy.plan.dates.closedDate(p.name, fmt(to)));
+      else if (yearly) out.push(copy.plan.dates.closedYearly(p.name, yearlyRangeWords(yearly), fmt(to)));
       else if (p.bookingReq === "required" && !bookings.some((b) => bookingHoldsPlace(b, p, to))) {
         out.push(copy.plan.dates.noTicket(p.name, fmt(to)));
       }
