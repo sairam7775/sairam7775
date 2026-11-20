@@ -126,10 +126,11 @@ export interface DayInput {
   bookedPlaceIds?: string[];
   /** Places already planned on other days of the trip. */
   usedPlaceIds?: string[];
-  /** Minutes since midnight. Default: 07:00 for a crowd-avoider, else 09:00. */
+  /** Minutes since midnight, the clock time the day starts. Default: 07:00
+   *  for a crowd-avoider, else 09:00, plus the move on a travel day. */
   dayStartMin?: number;
-  /** A travel day: the move here from the last stay. The day starts that
-   *  many minutes after its usual start and has that much less time. */
+  /** A travel day: the move here from the last stay. The day has that much
+   *  less time and, unless `dayStartMin` is given, starts that much later. */
   move?: TravelMove;
   weights?: Partial<Weights>;
   maxItems?: number;

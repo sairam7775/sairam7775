@@ -502,6 +502,9 @@ export const en = {
       tickets: "Keep the tickets in Bookings →",
       directions: "Directions",
       openDirections: (from: string, to: string) => `Open directions from ${from} to ${to} in Google Maps`,
+      /** The move the plan allows on this day: a duration from `copy.time.duration`. */
+      move: (from: string, about: string, trainKnown: boolean) =>
+        `Moving from ${from}: about ${about}, with checking out and leaving your bags. The day's plan allows for it.${trainKnown ? "" : " Bento doesn't have this train's time yet, so that's a cautious guess."}`,
     },
     emptyBox: {
       title: "An empty box.",
@@ -1191,7 +1194,7 @@ export const en = {
       noStation: (name: string, min: number) => `${name} has no station in Bento's train data yet — legs to it are estimated at ${min} min`,
       noRoute: (from: string, to: string, min: number) => `No route between ${from} and ${to} in Bento's train data yet — estimated at ${min} min`,
       pinnedMissing: (id: string) => `Pinned place ${id} is not in this city's list`,
-      moveUnknown: (min: number) => `This day starts ${Math.floor(min / 60)}h ${min % 60}m after your usual time, to allow for checking out, the train and leaving your bags. Bento doesn't have this train's time yet, so check it`,
+      moveUnknown: (min: number) => `This day allows ${Math.floor(min / 60)}h ${min % 60}m for the move: checking out, the train and leaving your bags. Bento doesn't have this train's time yet, so check it`,
       opensLate: (name: string, time: string, wait: number) => `${name} opens at ${time} — the day waits ${wait} min for it`,
       pinnedLate: (name: string, pinned: string, reached: string) => `${name} is pinned for ${pinned} but the day only reaches it by ${reached}`,
       hoursNotFitted: "Some places could not be fitted to their opening hours",

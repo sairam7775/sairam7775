@@ -42,6 +42,22 @@ export function travelDayOrigins(startDate: string | null, cities: RouteCityInpu
   return out;
 }
 
+/** The move for a date planned in a city, from the route: what `plan_days`,
+ *  a re-plan and the day box all use, so they never disagree. Undefined
+ *  for any day that isn't a travel day. */
+export function travelDayMoves(
+  startDate: string | null,
+  endDate: string | null,
+  cities: RouteCityInput[],
+  trainMinutes: (from: string, to: string) => number | null,
+): (date: string, cityId: string) => TravelMove | undefined {
+  const origins = travelDayOrigins(startDate, cities, endDate);
+  return (date, cityId) => {
+    const from = origins.get(date);
+    return from && from !== cityId ? travelMove(from, trainMinutes(from, cityId)) : undefined;
+  };
+}
+
 /** Train minutes between two cities' hubs, as the route's legs count them;
  *  null when Bento has no train between them. */
 export function cityTrainMinutes(graph: Graph, facts?: Map<string, CityFacts>) {

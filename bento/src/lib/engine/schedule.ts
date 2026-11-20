@@ -37,10 +37,12 @@ export function planDay(input: DayInput): DayPlan {
 
   // 1 BUDGET
   // A travel day starts once the traveller is in the new city, and ends
-  // when any day would: the move comes out of the day's time.
+  // when any day would: the move comes out of the day's time. A start given
+  // as a clock time (a re-plan keeping its start, "start at 10:00") is
+  // taken as it is; the move still comes out of the day.
   const moveMin = input.move?.minutes ?? 0;
   const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[t.pace] - moveMin);
-  const dayStart = (input.dayStartMin ?? (t.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60)) + moveMin;
+  const dayStart = input.dayStartMin ?? (t.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60) + moveMin;
   const maxItems = input.maxItems ?? (t.pace === "packed" ? 7 : t.pace === "relaxed" ? 4 : 5);
 
   const considered: Rejected[] = [];

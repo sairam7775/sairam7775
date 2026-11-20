@@ -398,6 +398,30 @@ describe("days", () => {
     expect(trip.proposal!.days[0].budgetMin).toBe(DAY_BUDGET_MINUTES.standard);
   });
 
+  it("replan_day keeps a travel day's move: the same start and the same shorter day", async () => {
+    const store = routed();
+    const ctx = ctxFor(store);
+    await runTool("plan_days", {}, ctx);
+    await store.applyProposal(ctx.proposal!);
+    const move = MOVE_ALLOWANCE_MIN + cityTrainMinutes(await store.graph())("osaka-city", "kyoto-city")!;
+    const planned = ctx.proposal!.days.find((d) => d.date === "2026-11-22")!;
+    const again = await replanDay(store, "2026-11-22", []);
+    if (!("diff" in again)) throw new Error(again.error);
+    expect(again.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+    expect(again.diff.after[0].startMin).toBe(planned.after[0].startMin);
+    expect(again.diff.activeMin).toBeLessThanOrEqual(again.diff.budgetMin);
+    // A start the traveller names is a clock time; the move still comes out of the day.
+    const ten = await replanDay(store, "2026-11-22", [{ op: "start_at", time: "10:00" }]);
+    if (!("diff" in ten)) throw new Error(ten.error);
+    expect(ten.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+    expect(ten.diff.after[0].startMin).toBeGreaterThanOrEqual(10 * 60);
+    expect(ten.diff.after[0].startMin).toBeLessThan(10 * 60 + move);
+    // Any other day keeps the whole day.
+    const other = await replanDay(store, "2026-11-23", []);
+    if (!("diff" in other)) throw new Error(other.error);
+    expect(other.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard);
+  });
+
   it("plan_days keeps Fushimi Inari and Arashiyama on different days and honours 'no hiking'", async () => {
     const ctx = ctxFor(routed());
     await runTool("plan_days", {}, ctx);

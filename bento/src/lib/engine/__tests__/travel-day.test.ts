@@ -9,7 +9,7 @@ import { assessRoute, hubFor, type CityFacts } from "../route";
 import { planDay } from "../schedule";
 import { planTrip } from "../trip";
 import { travelFromGraph } from "../travel";
-import { cityTrainMinutes, MOVE_ALLOWANCE_MIN, travelDayOrigins, travelMove, UNKNOWN_TRAIN_MIN } from "../travel-day";
+import { cityTrainMinutes, MOVE_ALLOWANCE_MIN, travelDayMoves, travelDayOrigins, travelMove, UNKNOWN_TRAIN_MIN } from "../travel-day";
 import type { PlaceInput } from "../types";
 import { owner } from "../__fixtures__/kyoto";
 
@@ -68,6 +68,27 @@ describe("planDay on a travel day", () => {
     expect(moved.items.length).toBeLessThanOrEqual(usual.items.length);
     // A known train needs no warning.
     expect(moved.warnings.some((w) => w === copy.plan.warnings.moveUnknown(UNKNOWN_TRAIN_MIN + MOVE_ALLOWANCE_MIN))).toBe(false);
+  });
+
+  it("starts at a start given as a clock time, and still takes the move out of the day", () => {
+    const move = travelMove("osaka-city", trainMinutes("osaka-city", "kyoto-city"));
+    const plan = planDay({ date: "2026-11-25", cityId: "kyoto-city", places: placesByCity["kyoto-city"], traveller: owner, travel, move, dayStartMin: 10 * 60 });
+    expect(plan.budgetMin).toBe(FULL - move.minutes);
+    expect(plan.startMin).toBeGreaterThanOrEqual(10 * 60);
+    expect(plan.startMin).toBeLessThan(10 * 60 + move.minutes);
+  });
+
+  it("finds each date's move from the route, for the day's own city", () => {
+    const moves = travelDayMoves("2026-11-24", "2026-11-29", [
+      { cityId: "osaka-city", nights: 2 },
+      { cityId: "kyoto-city", nights: 2 },
+      { cityId: "hiroshima-city", nights: 1 },
+    ], trainMinutes);
+    expect(moves("2026-11-26", "kyoto-city")).toEqual(travelMove("osaka-city", trainMinutes("osaka-city", "kyoto-city")));
+    // Himeji on the way: the move is from the last stay to Himeji.
+    expect(moves("2026-11-28", "himeji")).toEqual(travelMove("kyoto-city", trainMinutes("kyoto-city", "himeji")));
+    expect(moves("2026-11-25", "osaka-city")).toBeUndefined();
+    expect(moves("2026-11-24", "osaka-city")).toBeUndefined();
   });
 
   it("allows a cautious time for a move with no known train, and says so", () => {
