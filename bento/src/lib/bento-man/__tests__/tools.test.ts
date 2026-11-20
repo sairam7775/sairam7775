@@ -496,17 +496,19 @@ describe("days", () => {
   it("leaves a well-covered city's plan_days and replan_day results byte for byte as they were", async () => {
     // Pins the common case's tool result, and so its cost and caching.
     // First taken on the code before Q12; refreshed when the Kyoto seed
-    // gained the Arashiyama-area conflicts, which changed these plans.
+    // gained the Arashiyama-area conflicts, which changed these plans, and
+    // when "has no station" warnings stopped naming places a day doesn't
+    // hold (same stops, fewer warnings).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("3309c1b15e154ebd678a7b10518e8bbd836a20aa59fd98c248dfcb37cfc77c69");
+    expect(sha(plan)).toBe("56ec0e6bc770f47f2d63fd92bfb310e4cad7bb0cab4487a067b50987ccb96ea2");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("2d4eaa211a99c84c7ded0eeaf47c8606759ef7528629e4ca978f02bbd96bb959");
+    expect(sha(replan)).toBe("75e91ea52a0ff78e1447ae36c8fb496a0a265a8d5b694acdf3d96584f261ed55");
   });
 
   it("the main-sights line passes the voice lint", () => {

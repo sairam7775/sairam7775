@@ -139,6 +139,22 @@ describe("planDay — the shape of a good day", () => {
     const used = plan.items.some((i) => ["kyt-kinkakuji", "kyt-ginkakuji", "kyt-nijo-castle"].includes(i.placeId));
     if (used) expect(plan.warnings.some((w) => /No transit data/.test(w))).toBe(true);
   });
+
+  it("warns 'has no station' only for a stop the day holds, and once", () => {
+    const noStation = kyoto.filter((p) => !p.nearestStation && p.cityId === "kyoto-city");
+    const named = (plan: ReturnType<typeof planDay>, name: string) =>
+      plan.warnings.filter((w) => w.startsWith(`${name} has no station`));
+    // A short day: growing looks at every no-station place, but few make it.
+    const plan = day({ maxItems: 2 });
+    const absent = noStation.filter((p) => !ids(plan).includes(p.id));
+    expect(absent.length).toBeGreaterThan(0);
+    for (const p of absent) expect(named(plan, p.name)).toEqual([]);
+    // A no-station stop the day holds still warns, and only once.
+    const pinned = day({ maxItems: 3, locked: [{ placeId: "kyt-kinkakuji" }] });
+    expect(ids(pinned)).toContain("kyt-kinkakuji");
+    expect(named(pinned, "Kinkaku-ji")).toHaveLength(1);
+    for (const p of noStation.filter((q) => !ids(pinned).includes(q.id))) expect(named(pinned, p.name)).toEqual([]);
+  });
 });
 
 describe("planDay — pinning", () => {
