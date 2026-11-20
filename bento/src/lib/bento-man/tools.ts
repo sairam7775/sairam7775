@@ -14,7 +14,7 @@ import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type 
 import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types";
 import { placeRoute, route, type Graph } from "@/lib/transit/graph";
 import { readyMadeToPlan } from "@/lib/trips/ready-made/to-plan";
-import { readyMadeForNights } from "@/lib/trips/ready-made/suggest";
+import { readyMadeForNights, shorterNote } from "@/lib/trips/ready-made/suggest";
 import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
@@ -390,9 +390,9 @@ const LAYOUT_DATE = "2027-01-04";
  *  them that isn't on file. A trip whose must-see place this store can't
  *  show is left out, as starting it would be refused (start.ts). Null when
  *  none is left, and the corridor table answers as before. */
-async function readyMadeResult(store: TripStore, nights: number, cities: CityFacts[], graph: Graph) {
+async function readyMadeResult(store: TripStore, nights: number, allowShorter: boolean, cities: CityFacts[], graph: Graph) {
   const facts = factsMap(cities);
-  const match = readyMadeForNights(nights, new Map(cities.map((c) => [c.id, c.tier])));
+  const match = readyMadeForNights(nights, new Map(cities.map((c) => [c.id, c.tier])), { allowShorter });
   const placesCache = new Map<string, Map<string, string>>();
   const placeNames = async (cityId: string) => {
     if (!placesCache.has(cityId)) placesCache.set(cityId, new Map((await store.places(cityId)).map((p) => [p.id, p.name])));
@@ -429,13 +429,17 @@ async function readyMadeResult(store: TripStore, nights: number, cities: CityFac
   }
   if (!offered.length) return null;
 
-  const days = offered[0].days;
-  const length = match.exact
-    ? `Bento's ready-made trips for ${days} days (${days - 1} nights)`
-    : `Bento's ready-made trips for ${days} days (${days - 1} nights, one fewer than the ${nights} asked for; say so, and propose_route needs the nights to fit the trip's dates)`;
+  // Data, not instructions: the prompt has the model ignore tool results
+  // that read like orders.
   return {
     ready_made: offered,
-    note: `${length}: the same trips the planner offers. Name a trip by its title and describe it only from its summary, cities, day trips and must-see places; the rest of each day, and its times, come from the planner once the days are planned. The traveller can start one from the ready-made tab of the planner (/trips/plan?tab=ready-made), which makes a new trip with every day planned; or you can propose its cities and nights for this trip with propose_route.`,
+    nights_asked: nights,
+    exact: match.exact,
+    ...(match.exact ? {} : { length_note: shorterNote(nights) }),
+    same_as: "the trips on the Ready-made trips tab of the Plan a Japan trip page",
+    start_on: "/trips/plan?tab=ready-made",
+    starting_one: "makes a new trip with its own dates and every day planned",
+    times: "times of day are set by the planner when the trip starts; the trip holds none",
   };
 }
 
@@ -759,7 +763,11 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       if (!nights) return fail("the trip has no dates yet — ask for dates or pass nights");
       const facts = factsMap(cities);
       // A ready-made trip first, so the chat offers what the picker does.
-      const readyMade = await readyMadeResult(store, nights, cities, graph);
+      // A trip a night shorter only when the model passed the nights and
+      // the trip has no dates to fit: with dates, propose_route would
+      // refuse it.
+      const dated = nightsBetween(state.trip.startDate, state.trip.endDate);
+      const readyMade = await readyMadeResult(store, nights, p.data.nights != null && !dated, cities, graph);
       if (readyMade) return { result: j(readyMade) };
       const s = suggestRoute(nights, state.prefs.interestTags);
       const a = assessRoute(s.cities, facts, graph, nights);

@@ -137,6 +137,11 @@ const verse = /(?:^|\n)(?:(?![ \t]*(?:[-*•]|\d+[.)])\s)[^\n]{1,60}\n){2}(?![ \
 // A checked background, as an admin would approve it (0027).
 const KINKAKU = "Built in 1397 as a retirement villa for the shogun Ashikaga Yoshimitsu, it became a Zen temple after his death. A monk burned it down in 1950; what stands now is the 1955 rebuild.";
 
+// Two nights in Osaka, said either way round (route-suggest-kansai-5).
+const KANSAI5_OSAKA = /\b(two|2) nights? (in|for|at) Osaka|Osaka[^.\n]{0,30}\b(two|2) nights\b/i;
+// The corridor table's 4-night shape: one night in Osaka, three in Kyoto.
+const KANSAI5_CORRIDOR = /\b(one|1) night (in|for|at) Osaka|Osaka[^.\n]{0,20}\b(one|1) night\b|\b(three|3) nights (in|for|at) Kyoto|Kyoto[^.\n]{0,20}\b(three|3) nights\b/i;
+
 /** A change or proposal claimed, more broadly than the runtime net dares
  *  (a false alarm here fails an eval run, not a traveller's reply): a first
  *  person past-tense change with any offer after it, "is now a … day", or
@@ -263,12 +268,12 @@ export const SCENARIOS: Scenario[] = [
   // the Tokyo week or the 14-day trip.
   {
     id: "route-suggest-week-first-time",
-    intent: "A first-timer's week gets the ready-made week this store can offer, named by its title, with nothing invented about it.",
+    intent: "A first-timer's week gets the ready-made week this store can offer, with nothing invented about it. Graded on what only that trip gives (Himeji; the corridor's 6-night route has none), not its title: live (gemini-3.1-flash-lite, c3f54fe) the route was used faithfully but the title never said.",
     setup: { trip: { ...nov, title: "First time", endDate: "2026-11-26" }, prefs: owner },
     user: "I have a week and it's my first time in Japan. What do you suggest?",
     expect: {
       tools: ["suggest_route"],
-      mustMatch: [/Himeji/, /Hiroshima/, /ready-made|Osaka, Kyoto, Nara, Himeji and Hiroshima/i],
+      mustMatch: [/Himeji/, /Hiroshima/],
       // No clock times (the planner hasn't planned the days), and not the
       // Tokyo week, which this store can't offer.
       mustNotMatch: [/\b\d{1,2}:\d{2}\b/, /Tokyo, Kyoto and Osaka/i, /Takayama|Kanazawa|Hakone|Nikko/],
@@ -289,13 +294,13 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "route-suggest-kansai-5",
-    intent: "Five days that match a ready-made trip in this store's corridor get that trip, by name.",
+    intent: "Five days that match a ready-made trip in this store's corridor get that trip: two nights in Osaka and Nara as a day trip. The corridor's 4-night route is one night in Osaka and three in Kyoto, so those are refused. Graded on content, not the title (see the week above).",
     setup: { trip: { ...nov, title: "Kansai", endDate: "2026-11-24" }, prefs: owner },
     user: "Five days in Kansai. What would you suggest?",
     expect: {
       tools: ["suggest_route"],
-      mustMatch: [/Osaka/, /Kyoto/, /Nara/, /ready-made|Osaka, Kyoto and Nara/i],
-      mustNotMatch: [/\b\d{1,2}:\d{2}\b/, /Himeji|Hiroshima/],
+      mustMatch: [/Kyoto/, /Nara/, KANSAI5_OSAKA, /day[- ]trip/i],
+      mustNotMatch: [/\b\d{1,2}:\d{2}\b/, /Himeji|Hiroshima/, KANSAI5_CORRIDOR],
       honestAboutProposal: true,
     },
   },

@@ -389,9 +389,16 @@ describe("eval scenarios", () => {
     expect(await offered("route-suggest-kansai-5")).toEqual([copy.readyMade.trips["osaka-kyoto-nara-5"].title]);
     expect(await offered("route-suggest-two-weeks")).toEqual([]);
     expect(await offered("route-suggest")).toEqual([]);
-    // Each one's must-match takes the title it is offered.
-    expect(proseFails(byId("route-suggest-week-first-time"), `Seven days: ${copy.readyMade.trips["kansai-hiroshima-7"].title}, with Himeji as a day trip.`)).toBe(false);
-    expect(proseFails(byId("route-suggest-kansai-5"), `${copy.readyMade.trips["osaka-kyoto-nara-5"].title}: two nights each, Nara as a day trip.`)).toBe(false);
-    expect(proseFails(byId("route-suggest-kansai-5"), "Osaka, Kyoto and Nara. Be at Todai-ji by 08:30.")).toBe(true);
+    // Graded on what only the ready-made trip gives, not its title: the
+    // answers gemini-3.1-flash-lite gave live on c3f54fe pass, the corridor
+    // table's routes fail.
+    const week = byId("route-suggest-week-first-time");
+    expect(proseFails(week, "Osaka for 2 nights, Kyoto for 2, then Hiroshima for 2, stopping at Himeji on the way.")).toBe(false);
+    expect(proseFails(week, "Osaka for 2 nights, Kyoto for 2 with Nara as a day trip, then Hiroshima for 2.")).toBe(true);
+    const kansai = byId("route-suggest-kansai-5");
+    expect(proseFails(kansai, "Osaka for 2 nights, then Kyoto for 2, with Nara as a day trip.")).toBe(false);
+    expect(proseFails(kansai, "Two nights in Osaka, two in Kyoto, and a day trip to Nara.")).toBe(false);
+    expect(proseFails(kansai, "One night in Osaka, then three nights in Kyoto, with a day trip to Nara.")).toBe(true);
+    expect(proseFails(kansai, "Osaka for 2 nights, Kyoto for 2, and a day trip to Nara: be at Todai-ji by 08:30.")).toBe(true);
   });
 });

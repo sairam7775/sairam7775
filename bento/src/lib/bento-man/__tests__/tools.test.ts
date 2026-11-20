@@ -4,6 +4,7 @@
 import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "../store.memory";
+import { shiftDate } from "../store";
 import { replanDay, runTool, TOOLS, type ToolContext } from "../tools";
 import { ProposalSchema } from "../diff";
 import { buildContext, coverageWords } from "../context";
@@ -232,8 +233,23 @@ describe("suggest_route and the ready-made trips", () => {
     expect(r.ready_made[0].assessment.verdict).not.toBe("overpacked");
     expect(r.ready_made[0].assessment.nights_mismatch).toBeNull();
     // Where to start it: the planner's tab, as a fact, not a link to invent.
-    expect(r.note).toContain("/trips/plan?tab=ready-made");
-    expect(r.note).toMatch(/ready-made/);
+    expect(r).toMatchObject({
+      nights_asked: 4,
+      exact: true,
+      same_as: "the trips on the Ready-made trips tab of the Plan a Japan trip page",
+      start_on: "/trips/plan?tab=ready-made",
+    });
+    expect(r.times).toMatch(/set by the planner when the trip starts/);
+    expect(r.length_note).toBeUndefined();
+  });
+
+  it("reads as data, not as instructions to the model", async () => {
+    for (const input of [{}, { nights: 7 }]) {
+      const r = JSON.parse(await suggest(new MemoryStore({ trip: input.nights ? undefined : days5, prefs: owner }), input));
+      const words = JSON.stringify({ ...r, ready_made: undefined });
+      expect(words, words).not.toMatch(/(say|says|name|describe|tell|call|mention|repeat|use)/i);
+      expect(words).not.toMatch(/propose_route/);
+    }
   });
 
   it("states no clock time and no internal coverage word, and passes clean() unchanged", async () => {
@@ -286,12 +302,50 @@ describe("suggest_route and the ready-made trips", () => {
   it("takes nights given as a trip of one more day, or of as many days when none is that long", async () => {
     const asked = JSON.parse(await suggest(new MemoryStore({ prefs: owner }), { nights: 6 }));
     expect(asked.ready_made.map((t: { id: string }) => t.id)).toEqual(["kansai-hiroshima-7"]);
-    expect(asked.note).not.toMatch(/fewer/);
+    expect(asked).toMatchObject({ nights_asked: 6, exact: true });
+    expect(asked.length_note).toBeUndefined();
     // "A week" passed as seven nights: no 8-day trip, so the 7-day one,
     // said to be a night shorter.
     const seven = JSON.parse(await suggest(new MemoryStore({ prefs: owner }), { nights: 7 }));
     expect(seven.ready_made.map((t: { id: string }) => t.id)).toEqual(["kansai-hiroshima-7"]);
-    expect(seven.note).toMatch(/6 nights, one fewer than the 7/);
+    expect(seven).toMatchObject({ nights_asked: 7, exact: false, length_note: "6 nights, one fewer than the 7 nights asked for" });
+    // Singular: one night asked, the 1-day trips (no night) offered.
+    const one = JSON.parse(await suggest(new MemoryStore({ prefs: owner, tiers: { "kyoto-city": "stub", "osaka-city": "stub" } }), { nights: 1 }));
+    expect(one.length_note).toBe("0 nights, one fewer than the 1 night asked for");
+  });
+
+  it("with the trip's own dates, offers exact lengths only, so propose_route takes what is offered", async () => {
+    // Seven nights (8 days) and three nights (4 days): no trip that long.
+    // The 7-day and 3-day trips a night short would be refused by
+    // propose_route, so the corridor table answers instead.
+    for (const endDate of ["2026-11-27", "2026-11-23"]) {
+      const r = JSON.parse(await suggest(new MemoryStore({ trip: { startDate: "2026-11-20", endDate }, prefs: owner })));
+      expect(r.ready_made, endDate).toBeUndefined();
+      expect(r.cities).toBeDefined();
+    }
+    // Nights passed for a trip that has dates: still no shorter trip.
+    const passed = JSON.parse(await suggest(new MemoryStore({ trip: { startDate: "2026-11-20", endDate: "2026-11-27" }, prefs: owner }), { nights: 7 }));
+    expect(passed.ready_made).toBeUndefined();
+    // Every trip offered for the trip's own dates is one propose_route takes.
+    const tiers = { "tokyo-city": "outline" as const, kamakura: "outline" as const, yokohama: "outline" as const };
+    class AllPlaces extends MemoryStore {
+      async places(cityId: string) {
+        if (!(cityId in tiers)) return super.places(cityId);
+        return placeSeeds.flatMap((s) => s.places).filter((p) => p.city === cityId).map((p) => seedToPlaceInput(p, { tier: "outline", status: "verified" }));
+      }
+    }
+    let offered = 0;
+    for (let nights = 1; nights <= 13; nights++) {
+      const endDate = shiftDate("2026-11-20", nights);
+      const r = JSON.parse(await suggest(new AllPlaces({ trip: { startDate: "2026-11-20", endDate }, prefs: owner, tiers })));
+      for (const t of r.ready_made ?? []) {
+        offered++;
+        const ctx = ctxFor(new AllPlaces({ trip: { startDate: "2026-11-20", endDate }, prefs: owner, tiers }));
+        const p = await runTool("propose_route", { cities: t.cities.map((c: { city_id: string; nights: number; reason: string }) => ({ city_id: c.city_id, nights: c.nights, reason: c.reason })) }, ctx);
+        expect(p.isError, `${t.id}: ${p.result}`).toBeFalsy();
+      }
+    }
+    expect(offered).toBeGreaterThan(5);
   });
 
   it("leaves the corridor table's result byte for byte as it was when nothing matches", async () => {
