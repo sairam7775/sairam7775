@@ -63,6 +63,13 @@ describe("a mocked turn", () => {
     expect(r.proposal).not.toBeNull();
   });
 
+  it("chains a ready-made suggestion into its route", async () => {
+    const r = await turn(new MemoryStore({ trip: { startDate: "2026-11-20", endDate: "2026-11-24" } }), "suggest a route");
+    expect(r.toolCalls.map((c) => c.name)).toEqual(["suggest_route", "propose_route"]);
+    expect(r.toolCalls.every((c) => c.ok)).toBe(true);
+    expect(r.proposal?.route?.after.map((c) => c.cityId)).toEqual(["osaka-city", "kyoto-city", "nara-city"]);
+  });
+
   it("passes a tool's refusal through rather than inventing a plan", async () => {
     const r = await turn(new MemoryStore(), "suggest a route");
     expect(r.toolCalls).toEqual([expect.objectContaining({ name: "suggest_route", ok: false })]);

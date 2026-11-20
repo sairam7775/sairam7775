@@ -203,6 +203,6 @@ The place counts are estimates from 8 to 12 places per destination. The pace is 
 | 1A | Done 18 Nov 2026 (Himeji drafts, JR East fares, airport route tests) | #90, #91 |
 | 1B | Built and reviewed; waits for a live Bento Man evaluation | |
 | 1C | Built 19 Nov 2026: the picker sits beside the form (the owner's choice); trips through a city that isn't planned on live are hidden. Waits for review and a signed-in run in a real browser | |
-| 1D | Not started | |
+| 1D | Built 20 Nov 2026: `suggest_route` offers the picker's trips for the length (N nights is N + 1 days; N days, one night shorter, only for nights given without trip dates), corridor table otherwise; three new eval scenarios, graded on route content. Waits for review and the live evaluation before and after | |
 | 1E | Not started | |
 | 2: Hakone, Nikko | Transit and 20 place drafts merged 18 Nov 2026; drafts wait for the live load and owner sign-off | #92, #93 |

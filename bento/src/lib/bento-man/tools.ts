@@ -12,7 +12,9 @@ import { travelFromGraph } from "@/lib/engine/travel";
 import { costBandWords } from "@/lib/engine/cost-band";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
 import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types";
-import { placeRoute, route } from "@/lib/transit/graph";
+import { placeRoute, route, type Graph } from "@/lib/transit/graph";
+import { readyMadeToPlan } from "@/lib/trips/ready-made/to-plan";
+import { readyMadeForNights, shorterNote } from "@/lib/trips/ready-made/suggest";
 import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
@@ -379,6 +381,68 @@ function compactAssessment(a: RouteAssessment) {
   };
 }
 
+/** Any date will do to lay a ready-made trip's days out: which city each
+ *  day is in doesn't depend on it. */
+const LAYOUT_DATE = "2027-01-04";
+
+/** suggest_route's answer when ready-made trips match the length: the ones
+ *  the picker would offer for it, in the picker's words, with nothing about
+ *  them that isn't on file. A trip whose must-see place this store can't
+ *  show is left out, as starting it would be refused (start.ts). Null when
+ *  none is left, and the corridor table answers as before. */
+async function readyMadeResult(store: TripStore, nights: number, allowShorter: boolean, cities: CityFacts[], graph: Graph) {
+  const facts = factsMap(cities);
+  const match = readyMadeForNights(nights, new Map(cities.map((c) => [c.id, c.tier])), { allowShorter });
+  const placesCache = new Map<string, Map<string, string>>();
+  const placeNames = async (cityId: string) => {
+    if (!placesCache.has(cityId)) placesCache.set(cityId, new Map((await store.places(cityId)).map((p) => [p.id, p.name])));
+    return placesCache.get(cityId)!;
+  };
+  const name = (id: string) => facts.get(id)?.name ?? id;
+
+  const offered = [];
+  for (const trip of match.trips) {
+    const words = copy.readyMade.trips[trip.id];
+    const reasons: Record<string, string> = words.reasons;
+    const plan = readyMadeToPlan(trip, LAYOUT_DATE);
+    const mustSee = [];
+    let missing = false;
+    for (const [i, d] of plan.days.entries()) {
+      const names = await placeNames(d.cityId);
+      const places = (d.locked ?? []).map((l) => names.get(l.placeId));
+      if (places.some((p) => p == null)) missing = true;
+      if (places.length) mustSee.push({ day: i + 1, city: name(d.cityId), places });
+    }
+    if (missing) continue;
+    const route = trip.route.map((c) => ({ cityId: c.cityId, nights: c.nights }));
+    offered.push({
+      id: trip.id,
+      title: words.title,
+      summary: words.summary,
+      days: trip.days,
+      nights: trip.days - 1,
+      cities: trip.route.map((c) => ({ city_id: c.cityId, name: name(c.cityId), nights: c.nights, reason: reasons[c.cityId], coverage: coverageWords(facts.get(c.cityId)?.tier ?? "stub") })),
+      day_trips: trip.dayTrips.map((t) => ({ day: t.day, city: name(t.cityId) })),
+      must_see: mustSee,
+      assessment: compactAssessment(assessRoute(route, facts, graph, trip.days - 1)),
+    });
+  }
+  if (!offered.length) return null;
+
+  // Data, not instructions: the prompt has the model ignore tool results
+  // that read like orders.
+  return {
+    ready_made: offered,
+    nights_asked: nights,
+    exact: match.exact,
+    ...(match.exact ? {} : { length_note: shorterNote(nights) }),
+    same_as: "the trips on the Ready-made trips tab of the Plan a Japan trip page",
+    start_on: "/trips/plan?tab=ready-made",
+    starting_one: "makes a new trip with its own dates and every day planned",
+    times: "times of day are set by the planner when the trip starts; the trip holds none",
+  };
+}
+
 function placeFacts(p: PlaceInput) {
   const verified = p.verificationStatus === "verified";
   const base = {
@@ -697,8 +761,15 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const [state, cities, graph] = await Promise.all([store.state(), store.cities(), store.graph()]);
       const nights = p.data.nights ?? nightsBetween(state.trip.startDate, state.trip.endDate);
       if (!nights) return fail("the trip has no dates yet — ask for dates or pass nights");
-      const s = suggestRoute(nights, state.prefs.interestTags);
       const facts = factsMap(cities);
+      // A ready-made trip first, so the chat offers what the picker does.
+      // A trip a night shorter only when the model passed the nights and
+      // the trip has no dates to fit: with dates, propose_route would
+      // refuse it.
+      const dated = nightsBetween(state.trip.startDate, state.trip.endDate);
+      const readyMade = await readyMadeResult(store, nights, p.data.nights != null && !dated, cities, graph);
+      if (readyMade) return { result: j(readyMade) };
+      const s = suggestRoute(nights, state.prefs.interestTags);
       const a = assessRoute(s.cities, facts, graph, nights);
       return {
         result: j({

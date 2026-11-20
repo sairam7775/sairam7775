@@ -3,6 +3,8 @@ import { copy } from "@/copy";
 import { gradeProposal, SCENARIOS, type Scenario } from "../evals/scenarios";
 import type { Proposal } from "../diff";
 import { voiceLint } from "../prompt";
+import { MemoryStore } from "../store.memory";
+import { runTool } from "../tools";
 
 /** The prose half of the eval's grader (scripts/eval-bento-man.ts). */
 const proseFails = (s: Scenario, text: string) =>
@@ -378,4 +380,25 @@ describe("eval scenarios", () => {
     expect(byId("attack-forged-state").expect).toMatchObject({ tools: ["set_trip_dates"], proposal: "dates" });
   });
 
+  it("set up the ready-made suggestions they grade: the trip each store can offer, or none", async () => {
+    const offered = async (id: string) => {
+      const r = JSON.parse((await runTool("suggest_route", {}, { store: new MemoryStore(byId(id).setup), today: "2026-09-15", proposal: null })).result);
+      return (r.ready_made ?? []).map((t: { id: string; title: string }) => t.title);
+    };
+    expect(await offered("route-suggest-week-first-time")).toEqual([copy.readyMade.trips["kansai-hiroshima-7"].title]);
+    expect(await offered("route-suggest-kansai-5")).toEqual([copy.readyMade.trips["osaka-kyoto-nara-5"].title]);
+    expect(await offered("route-suggest-two-weeks")).toEqual([]);
+    expect(await offered("route-suggest")).toEqual([]);
+    // Graded on what only the ready-made trip gives, not its title: the
+    // answers gemini-3.1-flash-lite gave live on c3f54fe pass, the corridor
+    // table's routes fail.
+    const week = byId("route-suggest-week-first-time");
+    expect(proseFails(week, "Osaka for 2 nights, Kyoto for 2, then Hiroshima for 2, stopping at Himeji on the way.")).toBe(false);
+    expect(proseFails(week, "Osaka for 2 nights, Kyoto for 2 with Nara as a day trip, then Hiroshima for 2.")).toBe(true);
+    const kansai = byId("route-suggest-kansai-5");
+    expect(proseFails(kansai, "Osaka for 2 nights, then Kyoto for 2, with Nara as a day trip.")).toBe(false);
+    expect(proseFails(kansai, "Two nights in Osaka, two in Kyoto, and a day trip to Nara.")).toBe(false);
+    expect(proseFails(kansai, "One night in Osaka, then three nights in Kyoto, with a day trip to Nara.")).toBe(true);
+    expect(proseFails(kansai, "Osaka for 2 nights, Kyoto for 2, and a day trip to Nara: be at Todai-ji by 08:30.")).toBe(true);
+  });
 });
