@@ -9,6 +9,7 @@ import type { ModelTool } from "./provider";
 import { z } from "zod";
 import { planDay } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
+import { cityTrainMinutes, travelDayOrigins, travelMove } from "@/lib/engine/travel-day";
 import { costBandWords } from "@/lib/engine/cost-band";
 import { yearlyRangeWords } from "@/lib/engine/closures";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
@@ -516,7 +517,8 @@ function dayNarration(d: ReturnType<typeof computeDayDiff>, tier: CoverageTier) 
     removed: d.removed.map((r) => r.name),
     left_out: d.considered.slice(0, 6).map((c) => `${c.name}: ${c.detail}`),
     warnings: d.warnings,
-    active: `${Math.floor(d.activeMin / 60)}h ${d.activeMin % 60}m of ${d.budgetMin / 60}h`,
+    // A travel day's budget is the day less the move, so not always whole hours.
+    active: `${Math.floor(d.activeMin / 60)}h ${d.activeMin % 60}m of ${d.budgetMin % 60 ? `${Math.floor(d.budgetMin / 60)}h ${d.budgetMin % 60}m` : `${d.budgetMin / 60}h`}`,
     cost: `${d.fareKind === "exact" && !d.after.some((it) => it.costJpy > 0) ? "" : "~"}¥${d.costJpy}`,
     ...mainSights(tier),
   };
@@ -815,6 +817,10 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       targets.sort((x, y) => x.date.localeCompare(y.date));
 
       const travel = travelFromGraph(graph);
+      // A travel day starts after the move from the last stay. A day trip
+      // there and back is not a move, and neither is the trip's first day.
+      const origins = travelDayOrigins(startDate, [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder), endDate);
+      const trainMinutes = cityTrainMinutes(graph, facts);
       const placesCache = new Map<string, PlaceInput[]>();
       const targetDates = new Set(targets.map((t) => t.date));
       const used = new Set(state.days.filter((d) => !targetDates.has(d.date)).flatMap((d) => d.items.map((i) => i.placeId)));
@@ -832,6 +838,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         const locked: LockedItem[] = (existing?.items ?? []).filter((i) => i.locked).map((i) => ({ placeId: i.placeId, startMin: i.startMin }));
         const budget = state.cities.find((c) => c.cityId === t.cityId)?.budgetBand ?? null;
         const places = placesCache.get(t.cityId)!;
+        const from = origins.get(t.date);
         const plan = planDay({
           date: t.date,
           cityId: t.cityId,
@@ -842,6 +849,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           usedPlaceIds: [...used],
           // A ticket the traveller holds lets a booking-required place in.
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
+          move: from && from !== t.cityId ? travelMove(from, trainMinutes(from, t.cityId)) : undefined,
         });
         for (const it of plan.items) used.add(it.placeId);
         tiers.push(f.tier);

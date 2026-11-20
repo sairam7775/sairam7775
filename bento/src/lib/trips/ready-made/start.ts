@@ -14,6 +14,7 @@ import { z } from "zod";
 import { allocateDates, assessRoute, type CityFacts } from "@/lib/engine/route";
 import { planTrip } from "@/lib/engine/trip";
 import { travelFromGraph } from "@/lib/engine/travel";
+import { cityTrainMinutes } from "@/lib/engine/travel-day";
 import type { PlaceInput } from "@/lib/engine/types";
 import { computeDayDiff, routeDiffFrom, type Proposal, type RouteCity } from "@/lib/bento-man/diff";
 import type { TripStore } from "@/lib/bento-man/store";
@@ -145,6 +146,7 @@ export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeS
       budgetByCity: {},
       placesByCity,
       travel: travelFromGraph(graph),
+      trainMinutes: cityTrainMinutes(graph, facts),
     });
     // Pins are never dropped by the engine; this is the proof before saving.
     plan.days.forEach((d, i) => {

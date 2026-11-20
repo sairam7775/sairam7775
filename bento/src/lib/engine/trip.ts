@@ -1,4 +1,5 @@
 import { planDay } from "./schedule";
+import { travelMove } from "./travel-day";
 import type { DayInput, DayPlan, LockedItem, PlaceInput, TravelFn, TravellerInput } from "./types";
 import type { BudgetBand } from "@/lib/types";
 
@@ -6,6 +7,8 @@ export interface TripDay {
   date: string;
   cityId: string;
   locked?: LockedItem[];
+  /** On a travel day, the city the traveller slept in the night before. */
+  movingFrom?: string;
 }
 
 export interface TripInput {
@@ -17,6 +20,9 @@ export interface TripInput {
   travel: TravelFn;
   bookedPlaceIds?: string[];
   weights?: DayInput["weights"];
+  /** Train minutes between two cities' hubs (`cityTrainMinutes`), for
+   *  travel days. Null, or absent, allows a cautious time and says so. */
+  trainMinutes?: (fromCityId: string, toCityId: string) => number | null;
 }
 
 export interface CityTotals {
@@ -57,6 +63,7 @@ export function planTrip(input: TripInput): TripPlan {
       bookedPlaceIds: input.bookedPlaceIds,
       usedPlaceIds: [...used, ...pinnedElsewhere],
       weights: input.weights,
+      move: d.movingFrom && d.movingFrom !== d.cityId ? travelMove(d.movingFrom, input.trainMinutes?.(d.movingFrom, d.cityId) ?? null) : undefined,
     });
     for (const it of plan.items) used.add(it.placeId);
     days.push(plan);

@@ -104,6 +104,16 @@ export interface Weights {
   travelPerHalfHour: number;
 }
 
+/** The morning of a travel day, spent moving from one stay to the next. */
+export interface TravelMove {
+  /** Where the traveller slept the night before. */
+  fromCityId: string;
+  /** Hub to hub; null when Bento has no train between the two. */
+  trainMin: number | null;
+  /** The whole move: the allowance plus the train, or a cautious guess. */
+  minutes: number;
+}
+
 export interface DayInput {
   /** "YYYY-MM-DD" */
   date: string;
@@ -118,6 +128,9 @@ export interface DayInput {
   usedPlaceIds?: string[];
   /** Minutes since midnight. Default: 07:00 for a crowd-avoider, else 09:00. */
   dayStartMin?: number;
+  /** A travel day: the move here from the last stay. The day starts that
+   *  many minutes after its usual start and has that much less time. */
+  move?: TravelMove;
   weights?: Partial<Weights>;
   maxItems?: number;
 }

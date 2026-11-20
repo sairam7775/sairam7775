@@ -6,7 +6,7 @@ code:
   - bento/src/app/trips/[id]/day-box.tsx
   - bento/src/app/trips/[id]/day-actions.ts
   - bento/src/lib/engine/retime.ts
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-20
 ---
 
 # The day view (the box)
@@ -33,9 +33,14 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 - Map links are plain Google Maps links: the place's name (Japanese when known) and city, or a train journey's two stations. **Nothing reaches Google until the traveller opens one,** and the privacy page says so.
 - A stop has a map link only while its place is still public.
 
+## Travel days
+
+On the day a traveller moves to their next stay, the planned day in the new city starts after the move (checking out, the train, leaving bags), so its first stop is later and it holds fewer stops ([engine](../30-software/engine.md#travel-days)).
+
 ## What it doesn't do
 
 - No live maps inside Bento: all planning data is local.
+- The box measures a travel day against a full day's time: it doesn't know the move, so a planned travel day shows more slack than the plan had. Known gap.
 
 ## Failure behaviour
 

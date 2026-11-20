@@ -102,6 +102,14 @@ export function hubFor(cityId: string, graph: Graph): string | null {
   return first;
 }
 
+/** The train between two cities' hubs: what a route leg shows. Null when
+ *  either city has no station or the graph has no route between them. */
+export function routeBetweenCities(a: string, b: string, graph: Graph, facts?: Map<string, CityFacts>) {
+  const ha = facts?.get(a)?.hubStation ?? hubFor(a, graph);
+  const hb = facts?.get(b)?.hubStation ?? hubFor(b, graph);
+  return ha && hb ? route(graph, ha, hb) : null;
+}
+
 const PLANNING: Record<CoverageTier, string> = copy.plan.route.canPlan;
 
 export function assessRoute(
@@ -124,11 +132,7 @@ export function assessRoute(
   });
 
   const nameOf = (id: string) => cities.find((c) => c.cityId === id)?.name ?? id;
-  const between = (a: string, b: string) => {
-    const ha = facts.get(a)?.hubStation ?? hubFor(a, graph);
-    const hb = facts.get(b)?.hubStation ?? hubFor(b, graph);
-    return ha && hb ? route(graph, ha, hb) : null;
-  };
+  const between = (a: string, b: string) => routeBetweenCities(a, b, graph, facts);
   const legs: RouteLegAssessment[] = [];
   const leg = (a: string, b: string, movingTo: string | null) => {
     const r = between(a, b);

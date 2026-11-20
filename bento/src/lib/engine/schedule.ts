@@ -36,12 +36,16 @@ export function planDay(input: DayInput): DayPlan {
   const month = day.getUTCMonth() + 1;
 
   // 1 BUDGET
-  const budgetMin = DAY_BUDGET_MINUTES[t.pace];
-  const dayStart = input.dayStartMin ?? (t.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60);
+  // A travel day starts once the traveller is in the new city, and ends
+  // when any day would: the move comes out of the day's time.
+  const moveMin = input.move?.minutes ?? 0;
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[t.pace] - moveMin);
+  const dayStart = (input.dayStartMin ?? (t.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60)) + moveMin;
   const maxItems = input.maxItems ?? (t.pace === "packed" ? 7 : t.pace === "relaxed" ? 4 : 5);
 
   const considered: Rejected[] = [];
   const warnings: string[] = [];
+  if (input.move && input.move.trainMin == null) warnings.push(copy.plan.warnings.moveUnknown(input.move.minutes));
   const byId = new Map(places.map((p) => [p.id, p]));
 
   // 2 FILTER
