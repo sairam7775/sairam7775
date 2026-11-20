@@ -23,8 +23,10 @@ export interface DayStats {
 const LUNCH_EARLIEST = 11 * 60 + 30;
 const LUNCH_LATEST = 14 * 60;
 
-export function dayStats(items: StatItem[], pace: TravelPace): DayStats {
-  const budgetMin = DAY_BUDGET_MINUTES[pace];
+/** `moveMin`: on a travel day, the move (`travelDayMoves`), which the
+ *  planner took out of the day's time; the box measures against the same. */
+export function dayStats(items: StatItem[], pace: TravelPace, moveMin = 0): DayStats {
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[pace] - moveMin);
   let activeMin = 0;
   let overFromIndex: number | null = null;
   items.forEach((it, i) => {

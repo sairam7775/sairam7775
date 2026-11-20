@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { dayStats } from "../day-stats";
 
 describe("dayStats", () => {
+  it("measures a travel day against the day less the move", () => {
+    const items = [{ startMin: 600, durationMin: 300, arriveMinutes: null }];
+    expect(dayStats(items, "standard").budgetMin).toBe(480);
+    const moved = dayStats(items, "standard", 73);
+    expect(moved.budgetMin).toBe(407);
+    expect(moved.overBy).toBe(0);
+    expect(dayStats(items, "relaxed", 73).overBy).toBe(300 - (360 - 73));
+  });
+
   it("sums places and legs, finds the lunch gap, and marks where the budget runs out", () => {
     const s = dayStats(
       [

@@ -35,12 +35,11 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 
 ## Travel days
 
-On the day a traveller moves to their next stay, the planned day in the new city starts after the move (checking out, the train, leaving bags), so its first stop is later and it holds fewer stops ([engine](../30-software/engine.md#travel-days)).
+On the day a traveller moves to their next stay, the planned day in the new city starts after the move (checking out, the train, leaving bags), so its first stop is later and it holds fewer stops ([engine](../30-software/engine.md#travel-days)). The box and the day strip measure it against that shorter day, and the travel-day card says how long the move is ("Moving from Osaka: about 1h 13m, with checking out and leaving your bags"; when Bento has no train time, it says the figure is a cautious guess). Re-planning the day keeps the move. If the train data can't be read, the day is measured as a whole day and the line is left off.
 
 ## What it doesn't do
 
 - No live maps inside Bento: all planning data is local.
-- The box measures a travel day against a full day's time: it doesn't know the move, so a planned travel day shows more slack than the plan had. Known gap.
 
 ## Failure behaviour
 

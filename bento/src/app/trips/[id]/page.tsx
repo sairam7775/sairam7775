@@ -10,7 +10,7 @@ import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
-import { buildTripView, dayCoverage, tripTravelDays } from "@/lib/bento-man/trip-view";
+import { buildTripView, dayCoverage, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { journeyMapUrl } from "@/lib/maps/links";
 import { loadGaps } from "@/lib/vault/store";
 import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
@@ -60,7 +60,11 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const { messages, cityNames, cityTiers } = await loadChat(db, id, state.cities.map((c) => ({ id: c.cityId, name: c.name })));
 
   const requested = typeof sp.day === "string" ? sp.day : null;
-  const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested);
+  // Each travel day's move, as the planner allowed it. A failure leaves every
+  // day measured as a whole day, as before.
+  const moves = await tripMoves(store, state).catch(() => null);
+  const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested, moves);
+  const move = selected ? moves?.get(selected) ?? null : null;
   // How well Bento knows the selected day's own city, for its heading and box.
   const cover = selectedMeta ? dayCoverage(selectedMeta, selectedDay?.items.length ?? 0) : null;
 
@@ -316,6 +320,11 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               {travel?.get(selected) && (
                 <section aria-label={t.travelDay.label} className="tile up mb-3 px-5 py-4">
                   <p className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.travelDay.label}</p>
+                  {move && (
+                    <p className="mt-2 text-[0.86rem] leading-snug text-ink-2">
+                      {t.travelDay.move(state.cities.find((c) => c.cityId === move.fromCityId)?.name ?? move.fromCityId, dur(move.minutes), move.trainMin != null)}
+                    </p>
+                  )}
                   <ul className="mt-2 flex flex-col gap-3">
                     {travel.get(selected)!.map((l) => (
                       <li key={`${l.fromCityId}-${l.toCityId}`}>

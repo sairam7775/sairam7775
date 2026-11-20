@@ -2,6 +2,8 @@
  *  outside components. Stored days override the route's date allocation. */
 import { allocateDates, assessRoute } from "@/lib/engine/route";
 import { dayStats } from "@/lib/engine/day-stats";
+import { cityTrainMinutes, travelDayMoves } from "@/lib/engine/travel-day";
+import type { TravelMove } from "@/lib/engine/types";
 import { travelDays } from "@/lib/trips/travel-days";
 import { showsMainSights } from "@/lib/trips/route-card";
 import { copy } from "@/copy";
@@ -16,6 +18,21 @@ export async function tripTravelDays(store: Pick<TripStore, "cities" | "graph">,
   const [facts, graph] = await Promise.all([store.cities(), store.graph()]);
   const a = assessRoute(sorted.map((c) => ({ cityId: c.cityId, nights: c.nights })), new Map(facts.map((f) => [f.id, f])), graph);
   return travelDays(sorted, a.legs);
+}
+
+/** Each travel day's move, worked out from the accepted route the way the
+ *  planner does (`travelDayMoves`), for the day box and its travel card. */
+export async function tripMoves(store: Pick<TripStore, "cities" | "graph">, state: TripState): Promise<Map<string, TravelMove>> {
+  const out = new Map<string, TravelMove>();
+  const sorted = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
+  if (sorted.length < 2) return out;
+  const [facts, graph] = await Promise.all([store.cities(), store.graph()]);
+  const moveOn = travelDayMoves(state.trip.startDate, state.trip.endDate, sorted, cityTrainMinutes(graph, new Map(facts.map((f) => [f.id, f]))));
+  for (const [date, meta] of tripDates(state)) {
+    const m = meta.cityId ? moveOn(date, meta.cityId) : undefined;
+    if (m) out.set(date, m);
+  }
+  return out;
 }
 
 /** What the day box shows about how well Bento knows the day's city: the
@@ -33,7 +50,8 @@ export function dayCoverage(meta: { cityId: string | null; tier: string }, stops
   };
 }
 
-export function buildTripView(state: TripState, requested: string | null) {
+/** Every date of the trip with its city: the route's, or a stored day's own. */
+function tripDates(state: TripState) {
   const cityById = new Map(state.cities.map((c) => [c.cityId, c]));
   const dates = new Map<string, { cityId: string | null; cityName: string; tier: string }>();
   for (const c of allocateDates(state.trip.startDate, [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder), state.trip.endDate)) {
@@ -44,9 +62,16 @@ export function buildTripView(state: TripState, requested: string | null) {
     const c = d.cityId ? cityById.get(d.cityId) : null;
     dates.set(d.date, { cityId: d.cityId, cityName: d.city?.name ?? c?.name ?? d.cityId ?? "—", tier: d.city?.tier ?? c?.tier ?? "stub" });
   }
+  return dates;
+}
+
+/** `moves` (`tripMoves`): a travel day is measured against the day less
+ *  its move, as it was planned. Without them, every day is a whole day. */
+export function buildTripView(state: TripState, requested: string | null, moves?: Map<string, TravelMove> | null) {
+  const dates = tripDates(state);
   const dayList = [...dates.entries()].sort(([a], [b]) => a.localeCompare(b));
   const daysByDate = new Map(state.days.map((d) => [d.date, d]));
-  const statsByDate = new Map(state.days.map((d) => [d.date, dayStats(d.items, state.prefs.pace)]));
+  const statsByDate = new Map(state.days.map((d) => [d.date, dayStats(d.items, state.prefs.pace, moves?.get(d.date)?.minutes ?? 0)]));
   const selected = requested && dates.has(requested) ? requested : dayList[0]?.[0] ?? null;
   const selectedDay = selected ? daysByDate.get(selected) : undefined;
   // Keep the public place names paired with the saved day data. A missing

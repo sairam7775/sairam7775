@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "../store.memory";
-import { buildTripView, dayCoverage, tripTravelDays } from "../trip-view";
+import { buildTripView, dayCoverage, tripMoves, tripTravelDays } from "../trip-view";
+import { cityTrainMinutes, travelMove } from "@/lib/engine/travel-day";
 import { copy } from "@/copy";
 import { planDocument } from "@/lib/trips/plan-document";
 import type { ItemRow } from "../store";
@@ -31,6 +32,26 @@ describe("tripTravelDays", () => {
     const days = await tripTravelDays(store, await store.state());
     expect([...days.keys()]).toEqual(["2026-11-23"]);
     expect(days.get("2026-11-23")?.[0].summary).toMatch(/Kyoto → Hiroshima/);
+  });
+
+  it("gives each travel day its move, worked out as the planner does, and the box measures it against the shorter day", async () => {
+    const store = new MemoryStore({
+      trip: { startDate: "2026-11-20", endDate: "2026-11-25" }, prefs: { pace: "relaxed" },
+      cities: [{ cityId: "kyoto-city", nights: 3 }, { cityId: "hiroshima-city", nights: 2 }],
+      days: [
+        { date: "2026-11-22", cityId: "kyoto-city", items: [item({ startMin: 600, durationMin: 300 })] },
+        { date: "2026-11-23", cityId: "hiroshima-city", items: [item({ startMin: 700, durationMin: 300 })] },
+      ],
+    });
+    const state = await store.state();
+    const moves = await tripMoves(store, state);
+    const expected = travelMove("kyoto-city", cityTrainMinutes(await store.graph())("kyoto-city", "hiroshima-city"));
+    expect([...moves]).toEqual([["2026-11-23", expected]]);
+    const view = buildTripView(state, "2026-11-23", moves);
+    expect(view.stats?.budgetMin).toBe(360 - expected.minutes);
+    expect(view.statsByDate.get("2026-11-22")?.budgetMin).toBe(360);
+    // Without the moves (they couldn't be read), the whole day, as before.
+    expect(buildTripView(state, "2026-11-23").stats?.budgetMin).toBe(360);
   });
 
   it("has no travel days with one stop", async () => {
