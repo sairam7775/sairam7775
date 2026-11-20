@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/app-header";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { createClient } from "@/lib/supabase/server";
 import { monthOptions } from "@/lib/trips/guided-start";
-import { initialPlanTab, planTabs } from "@/lib/trips/plan-tabs";
+import { planTabs } from "@/lib/trips/plan-tabs";
 import { READY_MADE_CITIES } from "@/lib/trips/ready-made";
 import { availableReadyMade, tokyoToday } from "@/lib/trips/ready-made/start";
 import type { CoverageTier } from "@/lib/types";
@@ -17,9 +17,9 @@ const r = copy.readyMade.picker;
 
 /** "Plan a Japan trip": two tabs, a few questions for someone who has an idea
  *  but not the details yet (the default), and ready-made trips to start from
- *  (`?tab=ready-made`). With no ready-made trip to offer, the questions
- *  alone, without tabs. The blank form stays on the trips list. */
-export default async function PlanATrip({ searchParams }: PageProps<"/trips/plan">) {
+ *  (`?tab=ready-made`, read by the tabs from the address). With no
+ *  ready-made trip to offer, the questions alone, without tabs. The blank form stays on the trips list. */
+export default async function PlanATrip() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/trips/plan");
@@ -37,10 +37,11 @@ export default async function PlanATrip({ searchParams }: PageProps<"/trips/plan
   }));
 
   const tabs = planTabs(trips.length);
-  const own = (
+  const months = monthOptions(new Date());
+  const own = (gap: string) => (
     <>
-      <p className="mt-6 text-[0.95rem] text-ink-2">{t.intro}</p>
-      <GuidedForm months={monthOptions(new Date())} />
+      <p className={`${gap} text-[0.95rem] text-ink-2`}>{t.intro}</p>
+      <GuidedForm months={months} />
     </>
   );
 
@@ -53,9 +54,8 @@ export default async function PlanATrip({ searchParams }: PageProps<"/trips/plan
         {tabs.length > 1 ? (
           <PlanTabs
             tabs={tabs}
-            initial={initialPlanTab((await searchParams).tab, trips.length)}
             panels={{
-              own,
+              own: own("mt-6"),
               "ready-made": (
                 <>
                   <p className="mt-6 text-[0.95rem] text-ink-2">{r.intro}</p>
@@ -65,10 +65,7 @@ export default async function PlanATrip({ searchParams }: PageProps<"/trips/plan
             }}
           />
         ) : (
-          <>
-            <p className="mt-2 text-[0.95rem] text-ink-2">{t.intro}</p>
-            <GuidedForm months={monthOptions(new Date())} />
-          </>
+          own("mt-2")
         )}
       </section>
     </main>

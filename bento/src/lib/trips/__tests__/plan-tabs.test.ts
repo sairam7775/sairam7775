@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialPlanTab, parsePlanTab, planTabSearch, planTabs } from "../plan-tabs";
+import { parsePlanTab, planTabSearch, planTabs, shownPlanTab } from "../plan-tabs";
 
 describe("parsePlanTab", () => {
   it("opens the ready-made trips for ?tab=ready-made", () => {
@@ -33,14 +33,15 @@ describe("planTabs", () => {
   });
 });
 
-describe("initialPlanTab", () => {
+describe("shownPlanTab", () => {
   it("opens the tab the address asks for when it is shown", () => {
-    expect(initialPlanTab("ready-made", 3)).toBe("ready-made");
-    expect(initialPlanTab(undefined, 3)).toBe("own");
+    expect(shownPlanTab("ready-made", planTabs(3))).toBe("ready-made");
+    expect(shownPlanTab(undefined, planTabs(3))).toBe("own");
+    expect(shownPlanTab(null, planTabs(3))).toBe("own");
   });
 
   it("opens the form when the ready-made tab isn't shown", () => {
-    expect(initialPlanTab("ready-made", 0)).toBe("own");
+    expect(shownPlanTab("ready-made", planTabs(0))).toBe("own");
   });
 });
 

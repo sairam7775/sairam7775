@@ -19,10 +19,10 @@ export function planTabs(readyMadeCount: number): PlanTab[] {
   return readyMadeCount > 0 ? [...PLAN_TABS] : ["own"];
 }
 
-/** The tab to open first: the one asked for, if it is shown. */
-export function initialPlanTab(value: string | string[] | undefined, readyMadeCount: number): PlanTab {
-  const asked = parsePlanTab(value);
-  return planTabs(readyMadeCount).includes(asked) ? asked : "own";
+/** The open tab: the one the address asks for, if it is shown. */
+export function shownPlanTab(value: string | string[] | null | undefined, tabs: PlanTab[]): PlanTab {
+  const asked = parsePlanTab(value ?? undefined);
+  return tabs.includes(asked) ? asked : "own";
 }
 
 /** The search part of the page's address with `tab` open, keeping any other
