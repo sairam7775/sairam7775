@@ -422,6 +422,31 @@ describe("days", () => {
     expect(other.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard);
   });
 
+  it("replan_day moves a travel day saved before the move was allowed for to after it", async () => {
+    // Saved under the old rule: the first stop at 07:00 on the day the
+    // traveller arrives from Osaka.
+    const store = new MemoryStore({
+      trip: nov, prefs: owner,
+      cities: [{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 5 }, { cityId: "hiroshima-city", nights: 2 }],
+      days: [{ date: "2026-11-22", cityId: "kyoto-city", items: [
+        { placeId: "kyt-kiyomizu", name: "Kiyomizu-dera", sortOrder: 0, startMin: 7 * 60, durationMin: 90, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null },
+      ] }],
+    });
+    const move = MOVE_ALLOWANCE_MIN + cityTrainMinutes(await store.graph())("osaka-city", "kyoto-city")!;
+    const r = await replanDay(store, "2026-11-22", []);
+    if (!("diff" in r)) throw new Error(r.error);
+    expect(r.diff.after[0].startMin).toBeGreaterThanOrEqual(7 * 60 + move);
+    expect(r.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+  });
+
+  it("plan_days moves a day trip on an arrival date: from the last stay to the day trip", async () => {
+    const store = routed();
+    const ctx = ctxFor(store);
+    await runTool("plan_days", { dates: [{ date: "2026-11-22", city_id: "nara-city" }] }, ctx);
+    const move = MOVE_ALLOWANCE_MIN + cityTrainMinutes(await store.graph())("osaka-city", "nara-city")!;
+    expect(ctx.proposal!.days[0].budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+  });
+
   it("plan_days keeps Fushimi Inari and Arashiyama on different days and honours 'no hiking'", async () => {
     const ctx = ctxFor(routed());
     await runTool("plan_days", {}, ctx);

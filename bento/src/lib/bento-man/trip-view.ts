@@ -35,6 +35,15 @@ export async function tripMoves(store: Pick<TripStore, "cities" | "graph">, stat
   return out;
 }
 
+/** The travel-day card's line: the time the plan allows for the move, to
+ *  five minutes, since it is an allowance, not a timetable. With no train
+ *  time it gives no figure: the train card says there is no train in
+ *  Bento's data, and the plan's warning says the guess, once. */
+export function travelMoveLine(move: TravelMove, fromName: string): string {
+  if (move.trainMin == null) return copy.trip.travelDay.moveUnknown(fromName);
+  return copy.trip.travelDay.move(fromName, copy.time.duration(Math.round(move.minutes / 5) * 5));
+}
+
 /** What the day box shows about how well Bento knows the day's city: the
  *  chip's words, whether the day can be edited and re-planned (not in a
  *  city Bento can't plan), whether it is the "can't plan here" box, and

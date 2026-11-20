@@ -41,6 +41,23 @@ async function errorShown(date: string): Promise<string | null> {
 
 beforeEach(() => { mocks.store = null; });
 
+describe("re-plan this day, on a travel day", () => {
+  it("starts after the move, even when the day was saved at the old start", async () => {
+    const store = await planned("2026-11-22");
+    const day = (await store.state()).days.find((d) => d.date === "2026-11-22")!;
+    // As saved before travel days allowed for the move: first stop at 09:00.
+    await store.saveDay({ ...day, items: day.items.map((it, i) => ({ ...it, locked: false, startMin: i === 0 ? 9 * 60 : it.startMin })) });
+    mocks.store = store;
+    const append = vi.spyOn(store, "append");
+    const form = new FormData();
+    form.set("tripId", TRIP);
+    form.set("date", "2026-11-22");
+    await replanDayAction(form).catch(() => null);
+    const proposal = append.mock.calls[0][2]!;
+    expect(proposal.days![0].after[0].startMin).toBeGreaterThan(9 * 60 + 60);
+  });
+});
+
 describe("re-plan this day, when it can't", () => {
   it("shows the copy line, not the model's error, for a pinned stop from another city", async () => {
     const store = await planned("2026-11-28");

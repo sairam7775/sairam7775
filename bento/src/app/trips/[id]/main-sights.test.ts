@@ -77,7 +77,7 @@ const box = (mainSights: boolean, withStops = true) =>
   renderToStaticMarkup(createElement(DayBox, {
     tripId: "t1", date: "2026-11-28", cityId: "miyajima", cityName: "Miyajima", tier: copy.coverage.outline,
     items: withStops ? [{ placeId: "mym-itsukushima", name: "Itsukushima Shrine", startMin: 540, durationMin: 60, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null }] : [],
-    budgetMin: 480, activeMin: 60, overBy: 0, overFromIndex: null, lunch: null, editable: true, mainSights, bookings: [], tripDays: ["2026-11-28"],
+    budgetMin: 480, fillPct: 13, activeMin: 60, overBy: 0, overFromIndex: null, lunch: null, editable: true, mainSights, bookings: [], tripDays: ["2026-11-28"],
   }));
 
 describe("the day box", () => {

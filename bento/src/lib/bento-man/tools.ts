@@ -7,9 +7,9 @@
  *  here writes an itinerary. */
 import type { ModelTool } from "./provider";
 import { z } from "zod";
-import { planDay } from "@/lib/engine/schedule";
+import { planDay, usualDayStart } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
-import { cityTrainMinutes, travelDayMoves } from "@/lib/engine/travel-day";
+import { cityTrainMinutes, travelDayMoves, travelDayStart } from "@/lib/engine/travel-day";
 import { costBandWords } from "@/lib/engine/cost-band";
 import { yearlyRangeWords } from "@/lib/engine/closures";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
@@ -563,7 +563,7 @@ export type ReplanFailure =
 
 /** Each travel day's move, from the route (`travelDayMoves`), so plan_days,
  *  a re-plan and the day box agree. */
-function movesFor(state: TripState, graph: Graph, facts: Map<string, CityFacts>) {
+export function movesFor(state: TripState, graph: Graph, facts: Map<string, CityFacts>) {
   const route = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
   return travelDayMoves(state.trip.startDate, state.trip.endDate, route, cityTrainMinutes(graph, facts));
 }
@@ -589,7 +589,12 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   // traveller asks for a different one — otherwise "drop the museum" after
   // an accepted 10:00 start would quietly put the day back at 09:00.
   const firstStop = [...(existing?.items ?? [])].sort((x, y) => x.sortOrder - y.sortOrder)[0];
-  let dayStartMin: number | undefined = firstStop && !firstStop.locked ? firstStop.startMin ?? undefined : undefined;
+  // On a travel day a kept start is never before the move lets the
+  // traveller arrive: a day saved before the move was allowed for starts
+  // after it now. A start they name (start_at) is taken as it is.
+  const move = movesFor(state, graph, factsMap(cities))(date, cityId);
+  const kept = firstStop && !firstStop.locked ? firstStop.startMin ?? undefined : undefined;
+  let dayStartMin: number | undefined = kept != null || move ? travelDayStart(kept, usualDayStart(state.prefs.crowdTolerance), move) : undefined;
   for (const op of ops) {
     if (["pin", "unpin", "remove", "add"].includes(op.op)) {
       if (!op.place_id) return { error: `${op.op} needs place_id`, reason: "bad-op" };
@@ -635,7 +640,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     bookedPlaceIds: bookedPlaceIds(bookings, pool, date),
     // A travel day keeps its move: the kept or named start is a clock time,
     // and the move still comes out of the day, as when it was planned.
-    move: movesFor(state, graph, factsMap(cities))(date, cityId),
+    move,
   });
   return { diff: computeDayDiff(existing?.items ?? [], plan, pool), tier: f.tier };
 }

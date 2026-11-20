@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "../store.memory";
-import { buildTripView, dayCoverage, tripMoves, tripTravelDays } from "../trip-view";
+import { buildTripView, dayCoverage, travelMoveLine, tripMoves, tripTravelDays } from "../trip-view";
 import { cityTrainMinutes, travelMove } from "@/lib/engine/travel-day";
 import { copy } from "@/copy";
 import { planDocument } from "@/lib/trips/plan-document";
@@ -52,6 +52,29 @@ describe("tripTravelDays", () => {
     expect(view.statsByDate.get("2026-11-22")?.budgetMin).toBe(360);
     // Without the moves (they couldn't be read), the whole day, as before.
     expect(buildTripView(state, "2026-11-23").stats?.budgetMin).toBe(360);
+  });
+
+  it("says the move the plan allows, to five minutes, and gives no figure for a guessed train", () => {
+    expect(travelMoveLine(travelMove("osaka-city", 13), "Osaka")).toBe(copy.trip.travelDay.move("Osaka", "1h 15m"));
+    expect(travelMoveLine(travelMove("kyoto-city", 100), "Kyoto")).toBe(copy.trip.travelDay.move("Kyoto", "2h 40m"));
+    // The guess is said once, by the plan's warning; the train card already
+    // says Bento has no train for it.
+    const guessed = travelMoveLine(travelMove("nowhere", null), "Nowhere");
+    expect(guessed).toBe(copy.trip.travelDay.moveUnknown("Nowhere"));
+    expect(guessed).not.toMatch(/\d/);
+  });
+
+  it("measures a travel day saved under a city the route no longer arrives at as a whole day", async () => {
+    const store = new MemoryStore({
+      trip: { startDate: "2026-11-20", endDate: "2026-11-25" }, prefs: { pace: "relaxed" },
+      cities: [{ cityId: "osaka-city", nights: 1 }, { cityId: "kyoto-city", nights: 2 }, { cityId: "hiroshima-city", nights: 2 }],
+      // The 21st is Kyoto's arrival date, but this day was saved for
+      // Hiroshima, another stay, before the route changed.
+      days: [{ date: "2026-11-21", cityId: "hiroshima-city", items: [item({ startMin: 600, durationMin: 300 })] }],
+    });
+    const moves = await tripMoves(store, await store.state());
+    expect(moves.has("2026-11-21")).toBe(false);
+    expect(moves.has("2026-11-23")).toBe(true);
   });
 
   it("has no travel days with one stop", async () => {

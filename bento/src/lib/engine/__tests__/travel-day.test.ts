@@ -9,7 +9,8 @@ import { assessRoute, hubFor, type CityFacts } from "../route";
 import { planDay } from "../schedule";
 import { planTrip } from "../trip";
 import { travelFromGraph } from "../travel";
-import { cityTrainMinutes, MOVE_ALLOWANCE_MIN, travelDayMoves, travelDayOrigins, travelMove, UNKNOWN_TRAIN_MIN } from "../travel-day";
+import { cityTrainMinutes, MOVE_ALLOWANCE_MIN, travelDayMoves, travelDayOrigins, travelDayStart, travelMove, UNKNOWN_TRAIN_MIN } from "../travel-day";
+import { clock } from "@/lib/bento-man/diff";
 import type { PlaceInput } from "../types";
 import { owner } from "../__fixtures__/kyoto";
 
@@ -39,6 +40,19 @@ describe("travelDayOrigins", () => {
   it("has no travel days without a start date, or with one stay", () => {
     expect(travelDayOrigins(null, [{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 2 }]).size).toBe(0);
     expect(travelDayOrigins("2026-11-24", [{ cityId: "kyoto-city", nights: 3 }, { cityId: "nara-city", nights: 0 }]).size).toBe(0);
+  });
+});
+
+describe("travelDayStart", () => {
+  const move = travelMove("osaka-city", 13);
+  it("is the usual start plus the move when nothing is kept", () => {
+    expect(travelDayStart(null, USUAL_START, move)).toBe(USUAL_START + 73);
+    expect(travelDayStart(null, USUAL_START)).toBe(USUAL_START);
+  });
+  it("keeps a later kept start, and lifts one saved before the move was allowed for", () => {
+    expect(travelDayStart(11 * 60, USUAL_START, move)).toBe(11 * 60);
+    expect(travelDayStart(USUAL_START, USUAL_START, move)).toBe(USUAL_START + 73);
+    expect(travelDayStart(USUAL_START, USUAL_START)).toBe(USUAL_START);
   });
 });
 
@@ -89,6 +103,36 @@ describe("planDay on a travel day", () => {
     expect(moves("2026-11-28", "himeji")).toEqual(travelMove("kyoto-city", trainMinutes("kyoto-city", "himeji")));
     expect(moves("2026-11-25", "osaka-city")).toBeUndefined();
     expect(moves("2026-11-24", "osaka-city")).toBeUndefined();
+  });
+
+  it("moves a stored day only when its city is the stay it arrives at, or a city on the way", () => {
+    const moves = travelDayMoves("2026-11-24", "2026-11-29", [
+      { cityId: "osaka-city", nights: 2 },
+      { cityId: "kyoto-city", nights: 2 },
+      { cityId: "hiroshima-city", nights: 1 },
+    ], trainMinutes);
+    // Another stay of the route on Kyoto's arrival date: a day saved before
+    // the route changed. Measured as a whole day.
+    expect(moves("2026-11-26", "hiroshima-city")).toBeUndefined();
+    // A day trip on the arrival date: the move is to it, from the last stay.
+    expect(moves("2026-11-26", "nara-city")).toEqual(travelMove("osaka-city", trainMinutes("osaka-city", "nara-city")));
+  });
+
+  it("warns when a named start is before the traveller can arrive", () => {
+    const move = travelMove("osaka-city", trainMinutes("osaka-city", "kyoto-city"));
+    const arrive = USUAL_START + move.minutes;
+    const at = (dayStartMin: number) => planDay({ date: "2026-11-25", cityId: "kyoto-city", places: placesByCity["kyoto-city"], traveller: owner, travel, move, dayStartMin });
+    expect(at(8 * 60).warnings).toContain(copy.plan.warnings.beforeArrival(clock(8 * 60), clock(arrive)));
+    expect(at(10 * 60).warnings.filter((w) => w.includes(clock(arrive)))).toEqual([]);
+  });
+
+  it("keeps a pin timed before the move, and says the day reaches it late", () => {
+    const move = travelMove("osaka-city", trainMinutes("osaka-city", "kyoto-city"));
+    const plan = planDay({ date: "2026-11-25", cityId: "kyoto-city", places: placesByCity["kyoto-city"], traveller: owner, travel, move, locked: [{ placeId: "kyt-sanjusangendo", startMin: 8 * 60 }] });
+    const pin = plan.items.find((i) => i.placeId === "kyt-sanjusangendo");
+    expect(pin?.locked).toBe(true);
+    expect(pin!.startMin).toBeGreaterThanOrEqual(USUAL_START + move.minutes);
+    expect(plan.warnings.some((w) => w.startsWith("Sanjusangen-do is pinned for 08:00"))).toBe(true);
   });
 
   it("allows a cautious time for a move with no known train, and says so", () => {

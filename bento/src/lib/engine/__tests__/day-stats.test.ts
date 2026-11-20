@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { dayStats } from "../day-stats";
+import { dayStats, fillPercent } from "../day-stats";
+
+describe("fillPercent", () => {
+  it("is the share of the day used, capped at 100, and never NaN for a day with no time left", () => {
+    expect(fillPercent(240, 480)).toBe(50);
+    expect(fillPercent(600, 480)).toBe(100);
+    expect(fillPercent(0, 0)).toBe(0);
+    expect(fillPercent(30, 0)).toBe(100);
+  });
+});
 
 describe("dayStats", () => {
   it("measures a travel day against the day less the move", () => {

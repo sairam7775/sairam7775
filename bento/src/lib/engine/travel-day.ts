@@ -44,7 +44,12 @@ export function travelDayOrigins(startDate: string | null, cities: RouteCityInpu
 
 /** The move for a date planned in a city, from the route: what `plan_days`,
  *  a re-plan and the day box all use, so they never disagree. Undefined
- *  for any day that isn't a travel day. */
+ *  for any day that isn't a travel day.
+ *
+ *  The day's city must be the stay arriving that date, or a city that is
+ *  not a stay of the route (Himeji on the way, a day trip on the arrival
+ *  date): the move is from the last stay to it. A day saved for another
+ *  stay of the route (planned before the route changed) is not moved. */
 export function travelDayMoves(
   startDate: string | null,
   endDate: string | null,
@@ -52,10 +57,26 @@ export function travelDayMoves(
   trainMinutes: (from: string, to: string) => number | null,
 ): (date: string, cityId: string) => TravelMove | undefined {
   const origins = travelDayOrigins(startDate, cities, endDate);
+  const stays = new Set(cities.filter((c) => c.nights > 0).map((c) => c.cityId));
+  const arriving = new Map<string, string>();
+  for (const c of allocateDates(startDate, cities, endDate)) if (c.nights > 0 && c.arriveDate && origins.has(c.arriveDate)) arriving.set(c.arriveDate, c.cityId);
   return (date, cityId) => {
     const from = origins.get(date);
-    return from && from !== cityId ? travelMove(from, trainMinutes(from, cityId)) : undefined;
+    if (!from || from === cityId) return undefined;
+    if (stays.has(cityId) && arriving.get(date) !== cityId) return undefined;
+    return travelMove(from, trainMinutes(from, cityId));
   };
+}
+
+/** When a travel day starts. Nothing kept: the usual start plus the move.
+ *  A kept start (a re-plan or an edit keeping its first stop) stays, unless
+ *  it is before the traveller can arrive: a day saved before the move was
+ *  allowed for. A start the traveller names is not this: it is taken as
+ *  it is, with a warning (`planDay`). */
+export function travelDayStart(kept: number | null | undefined, usualStart: number, move?: TravelMove): number {
+  const arrive = usualStart + (move?.minutes ?? 0);
+  if (kept == null) return arrive;
+  return move ? Math.max(kept, arrive) : kept;
 }
 
 /** Train minutes between two cities' hubs, as the route's legs count them;

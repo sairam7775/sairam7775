@@ -10,7 +10,8 @@ import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
-import { buildTripView, dayCoverage, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
+import { buildTripView, dayCoverage, travelMoveLine, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
+import { fillPercent } from "@/lib/engine/day-stats";
 import { journeyMapUrl } from "@/lib/maps/links";
 import { loadGaps } from "@/lib/vault/store";
 import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
@@ -279,7 +280,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
               <ol className="flex w-max gap-2 pb-1">
                 {dayList.map(([date, meta], i) => {
                   const s = statsByDate.get(date) ?? null;
-                  const pct = s ? Math.min(100, Math.round((s.activeMin / s.budgetMin) * 100)) : 0;
+                  const pct = s ? fillPercent(s.activeMin, s.budgetMin) : 0;
                   const active = date === selected;
                   return (
                     <li key={date}>
@@ -322,7 +323,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                   <p className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.travelDay.label}</p>
                   {move && (
                     <p className="mt-2 text-[0.86rem] leading-snug text-ink-2">
-                      {t.travelDay.move(state.cities.find((c) => c.cityId === move.fromCityId)?.name ?? move.fromCityId, dur(move.minutes), move.trainMin != null)}
+                      {travelMoveLine(move, state.cities.find((c) => c.cityId === move.fromCityId)?.name ?? move.fromCityId)}
                     </p>
                   )}
                   <ul className="mt-2 flex flex-col gap-3">
@@ -361,6 +362,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 tier={cover!.words}
                 items={withBackgrounds(dayItems ?? [], backgrounds)}
                 budgetMin={stats?.budgetMin ?? 480}
+                fillPct={stats ? fillPercent(stats.activeMin, stats.budgetMin) : 0}
                 activeMin={stats?.activeMin ?? 0}
                 overBy={stats?.overBy ?? 0}
                 overFromIndex={stats?.overFromIndex ?? null}
