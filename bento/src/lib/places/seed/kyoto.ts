@@ -169,13 +169,13 @@ export const kyoto: PlaceSeed[] = [
     tip: "Free, always open, and the best place in Kyoto to do nothing. Buy something at a konbini and sit between Sanjo and Shijo at dusk.",
     cost: 0, pairs: ["kyt-pontocho"], sources: ["wikivoyage"] }),
 
-  // Castle closed 29–31 Dec (休城日 「12月29日～12月31日」); the palaces also pause 26–28 Dec and 1–3 Jan, not stored: nijo-jocastle.city.kyoto.lg.jp, read 20 Nov 2026.
+  // Closed 26 Dec – 3 Jan for the visit that matters: the castle grounds close 29–31 Dec (休城日 「12月29日～12月31日」), and the Ninomaru and Honmaru palaces pause 26–28 Dec and 1–3 Jan as well (観覧休止日 「12月26日～28日、1月1日～3日」): nijo-jocastle.city.kyoto.lg.jp, read 20 Nov 2026.
   draft({ id: "kyt-nijo-castle", city: c, name: "Nijo Castle", nameJa: "二条城", category: "castle", lat: 35.0142, lon: 135.7481,
     station: "nijojo-mae", walk: 3, tags: ["history"], energy: 0.3, crowd: 0.6, discovery: 0.2, signature: 0.7,
     taste: 45, typical: 90, full: 120, opens: "08:45", closes: "17:00",
     crowdNote: "The Ninomaru palace is a one-way corridor and moves at the group in front. Mornings are noticeably better.",
     tip: "The nightingale floors squeak on purpose. Ninomaru is the point; the gardens are pleasant and the outer grounds can be skipped if time is short. The Honmaru Palace needs a separate ¥1,000 timed ticket, released 30 days ahead.",
-    cost: 1300, seasons: ["sakura"], closedYearly: ["12-29..12-31"], sources: ["nijo-jocastle.city.kyoto.lg.jp"] }),
+    cost: 1300, seasons: ["sakura"], closedYearly: ["12-26..01-03"], sources: ["nijo-jocastle.city.kyoto.lg.jp"] }),
 
   // Closed 28 Dec – 4 Jan (休止日 「年末年始（１２月２８日から１月４日）」): kyoto-gosho.kunaicho.go.jp/visit, read 20 Nov 2026.
   draft({ id: "kyt-imperial-palace", city: c, name: "Kyoto Imperial Palace", nameJa: "京都御所", category: "palace", lat: 35.0254, lon: 135.7621,
@@ -183,7 +183,7 @@ export const kyoto: PlaceSeed[] = [
     taste: 30, typical: 60, full: 90, opens: "09:00", closes: "16:00", hoursVary: true, closedWeekdays: [1],
     crowdNote: "Free entry since 2016 and still uncrowded — the park around it is enormous.",
     tip: "Closed Mondays. You see courtyards and façades, not interiors; the surrounding park is the better reason to come, especially with plum blossom in February.",
-    cost: 0, closedYearly: ["12-28..01-04"], sources: ["sankan.kunaicho.go.jp"] }),
+    cost: 0, closedYearly: ["12-28..01-04"], sources: ["sankan.kunaicho.go.jp", "kyoto-gosho.kunaicho.go.jp"] }),
 
   draft({ id: "kyt-shimogamo", city: c, name: "Shimogamo Shrine", nameJa: "下鴨神社", category: "shrine", lat: 35.0393, lon: 135.7727,
     station: "demachiyanagi", walk: 10, tags: ["shrines", "nature"], energy: 0.25, crowd: 0.3, discovery: 0.55, signature: 0.5,

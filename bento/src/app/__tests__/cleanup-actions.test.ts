@@ -63,6 +63,7 @@ describe("savePlace validation", () => {
     form.set("bookingLeadDays", "0");
     form.set("sources", " first, , second ");
     form.set("seasons", "koyo, sakura");
+    form.set("closedYearly", " 12-28..01-01, 05-03 ");
     form.set("localTip", "Keep this text. ");
     form.append("interestTags", "nature");
     form.append("interestTags", "art");
@@ -72,7 +73,7 @@ describe("savePlace validation", () => {
       energy: 0, crowd_level: null, discovery: null, signature: 0.5, physical_demand: null,
       duration_taste_min: null, duration_typical_min: 90, duration_full_min: null,
       best_window: [], crowd_note: null, worth_it_if: [], skip_if: [], local_tip: "Keep this text. ",
-      cost_jpy: 500, hours_vary: false, booking_lead_days: 0, conflicts_with: [], pairs_with: [],
+      cost_jpy: 500, hours_vary: false, closed_yearly: ["12-28..01-01", "05-03"], booking_lead_days: 0, conflicts_with: [], pairs_with: [],
       sources: ["first", "second"], seasons: ["koyo", "sakura"],
       verification_status: "draft", verified_by: null, last_verified: null,
     });
@@ -82,7 +83,7 @@ describe("savePlace validation", () => {
   it.each([
     ["energy", "bad"], ["crowdLevel", "1.1"], ["signature", "Infinity"],
     ["durationTypical", "2.5"], ["bookingLeadDays", "-1"], ["costJpy", "-1"],
-    ["name", ""], ["category", ""], ["sources", new Blob(["source"])],
+    ["name", ""], ["category", ""], ["closedYearly", "28 Dec - 1 Jan"], ["closedYearly", "12-28..01-01, 04-31"], ["sources", new Blob(["source"])],
     ["interestTags", new Blob(["nature"])],
   ])("rejects invalid %s before writing", async (field, value) => {
     const form = placeForm();

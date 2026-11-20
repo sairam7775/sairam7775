@@ -16,6 +16,8 @@ const flat = code.replace(/\s+/g, " ");
 it("adds closed_yearly as a non-null text array with a format check", () => {
   expect(flat).toContain("alter table places add column closed_yearly text[] not null default '{}'");
   expect(flat).toMatch(/constraint places_closed_yearly_format check/);
+  // Per element: an element holding a comma can't pass as two.
+  expect(flat).toContain("cardinality(regexp_split_to_array(array_to_string(closed_yearly, ','), ',')) = cardinality(closed_yearly)");
 });
 
 it("adds closed_yearly to places_public after every column 0026 had, and locks the view again", () => {

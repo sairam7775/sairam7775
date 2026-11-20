@@ -15,13 +15,18 @@
 
 alter table places add column closed_yearly text[] not null default '{}';
 
--- Every element is MM-DD or MM-DD..MM-DD with a month 01–12 and a day 01–31
--- (the app also refuses days a month doesn't have, such as 04-31). No nulls.
+-- Every element, on its own, is MM-DD or MM-DD..MM-DD with a month 01–12
+-- and a day 01–31 (the app also refuses days a month doesn't have, such as
+-- 04-31). No nulls. A check can't hold a subquery, so the elements are
+-- joined with commas and matched as a list; splitting the joined text again
+-- must give back as many parts as there are elements, so one element can't
+-- carry a comma and pass as two ('12-28..01-01,05-03' is refused).
 alter table places add constraint places_closed_yearly_format check (
   array_position(closed_yearly, null) is null
   and (cardinality(closed_yearly) = 0
-       or array_to_string(closed_yearly, ',') ~
-          '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])(\.\.(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]))?(,(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])(\.\.(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]))?)*$')
+       or (cardinality(regexp_split_to_array(array_to_string(closed_yearly, ','), ',')) = cardinality(closed_yearly)
+           and array_to_string(closed_yearly, ',') ~
+             '^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])(\.\.(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]))?(,(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])(\.\.(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01]))?)*$'))
 );
 
 comment on column places.closed_yearly is
@@ -69,7 +74,7 @@ update places set closed_yearly = array['12-28..01-04']::text[] where id = 'osk-
 -- Kyoto
 update places set closed_yearly = array['12-28..12-31']::text[] where id = 'kyt-nanzenji';
 update places set closed_yearly = array['12-28..01-01']::text[] where id = 'kyt-national-museum';
-update places set closed_yearly = array['12-29..12-31']::text[] where id = 'kyt-nijo-castle';
+update places set closed_yearly = array['12-26..01-03']::text[] where id = 'kyt-nijo-castle';
 update places set closed_yearly = array['12-28..01-04']::text[] where id = 'kyt-imperial-palace';
 update places set closed_yearly = array['12-30..01-01']::text[] where id = 'kyt-railway-museum';
 
