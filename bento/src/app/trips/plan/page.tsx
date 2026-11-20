@@ -3,20 +3,23 @@ import { AppHeader } from "@/components/app-header";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { createClient } from "@/lib/supabase/server";
 import { monthOptions } from "@/lib/trips/guided-start";
+import { initialPlanTab, planTabs } from "@/lib/trips/plan-tabs";
 import { READY_MADE_CITIES } from "@/lib/trips/ready-made";
 import { availableReadyMade, tokyoToday } from "@/lib/trips/ready-made/start";
 import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
 import { GuidedForm } from "./guided-form";
+import { PlanTabs } from "./plan-tabs";
 import { ReadyMadePicker, type PickerTrip } from "./ready-made-picker";
 
 const t = copy.trips.guided;
 const r = copy.readyMade.picker;
 
-/** "Plan a Japan trip": a few questions for someone who has an idea but not
- *  the details yet, and beside them, ready-made trips to start from. The
- *  blank form stays on the trips list. */
-export default async function PlanATrip() {
+/** "Plan a Japan trip": two tabs, a few questions for someone who has an idea
+ *  but not the details yet (the default), and ready-made trips to start from
+ *  (`?tab=ready-made`). With no ready-made trip to offer, the questions
+ *  alone, without tabs. The blank form stays on the trips list. */
+export default async function PlanATrip({ searchParams }: PageProps<"/trips/plan">) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in?next=/trips/plan");
@@ -33,22 +36,41 @@ export default async function PlanATrip() {
     summary: copy.readyMade.trips[x.id].summary,
   }));
 
+  const tabs = planTabs(trips.length);
+  const own = (
+    <>
+      <p className="mt-6 text-[0.95rem] text-ink-2">{t.intro}</p>
+      <GuidedForm months={monthOptions(new Date())} />
+    </>
+  );
+
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
       <AppHeader back={{ href: "/trips", label: copy.common.yourTrips }} />
       <AnalyticsUser id={user.id} />
       <section className="tile up mt-8 p-6 sm:p-8">
         <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>
-        <p className="mt-2 text-[0.95rem] text-ink-2">{t.intro}</p>
-        <GuidedForm months={monthOptions(new Date())} />
+        {tabs.length > 1 ? (
+          <PlanTabs
+            tabs={tabs}
+            initial={initialPlanTab((await searchParams).tab, trips.length)}
+            panels={{
+              own,
+              "ready-made": (
+                <>
+                  <p className="mt-6 text-[0.95rem] text-ink-2">{r.intro}</p>
+                  <ReadyMadePicker trips={trips} today={tokyoToday()} />
+                </>
+              ),
+            }}
+          />
+        ) : (
+          <>
+            <p className="mt-2 text-[0.95rem] text-ink-2">{t.intro}</p>
+            <GuidedForm months={monthOptions(new Date())} />
+          </>
+        )}
       </section>
-      {trips.length > 0 && (
-        <section aria-labelledby="ready-made-title" className="tile up mt-6 p-6 sm:p-8">
-          <h2 id="ready-made-title" className="text-2xl font-bold tracking-tight">{r.title}</h2>
-          <p className="mt-2 text-[0.95rem] text-ink-2">{r.intro}</p>
-          <ReadyMadePicker trips={trips} today={tokyoToday()} />
-        </section>
-      )}
     </main>
   );
 }
