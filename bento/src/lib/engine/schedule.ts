@@ -39,7 +39,6 @@ export function planDay(input: DayInput): DayPlan {
   const w: Weights = { ...DEFAULT_WEIGHTS, ...input.weights };
   const day = new Date(`${date}T00:00:00Z`);
   const weekday = day.getUTCDay();
-  const month = day.getUTCMonth() + 1;
 
   // 1 BUDGET
   // A travel day starts once the traveller is in the new city, and ends
@@ -119,7 +118,7 @@ export function planDay(input: DayInput): DayPlan {
     seq.reduce((s, d, i) => s + (i ? tmin(seq[i - 1].place, d.place) : 0), 0);
   const remaining = () => budgetMin - usedMin();
   const earlyStart = dayStart <= 8 * 60;
-  const ctx = (): ScoreContext => ({ categoryCounts: categoryCounts(), remainingMin: remaining(), month, earlyStart });
+  const ctx = (): ScoreContext => ({ categoryCounts: categoryCounts(), remainingMin: remaining(), date, earlyStart });
 
   const draftOf = (p: PlaceInput, locked = false, lockedStart: number | null = null): Draft => ({
     place: p,
@@ -385,7 +384,7 @@ export function planDay(input: DayInput): DayPlan {
         before.set(seq[k].place.category, (before.get(seq[k].place.category) ?? 0) + 1);
         usedBefore += seq[k].durationMin + (k ? tmin(seq[k - 1].place, seq[k].place) : 0);
       }
-      d.score = scorePlace(p, t, { categoryCounts: before, remainingMin: budgetMin - usedBefore, month, earlyStart }, w);
+      d.score = scorePlace(p, t, { categoryCounts: before, remainingMin: budgetMin - usedBefore, date, earlyStart }, w);
       if (d.lockedStart != null) {
         if (tNow > d.lockedStart) warnings.push(copy.plan.warnings.pinnedLate(p.name, clock(d.lockedStart), clock(tNow)));
         else tNow = d.lockedStart;

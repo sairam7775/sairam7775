@@ -2,6 +2,7 @@ import { INTEREST_TAGS } from "@/lib/types";
 import type { PlaceInput, ScoreBreakdown, ScoreTerm, TravellerInput, Weights } from "./types";
 import { copy } from "@/copy";
 import { costBandWords } from "./cost-band";
+import { seasonsOn } from "./seasons";
 
 export const DEFAULT_WEIGHTS: Weights = {
   interestMatch: 2.5,
@@ -18,14 +19,6 @@ export const DEFAULT_WEIGHTS: Weights = {
   travelPerHalfHour: 1.0,
 };
 
-/** Month (1–12) → what is in season. */
-const SEASON_BY_MONTH: Record<number, { key: string; label: string } | undefined> = {
-  3: { key: "sakura", label: copy.plan.seasons.sakura },
-  4: { key: "sakura", label: copy.plan.seasons.sakura },
-  11: { key: "koyo", label: copy.plan.seasons.koyo },
-  12: { key: "koyo", label: copy.plan.seasons.koyo },
-};
-
 /** Spend that starts to sting, by band. Seed values. */
 const BUDGET_THRESHOLD_JPY: Record<string, number> = { budget: 1000, mid: 3000, comfortable: 8000 };
 
@@ -37,7 +30,9 @@ export interface ScoreContext {
   /** Category → how many already in the day. */
   categoryCounts: Map<string, number>;
   remainingMin: number;
-  month: number;
+  /** The day, "YYYY-MM-DD". What is in season comes from typical windows
+   *  by city (seasons.ts), not from the month. */
+  date: string;
   /** The day starts by 08:00, so a "before 08:00" window is reachable. */
   earlyStart?: boolean;
 }
@@ -80,10 +75,12 @@ export function scorePlace(
 
   add("confidence", p.verificationStatus === "verified" ? 1 : 0.4, w.confidence, 1);
 
-  const season = SEASON_BY_MONTH[ctx.month];
-  const seasonValue = !p.seasons?.length ? 0.5 : season && p.seasons.includes(season.key) ? 1 : 0.3;
+  // In season only inside the typical window for this city (or area);
+  // outside it the tag earns no boost and no claim.
+  const season = seasonsOn(ctx.date, p).find((key) => p.seasons?.includes(key));
+  const seasonValue = !p.seasons?.length ? 0.5 : season ? 1 : 0.3;
   add("season_fit", seasonValue, w.seasonFit, 1,
-    seasonValue === 1 && season ? copy.plan.reasons.inSeason(season.label) : undefined);
+    season ? copy.plan.reasons.inSeason(copy.plan.seasons[season]) : undefined);
 
   const discovery = p.discovery ?? 0.5;
   add("discovery_fit", 1 - Math.abs(discovery - t.discovery), w.discoveryFit, 1,
