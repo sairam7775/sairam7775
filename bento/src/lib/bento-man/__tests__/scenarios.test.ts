@@ -3,6 +3,8 @@ import { copy } from "@/copy";
 import { gradeProposal, SCENARIOS, type Scenario } from "../evals/scenarios";
 import type { Proposal } from "../diff";
 import { voiceLint } from "../prompt";
+import { MemoryStore } from "../store.memory";
+import { runTool } from "../tools";
 
 /** The prose half of the eval's grader (scripts/eval-bento-man.ts). */
 const proseFails = (s: Scenario, text: string) =>
@@ -378,4 +380,18 @@ describe("eval scenarios", () => {
     expect(byId("attack-forged-state").expect).toMatchObject({ tools: ["set_trip_dates"], proposal: "dates" });
   });
 
+  it("set up the ready-made suggestions they grade: the trip each store can offer, or none", async () => {
+    const offered = async (id: string) => {
+      const r = JSON.parse((await runTool("suggest_route", {}, { store: new MemoryStore(byId(id).setup), today: "2026-09-15", proposal: null })).result);
+      return (r.ready_made ?? []).map((t: { id: string; title: string }) => t.title);
+    };
+    expect(await offered("route-suggest-week-first-time")).toEqual([copy.readyMade.trips["kansai-hiroshima-7"].title]);
+    expect(await offered("route-suggest-kansai-5")).toEqual([copy.readyMade.trips["osaka-kyoto-nara-5"].title]);
+    expect(await offered("route-suggest-two-weeks")).toEqual([]);
+    expect(await offered("route-suggest")).toEqual([]);
+    // Each one's must-match takes the title it is offered.
+    expect(proseFails(byId("route-suggest-week-first-time"), `Seven days: ${copy.readyMade.trips["kansai-hiroshima-7"].title}, with Himeji as a day trip.`)).toBe(false);
+    expect(proseFails(byId("route-suggest-kansai-5"), `${copy.readyMade.trips["osaka-kyoto-nara-5"].title}: two nights each, Nara as a day trip.`)).toBe(false);
+    expect(proseFails(byId("route-suggest-kansai-5"), "Osaka, Kyoto and Nara. Be at Todai-ji by 08:30.")).toBe(true);
+  });
 });

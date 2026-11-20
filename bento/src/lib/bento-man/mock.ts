@@ -85,11 +85,14 @@ export function afterTool(name: string, result: string, isError: boolean): { tex
 
   if (name === "suggest_route") {
     try {
-      const s = JSON.parse(result) as { cities?: { city_id: string; nights: number; reason: string }[] };
-      if (s.cities?.length) {
+      type Cities = { city_id: string; nights: number; reason: string }[];
+      const s = JSON.parse(result) as { cities?: Cities; ready_made?: { cities: Cities }[] };
+      // A ready-made trip comes first when one matches the trip's length.
+      const cities = s.cities ?? s.ready_made?.[0]?.cities;
+      if (cities?.length) {
         return {
           text: "(Mock) Bento's starting route — I'll put it up as a proposal.",
-          next: { name: "propose_route", input: { cities: s.cities.map((c) => ({ city_id: c.city_id, nights: c.nights, reason: c.reason })) } },
+          next: { name: "propose_route", input: { cities: cities.map((c) => ({ city_id: c.city_id, nights: c.nights, reason: c.reason })) } },
         };
       }
     } catch {

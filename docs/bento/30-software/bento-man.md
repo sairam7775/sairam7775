@@ -4,7 +4,7 @@ status: accepted
 code:
   - bento/src/lib/bento-man/
   - bento/scripts/eval-bento-man.ts
-last_reviewed: 2026-11-16
+last_reviewed: 2026-11-20
 ---
 
 # Bento Man: how it's built
@@ -41,7 +41,7 @@ The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT") and says the 
 |---|---|
 | `set_preferences`, `set_trip_dates` | Onboarding answers, saved where the traveller can read and correct them |
 | `assess_route` | Cities and nights → coverage per city, train time per leg, the share of the trip spent moving, and a verdict with the arithmetic |
-| `suggest_route` | A starting route for the trip's length |
+| `suggest_route` | A starting route for the trip's length: the matching ready-made trips first, else the corridor table (below) |
 | `propose_route` | A route as a proposal (refuses an over-packed route unless the traveller insists) |
 | `plan_days` | Day plans from the engine, as a proposal. A day in a city known by its main sights only also carries `coverage` and `coverage_note` (the page's line, and never to call the day complete); other days are unchanged |
 | `replan_day` | Pin, unpin, remove, add, avoid a category, start later; the engine re-plans around what's kept. The same main-sights fields as `plan_days` |
@@ -50,6 +50,7 @@ The prompt keeps Bento Man on Japan travel ("WHAT YOU TALK ABOUT") and says the 
 
 - Every tool checks its input (Zod) and returns JSON; a bad input is an error result the model can recover from, never a crash.
 - Tools that change the plan write only to the proposal.
+- **`suggest_route` offers the ready-made trips the picker offers** (package 1D of [ready-made trips](../60-direction/ready-made-trips.md); `readyMadeForNights` in `lib/trips/ready-made/suggest.ts`). It works in nights, a trip in days: N nights matches the trips of N + 1 days; when no trip that may be offered is that long, the trips of N days are offered, and the result says they are one night fewer than asked (a traveller's "a week" may come in as six nights or seven). A trip is offered only by the picker's rule (`availableReadyMade`: every city, day trips included, planned in this store's coverage) and only if the store shows every one of its must-see places, as starting it would otherwise be refused. The result (`ready_made`) holds, per trip, the title and summary from `copy.readyMade.trips`, the cities with nights, reasons and coverage words, the day trips by day, the must-see place names by day, and the assessment; its note says the traveller can start it from the planner's ready-made tab (`/trips/plan?tab=ready-made`) or that the route can be proposed for this trip. No times or fares beyond the assessment's train legs. The tool takes no cities, so the match is on length alone. When nothing matches, the result is the corridor table's, byte for byte as before (`tools.test.ts` pins three hashes). The tool description and the prompt are unchanged; the eval scenarios `route-suggest-week-first-time`, `route-suggest-kansai-5` and `route-suggest-two-weeks` grade it. In the memory store only the 5-day Osaka, Kyoto and Nara and the 7-day Kansai and Hiroshima week can be offered (it lists Tokyo as not planned, has none of its places, and doesn't list Kamakura or Yokohama).
 - **An error result says what was not done and names the working call.** Every error from `plan_days` and `replan_day` ends with "Nothing was proposed." When `replan_day` gets a place id from another city Bento knows, or that city's own id, it says so and gives the call that plans a day trip there, for example `miy-itsukushima is in Miyajima, not Hiroshima. Nothing was proposed. For a day trip there, call plan_days with dates: [{"date":"2026-11-28","city_id":"miyajima"}].` Live, an error that only said "use get_place" left the model looping and then telling the traveller a proposal was waiting (`days-main-sights`, 3 of 6 runs). A city given by its plain name ("nara", "Kyoto") is found by name and the call names its id (`nara-city`); for a city Bento can't plan days in, the error says so and names no call. These texts are for the model only: the trip page's "Re-plan this day" (`replanDayAction`) gets a reason alongside `replanDay`'s error and shows a line from `copy.trip.replan.errors`, never the error itself. Successful results are unchanged.
 
 ## Models
