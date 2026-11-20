@@ -9,7 +9,7 @@ import type { ModelTool } from "./provider";
 import { z } from "zod";
 import { planDay, usualDayStart } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
-import { cityTrainMinutes, travelDayMoves, travelDayStart } from "@/lib/engine/travel-day";
+import { cityTrainMinutes, toFive, travelDayMoves, travelDayStart } from "@/lib/engine/travel-day";
 import { costBandWords } from "@/lib/engine/cost-band";
 import { yearlyRangeWords } from "@/lib/engine/closures";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
@@ -595,6 +595,9 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   const move = movesFor(state, graph, factsMap(cities))(date, cityId);
   const kept = firstStop && !firstStop.locked ? firstStop.startMin ?? undefined : undefined;
   let dayStartMin: number | undefined = kept != null || move ? travelDayStart(kept, usualDayStart(state.prefs.crowdTolerance), move) : undefined;
+  // A kept start lifted to the arrival: the traveller may have named an
+  // early start for an early train. Say so; a named start_at overrides it.
+  let lifted = move != null && kept != null && dayStartMin != null && dayStartMin > kept;
   for (const op of ops) {
     if (["pin", "unpin", "remove", "add"].includes(op.op)) {
       if (!op.place_id) return { error: `${op.op} needs place_id`, reason: "bad-op" };
@@ -621,6 +624,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
         const m = parseHHMM(op.time);
         if (m == null) return { error: "start_at needs time HH:MM", reason: "bad-op" };
         dayStartMin = m;
+        lifted = false;
         break;
       }
     }
@@ -642,6 +646,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     // and the move still comes out of the day, as when it was planned.
     move,
   });
+  if (lifted) plan.warnings.push(copy.plan.warnings.liftedStart(clock(toFive(dayStartMin!)), factsMap(cities).get(move!.fromCityId)?.name ?? move!.fromCityId));
   return { diff: computeDayDiff(existing?.items ?? [], plan, pool), tier: f.tier };
 }
 

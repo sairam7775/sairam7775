@@ -68,6 +68,12 @@ export function travelDayMoves(
   };
 }
 
+/** A time said to a traveller about the move, to five minutes: it rests on
+ *  an allowance, not a timetable. */
+export function toFive(min: number): number {
+  return Math.round(min / 5) * 5;
+}
+
 /** When a travel day starts. Nothing kept: the usual start plus the move.
  *  A kept start (a re-plan or an edit keeping its first stop) stays, unless
  *  it is before the traveller can arrive: a day saved before the move was

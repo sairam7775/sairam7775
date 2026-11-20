@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MemoryStore } from "../store.memory";
-import { buildTripView, dayCoverage, travelMoveLine, tripMoves, tripTravelDays } from "../trip-view";
+import { buildTripView, dayCoverage, startLiftedLine, travelMoveLine, tripMoves, tripTravelDays } from "../trip-view";
 import { cityTrainMinutes, travelMove } from "@/lib/engine/travel-day";
 import { copy } from "@/copy";
 import { planDocument } from "@/lib/trips/plan-document";
@@ -75,6 +75,13 @@ describe("tripTravelDays", () => {
     const moves = await tripMoves(store, await store.state());
     expect(moves.has("2026-11-21")).toBe(false);
     expect(moves.has("2026-11-23")).toBe(true);
+  });
+
+  it("says a lifted start from the saved day, to five minutes, and nothing without a move", () => {
+    const move = travelMove("osaka-city", 13);
+    expect(startLiftedLine(move, [{ startMin: 613 }, { startMin: 700 }], "Osaka")).toBe(copy.plan.warnings.liftedStart("10:15", "Osaka"));
+    expect(startLiftedLine(undefined, [{ startMin: 613 }], "Osaka")).toBeNull();
+    expect(startLiftedLine(move, [{ startMin: null }], "Osaka")).toBeNull();
   });
 
   it("has no travel days with one stop", async () => {

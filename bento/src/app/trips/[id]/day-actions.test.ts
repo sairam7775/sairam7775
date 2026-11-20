@@ -3,7 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { copy } from "@/copy";
 import { MemoryStore } from "@/lib/bento-man/store.memory";
-import { runTool, type ToolContext } from "@/lib/bento-man/tools";
+import { replanDay, runTool, type ToolContext } from "@/lib/bento-man/tools";
 
 const mocks = vi.hoisted(() => ({ store: null as unknown }));
 
@@ -16,7 +16,7 @@ vi.mock("@/lib/bento-man/store.supabase", () => ({
   SupabaseStore: function SupabaseStore() { return mocks.store; },
 }));
 
-import { replanDayAction } from "./day-actions";
+import { replanDayAction, togglePin } from "./day-actions";
 
 const TRIP = "11111111-1111-4111-8111-111111111111";
 const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -55,8 +55,59 @@ describe("re-plan this day, on a travel day", () => {
     await replanDayAction(form).catch(() => null);
     const proposal = append.mock.calls[0][2]!;
     expect(proposal.days![0].after[0].startMin).toBeGreaterThan(9 * 60 + 60);
+    // The lift is said, with the arrival time to five minutes (09:00 + 73 min).
+    expect(proposal.days![0].warnings).toContain(copy.plan.warnings.liftedStart("10:15", "Osaka"));
+  });
+
+  it("an edit lifts a start saved before the move and says so on the page", async () => {
+    const store = await planned("2026-11-22");
+    const day = (await store.state()).days.find((d) => d.date === "2026-11-22")!;
+    await store.saveDay({ ...day, items: day.items.map((it, i) => ({ ...it, locked: false, startMin: i === 0 ? 9 * 60 : it.startMin })) });
+    mocks.store = store;
+    const to = await redirectOf(togglePin, "2026-11-22", day.items[1].placeId);
+    expect(to.searchParams.get("note")).toBe("start-lifted");
+    const saved = (await store.state()).days.find((d) => d.date === "2026-11-22")!;
+    expect(saved.items[0].startMin).toBeGreaterThan(9 * 60 + 60);
   });
 });
+
+describe("re-plan this day and edits, on an ordinary day", () => {
+  it("re-plan with no pins keeps the first stop's start exactly as before", async () => {
+    const store = await planned("2026-11-24");
+    const day = (await store.state()).days.find((d) => d.date === "2026-11-24")!;
+    await store.saveDay({ ...day, items: day.items.map((it, i) => ({ ...it, locked: false, startMin: i === 0 ? 10 * 60 + 10 : it.startMin })) });
+    mocks.store = store;
+    // Before: the action sent the first stop's start as start_at.
+    const before = await replanDay(store, "2026-11-24", [{ op: "start_at", time: "10:10" }]);
+    if (!("diff" in before)) throw new Error(before.error);
+    const append = vi.spyOn(store, "append");
+    const form = new FormData();
+    form.set("tripId", TRIP);
+    form.set("date", "2026-11-24");
+    await replanDayAction(form).catch(() => null);
+    expect(append.mock.calls[0][2]!.days![0]).toEqual(before.diff);
+  });
+
+  it("an edit still works, with no note, when the city list can't be read", async () => {
+    const store = await planned("2026-11-24");
+    const day = (await store.state()).days.find((d) => d.date === "2026-11-24")!;
+    vi.spyOn(store, "cities").mockRejectedValue(new Error("down"));
+    mocks.store = store;
+    const to = await redirectOf(togglePin, "2026-11-24", day.items[0].placeId);
+    expect(to.searchParams.get("note")).toBeNull();
+    const saved = (await store.state()).days.find((d) => d.date === "2026-11-24")!;
+    expect(saved.items[0].locked).toBe(!day.items[0].locked);
+  });
+});
+
+async function redirectOf(action: (f: FormData) => Promise<void>, date: string, placeId: string): Promise<URL> {
+  const form = new FormData();
+  form.set("tripId", TRIP);
+  form.set("date", date);
+  form.set("placeId", placeId);
+  const thrown = await action(form).then(() => "", (e: Error) => e.message);
+  return new URL(thrown.replace(/^redirect:/, ""), "https://bento.test");
+}
 
 describe("re-plan this day, when it can't", () => {
   it("shows the copy line, not the model's error, for a pinned stop from another city", async () => {

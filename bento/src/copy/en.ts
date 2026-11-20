@@ -1195,6 +1195,7 @@ export const en = {
       noStation: (name: string, min: number) => `${name} has no station in Bento's train data yet — legs to it are estimated at ${min} min`,
       noRoute: (from: string, to: string, min: number) => `No route between ${from} and ${to} in Bento's train data yet — estimated at ${min} min`,
       pinnedMissing: (id: string) => `Pinned place ${id} is not in this city's list`,
+      liftedStart: (at: string, from: string) => `This day now starts about ${at}, after you could arrive from ${from}. Say a start time to change it`,
       beforeArrival: (start: string, arrive: string) => `This day starts at ${start}, before you could arrive from your last stay (about ${arrive}, after checking out and the train)`,
       moveUnknown: (min: number) => `This day allows ${Math.floor(min / 60)}h ${min % 60}m for the move: checking out, the train and leaving your bags. Bento doesn't have this train's time yet, so check it`,
       opensLate: (name: string, time: string, wait: number) => `${name} opens at ${time} — the day waits ${wait} min for it`,

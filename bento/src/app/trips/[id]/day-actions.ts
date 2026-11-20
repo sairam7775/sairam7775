@@ -29,19 +29,19 @@ export async function reorderDay(formData: FormData) {
   const { store, tripId, date } = await guard(formData);
   const order = z.array(z.string()).safeParse(JSON.parse(String(formData.get("order") ?? "[]")));
   if (!order.success) redirect(`/trips/${tripId}?day=${date}`);
-  await editDay(store, date, (items) => {
+  const edited = await editDay(store, date, (items) => {
     const byId = new Map(items.map((i) => [i.placeId, i]));
     const kept = order.data.map((id) => byId.get(id)).filter((i): i is ItemRow => Boolean(i));
     const missing = items.filter((i) => !order.data.includes(i.placeId));
     return [...kept, ...missing];
   });
-  done(tripId, date);
+  done(tripId, date, edited);
 }
 
 export async function moveItem(formData: FormData) {
   const { store, tripId, date, placeId } = await guardPlace(formData);
   const dir = formData.get("dir") === "up" ? -1 : 1;
-  await editDay(store, date, (items) => {
+  const edited = await editDay(store, date, (items) => {
     const i = items.findIndex((x) => x.placeId === placeId);
     const j = i + dir;
     if (i < 0 || j < 0 || j >= items.length) return items;
@@ -49,21 +49,21 @@ export async function moveItem(formData: FormData) {
     [next[i], next[j]] = [next[j], next[i]];
     return next;
   });
-  done(tripId, date);
+  done(tripId, date, edited);
 }
 
 export async function togglePin(formData: FormData) {
   const { store, tripId, date, placeId } = await guardPlace(formData);
-  await editDay(store, date, (items) =>
+  const edited = await editDay(store, date, (items) =>
     items.map((it) => (it.placeId === placeId ? { ...it, locked: !it.locked } : it)),
   );
-  done(tripId, date);
+  done(tripId, date, edited);
 }
 
 export async function removeItem(formData: FormData) {
   const { store, tripId, date, placeId } = await guardPlace(formData);
-  await editDay(store, date, (items) => items.filter((it) => it.placeId !== placeId));
-  done(tripId, date);
+  const edited = await editDay(store, date, (items) => items.filter((it) => it.placeId !== placeId));
+  done(tripId, date, edited);
 }
 
 /** The engine re-plans the day around what is pinned; the result is a
@@ -96,16 +96,20 @@ function replanError(r: ReplanFailure): string {
   }
 }
 
-async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) => ItemRow[]) {
-  const [state, graph, cities] = await Promise.all([store.state(), store.graph(), store.cities()]);
+/** Re-times the day after an edit. Returns whether a kept start was lifted
+ *  to the travel day's arrival, so the page can say so. */
+async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) => ItemRow[]): Promise<{ lifted: boolean }> {
+  // Without the city list there is no move: an edit never fails on it.
+  const [state, graph, cities] = await Promise.all([store.state(), store.graph(), store.cities().catch(() => null)]);
   const day = state.days.find((d) => d.date === date);
-  if (!day || !day.cityId) return;
-  const move = movesFor(state, graph, new Map(cities.map((c) => [c.id, c])))(date, day.cityId);
+  if (!day || !day.cityId) return { lifted: false };
+  const move = cities ? movesFor(state, graph, new Map(cities.map((c) => [c.id, c])))(date, day.cityId) : undefined;
   const items = edit(day.items);
   const places = new Map((await store.places(day.cityId)).map((p) => [p.id, p]));
   const starts = day.items.map((i) => i.startMin).filter((m): m is number => m != null);
   // The same rule as a re-plan: a travel day never starts before the move.
-  const dayStart = travelDayStart(starts.length ? Math.min(...starts) : null, usualDayStart(state.prefs.crowdTolerance), move);
+  const kept = starts.length ? Math.min(...starts) : null;
+  const dayStart = travelDayStart(kept, usualDayStart(state.prefs.crowdTolerance), move);
 
   const timed = retimeDay({
     items: items.map((i) => ({
@@ -136,11 +140,14 @@ async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) 
     }),
   };
   await store.saveDay(next);
+  return { lifted: move != null && kept != null && dayStart > kept };
 }
 
-function done(tripId: string, date: string) {
+/** Back to the day. `lifted` adds a key, never words: the page says it
+ *  from its own data (`copy.plan.warnings.liftedStart`). */
+function done(tripId: string, date: string, edited?: { lifted: boolean }) {
   revalidatePath(`/trips/${tripId}`);
-  redirect(`/trips/${tripId}?day=${date}`);
+  redirect(`/trips/${tripId}?day=${date}${edited?.lifted ? "&note=start-lifted" : ""}`);
 }
 
 async function guard(formData: FormData) {

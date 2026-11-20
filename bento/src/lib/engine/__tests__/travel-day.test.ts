@@ -10,7 +10,6 @@ import { planDay } from "../schedule";
 import { planTrip } from "../trip";
 import { travelFromGraph } from "../travel";
 import { cityTrainMinutes, MOVE_ALLOWANCE_MIN, travelDayMoves, travelDayOrigins, travelDayStart, travelMove, UNKNOWN_TRAIN_MIN } from "../travel-day";
-import { clock } from "@/lib/bento-man/diff";
 import type { PlaceInput } from "../types";
 import { owner } from "../__fixtures__/kyoto";
 
@@ -122,8 +121,10 @@ describe("planDay on a travel day", () => {
     const move = travelMove("osaka-city", trainMinutes("osaka-city", "kyoto-city"));
     const arrive = USUAL_START + move.minutes;
     const at = (dayStartMin: number) => planDay({ date: "2026-11-25", cityId: "kyoto-city", places: placesByCity["kyoto-city"], traveller: owner, travel, move, dayStartMin });
-    expect(at(8 * 60).warnings).toContain(copy.plan.warnings.beforeArrival(clock(8 * 60), clock(arrive)));
-    expect(at(10 * 60).warnings.filter((w) => w.includes(clock(arrive)))).toEqual([]);
+    // 07:00 + 73 min is 08:13, said to five minutes.
+    expect(arrive).toBe(8 * 60 + 13);
+    expect(at(8 * 60).warnings).toContain(copy.plan.warnings.beforeArrival("08:00", "08:15"));
+    expect(at(10 * 60).warnings.filter((w) => w.includes("08:15"))).toEqual([]);
   });
 
   it("keeps a pin timed before the move, and says the day reaches it late", () => {

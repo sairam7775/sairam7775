@@ -10,7 +10,7 @@ import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { nightsBetween, type TripState } from "@/lib/bento-man/store";
-import { buildTripView, dayCoverage, travelMoveLine, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
+import { buildTripView, dayCoverage, startLiftedLine, travelMoveLine, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { fillPercent } from "@/lib/engine/day-stats";
 import { journeyMapUrl } from "@/lib/maps/links";
 import { loadGaps } from "@/lib/vault/store";
@@ -66,6 +66,9 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const moves = await tripMoves(store, state).catch(() => null);
   const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested, moves);
   const move = selected ? moves?.get(selected) ?? null : null;
+  const fromName = move ? state.cities.find((c) => c.cityId === move.fromCityId)?.name ?? move.fromCityId : "";
+  // An edit lifted the day's start to the arrival; the address says only that.
+  const lifted = sp.note === "start-lifted" ? startLiftedLine(move, selectedDay?.items ?? [], fromName) : null;
   // How well Bento knows the selected day's own city, for its heading and box.
   const cover = selectedMeta ? dayCoverage(selectedMeta, selectedDay?.items.length ?? 0) : null;
 
@@ -323,9 +326,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                   <p className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.travelDay.label}</p>
                   {move && (
                     <p className="mt-2 text-[0.86rem] leading-snug text-ink-2">
-                      {travelMoveLine(move, state.cities.find((c) => c.cityId === move.fromCityId)?.name ?? move.fromCityId)}
+                      {travelMoveLine(move, fromName)}
                     </p>
                   )}
+                  {lifted && <p role="status" className="mt-1 text-[0.86rem] font-medium leading-snug text-ink">{lifted}</p>}
                   <ul className="mt-2 flex flex-col gap-3">
                     {travel.get(selected)!.map((l) => (
                       <li key={`${l.fromCityId}-${l.toCityId}`}>

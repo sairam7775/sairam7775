@@ -2,7 +2,8 @@
  *  outside components. Stored days override the route's date allocation. */
 import { allocateDates, assessRoute } from "@/lib/engine/route";
 import { dayStats } from "@/lib/engine/day-stats";
-import { cityTrainMinutes, travelDayMoves } from "@/lib/engine/travel-day";
+import { cityTrainMinutes, toFive, travelDayMoves } from "@/lib/engine/travel-day";
+import { clock } from "./diff";
 import type { TravelMove } from "@/lib/engine/types";
 import { travelDays } from "@/lib/trips/travel-days";
 import { showsMainSights } from "@/lib/trips/route-card";
@@ -42,6 +43,15 @@ export async function tripMoves(store: Pick<TripStore, "cities" | "graph">, stat
 export function travelMoveLine(move: TravelMove, fromName: string): string {
   if (move.trainMin == null) return copy.trip.travelDay.moveUnknown(fromName);
   return copy.trip.travelDay.move(fromName, copy.time.duration(Math.round(move.minutes / 5) * 5));
+}
+
+/** After an edit lifted a travel day's start to the arrival (the address
+ *  carries only `note=start-lifted`), the line the page shows, from the
+ *  saved day. Null when there is no move or no timed stop. */
+export function startLiftedLine(move: TravelMove | null | undefined, items: { startMin: number | null }[], fromName: string): string | null {
+  const starts = items.map((i) => i.startMin).filter((m): m is number => m != null);
+  if (!move || !starts.length) return null;
+  return copy.plan.warnings.liftedStart(clock(toFive(Math.min(...starts))), fromName);
 }
 
 /** What the day box shows about how well Bento knows the day's city: the

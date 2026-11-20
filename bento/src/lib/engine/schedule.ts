@@ -3,6 +3,7 @@ import { hardFilter, parseClock, parseWindow } from "./filter";
 import { buildReason, chooseDuration, DEFAULT_WEIGHTS, scorePlace, type ScoreContext } from "./score";
 import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, Weights } from "./types";
 import { copy } from "@/copy";
+import { toFive } from "./travel-day";
 
 /** When the graph cannot say, assume this and warn. Never silently zero. */
 const FALLBACK_TRAVEL_MIN = 45;
@@ -55,7 +56,7 @@ export function planDay(input: DayInput): DayPlan {
   const warnings: string[] = [];
   if (input.move && input.move.trainMin == null) warnings.push(copy.plan.warnings.moveUnknown(input.move.minutes));
   // A start the traveller named, before the move lets them arrive.
-  if (input.move && dayStart < arriveMin) warnings.push(copy.plan.warnings.beforeArrival(clock(dayStart), clock(arriveMin)));
+  if (input.move && dayStart < arriveMin) warnings.push(copy.plan.warnings.beforeArrival(clock(dayStart), clock(toFive(arriveMin))));
   const byId = new Map(places.map((p) => [p.id, p]));
 
   // 2 FILTER
