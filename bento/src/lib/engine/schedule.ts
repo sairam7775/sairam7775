@@ -64,8 +64,11 @@ export function planDay(input: DayInput): DayPlan {
     pool.push(p);
   }
 
-  // Travel, with an honest fallback.
+  // Travel, with an honest fallback. Growing and ordering price legs to
+  // places that never make the day, so a fallback leg warns only when the
+  // returned day travels it (`time` below), never when it is priced.
   const tmemo = new Map<string, TravelLeg>();
+  const fallbackLegs = new Set<TravelLeg>();
   const legBetween = (a: PlaceInput, b: PlaceInput): TravelLeg => {
     const k = `${a.id}>${b.id}`;
     const hit = tmemo.get(k);
@@ -74,21 +77,18 @@ export function planDay(input: DayInput): DayPlan {
     if (!leg) {
       leg = { mode: "estimate", minutes: FALLBACK_TRAVEL_MIN, fareJpy: 0, fareKind: "estimate",
         detail: copy.plan.warnings.noTrainData(FALLBACK_TRAVEL_MIN, a.name, b.name), lines: [] };
-      // Known gap: growing prices legs to places that never make the day, so
-      // these can name a place the day doesn't hold. Saying them only for the
-      // final legs changes plan_days' result, which needs a live eval first.
-      for (const p of [a, b]) {
-        if (p.nearestStation) continue;
-        const msg = copy.plan.warnings.noStation(p.name, FALLBACK_TRAVEL_MIN);
-        if (!warnings.includes(msg)) warnings.push(msg);
-      }
-      if (a.nearestStation && b.nearestStation) {
-        const msg = copy.plan.warnings.noRoute(a.nearestStation, b.nearestStation, FALLBACK_TRAVEL_MIN);
-        if (!warnings.includes(msg)) warnings.push(msg);
-      }
+      fallbackLegs.add(leg);
     }
     tmemo.set(k, leg);
     return leg;
+  };
+  /** What a fallback leg of the day says: which end has no station, or
+   *  that two stations have no route between them. */
+  const fallbackWarnings = (a: PlaceInput, b: PlaceInput): string[] => {
+    const out: string[] = [];
+    for (const p of [a, b]) if (!p.nearestStation) out.push(copy.plan.warnings.noStation(p.name, FALLBACK_TRAVEL_MIN));
+    if (a.nearestStation && b.nearestStation) out.push(copy.plan.warnings.noRoute(a.nearestStation, b.nearestStation, FALLBACK_TRAVEL_MIN));
+    return out;
   };
   const tmin = (a: PlaceInput | undefined, b: PlaceInput | undefined) => (a && b ? legBetween(a, b).minutes : 0);
 
@@ -340,6 +340,8 @@ export function planDay(input: DayInput): DayPlan {
       let arriveBy: TravelLeg | null = null;
       if (i > 0) {
         arriveBy = legBetween(seq[i - 1].place, p);
+        if (fallbackLegs.has(arriveBy))
+          for (const msg of fallbackWarnings(seq[i - 1].place, p)) if (!warnings.includes(msg)) warnings.push(msg);
         tNow += arriveBy.minutes;
         fares += arriveBy.fareJpy;
         if (arriveBy.fareKind === "estimate") fareKind = "estimate";

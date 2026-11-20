@@ -159,7 +159,8 @@ Explained in `../docs/bento/30-software/engine.md`.
 - Scores shown on items are recomputed against the final order, so "your
   third temple today" is the third one shown.
 - Known gaps: windows are soft except for the anchor; a place with no
-  station costs a flat 45 min and a warning; season tags are optional and
+  station costs a flat 45 min and a warning (only for a leg the returned
+  day travels, never a candidate it left out); season tags are optional and
   neutral when absent.
 - Tests: `src/lib/engine/__tests__`, fixtures in `__fixtures__/kyoto.ts`.
   The traps must stay green: Arashiyama and Fushimi Inari never share a

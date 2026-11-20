@@ -57,8 +57,8 @@ It's greedy insertion with local search: not optimal, and it doesn't need to be.
 - Hard rules live in `filter.ts` and never become penalties.
 - Untimed pins keep the order they were given; the planner fills around them but doesn't reorder them.
 - It never invents a travel time. A place with no station costs a flat 45 minutes and a warning.
-- Only the returned day's timing warns ("opens at …", "pinned for … but the day only reaches it by …"): the trial days growing and ordering try out never add warnings.
-- **Known gaps:** opening windows are soft except for the anchor; season tags are optional and neutral when absent; a "has no station in Bento's train data" warning can name a place growth only looked at and the day doesn't hold (saying it only for the day's own legs changes `plan_days`' result, so it waits for a live eval).
+- Only the returned day warns: its timing ("opens at …", "pinned for … but the day only reaches it by …") and its own legs ("has no station in Bento's train data", "no route between …"), each said once. The trial days and the candidates growing and ordering look at never add warnings. A no-station stop alone in its day has no leg to estimate, so it doesn't warn. `ready-made.test.ts` checks that no warning on any ready-made day names a place the day doesn't hold.
+- **Known gaps:** opening windows are soft except for the anchor; season tags are optional and neutral when absent.
 
 ## Ready-made trips
 

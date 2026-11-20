@@ -19,14 +19,12 @@ const kyoto = kyotoSeed.map((s) => seedToPlaceInput(s));
 const hiroshima = hiroshimaSeed.map((s) => seedToPlaceInput(s));
 const traveller = { pace: "packed" as const, interestTags: [], energy: 0.5, crowdTolerance: 0.6, discovery: 0.5, excludes: [], mobility: [], budgetBand: null };
 
-/** Timing warnings ("opens at", "pinned for") that name a place the day
- *  doesn't hold. (A name inside the name of a place the day does hold
- *  doesn't count.) The "has no station" warnings are left out on purpose:
- *  they still name places growth only looked at, a known gap whose fix
- *  changes plan_days' result and so waits for a live eval. */
+/** Warnings ("opens at", "pinned for", "has no station", …) that name a
+ *  place the day doesn't hold. (A name inside the name of a place the day
+ *  does hold doesn't count.) */
 const absentNamed = (plan: ReturnType<typeof planDay>, places: PlaceInput[]) => {
   const inDay = places.filter((p) => plan.items.some((i) => i.placeId === p.id));
-  return plan.warnings.filter((w) => /opens at|is pinned for/.test(w)).filter((w) =>
+  return plan.warnings.filter((w) =>
     places.some((p) => !inDay.includes(p) && w.includes(p.name) && !inDay.some((q) => q.name.includes(p.name) && w.includes(q.name))),
   );
 };
