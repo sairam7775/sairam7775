@@ -322,6 +322,7 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   table current or the cap lies. A call that never reached the model settles
   with `null`.
 - "Plan a Japan trip" (`trips/plan`, `startGuidedTrip`, `lib/trips/guided-start.ts`) never talks to Bento Man itself: it saves preferences and leaves a first message in the tab's session storage (never the address), which the chat puts in the box once. Nothing is sent or spent until the traveller presses Send.
+  The page is two tabs (`plan-tabs.tsx`, `lib/trips/plan-tabs.ts`): the form, the default, and the ready-made trips (`?tab=ready-made`); no tabs when no ready-made trip can be offered.
   Its ready-made picker (`startReadyMadeTrip`, `lib/trips/ready-made/start.ts`) calls no model either: it offers only trips whose every city is planned in `city_coverage` (checked again on the server, with every must-see in `places_public`), plans the days with `planTrip`, and saves them as a proposal applied at once through `applyProposal`. Never write its route or days another way.
 - `mock.ts` is a fake client for local work without a key
   (`BENTO_MAN_MOCK=1`, never in production). It replaces only the model —

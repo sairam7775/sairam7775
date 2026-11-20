@@ -3,7 +3,7 @@ type: overview
 status: accepted
 code:
   - bento/src/
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-20
 ---
 
 # Where the code is
@@ -16,6 +16,7 @@ bento/
       auth/callback/      where Google and email links land
       auth/confirm/       "Is this your account?" for email links
       trips/              trip list and creation
+      trips/plan/         "Plan a Japan trip": two tabs, the guided form and the ready-made trips
       trips/[id]/         the trip page: day view, chat, sharing, review
       trips/[id]/vault/   bookings and gaps
       trips/[id]/print/   the plan sheet to print or save

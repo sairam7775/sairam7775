@@ -339,6 +339,8 @@ export const en = {
       blankTitle: "Or start a blank trip",
       title: "Plan a Japan trip",
       intro: "Answer what you can. All of it is optional and can change later.",
+      // The two ways to start, as tabs at the top of the page.
+      tabs: { label: "How to start", own: "Plan your own", readyMade: "Ready-made trips" },
       when: {
         legend: "When are you going?",
         dates: "I know my dates",
@@ -1084,7 +1086,6 @@ export const en = {
     // lib/trips/ready-made/start.ts). Only trips whose every city Bento
     // plans are listed, so nothing here says "not yet".
     picker: {
-      title: "Or start from a ready-made trip",
       intro: "A well-trodden route with the places it's known for. Pick one and Bento plans every day for your dates, with those places kept in. You can change anything after.",
       length: "How many days?",
       days: (n: number) => (n === 1 ? "1 day" : `${n} days`),

@@ -1,7 +1,7 @@
 ---
 type: overview
 status: draft
-last_reviewed: 2026-11-17
+last_reviewed: 2026-11-20
 ---
 
 # Ready-made trips: the phased plan
@@ -116,7 +116,7 @@ These are the workspace standards (`knowledge/AI-DEVELOPMENT.md`). In short:
 - Reuse the existing save path for routes and days (the proposal functions in the database). Don't add a second way to write an itinerary.
 - A start date is required: the engine needs real dates for closing days.
 - **Done when:** a signed-in traveller can start the 7-day trip and the 1-day trip in a real browser, sees full days, and can re-plan one day; nothing calls the model; the trip counts against the same limits as any other trip.
-- **Open for the owner:** should the picker be the first thing a new traveller sees, or sit beside the current form?
+- **Decided by the owner (20 Nov):** the plan page has two tabs at the top, "Plan your own" (the form, first and the default) and "Ready-made trips" (`?tab=ready-made`). With no ready-made trip to offer, there are no tabs, only the form.
 
 ### 1D. Bento Man knows the ready-made trips
 
