@@ -1,7 +1,7 @@
 ---
 type: overview
 status: draft
-last_reviewed: 2026-11-20
+last_reviewed: 2026-11-21
 ---
 
 # Ready-made trips: the phased plan
@@ -52,7 +52,7 @@ A trip stores its cities, nights, day trips and a few must-see places per day. T
 
 Other facts a builder needs:
 
-- **Trains between these cities exist** in the seed: Tokyo to Kyoto, Shin-Osaka to Hiroshima, Kyoto to Nara, Hiroshima to Miyajima, Tokyo to Kamakura and Yokohama, Kansai Airport to Osaka and Kyoto. Check with `npx tsx scripts/route.ts <from> <to>`.
+- **Trains between these cities exist** in the seed: Tokyo to Kyoto, Osaka to Hiroshima (the JR Kyoto Line to Shin-Osaka, then the Shinkansen), Kyoto and Osaka to Nara, Hiroshima to Miyajima, Tokyo to Kamakura and Yokohama, Kansai Airport to Osaka and Kyoto. Check with `npx tsx scripts/route.ts <from> <to>`.
 - **Airports:** the station ids are `narita-t1`, `narita-t2-t3`, `haneda-t1-t2` and `haneda-t3` (there is no `narita-airport`). Routes from all four into Tokyo exist. Tokyo to Kamakura and Yokohama had no fare (package 1A adds them).
 - **A planner refuses a stub city.** A trip that includes one would fail, so every city in a published trip must be outline or deep on live.
 - **Today's route suggestion** is a fixed table for the Kansai–Sanyo corridor only (`suggestRoute` in `bento/src/lib/engine/route.ts`). Ready-made trips replace it in Phase 1.

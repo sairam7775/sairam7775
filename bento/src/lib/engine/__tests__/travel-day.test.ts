@@ -62,6 +62,11 @@ describe("cityTrainMinutes", () => {
     expect(trainMinutes("osaka-city", "kyoto-city")).toBe(a.legs[0].minutes);
     expect(trainMinutes("osaka-city", "nowhere")).toBeNull();
   });
+
+  it("moves an Osaka → Kyoto day by the Special Rapid from Osaka Station, as the leg shows", () => {
+    const moveOn = travelDayMoves("2026-11-20", "2026-11-24", [{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 2 }], trainMinutes);
+    expect(moveOn("2026-11-22", "kyoto-city")).toEqual({ fromCityId: "osaka-city", trainMin: 29, minutes: MOVE_ALLOWANCE_MIN + 29 });
+  });
 });
 
 describe("planDay on a travel day", () => {
@@ -121,10 +126,10 @@ describe("planDay on a travel day", () => {
     const move = travelMove("osaka-city", trainMinutes("osaka-city", "kyoto-city"));
     const arrive = USUAL_START + move.minutes;
     const at = (dayStartMin: number) => planDay({ date: "2026-11-25", cityId: "kyoto-city", places: placesByCity["kyoto-city"], traveller: owner, travel, move, dayStartMin });
-    // 07:00 + 73 min is 08:13, said to five minutes.
-    expect(arrive).toBe(8 * 60 + 13);
-    expect(at(8 * 60).warnings).toContain(copy.plan.warnings.beforeArrival("08:00", "08:15"));
-    expect(at(10 * 60).warnings.filter((w) => w.includes("08:15"))).toEqual([]);
+    // 07:00 + 89 min (60 + the 29-minute Special Rapid) is 08:29, said to five minutes.
+    expect(arrive).toBe(8 * 60 + 29);
+    expect(at(8 * 60).warnings).toContain(copy.plan.warnings.beforeArrival("08:00", "08:30"));
+    expect(at(10 * 60).warnings.filter((w) => w.includes("08:30"))).toEqual([]);
   });
 
   it("keeps a pin timed before the move, and says the day reaches it late", () => {

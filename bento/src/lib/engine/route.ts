@@ -69,13 +69,20 @@ export interface RouteAssessment {
   nightsMismatch: string | null;
 }
 
-/** Where a trip lands in each city. Mapped cities land at their main
- *  station; any other city falls back to its station with the smallest id
- *  (`hubFor`). A new network adds its city here with its station file. */
+/** Where a trip lands in each city: the station a stay there starts from,
+ *  not the one a fast train happens to stop at. Every city-to-city leg
+ *  (route proposals, travel days, the move minutes, ready-made trips)
+ *  runs hub to hub, and the route search finds the way to a Shinkansen
+ *  stop on its own. So Osaka is Osaka Station (Umeda): from Shin-Osaka,
+ *  the edge of town, the Kyoto leg was a 13-minute Nozomi nobody staying
+ *  in Osaka would take over the 29-minute Special Rapid. Mapped cities
+ *  land at their main station; any other city falls back to its station
+ *  with the smallest id (`hubFor`). A new network adds its city here with
+ *  its station file. */
 export const CITY_HUBS: Record<string, string> = {
   "tokyo-city": "tokyo",
   "kyoto-city": "kyoto",
-  "osaka-city": "shin-osaka",
+  "osaka-city": "osaka",
   "nara-city": "kintetsu-nara",
   "hiroshima-city": "hiroshima",
   himeji: "himeji",

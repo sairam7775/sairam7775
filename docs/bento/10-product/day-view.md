@@ -9,7 +9,7 @@ code:
   - bento/src/lib/engine/day-stats.ts
   - bento/src/lib/engine/travel-day.ts
   - bento/src/lib/bento-man/trip-view.ts
-last_reviewed: 2026-11-20
+last_reviewed: 2026-11-21
 ---
 
 # The day view (the box)
@@ -38,7 +38,7 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 
 ## Travel days
 
-On the day a traveller moves to their next stay, the planned day in the new city starts after the move (checking out, the train, leaving bags), so its first stop is later and it holds fewer stops ([engine](../30-software/engine.md#travel-days)). The box and the day strip measure it against that shorter day, and the travel-day card says the time the plan allows for it, to five minutes ("The plan allows about 1h 15m to move from Osaka: checking out, the train and leaving your bags."). With no train time it gives no figure: the train card already says Bento has no train for it, and the plan's warning says the guess once. Re-planning or editing the day keeps the move, and a day saved before travel days allowed for it moves after it then; the card says so ("This day now starts about 10:15, after you could arrive from Osaka. Say a start time to change it"). If the city list can't be read, an edit re-times the day with no move rather than failing. A day with no time left after the move reads as full, never as a broken bar. If the train data can't be read, the day is measured as a whole day and the line is left off.
+On the day a traveller moves to their next stay, the planned day in the new city starts after the move (checking out, the train, leaving bags), so its first stop is later and it holds fewer stops ([engine](../30-software/engine.md#travel-days)). The box and the day strip measure it against that shorter day, and the travel-day card says the time the plan allows for it, to five minutes ("The plan allows about 1h 30m to move from Osaka: checking out, the train and leaving your bags."). With no train time it gives no figure: the train card already says Bento has no train for it, and the plan's warning says the guess once. Re-planning or editing the day keeps the move, and a day saved before travel days allowed for it moves after it then; the card says so ("This day now starts about 10:30, after you could arrive from Osaka. Say a start time to change it"). If the city list can't be read, an edit re-times the day with no move rather than failing. A day with no time left after the move reads as full, never as a broken bar. If the train data can't be read, the day is measured as a whole day and the line is left off.
 
 ## What it doesn't do
 
