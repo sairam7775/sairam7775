@@ -151,6 +151,7 @@ export default async function PlaceEditor({ params, searchParams }: PageProps<"/
                 <span className="block text-[0.8rem] text-ink-3">The opening hours on record are then the shortest of the year, and travellers are told to check before they go.</span>
               </span>
             </label>
+            <Text name="closedYearly" label="Closed every year" value={place.closed_yearly?.join(", ")} hint='Comma separated, from the place&apos;s own site: "12-28..01-01" is 28 Dec to 1 Jan (an end before the start wraps the year), "01-01" one day.' />
             <Text name="bookingLeadDays" label="Booking lead (days)" value={place.booking_lead_days?.toString()} hint="How far ahead tickets must be bought." />
             <Text name="sources" label="Sources" value={place.sources?.join(", ")} hint="Comma separated. Required to verify — licence compliance depends on it." />
             <Text name="seasons" label="Seasons" value={place.seasons?.join(", ")} hint='When it is at its best: "koyo", "sakura". Leave empty for no season.' />

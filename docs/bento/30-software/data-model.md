@@ -3,7 +3,7 @@ type: design
 status: accepted
 code:
   - bento/supabase/migrations/
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-20
 ---
 
 # Data model rules
@@ -24,6 +24,7 @@ The tables are listed in [architecture](architecture.md); the exact schema is in
 
   A new user table gets the allowance triggers, and a cap if a page reads all its rows.
 - **Booking times are wall-clock times at the place, stored as if UTC**; every reader formats in UTC. An unknown time is stored with a flag and shown as a date alone.
-- Seed data (places, trains) comes from TypeScript sources; the SQL is generated, never edited by hand ([place data](place-data.md), [transit](transit.md)).
+- Seed data (places, trains) comes from TypeScript sources; the SQL is generated, never edited by hand ([place data](place-data.md), [transit](transit.md)). The place seed refreshes drafts only, so a new place fact that verified rows need too is set by id in its migration, with the seeds' values (0032, `closed_yearly`).
+- **A new column on `places` that travellers read goes into `places_public`** by recreating the view with the column appended, followed by the view's `revoke insert, update, delete …` again (0026, 0032).
 
 Agent rules: [bento/CLAUDE.md](../../../bento/CLAUDE.md), "Invariants".

@@ -4,6 +4,9 @@ import { MemoryStore } from "../store.memory";
 import { shiftConflicts, staleDayDates } from "../shift";
 import type { ItemRow } from "../store";
 import type { Proposal } from "../diff";
+import { osaka } from "@/lib/places/seed/osaka";
+import { seedToPlaceInput } from "@/lib/places/seed/to-input";
+import { copy } from "@/copy";
 
 const prefs = { pace: "standard" as const, interestTags: ["art"] as "art"[], energy: 0.4, crowdTolerance: 0.6, discovery: 0.5, excludes: [] };
 const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -49,6 +52,27 @@ describe("moving the dates under a plan", () => {
 describe("shiftConflicts", () => {
   it("is empty for no shift", () => {
     expect(shiftConflicts([sundayMuseum], new Map(), [], 0)).toEqual([]);
+  });
+
+  // Osaka Castle's main tower closes 28 Dec – 1 Jan every year.
+  const castle = seedToPlaceInput(osaka.find((p) => p.id === "osk-osaka-castle")!);
+  const castleDay = { date: "2026-12-26", items: [item("osk-osaka-castle", "Osaka Castle")] };
+
+  it("refuses to move a stop into the dates it closes every year, and says which", () => {
+    const out = shiftConflicts([castleDay], new Map([[castle.id, castle]]), [], 3);
+    expect(out).toEqual([copy.plan.dates.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Tue 29 Dec")]);
+    expect(out[0]).toBe("Osaka Castle is closed 28 Dec – 1 Jan every year, and would land on Tue 29 Dec");
+  });
+
+  it("allows a move past the closure", () => {
+    expect(shiftConflicts([castleDay], new Map([[castle.id, castle]]), [], 7)).toEqual([]);
+  });
+
+  it("refuses it through the store too", async () => {
+    const s = new MemoryStore({ trip: { startDate: "2026-12-24", endDate: "2026-12-28" }, prefs, cities: [{ cityId: "osaka-city", nights: 4 }], days: [{ ...castleDay, cityId: "osaka-city" }] });
+    const err = await s.setTripDates({ startDate: "2026-12-27", endDate: "2026-12-31" }).catch((e) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toMatch(/Osaka Castle is closed 28 Dec – 1 Jan every year/);
   });
 });
 

@@ -10,6 +10,7 @@ import { z } from "zod";
 import { planDay } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
 import { costBandWords } from "@/lib/engine/cost-band";
+import { yearlyRangeWords } from "@/lib/engine/closures";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
 import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types";
 import { placeRoute, route, type Graph } from "@/lib/transit/graph";
@@ -459,6 +460,8 @@ function placeFacts(p: PlaceInput) {
       : p.hoursVary ? `at least ${p.opensAt}–${p.closesAt}; hours change with the season, so check before going`
       : `${p.opensAt}–${p.closesAt}`,
     closed: p.closedWeekdays.length ? p.closedWeekdays.map((d) => WEEKDAY[d]).join(", ") : null,
+    // Only when there is one, so other places' results stay as they were.
+    ...(p.closedYearly?.length ? { closed_every_year: p.closedYearly.map(yearlyRangeWords).join(", ") } : {}),
     booking: p.bookingReq === "none" ? null : `${p.bookingReq}${p.bookingLeadDays ? `, about ${p.bookingLeadDays} days ahead` : ""}`,
     station: p.nearestStation ? `${p.nearestStation} · ${p.stationWalkMin ?? "?"} min walk` : "no station on record",
   };

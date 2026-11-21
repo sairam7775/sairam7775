@@ -60,12 +60,13 @@ export const nara: PlaceSeed[] = [
     tip: "A hall on stilts up the hill behind Todai-ji, free and open all hours, with the best view over Nara. Sunset from the balcony is the best free thing in the city.",
     cost: 0, skipIf: ["limited_mobility"], pairs: ["nra-todaiji"], sources: ["todaiji.or.jp"] }),
 
+  // Closed 28 Dec – 1 Jan (休館日 「12月28日～1月1日」): narahaku.go.jp/info/fee/, read 20 Nov 2026.
   draft({ id: "nra-national-museum", city: c, name: "Nara National Museum", nameJa: "奈良国立博物館", category: "museum", lat: 34.6840, lon: 135.8380,
     station: "kintetsu-nara", walk: 12, tags: ["art", "history"], energy: 0.15, crowd: 0.3, discovery: 0.4, signature: 0.5,
     taste: 45, typical: 90, full: 150, opens: "09:30", closes: "17:00", closedWeekdays: [1],
     crowdNote: "Calm, except during the Shosoin exhibition each autumn, when the queue crosses the park.",
     tip: "Closed Mondays. The Buddhist sculpture hall is the finest single room of its kind in Japan — go for that alone. In the park, so it fits between Kofuku-ji and Todai-ji.",
-    cost: 700, sources: ["narahaku.go.jp"] }),
+    cost: 700, closedYearly: ["12-28..01-01"], sources: ["narahaku.go.jp"] }),
 
   draft({ id: "nra-horyuji", city: c, name: "Horyu-ji", nameJa: "法隆寺", category: "temple", lat: 34.6146, lon: 135.7342,
     station: "horyuji", walk: 20, tags: ["shrines", "history"], energy: 0.35, crowd: 0.3, discovery: 0.5, signature: 0.8,
@@ -88,12 +89,13 @@ export const nara: PlaceSeed[] = [
     tip: "Twin pagodas, one from 730 and one rebuilt in 1981 — stand between them and see the difference twelve centuries makes. Pair with Toshodai-ji next door.",
     cost: 1000, pairs: ["nra-toshodaiji"], sources: ["yakushiji.or.jp"] }),
 
+  // Daigokuden and Suzakumon closed 29 Dec – 3 Jan (「年末年始(12月29日～1月3日)」); the open grounds stay open: heijo-park.jp/information/facility/, read 20 Nov 2026.
   draft({ id: "nra-heijo-palace", city: c, name: "Heijo Palace site", nameJa: "平城宮跡", category: "park", lat: 34.6910, lon: 135.7950,
     station: null, walk: null, tags: ["history", "nature"], energy: 0.4, crowd: 0.15, discovery: 0.7, signature: 0.4, physical: 0.4,
     taste: 30, typical: 60, full: 120, opens: "09:00", closes: "16:30", closedWeekdays: [1],
     crowdNote: "Empty fields with a few reconstructed gates; you may see nobody.",
     tip: "Where the capital was, 710–784, before Kyoto. Mostly grass, with the great gate and a hall rebuilt at full size. For people who like the idea of a place more than the place. Bring a bicycle.",
-    cost: 0, sources: ["heijo-park.jp"] }),
+    cost: 0, closedYearly: ["12-29..01-03"], sources: ["heijo-park.jp"] }),
 
   draft({ id: "nra-wakakusa", city: c, name: "Mount Wakakusa", nameJa: "若草山", category: "viewpoint", lat: 34.6870, lon: 135.8560,
     station: "kintetsu-nara", walk: 35, tags: ["nature"], energy: 0.55, crowd: 0.3, discovery: 0.5, signature: 0.5, physical: 0.6,

@@ -76,12 +76,13 @@ export const kyoto: PlaceSeed[] = [
     tip: "The shrine is free; the garden costs and is the better half — weeping cherries in April, a pond you cross on stepping stones.",
     cost: 600, seasons: ["sakura"], sources: ["heianjingu.or.jp"] }),
 
+  // No visits to the ticketed parts 28–31 Dec, open at New Year (「年末(12月28日～31日)は一般の拝観をお断りします」「年始は休みません」): nanzenji.or.jp/about_rinzaishu/visit, read 20 Nov 2026.
   draft({ id: "kyt-nanzenji", city: c, name: "Nanzen-ji", nameJa: "南禅寺", category: "temple", lat: 35.0113, lon: 135.7935,
     station: "keage", walk: 8, tags: ["shrines", "history"], energy: 0.3, crowd: 0.5, discovery: 0.3, signature: 0.7,
     taste: 30, typical: 60, full: 100, opens: "08:40", closes: "16:30", hoursVary: true,
     crowdNote: "The grounds are free and roomy. The Hojo garden and the gate top are ticketed and calmer.",
     tip: "The brick aqueduct in the grounds looks like it wandered in from Rome. Follow it uphill for five minutes to Nanzen-in, which almost nobody does.",
-    cost: 600, seasons: ["koyo"], pairs: ["kyt-eikando", "kyt-philosophers-path"], sources: ["nanzenji.or.jp"] }),
+    cost: 600, seasons: ["koyo"], pairs: ["kyt-eikando", "kyt-philosophers-path"], closedYearly: ["12-28..12-31"], sources: ["nanzenji.or.jp"] }),
 
   draft({ id: "kyt-eikando", city: c, name: "Eikan-do", nameJa: "永観堂", category: "temple", lat: 35.0148, lon: 135.7945,
     station: "keage", walk: 15, tags: ["shrines", "nature"], energy: 0.35, crowd: 0.6, discovery: 0.4, signature: 0.6,
@@ -125,12 +126,13 @@ export const kyoto: PlaceSeed[] = [
     tip: "1,001 gilded statues in one hall and no photographs allowed, which is why people walk it faster than they expect. Indoors: a good rain day.",
     cost: 600, pairs: ["kyt-national-museum"], sources: ["sanjusangendo.jp"] }),
 
+  // Closed 28 Dec – 1 Jan (2026年度休館日 「2026年12月28日（月）～2027年1月1日（金・祝）」, this winter's dates): kyohaku.go.jp/jp/visit/info/, read 20 Nov 2026.
   draft({ id: "kyt-national-museum", city: c, name: "Kyoto National Museum", nameJa: "京都国立博物館", category: "museum", lat: 34.9900, lon: 135.7730,
     station: "shichijo", walk: 7, tags: ["art", "history"], energy: 0.1, crowd: 0.3, discovery: 0.4, signature: 0.4,
     taste: 45, typical: 90, full: 150, opens: "09:30", closes: "17:00", hoursVary: true, closedWeekdays: [1],
     crowdNote: "Quiet except during a headline special exhibition, when it is the busiest building in the city.",
     tip: "Closed Mondays, like most museums here. Across the road from Sanjusangen-do — pair them on a wet afternoon. Special exhibitions cost more.",
-    cost: 700, pairs: ["kyt-sanjusangendo"], sources: ["kyohaku.go.jp"] }),
+    cost: 700, pairs: ["kyt-sanjusangendo"], closedYearly: ["12-28..01-01"], sources: ["kyohaku.go.jp"] }),
 
   draft({ id: "kyt-toji", city: c, name: "To-ji", nameJa: "東寺", category: "temple", lat: 34.9807, lon: 135.7475,
     station: "kyoto", walk: 15, tags: ["shrines", "history"], energy: 0.2, crowd: 0.4, discovery: 0.4, signature: 0.6,
@@ -167,19 +169,21 @@ export const kyoto: PlaceSeed[] = [
     tip: "Free, always open, and the best place in Kyoto to do nothing. Buy something at a konbini and sit between Sanjo and Shijo at dusk.",
     cost: 0, pairs: ["kyt-pontocho"], sources: ["wikivoyage"] }),
 
+  // Closed 26 Dec – 3 Jan for the visit that matters: the castle grounds close 29–31 Dec (休城日 「12月29日～12月31日」), and the Ninomaru and Honmaru palaces pause 26–28 Dec and 1–3 Jan as well (観覧休止日 「12月26日～28日、1月1日～3日」): nijo-jocastle.city.kyoto.lg.jp, read 20 Nov 2026.
   draft({ id: "kyt-nijo-castle", city: c, name: "Nijo Castle", nameJa: "二条城", category: "castle", lat: 35.0142, lon: 135.7481,
     station: "nijojo-mae", walk: 3, tags: ["history"], energy: 0.3, crowd: 0.6, discovery: 0.2, signature: 0.7,
     taste: 45, typical: 90, full: 120, opens: "08:45", closes: "17:00",
     crowdNote: "The Ninomaru palace is a one-way corridor and moves at the group in front. Mornings are noticeably better.",
     tip: "The nightingale floors squeak on purpose. Ninomaru is the point; the gardens are pleasant and the outer grounds can be skipped if time is short. The Honmaru Palace needs a separate ¥1,000 timed ticket, released 30 days ahead.",
-    cost: 1300, seasons: ["sakura"], sources: ["nijo-jocastle.city.kyoto.lg.jp"] }),
+    cost: 1300, seasons: ["sakura"], closedYearly: ["12-26..01-03"], sources: ["nijo-jocastle.city.kyoto.lg.jp"] }),
 
+  // Closed 28 Dec – 4 Jan (休止日 「年末年始（１２月２８日から１月４日）」): kyoto-gosho.kunaicho.go.jp/visit, read 20 Nov 2026.
   draft({ id: "kyt-imperial-palace", city: c, name: "Kyoto Imperial Palace", nameJa: "京都御所", category: "palace", lat: 35.0254, lon: 135.7621,
     station: "imadegawa", walk: 8, tags: ["history"], energy: 0.3, crowd: 0.3, discovery: 0.4, signature: 0.5,
     taste: 30, typical: 60, full: 90, opens: "09:00", closes: "16:00", hoursVary: true, closedWeekdays: [1],
     crowdNote: "Free entry since 2016 and still uncrowded — the park around it is enormous.",
     tip: "Closed Mondays. You see courtyards and façades, not interiors; the surrounding park is the better reason to come, especially with plum blossom in February.",
-    cost: 0, sources: ["sankan.kunaicho.go.jp"] }),
+    cost: 0, closedYearly: ["12-28..01-04"], sources: ["sankan.kunaicho.go.jp", "kyoto-gosho.kunaicho.go.jp"] }),
 
   draft({ id: "kyt-shimogamo", city: c, name: "Shimogamo Shrine", nameJa: "下鴨神社", category: "shrine", lat: 35.0393, lon: 135.7727,
     station: "demachiyanagi", walk: 10, tags: ["shrines", "nature"], energy: 0.25, crowd: 0.3, discovery: 0.55, signature: 0.5,
@@ -279,12 +283,13 @@ export const kyoto: PlaceSeed[] = [
     tip: "A proper mountain walk between two temples, about two hours with the climb. Kibune's riverside restaurants are the reward. Half a day including the train from Demachiyanagi.",
     cost: 500, skipIf: ["limited_mobility"], seasons: ["koyo"], sources: ["wikivoyage"] }),
 
+  // Closed 30 Dec – 1 Jan (「年末年始(12/30～1/1)」, the museum's winter 2025–26 leaflet): kyotorailwaymuseum.jp/news/sysimg/01745/link_mIOSt.pdf, read 20 Nov 2026.
   draft({ id: "kyt-railway-museum", city: c, name: "Kyoto Railway Museum", nameJa: "京都鉄道博物館", category: "museum", lat: 34.9870, lon: 135.7420,
     station: "kyoto", walk: 20, tags: ["popculture", "history"], energy: 0.2, crowd: 0.5, discovery: 0.4, signature: 0.4,
     taste: 60, typical: 120, full: 180, opens: "10:00", closes: "17:00", closedWeekdays: [3],
     crowdNote: "Families at weekends and in school holidays; calm on weekdays.",
     tip: "Closed Wednesdays. Fifty-odd real locomotives, a working turntable, and a rooftop deck where the actual Shinkansen passes below. The best rainy-day option with children in Kyoto.",
-    cost: 1500, sources: ["kyotorailwaymuseum.jp"] }),
+    cost: 1500, closedYearly: ["12-30..01-01"], sources: ["kyotorailwaymuseum.jp"] }),
 
   draft({ id: "kyt-kyoto-tower", city: c, name: "Kyoto Tower", nameJa: "京都タワー", category: "viewpoint", lat: 34.9875, lon: 135.7593,
     station: "kyoto", walk: 3, tags: ["popculture"], energy: 0.1, crowd: 0.5, discovery: 0.05, signature: 0.3,

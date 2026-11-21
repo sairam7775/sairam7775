@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin";
 import { MAX_BULK_VERIFY, READY, missingForVerify } from "@/lib/places/verify";
+import { isYearlyRange } from "@/lib/engine/closures";
 
 const TIERS = ["deep", "outline", "stub"] as const;
 
@@ -133,6 +134,7 @@ const placeEdit = z.object({
   local_tip: optionalText,
   cost_jpy: numberOrNull.pipe(z.number().nonnegative().nullable()),
   hours_vary: z.boolean(),
+  closed_yearly: list.pipe(z.array(z.string().refine(isYearlyRange, "Closed every year: use MM-DD or MM-DD..MM-DD, such as 12-28..01-01."))),
   booking_lead_days: minutes,
   conflicts_with: list,
   pairs_with: list,
@@ -165,6 +167,7 @@ export async function savePlace(formData: FormData) {
     local_tip: formData.get("localTip"),
     cost_jpy: formData.get("costJpy"),
     hours_vary: formData.get("hoursVary") === "on",
+    closed_yearly: formData.get("closedYearly"),
     booking_lead_days: formData.get("bookingLeadDays"),
     conflicts_with: formData.get("conflictsWith"),
     pairs_with: formData.get("pairsWith"),
