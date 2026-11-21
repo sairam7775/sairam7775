@@ -159,6 +159,14 @@ Explained in `../docs/bento/30-software/engine.md`.
   `closedYearlyOn` is the one check: the filter (a pin stays, with a
   warning), `shift.ts` (date changes) and `get_place`'s `closed_every_year`
   all use it.
+- Growth stops when the budget is spent, not at a count of stops per pace
+  (`MAX_STOPS` 12 is a guard). A stop is taken only where it fits the clock:
+  no pin made late, nothing past closing, no wait of over 20 min for it to
+  open (up to two hours when nothing else fits). Evening places follow the
+  evening-only rule below. A long stay shares the city's places across its
+  days (`cityDaysLeft`, at least 4 a day). Validation drops the stop a day
+  crosses town to come back for (600 m, a 1.5 km detour; not an evening
+  stop in its evening).
 - The anchor holds position 0 through growth and ordering. Timed pins are
   slotted where the clock reaches them. Ordering charges 30 min for a busy
   place that would miss its quiet window.

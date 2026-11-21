@@ -4,6 +4,7 @@ import { buildReason, chooseDuration, DEFAULT_WEIGHTS, scorePlace, type ScoreCon
 import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, Weights } from "./types";
 import { copy } from "@/copy";
 import { toFive } from "./travel-day";
+import { metresBetween } from "./travel";
 
 /** When the graph cannot say, assume this and warn. Never silently zero. */
 const FALLBACK_TRAVEL_MIN = 45;
@@ -11,6 +12,22 @@ const LUNCH_MIN = 60;
 const LUNCH_EARLIEST = 11 * 60 + 30;
 const LUNCH_LATEST = 14 * 60;
 const MAX_VALIDATE_ROUNDS = 3;
+/** A guard, not the pace: the budget decides how full a day is. Packed
+ *  visits are short, so a packed day can hold this many. */
+const MAX_STOPS = 12;
+/** A long stay's share of the places never holds a day below this. */
+const SHARE_FLOOR = 4;
+/** A chosen stop may keep the day waiting this long for it to open: the
+ *  point at which the day warns "the day waits … for it". */
+const OPEN_WAIT_MAX_MIN = 20;
+/** …unless nothing fits without a wait: then up to two hours, an early
+ *  riser's 07:00 start before anything near opens at 09:00. Evening-only
+ *  places have their own rule (`eveningFrom`, below). */
+const OPEN_WAIT_LAST_RESORT_MIN = 120;
+/** A stop this close to an earlier one, reached by a detour longer than
+ *  RETURN_DETOUR_KM, brings the day back across town (validate, below). */
+const RETURN_NEAR_M = 600;
+const RETURN_DETOUR_KM = 1.5;
 
 /** A best window starting at or after this is the evening. */
 const EVENING_FROM = 17 * 60;
@@ -79,7 +96,10 @@ export function planDay(input: DayInput): DayPlan {
   const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[t.pace] - moveMin);
   const arriveMin = usualDayStart(t.crowdTolerance) + moveMin;
   const dayStart = input.dayStartMin ?? arriveMin;
-  const maxItems = input.maxItems ?? (t.pace === "packed" ? 7 : t.pace === "relaxed" ? 4 : 5);
+  // The day grows until its time is spent: relaxed holds fewer stops
+  // because its visits are the full ones and its budget the shortest. On a
+  // long stay it takes no more than its share of the places left (below).
+  let maxItems = input.maxItems ?? MAX_STOPS;
 
   const considered: Rejected[] = [];
   const warnings: string[] = [];
@@ -107,6 +127,9 @@ export function planDay(input: DayInput): DayPlan {
     if (r && lockedIds.has(p.id)) warnings.push(copy.plan.warnings.pinnedAnyway(p.name, r.detail));
     pool.push(p);
   }
+  // Never thinner than a relaxed day (about four stops) for the share's sake.
+  const daysLeft = input.cityDaysLeft ?? 1;
+  if (input.maxItems == null && daysLeft > 1) maxItems = Math.min(maxItems, Math.max(lockedIds.size, SHARE_FLOOR, Math.floor(pool.length / daysLeft)));
 
   // Travel, with an honest fallback. Growing and ordering price legs to
   // places that never make the day, so a fallback leg warns only when the
@@ -214,8 +237,11 @@ export function planDay(input: DayInput): DayPlan {
     }
   }
 
-  /** Pins the day as it stands would reach after closing. */
-  const latePins = () => new Set(time().violations.filter((v) => seq.some((d) => d.locked && d.place.id === v.placeId)).map((v) => v.placeId));
+  /** Pins a timing reaches after closing, or after the time they're pinned for. */
+  const latePinsOf = (tm: ReturnType<typeof time>) => new Set([
+    ...tm.violations.filter((v) => seq.some((d) => d.locked && d.place.id === v.placeId)).map((v) => v.placeId),
+    ...tm.items.filter((i) => seq.some((d) => d.place.id === i.placeId && d.lockedStart != null && i.startMin > d.lockedStart)).map((i) => i.placeId),
+  ]);
 
   // 4 GROW — insert the candidate with the best marginal (score minus the
   // travel it adds) until the budget is spent or nothing is worth adding.
@@ -235,6 +261,9 @@ export function planDay(input: DayInput): DayPlan {
   const grow = () => {
     // Evening places the day did not reach, said once growing stops.
     const eveningSkips = new Map<string, Rejected>();
+    // What an earlier pass left out for want of time, or for a stop since
+    // dropped, gets another look: a refill has the time the drop freed.
+    for (let i = considered.length - 1; i >= 0; i--) if (considered[i].stage === "grow" || considered[i].stage === "conflict") considered.splice(i, 1);
     growLoop(eveningSkips);
     const done = placed();
     for (const r of eveningSkips.values()) if (!done.has(r.placeId) && !rejectedIds().has(r.placeId)) considered.push(r);
@@ -292,7 +321,7 @@ export function planDay(input: DayInput): DayPlan {
           if (best && dTravel >= best.dTravel) continue;
           const saved = seq;
           seq = [...seq.slice(0, at), draftOf(o.p), ...seq.slice(at)];
-          const arrive = time().arrivals.get(o.p.id) ?? 0;
+          const arrive = time(true).arrivals.get(o.p.id) ?? 0;
           seq = saved;
           if (arrive >= from - EVENING_WAIT_MAX) best = { ...o, at, dTravel, marginal: o.score.total - w.travelPerHalfHour * (dTravel / 30) };
         }
@@ -301,38 +330,78 @@ export function planDay(input: DayInput): DayPlan {
       };
       const ranked = fits.filter((o) => o.marginal > 0).map(atEvening).filter((o): o is Option => o != null)
         .filter((o) => o.marginal > 0 && o.duration + o.dTravel <= rem).sort((a, b) => b.marginal - a.marginal);
-      // A stop must not make a pin late: try the best-ranked place at its
-      // best spot, then its other spots, then the next place.
-      let winner: Option | undefined = ranked[0];
-      const pinSkips: Rejected[] = [];
-      if (winner && seq.some((d) => d.locked)) {
-        winner = undefined;
-        const lateBefore = latePins();
+      // A stop must fit the clock: not make a pin late, not leave itself or
+      // another chosen stop past closing, and not keep the day waiting long
+      // for it to open. Try the best-ranked place at its best spot, then its
+      // other spots, then the next place. Adding stops only makes the day
+      // later, so a place that fits no spot now is left out for this pass;
+      // one that only opens too late for now is tried again.
+      let winner: Option | undefined;
+      const clockSkips: Rejected[] = [];
+      const tooEarly: Rejected[] = [];
+      // The best place that fits only with a wait: chosen when nothing
+      // fits without one (an early start before anything near opens).
+      let patient: Option | undefined;
+      let patientWait = Infinity;
+      if (ranked.length) {
+        const now = time(true);
+        const misfit = (tm: ReturnType<typeof time>) => tm.violations.filter((v) => !isLocked(v.placeId));
+        const lateBefore = latePinsOf(now);
+        const misfitBefore = new Set(misfit(now).map((v) => v.placeId));
         for (const o of ranked) {
           const [first, last] = spotsFor(o.p, o.duration);
           const spots = [o.at, ...Array.from({ length: last + 1 - first }, (_, i) => i + first).filter((at) => at !== o.at)];
           let madeLate: string | null = null;
+          // Why it fits nowhere: its own hours, else the stop it would push
+          // past closing.
+          let own: Rejected | null = null;
+          let pushed: string | null = null;
+          let waited: number | null = null;
           for (const at of spots) {
+            const prev = seq[at - 1]?.place;
+            const next = seq[at]?.place;
+            const dTravel = tmin(prev, o.p) + tmin(o.p, next) - tmin(prev, next);
+            // Another spot can cost more travel than the time left.
+            if (o.duration + dTravel > rem) continue;
             const saved = seq;
             seq = [...seq.slice(0, at), draftOf(o.p), ...seq.slice(at)];
-            const late = [...latePins()].find((id) => !lateBefore.has(id));
+            const trial = time(true);
             seq = saved;
-            if (!late) {
-              const prev = seq[at - 1]?.place;
-              const next = seq[at]?.place;
-              winner = { ...o, at, dTravel: tmin(prev, o.p) + tmin(o.p, next) - tmin(prev, next) };
+            const late = [...latePinsOf(trial)].find((id) => !lateBefore.has(id));
+            const bad = misfit(trial).filter((v) => !misfitBefore.has(v.placeId));
+            // Waiting isn't in the budget, so a late opener would stretch
+            // the day, not fill it.
+            const wait = trial.waits.get(o.p.id) ?? 0;
+            if (!late && !bad.length && wait <= OPEN_WAIT_MAX_MIN) {
+              winner = { ...o, at, dTravel };
               break;
             }
-            madeLate ??= late;
+            if (late) madeLate ??= late;
+            own ??= bad.find((v) => v.placeId === o.p.id) ?? null;
+            pushed ??= bad.find((v) => v.placeId !== o.p.id)?.name ?? null;
+            if (!late && !bad.length) {
+              waited = Math.min(waited ?? Infinity, wait);
+              if (wait <= OPEN_WAIT_LAST_RESORT_MIN && (!patient || (patient.p === o.p && wait < patientWait))) {
+                patient = { ...o, at, dTravel };
+                patientWait = wait;
+              }
+            }
           }
           if (winner) break;
-          const pin = seq.find((d) => d.place.id === madeLate)?.place.name ?? madeLate!;
-          pinSkips.push({ placeId: o.p.id, name: o.p.name, stage: "grow", term: "hours", detail: copy.plan.leftOut.makesPinLate(pin) });
+          // Its own hours first, then opening too late for now, then the pin
+          // or stop it would make late.
+          const skip = (detail: string): Rejected => ({ placeId: o.p.id, name: o.p.name, stage: "grow", term: "hours", detail });
+          if (own) clockSkips.push(skip(own.detail));
+          else if (waited != null) tooEarly.push(skip(copy.plan.leftOut.opensLater(clock(parseClock(o.p.opensAt)!), waited)));
+          else if (madeLate) clockSkips.push(skip(copy.plan.leftOut.makesPinLate(seq.find((d) => d.place.id === madeLate)?.place.name ?? madeLate)));
+          else if (pushed) clockSkips.push(skip(copy.plan.leftOut.makesPinLate(pushed)));
         }
       }
+      considered.push(...clockSkips);
+      winner ??= patient;
 
       if (!winner) {
-        considered.push(...pinSkips);
+        considered.push(...tooEarly);
         // Nothing worth adding. Say why, per candidate, once.
         for (const o of options) {
           if (rejectedIds().has(o.p.id) || eveningSkips.has(o.p.id)) continue;
@@ -370,15 +439,21 @@ export function planDay(input: DayInput): DayPlan {
   // And a whole day's travel for a stop reached too late to finish before
   // it closes, so no reordering trades a stop's hours for a shorter route.
   const CLOSED_MIN = 24 * 60;
-  // A shorter route that reaches a pin after closing is not better.
-  const makesPinLate = (was: Draft[]): boolean => {
-    if (!seq.some((d) => d.locked)) return false;
+  // A shorter route that reaches a pin late is not better. Nor is one that
+  // undoes what growing fitted: a chosen stop past closing, or more travel
+  // than the day has time for (the window charge can trade travel for a
+  // quiet hour).
+  const breaksDay = (was: Draft[]): boolean => {
     const now = seq;
-    const after = latePins();
+    const used = usedMin();
+    const tNow = time(true);
+    const after = new Set([...tNow.violations.map((v) => v.placeId), ...latePinsOf(tNow)]);
     seq = was;
-    const before = latePins();
+    const usedWas = usedMin();
+    const tWas = time(true);
+    const before = new Set([...tWas.violations.map((v) => v.placeId), ...latePinsOf(tWas)]);
     seq = now;
-    return [...after].some((id) => !before.has(id));
+    return (used > budgetMin && used > usedWas) || [...after].some((id) => !before.has(id));
   };
   const order = () => {
     const total = () => {
@@ -433,7 +508,7 @@ export function planDay(input: DayInput): DayPlan {
       const before = total();
       const saved = seq;
       seq = next;
-      if (total() < before && !makesPinLate(saved)) return true;
+      if (total() < before && !breaksDay(saved)) return true;
       seq = saved;
       return false;
     };
@@ -478,14 +553,25 @@ export function planDay(input: DayInput): DayPlan {
     if (pins.length) {
       let rest = seq.filter((d) => d.lockedStart == null);
       for (const pin of pins) {
+        // The clock as `time` keeps it: lunch, opening times, earlier pins.
+        // A fuller day reaches lunch before most timed pins.
         let clockAt = dayStart;
+        let lunch = false;
+        const arrive = (m: number) => {
+          if (!lunch && m >= LUNCH_EARLIEST && m <= LUNCH_LATEST) { lunch = true; return m + LUNCH_MIN; }
+          return m;
+        };
         let at = rest.length;
         for (let i = 0; i < rest.length; i++) {
-          const eve = eveningOf(rest[i]);
+          const d = rest[i];
+          const eve = eveningOf(d);
           if (eve != null && pin.lockedStart! < eve) { at = i; break; }
           // An evening stop starts no earlier than its evening.
-          const finishI = Math.max(clockAt + tmin(rest[i - 1]?.place, rest[i].place), eve ?? 0) + rest[i].durationMin;
-          if (finishI + tmin(rest[i].place, pin.place) > pin.lockedStart!) { at = i; break; }
+          const startI = Math.max(arrive(clockAt + tmin(rest[i - 1]?.place, d.place)), eve ?? 0, parseClock(d.place.opensAt) ?? 0, d.lockedStart ?? 0);
+          const finishI = startI + d.durationMin;
+          const hadLunch: boolean = lunch;
+          if (arrive(finishI + tmin(d.place, pin.place)) > pin.lockedStart!) { at = i; break; }
+          lunch = hadLunch;
           clockAt = finishI;
         }
         rest = [...rest.slice(0, at), pin, ...rest.slice(at)];
@@ -496,9 +582,12 @@ export function planDay(input: DayInput): DayPlan {
 
   // 6 TIME — clock times from opening hours, transit and a lunch slot.
   // Its warnings are returned, not pushed: it also runs on trial days that
-  // are thrown away, and only the day returned may warn.
-  const time = (): { items: PlannedItem[]; meals: Meal[]; violations: Rejected[]; warnings: string[]; endMin: number; fares: number; fareKind: "exact" | "estimate"; unpriced: number; arrivals: Map<string, number> } => {
+  // are thrown away, and only the day returned may warn. A trial (`lite`)
+  // needs only the clock: it skips the scores and reasons.
+  const time = (lite = false): { items: PlannedItem[]; meals: Meal[]; violations: Rejected[]; warnings: string[]; endMin: number; fares: number; fareKind: "exact" | "estimate"; unpriced: number; arrivals: Map<string, number>; waits: Map<string, number> } => {
     const items: PlannedItem[] = [];
+    /** How long the day waits for each stop to open. */
+    const waits = new Map<string, number>();
     /** When each stop is reached, before any wait (lunch, opening, evening). */
     const arrivals = new Map<string, number>();
     const meals: Meal[] = [];
@@ -549,6 +638,7 @@ export function planDay(input: DayInput): DayPlan {
       }
       if (tNow < opens) {
         const wait = opens - tNow;
+        waits.set(p.id, wait);
         extra.push(wait > 20 ? copy.plan.reasons.opensAt(clock(opens)) : copy.plan.reasons.opensAtWait(clock(opens)));
         if (wait > 20) warnings.push(copy.plan.warnings.opensLate(p.name, clock(opens), wait));
         tNow = opens;
@@ -556,13 +646,15 @@ export function planDay(input: DayInput): DayPlan {
 
       // The score that explains this item is the one against the day as
       // finally ordered: "your third temple" must be the third one shown.
-      const before = new Map<string, number>();
-      let usedBefore = 0;
-      for (let k = 0; k < i; k++) {
-        before.set(seq[k].place.category, (before.get(seq[k].place.category) ?? 0) + 1);
-        usedBefore += seq[k].durationMin + (k ? tmin(seq[k - 1].place, seq[k].place) : 0);
+      if (!lite) {
+        const before = new Map<string, number>();
+        let usedBefore = 0;
+        for (let k = 0; k < i; k++) {
+          before.set(seq[k].place.category, (before.get(seq[k].place.category) ?? 0) + 1);
+          usedBefore += seq[k].durationMin + (k ? tmin(seq[k - 1].place, seq[k].place) : 0);
+        }
+        d.score = scorePlace(p, t, { categoryCounts: before, remainingMin: budgetMin - usedBefore, date, earlyStart }, w);
       }
-      d.score = scorePlace(p, t, { categoryCounts: before, remainingMin: budgetMin - usedBefore, date, earlyStart }, w);
       if (d.lockedStart != null) {
         if (tNow > d.lockedStart) warnings.push(copy.plan.warnings.pinnedLate(p.name, clock(d.lockedStart), clock(tNow)));
         else tNow = d.lockedStart;
@@ -575,8 +667,14 @@ export function planDay(input: DayInput): DayPlan {
           detail: copy.plan.leftOut.closesBefore(clock(closes), clock(startMin), d.durationMin) });
       }
 
+      if (lite) {
+        items.push({ placeId: p.id, name: p.name, category: p.category, startMin, endMin, durationMin: d.durationMin, locked: d.locked,
+          score: d.score, reason: "", reasonTerms: [], arriveBy, alternatives: d.alternatives, costJpy: p.costJpy ?? 0 });
+        tNow = endMin;
+        return;
+      }
       // Window clauses: the honest version of "go early".
-      const wins = p.bestWindow.map(parseWindow).filter((x) => x.before != null || x.after != null);
+      const wins =p.bestWindow.map(parseWindow).filter((x) => x.before != null || x.after != null);
       if (evening != null) {
         extra.push(copy.plan.reasons.evening);
       } else {
@@ -617,11 +715,11 @@ export function planDay(input: DayInput): DayPlan {
       meals.push({ kind: "lunch", startMin: tNow, endMin: tNow + LUNCH_MIN });
       tNow += LUNCH_MIN;
     }
-    return { items, meals, violations, warnings, endMin: tNow, fares, fareKind, unpriced, arrivals };
+    return { items, meals, violations, warnings, endMin: tNow, fares, fareKind, unpriced, arrivals, waits };
   };
 
   // 7 VALIDATE — drop what the hours reject, refill, re-time. Bounded.
-  let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], warnings: [], endMin: dayStart, fares: 0, fareKind: "exact", unpriced: 0, arrivals: new Map() };
+  let timed: ReturnType<typeof time> = { items: [], meals: [], violations: [], warnings: [], endMin: dayStart, fares: 0, fareKind: "exact", unpriced: 0, arrivals: new Map(), waits: new Map() };
   const isLocked = (id: string) => seq.find((d) => d.place.id === id)?.locked === true;
   const unlockedViolations = () => timed.violations.filter((v) => !isLocked(v.placeId));
   // A pin is never dropped, so when one is reached after closing, a stop
@@ -647,7 +745,7 @@ export function planDay(input: DayInput): DayPlan {
       // Try it: keep the drop only if the pin really starts earlier.
       const saved = seq;
       seq = seq.filter((d) => d !== before);
-      const start = time().items.find((i) => i.placeId === pin.place.id)?.startMin ?? item.startMin;
+      const start = time(true).items.find((i) => i.placeId === pin.place.id)?.startMin ?? item.startMin;
       seq = saved;
       if (start < item.startMin) {
         return [{ placeId: before.place.id, name: before.place.name, stage: "validate", term: "hours", detail: copy.plan.leftOut.makesPinLate(pin.place.name) }];
@@ -664,11 +762,43 @@ export function planDay(input: DayInput): DayPlan {
     if (eve == null || arrive == null || arrive >= eve - EVENING_WAIT_MAX) return [];
     return [{ placeId: d.place.id, name: d.place.name, stage: "validate", term: "best_window", detail: copy.plan.leftOut.eveningOnly(clock(eveningFrom(d.place)!)) }];
   });
+  // A day that leaves an area and comes back to it (a stop within 600 m of
+  // an earlier one, reached by a detour of over 1.5 km in a straight line
+  // through the stops between) loses the stop it came back for, or, when
+  // that is a pin, the chosen stop between them furthest from it. A fuller
+  // day has more stops to wander with: growing puts each where it is
+  // cheapest then, and ordering keeps quiet windows over a shorter route.
+  // Not a return to an evening stop in its evening: the day ends there.
+  const comesBack = (): Rejected[] => {
+    const at = (k: number) => timed.items.find((i) => i.placeId === seq[k].place.id)?.startMin ?? 0;
+    const inEvening = (k: number) => {
+      const from = eveningOf(seq[k]) ?? eveningWindow(seq[k].place);
+      return from != null && at(k) >= from;
+    };
+    const km = (a: Draft, b: Draft) => (metresBetween(a.place, b.place) ?? 0) / 1000;
+    for (let k = 2; k < seq.length; k++) {
+      if (inEvening(k)) continue;
+      for (let i = 0; i < k - 1; i++) {
+        const direct = metresBetween(seq[i].place, seq[k].place);
+        if (direct == null || direct > RETURN_NEAR_M) continue;
+        let path = 0;
+        for (let j = i; j < k; j++) path += km(seq[j], seq[j + 1]);
+        if (path - direct / 1000 <= RETURN_DETOUR_KM) continue;
+        const off = !seq[k].locked ? seq[k]
+          : seq.slice(i + 1, k).filter((d) => !d.locked && !d.anchored).sort((a, b) => km(seq[i], b) - km(seq[i], a))[0];
+        if (!off) continue;
+        return [{ placeId: off.place.id, name: off.place.name, stage: "validate", term: "travel", detail: copy.plan.leftOut.comesBack(seq[i].place.name) }];
+      }
+    }
+    return [];
+  };
   const toDrop = (): Rejected[] => {
     const own = unlockedViolations();
     if (own.length) return own;
     const waits = eveningWaits();
-    return waits.length ? waits : pinDrop();
+    if (waits.length) return waits;
+    const back = comesBack();
+    return back.length ? back : pinDrop();
   };
   let stale = false;
   for (let round = 0; round < MAX_VALIDATE_ROUNDS; round++) {

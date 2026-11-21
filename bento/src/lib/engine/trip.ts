@@ -51,7 +51,8 @@ export function planTrip(input: TripInput): TripPlan {
   const pinnedOn = new Map<string, string>();
   for (const d of input.days) for (const l of d.locked ?? []) if (!pinnedOn.has(l.placeId)) pinnedOn.set(l.placeId, d.date);
 
-  for (const d of input.days) {
+  for (const [i, d] of input.days.entries()) {
+    const cityDaysLeft = input.days.slice(i).filter((x) => x.cityId === d.cityId).length;
     const pinnedElsewhere = [...pinnedOn].filter(([, date]) => date !== d.date).map(([id]) => id);
     const plan = planDay({
       date: d.date,
@@ -63,6 +64,7 @@ export function planTrip(input: TripInput): TripPlan {
       bookedPlaceIds: input.bookedPlaceIds,
       usedPlaceIds: [...used, ...pinnedElsewhere],
       weights: input.weights,
+      cityDaysLeft,
       move: d.movingFrom && d.movingFrom !== d.cityId ? travelMove(d.movingFrom, input.trainMinutes?.(d.movingFrom, d.cityId) ?? null) : undefined,
     });
     for (const it of plan.items) used.add(it.placeId);

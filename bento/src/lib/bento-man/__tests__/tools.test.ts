@@ -623,17 +623,21 @@ describe("days", () => {
     // at 17:30, with other stops round them; Fushimi Inari on the travel
     // day of the 22nd can still be reached after 17:30, so it says "busy at
     // this hour. It's quieter before 08:00 or after 17:30"; the re-planned
-    // 23rd is byte for byte as before).
+    // 23rd is byte for byte as before), and when days grew until their time
+    // was spent instead of stopping at a count of stops per pace (more
+    // stops, later ends; a stop fits its closing and opening times when it
+    // is chosen; a long stay shares its city; a day that crosses town and
+    // comes back loses the stop it came back for).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("3dd3c50d0c32b9554c9029f33372bb98dd635d4acca945cffe1eff067ba4e6c5");
+    expect(sha(plan)).toBe("57550d21a680e2ab70d5751b124866d769744f93609257d354aad1c606aef67e");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("2f90ac76bef6979269b4a544f58500b8e3243bf9e23f7544c0b24c1f0f174f93");
+    expect(sha(replan)).toBe("0ea8c69a45794eacee8ebf5358656c902f92627753bd746dd290482b7276580f");
   });
 
   it("the main-sights line passes the voice lint", () => {

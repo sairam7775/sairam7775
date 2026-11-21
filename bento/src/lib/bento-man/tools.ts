@@ -863,7 +863,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const days = [];
       const tiers: CoverageTier[] = [];
       const skipped: string[] = [];
-      for (const t of targets) {
+      for (const [ti, t] of targets.entries()) {
         const f = facts.get(t.cityId)!;
         if (f.tier === "stub") {
           skipped.push(`${t.date}: ${copy.plan.route.notCovered(f.name)}`);
@@ -885,6 +885,8 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           // A ticket the traveller holds lets a booking-required place in.
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
           move: moveOn(t.date, t.cityId),
+          // A long stay shares the city's places across its days, as planTrip does.
+          cityDaysLeft: targets.slice(ti).filter((x) => x.cityId === t.cityId).length,
         });
         for (const it of plan.items) used.add(it.placeId);
         tiers.push(f.tier);

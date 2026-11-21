@@ -63,7 +63,9 @@ describe("the Arashiyama trap covers the whole area", () => {
               if (with_.length) bad.push(`${date} ${pace} [${interestTags}] crowd ${crowdTolerance} max ${maxItems ?? "-"}: ${with_.join(", ")}`);
             }
     expect(bad).toEqual([]);
-  });
+    // 336 Kyoto days, the packed ones up to 12 stops: about a second alone,
+    // longer on a busy runner.
+  }, 15_000);
 
   it("keeps Fushimi Inari off a day pinned to Togetsukyo or the Sagano train", () => {
     for (const pinned of ["kyt-togetsukyo", "kyt-sagano-train"]) {

@@ -145,6 +145,10 @@ export interface DayInput {
   move?: TravelMove;
   weights?: Partial<Weights>;
   maxItems?: number;
+  /** Days still to plan in this city, this one included. A day then takes
+   *  no more than its share of the places left, so a long stay's last days
+   *  aren't empty. Default 1: the day may use them all. */
+  cityDaysLeft?: number;
 }
 
 export interface ScoreTerm {

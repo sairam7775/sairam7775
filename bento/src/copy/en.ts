@@ -1208,6 +1208,8 @@ export const en = {
       closesBefore: (closes: string, arrive: string, visit: number) => `closes at ${closes}; you'd arrive at ${arrive} and need ${visit} min`,
       makesPinLate: (pinned: string) => `left out to leave time to reach ${pinned} before it closes`,
       eveningOnly: (from: string) => `best after ${from}, and this day ends before then`,
+      opensLater: (opens: string, wait: number) => `opens at ${opens}, and the day would wait ${wait} min for it`,
+      comesBack: (near: string) => `left out so the day doesn't cross town and come back to ${near}`,
     },
     // Notes under a planned day.
     warnings: {
