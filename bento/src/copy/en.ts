@@ -1109,9 +1109,13 @@ export const en = {
         notYet: "That trip can't be started right now. Pick another one.",
         // A start that puts one of the trip's must-see places on a day it is
         // closed (ready-made/closed.ts).
-        closedYearly: (name: string, range: string, day: string) => `${name} is closed ${range} every year, and this start puts it on ${day}. Pick another first day.`,
-        closedWeekly: (name: string, weekday: string, day: string) => `${name} is closed on ${weekday}s, and this start puts it on ${day}. Pick another first day.`,
-        closedDate: (name: string, day: string) => `${name} is closed on ${day}, the day this start puts it on. Pick another first day.`,
+        closedYearly: (name: string, range: string, day: string) => `${name} is closed ${range} every year, and this start puts it on ${day}.`,
+        closedWeekly: (name: string, weekday: string, day: string) => `${name} is closed on ${weekday}s, and this start puts it on ${day}.`,
+        closedDate: (name: string, day: string) => `${name} is closed on ${day}, the day this start puts it on.`,
+        // After them: the nearest start that keeps every must-see open, or
+        // (none within two months either way) a plain ask.
+        closedNearest: (day: string) => `The nearest first day that works is ${day}.`,
+        closedPickAnother: "Pick another first day.",
         failed: "That trip didn't start. Try again in a moment.",
         create: "start the trip",
       },

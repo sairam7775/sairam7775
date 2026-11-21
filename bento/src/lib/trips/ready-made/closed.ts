@@ -58,12 +58,35 @@ export function closedMustSees(trip: ReadyMadeTrip, startDate: string, places: R
 const WEEKDAY = copy.plan.weekdays as Record<number, string>;
 const dayWords = (d: string) => new Date(`${d}T00:00:00Z`).toLocaleDateString(copy.locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 
-/** The picker's refusal: the place, its closure, the day, and to pick
- *  another first day. */
-export function closedMustSeeWords(c: ClosedMustSee): string {
+const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+/** How far either way `nearestOpenStart` looks: past any year-end break. */
+export const NEAREST_SEARCH_DAYS = 60;
+
+/** The start nearest to `startDate` that puts no must-see on a closed day,
+ *  never before `notBefore` ("YYYY-MM-DD"); the earlier one on a tie. Null
+ *  when none is within `NEAREST_SEARCH_DAYS` either way. */
+export function nearestOpenStart(trip: ReadyMadeTrip, startDate: string, places: ReadonlyMap<string, ClosingFacts>, notBefore: string): string | null {
+  for (let k = 1; k <= NEAREST_SEARCH_DAYS; k++) {
+    for (const d of [addDays(startDate, -k), addDays(startDate, k)]) {
+      if (d >= notBefore && !closedMustSees(trip, d, places).length) return d;
+    }
+  }
+  return null;
+}
+
+const clause = (c: ClosedMustSee) => {
   const e = copy.readyMade.picker.errors;
   const day = dayWords(c.date);
   if (c.why.kind === "weekly") return e.closedWeekly(c.name, WEEKDAY[c.why.weekday], day);
   if (c.why.kind === "date") return e.closedDate(c.name, day);
   return e.closedYearly(c.name, yearlyRangeWords(c.why.range), day);
+};
+
+/** The picker's refusal: every closed must-see with its closure and its
+ *  day, then the nearest first day that works (`nearest`), or, with none,
+ *  to pick another. */
+export function closedMustSeeWords(closed: readonly ClosedMustSee[], nearest: string | null): string {
+  const e = copy.readyMade.picker.errors;
+  return [...closed.map(clause), nearest ? e.closedNearest(dayWords(nearest)) : e.closedPickAnother].join(" ");
 }

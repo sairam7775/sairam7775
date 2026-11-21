@@ -44,12 +44,51 @@ const SEASONS = { winter: "2027-01-20", spring: "2027-04-01", summer: "2027-07-1
 const YEAR_END = ["2026-12-30", "2027-01-01"];
 const STARTS = [...WEEK, ...Object.values(SEASONS), ...YEAR_END];
 
+// Every start from 11 Dec to 5 Jan. The yearly closures in the seeds run
+// from 25 Dec at the earliest to 4 Jan at the latest, so this covers every
+// start whose days can meet one, the 14-day trip included. Checked for
+// refusal, and each start that isn't refused planned at one pace and crowd
+// setting.
+const addDay = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+const WINDOW = Array.from({ length: 26 }, (_, i) => addDay("2026-12-11", i));
+
 // A start that would put a must-see on a day it is closed is refused before
 // anything is planned (`closedMustSees`: the picker, and suggest_route for a
-// trip with dates; the owner's call, 21 Nov 2026). Among the starts here
-// that is Osaka Castle, whose main tower closes 28 Dec – 1 Jan, on these
-// starts only; every other start must plan with every must-see open.
-const REFUSED: [string, string][] = [["osaka-day", "2026-12-30"], ["osaka-day", "2027-01-01"], ["osaka-kyoto-nara-5", "2026-12-30"]];
+// trip with dates; the owner's call, 21 Nov 2026). Over the year-end window
+// these are every refused start, with the must-sees that refuse it: Osaka
+// Castle (28 Dec – 1 Jan), the Peace Memorial Museum (30–31 Dec) and
+// Shukkeien Garden (29–31 Dec). Every other start must plan with every
+// must-see open.
+const REFUSED: Record<string, Record<string, string[]>> = {
+  "osaka-day": Object.fromEntries(["2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01"].map((d) => [d, ["Osaka Castle"]])),
+  "osaka-kyoto-nara-5": Object.fromEntries(["2026-12-27", "2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31"].map((d) => [d, ["Osaka Castle"]])),
+  "classic-7": Object.fromEntries(["2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27"].map((d) => [d, ["Osaka Castle"]])),
+  "kansai-hiroshima-7": {
+    "2026-12-23": ["Shukkeien Garden"],
+    "2026-12-24": ["Shukkeien Garden"],
+    "2026-12-25": ["Peace Memorial Museum", "Shukkeien Garden"],
+    "2026-12-26": ["Peace Memorial Museum"],
+  },
+  "tokyo-to-miyajima-10": {
+    "2026-12-20": ["Shukkeien Garden"],
+    "2026-12-21": ["Shukkeien Garden"],
+    "2026-12-22": ["Osaka Castle", "Shukkeien Garden"],
+    "2026-12-23": ["Osaka Castle", "Peace Memorial Museum"],
+    "2026-12-24": ["Osaka Castle", "Peace Memorial Museum"],
+    "2026-12-25": ["Osaka Castle"],
+    "2026-12-26": ["Osaka Castle"],
+  },
+  "all-nine-14": {
+    "2026-12-16": ["Shukkeien Garden"],
+    "2026-12-17": ["Shukkeien Garden"],
+    "2026-12-18": ["Shukkeien Garden"],
+    "2026-12-19": ["Osaka Castle", "Peace Memorial Museum"],
+    "2026-12-20": ["Osaka Castle", "Peace Memorial Museum"],
+    "2026-12-21": ["Osaka Castle"],
+    "2026-12-22": ["Osaka Castle"],
+    "2026-12-23": ["Osaka Castle"],
+  },
+};
 const PACES: TravelPace[] = ["relaxed", "standard", "packed"];
 const CROWDS = [0.2, 0.6]; // an early riser (07:00) and a 09:00 start
 
@@ -129,12 +168,12 @@ describe("ready-made trips", () => {
       });
 
       it("is refused on exactly the starts that put a must-see on a closed day", () => {
-        for (const start of STARTS) {
-          const refused = REFUSED.some(([id, d]) => id === trip.id && d === start);
+        const found: Record<string, string[]> = {};
+        for (const start of [...new Set([...STARTS, ...WINDOW])]) {
           const closed = closedMustSees(trip, start, placeById);
-          expect(closed.length > 0, `${trip.id} ${start}`).toBe(refused);
-          if (refused) expect(closed.map((c) => c.name)).toEqual(["Osaka Castle"]);
+          if (closed.length) found[start] = closed.map((c) => c.name);
         }
+        expect(found).toEqual(REFUSED[trip.id] ?? {});
       });
 
       it("never puts two must-see places that conflict on one day (pins skip the planner's check)", () => {
@@ -149,11 +188,13 @@ describe("ready-made trips", () => {
 
       it("plans every day and keeps every must-see, open and in its hours, for a start on each weekday and with each season's scoring", () => {
         const bad: string[] = [];
-        for (const start of STARTS) {
+        for (const start of [...new Set([...STARTS, ...WINDOW])]) {
           // Refused before planning: no traveller gets this start.
           if (closedMustSees(trip, start, placeById).length) continue;
-          for (const pace of PACES)
-            for (const crowdTolerance of CROWDS) {
+          // The year-end window at one setting; the rest at every one.
+          const everySetting = STARTS.includes(start);
+          for (const pace of everySetting ? PACES : ["standard" as const])
+            for (const crowdTolerance of everySetting ? CROWDS : [0.6]) {
               const input = readyMadeToPlan(trip, start);
               const plan = planTrip({
                 days: input.days,
