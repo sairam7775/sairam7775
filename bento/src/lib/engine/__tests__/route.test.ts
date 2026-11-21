@@ -186,6 +186,16 @@ describe("city-to-city legs start where the traveller is", () => {
     expect(l.minutes).toBe(4 + 5 + 85);
   });
 
+  it("goes from Osaka to Tokyo and to Himeji by the Shinkansen from Shin-Osaka", () => {
+    const head = (l: { lines: string[] }) => l.lines.map((s) => s.split(" · ").slice(0, 2).join(" · "));
+    const tokyo = leg("osaka-city", "tokyo-city");
+    expect(head(tokyo)).toEqual(["JR Kyoto Line · Osaka → Shin-Osaka", "Tokaido Shinkansen · Nozomi"]);
+    expect(tokyo.minutes).toBe(4 + 5 + 147);
+    const himeji = leg("osaka-city", "himeji");
+    expect(head(himeji)).toEqual(["JR Kyoto Line · Osaka → Shin-Osaka", "Sanyo Shinkansen · Nozomi"]);
+    expect(himeji.minutes).toBe(4 + 5 + 30);
+  });
+
   it("leaves Kyoto ⇄ Nara on the Kintetsu limited express", () => {
     expect(leg("kyoto-city", "nara-city")).toMatchObject({ minutes: 35, fareJpy: 1280, lines: [expect.stringMatching(/^Kintetsu Kyoto Line · Limited Express · Kyoto → Kintetsu-Nara/)] });
   });
