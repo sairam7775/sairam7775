@@ -151,4 +151,30 @@ describe("planDay and pins", () => {
     if (order.includes("x")) expect(order.indexOf("x")).toBeGreaterThan(order.indexOf("b"));
     else expect(plan.considered.find((r) => r.placeId === "x")?.detail).toBe(copy.plan.leftOut.makesPinLate("B"));
   });
+
+  it("moves a chosen stop past a pin to its side of town, and keeps the pins in their order", () => {
+    // On a line: pins A at 0 and B at 10; X sits beside A, Y beside B, and
+    // Z beyond B. Ten minutes a unit. A day that goes A, Y, X, B crosses
+    // town twice; the shortest keeps each stop beside its pin. B before A
+    // would be shorter still from Z's side, but pins keep their order.
+    const base: PlaceInput = {
+      id: "", cityId: "test-city", name: "", category: "", interestTags: [], energy: 0.3, crowdLevel: 0.3,
+      discovery: 0.5, signature: 0.9, physicalDemand: null, durationTasteMin: 30, durationTypicalMin: 30,
+      durationFullMin: 30, bestWindow: [], skipIf: [], worthItIf: [], costJpy: 0, bookingReq: "none",
+      bookingLeadDays: null, opensAt: null, closesAt: null, closedWeekdays: [], closedDates: [], conflictsWith: [],
+      pairsWith: [], verificationStatus: "verified", coverageTier: "deep", nearestStation: "s", stationWalkMin: 0,
+    };
+    const pos: Record<string, number> = { a: 0, x: 0.5, b: 10, y: 9.5, z: 11 };
+    const places = Object.keys(pos).map((id, i) => ({ ...base, id, name: id.toUpperCase(), category: `c${i}` }));
+    const line: TravelFn = (p, q) => ({ mode: "walk", minutes: Math.round(Math.abs(pos[p.id] - pos[q.id]) * 10), fareJpy: 0, fareKind: "exact", detail: "", lines: [] });
+    const plan = planDay({
+      date: "2027-05-19", cityId: "test-city", places, travel: line, traveller,
+      locked: [{ placeId: "a" }, { placeId: "b" }],
+    });
+    const order = plan.items.map((i) => i.placeId);
+    expect(order.indexOf("a")).toBeLessThan(order.indexOf("b"));
+    // Never back across town: the positions only ever rise.
+    const along = order.map((id) => pos[id]);
+    expect(along, order.join(" > ")).toEqual([...along].sort((m, n) => m - n));
+  });
 });

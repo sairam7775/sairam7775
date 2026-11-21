@@ -263,7 +263,8 @@ export function planDay(input: DayInput): DayPlan {
     }
   };
 
-  // 5 ORDER — 2-opt over unpinned runs. The objective is travel plus a
+  // 5 ORDER — 2-opt over unpinned runs, then or-opt: runs of chosen stops
+  // moved past pins, which keep their order. The objective is travel plus a
   // charge for every busy place that would miss its quiet window, so a
   // "before 08:00" shrine is not shuffled to midday just to save a hop.
   const WINDOW_MISS_MIN = 30;
@@ -299,19 +300,45 @@ export function planDay(input: DayInput): DayPlan {
       });
       return travelMin + miss * WINDOW_MISS_MIN;
     };
+    const tryOrder = (next: Draft[]): boolean => {
+      const before = total();
+      const saved = seq;
+      seq = next;
+      if (total() < before && !makesPinLate(saved)) return true;
+      seq = saved;
+      return false;
+    };
     let improved = true;
     let guard = 0;
-    while (improved && guard++ < 50) {
+    while (improved && guard++ < 100) {
       improved = false;
+      // Reverse a run of chosen stops (2-opt). A run never holds a pin.
       for (let i = 0; i < seq.length - 1; i++) {
         for (let j = i + 1; j < seq.length; j++) {
           if (seq.slice(i, j + 1).some((d) => d.locked || d.anchored)) continue;
-          const before = total();
-          const rev = [...seq.slice(0, i), ...seq.slice(i, j + 1).reverse(), ...seq.slice(j + 1)];
-          const saved = seq;
-          seq = rev;
-          if (total() < before && !makesPinLate(saved)) improved = true;
-          else seq = saved;
+          if (tryOrder([...seq.slice(0, i), ...seq.slice(i, j + 1).reverse(), ...seq.slice(j + 1)])) improved = true;
+        }
+      }
+      // Move a run of chosen stops, either way round, anywhere else in the
+      // day, past pins too (or-opt). Reversing runs alone can't take a stop
+      // across a pin, so a day went museum → Umeda → back to the castle it
+      // started beside. Pins keep their order; only the stops the planner
+      // chose move, and the anchor keeps the front.
+      const first = seq[0]?.anchored ? 1 : 0;
+      moves: for (let i = first; i < seq.length; i++) {
+        for (let j = i; j < seq.length; j++) {
+          if (seq[j].locked || seq[j].anchored) break;
+          const run = seq.slice(i, j + 1);
+          const rest = [...seq.slice(0, i), ...seq.slice(j + 1)];
+          for (let at = first; at <= rest.length; at++) {
+            if (at === i) continue;
+            for (const r of run.length > 1 ? [run, [...run].reverse()] : [run]) {
+              if (tryOrder([...rest.slice(0, at), ...r, ...rest.slice(at)])) {
+                improved = true;
+                break moves;
+              }
+            }
+          }
         }
       }
     }

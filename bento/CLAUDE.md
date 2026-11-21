@@ -162,11 +162,19 @@ Explained in `../docs/bento/30-software/engine.md`.
 - The anchor holds position 0 through growth and ordering. Timed pins are
   slotted where the clock reaches them. Ordering charges 30 min for a busy
   place that would miss its quiet window.
+- Ordering moves runs of the planner's own stops past pins (or-opt) as
+  well as reversing them (2-opt); pins keep their order. A hop is the
+  train between stations or a walk straight across when quicker
+  (`travel.ts`: straight line × 1.3 at 80 m a minute; at most 20 min in
+  place of a train; by one station, always the shorter walk). Places need
+  `lat`/`lon` for that (`places_public.coords`, read with `readPoint`).
+  `ready-made-order.test.ts` keeps days from crossing town and back.
 - Scores shown on items are recomputed against the final order, so "your
   third temple today" is the third one shown.
 - Known gaps: windows are soft except for the anchor; a place with no
   station costs a flat 45 min and a warning (only for a leg the returned
-  day travels, never a candidate it left out); season tags are optional and
+  day travels, never a candidate it left out; a short walk from its
+  neighbour is the walk instead); season tags are optional and
   neutral when absent.
 - A season counts only inside its typical window for the city (or area) on
   that date (`seasons.ts`, one table with a source per row), never by
