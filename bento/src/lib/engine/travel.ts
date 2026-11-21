@@ -30,15 +30,20 @@ export const MOBILITY_WALK_MAX_MIN = 5;
  *  Osaka Castle to the Museum of History. So:
  *  - a hike, or a castle (inside its moats and walls, entered at a few
  *    gates), is never walked to or from in a straight line;
- *  - a steep place (`physicalDemand` 0.5 and over) never has a straight walk
- *    in place of a train. Beside another place by its own station it keeps
- *    the shorter walk: both are a walk from that station anyway, and the
- *    slope is on either one (Kiyomizu-dera down through Ninenzaka). */
+ *  - a steep place (`physicalDemand` 0.5 and over) with a station never has
+ *    a straight walk in place of a train. Beside another place by its own
+ *    station it keeps the shorter walk: both are a walk from that station
+ *    anyway, and the slope is on either one (Kiyomizu-dera down through
+ *    Ninenzaka). With no station it walks straight like any place: its
+ *    only other time is the flat 45-minute guess (Otokoyama in Himeji). */
 export const STEEP_DEMAND = 0.5;
 const NO_STRAIGHT_LINE = new Set(["hike", "castle"]);
 
 const blocksStraightWalk = (p: PlaceInput) => NO_STRAIGHT_LINE.has(p.category);
-const steep = (p: PlaceInput) => (p.physicalDemand ?? 0) >= STEEP_DEMAND;
+// A steep place with a station never walks straight in place of a train.
+// With no station it has only the flat 45-minute guess otherwise, and the
+// slope is there whichever way you arrive, so it walks straight like any.
+const steepByTrain = (p: PlaceInput) => (p.physicalDemand ?? 0) >= STEEP_DEMAND && p.nearestStation != null;
 
 /** Metres in a straight line between two places, or null without both
  *  positions. Equirectangular: exact enough over a walk. */
@@ -107,8 +112,9 @@ export function travelFromGraph(graph: Graph, opts: { mobility?: readonly string
     }
     // Two places by one station were already a walk (via the station):
     // walking straight is never longer. In place of a train, or of no
-    // route at all, only a short walk, and never to or from a steep place.
-    if (direct != null && direct <= DIRECT_WALK_MAX_MIN && !steep(a) && !steep(b) && (!leg || direct < leg.minutes)) leg = onFoot(direct, true);
+    // route at all, only a short walk, and never to or from a steep place
+    // that has a station.
+    if (direct != null && direct <= DIRECT_WALK_MAX_MIN && !steepByTrain(a) && !steepByTrain(b) && (!leg || direct < leg.minutes)) leg = onFoot(direct, true);
     memo.set(k, leg);
     return leg;
   };

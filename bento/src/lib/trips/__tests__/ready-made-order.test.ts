@@ -55,11 +55,9 @@ const km = (a: string, b: string) => {
 /** Every time the day leaves a stop's area and comes back to it: a later
  *  stop within 600 m of an earlier one, reached by a detour of more than
  *  `detourKm` (a kilometre and a half unless said) through stops between.
- *  Two returns are not the ordering's to fix, so they don't count: to an
- *  evening place (it opens at 17:00 or later, so the day ends there,
- *  wherever it began), and through a stop reached by the no-route estimate
- *  (a steep place with no station: the engine can't tell where it is, and
- *  the day warns). */
+ *  A return to an evening place doesn't count: it opens at 17:00 or later,
+ *  so the day ends there wherever it began, and that is not the ordering's
+ *  to fix. */
 const returns = (day: DayPlan, detourKm = 1.5): string[] => {
   const ids = day.items.map((i) => i.placeId);
   const out: string[] = [];
@@ -68,7 +66,6 @@ const returns = (day: DayPlan, detourKm = 1.5): string[] => {
     for (let k = i + 2; k < ids.length; k++) {
       const direct = km(ids[i], ids[k]);
       if (direct > 0.6 || evening(ids[k])) continue;
-      if (day.items.slice(i + 1, k + 1).some((it) => it.arriveBy?.mode === "estimate")) continue;
       let path = 0;
       for (let j = i; j < k; j++) path += km(ids[j], ids[j + 1]);
       if (path - direct > detourKm) out.push(`${day.date}: ${ids.slice(i, k + 1).join(" > ")}`);
@@ -121,6 +118,17 @@ describe("ready-made days don't go back and forth", () => {
     for (const [tripId, i] of [["osaka-kyoto-nara-5", 4], ["kyoto-2", 1], ["kyoto-arashiyama", 0]] as const) {
       const day = plan(tripId).days[i];
       expect(returns(day), `${tripId}: ${names(day).join(" > ")}`).toEqual([]);
+    }
+  });
+
+  it("Himeji, packed: not out to Mount Shosha and back to Otokoyama beside the castle", () => {
+    // Otokoyama is steep with no station: before it could walk straight it
+    // cost the flat 45-minute guess from anywhere, and the day went castle
+    // > Engyoji > back to Otokoyama, a detour of over 10 km.
+    for (const start of ["2027-05-10", "2027-05-12", "2026-11-24"]) {
+      const day = plan("kansai-hiroshima-7", start, "packed", 0.6).days[4];
+      expect(day.cityId).toBe("himeji");
+      expect(returns(day, 3.5), names(day).join(" > ")).toEqual([]);
     }
   });
 

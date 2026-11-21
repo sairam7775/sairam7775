@@ -77,6 +77,18 @@ describe("travelFromGraph", () => {
     expect(travel(at("v", "a", 35, 135, 15), steepNear)!.minutes).toBe(7);
   });
 
+  it("lets a steep place with no station walk straight, since it has nothing else", () => {
+    // Its only other time is the flat 45-minute guess, and the slope is
+    // there whichever way you arrive. A hike or a castle still never does.
+    const travel = travelFromGraph(buildGraph(stations, edges));
+    const hill = { id: "hill3", nearestStation: null, stationWalkMin: null, lat: north(400), lon: 135, physicalDemand: 0.6 } as unknown as PlaceInput;
+    expect(travel(at("p", "a", 35, 135), hill)).toMatchObject({ mode: "walk", minutes: 7 });
+    const trail = { ...hill, id: "trail3", category: "hike" } as PlaceInput;
+    expect(travel(at("p", "a", 35, 135), trail)).toBeNull();
+    // A hard mobility need keeps its five minutes.
+    expect(travelFromGraph(buildGraph(stations, edges), { mobility: ["wheelchair"] })(at("p", "a", 35, 135), hill)).toBeNull();
+  });
+
   it("for a hard mobility need, walks straight only a few minutes", () => {
     expect(MOBILITY_WALK_MAX_MIN).toBe(5);
     const graph = buildGraph(stations, edges);

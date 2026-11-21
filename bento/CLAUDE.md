@@ -169,7 +169,7 @@ Explained in `../docs/bento/30-software/engine.md`.
   most 20 min in place of a train; by one station, always the shorter
   walk). A straight walk is an estimate and reads "About a 14-min walk".
   Never straight to or from a hike or a castle, nor in place of a train to
-  or from a steep place (`physicalDemand` ≥ 0.5); a hard mobility need gets
+  or from a steep place with a station (`physicalDemand` ≥ 0.5); a hard mobility need gets
   5 minutes at most, so `travelFromGraph` takes the traveller's mobility.
   Ordering also charges a whole day for a stop finished after closing.
   Places need `lat`/`lon` for that (`places_public.coords`, read with
