@@ -15,6 +15,7 @@ import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { copy } from "@/copy";
 import { cityTrainMinutes, MOVE_ALLOWANCE_MIN } from "@/lib/engine/travel-day";
 import { DAY_BUDGET_MINUTES } from "@/lib/types";
+import { SCENARIOS } from "../evals/scenarios";
 
 const owner = { pace: "standard" as const, interestTags: ["shrines", "history", "nature"] as ("shrines" | "history" | "nature")[], energy: 0.25, crowdTolerance: 0.15, discovery: 0.5, excludes: ["beaches", "hiking"] };
 const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -301,6 +302,22 @@ describe("suggest_route and the ready-made trips", () => {
     expect(r.cities).toBeDefined();
   });
 
+  it("with the trip's own dates, never offers a trip whose must-see would be closed on its day", async () => {
+    // Osaka Castle closes 28 Dec – 1 Jan; the five days put it on day 2.
+    for (const startDate of ["2026-12-27", "2026-12-30", "2026-12-31"]) {
+      const r = JSON.parse(await suggest(new MemoryStore({ trip: { startDate, endDate: shiftDate(startDate, 4) }, prefs: owner })));
+      expect(r.ready_made, startDate).toBeUndefined();
+      expect(r.cities, startDate).toBeDefined();
+    }
+    for (const startDate of ["2026-12-26", "2027-01-01"]) {
+      const r = JSON.parse(await suggest(new MemoryStore({ trip: { startDate, endDate: shiftDate(startDate, 4) }, prefs: owner })));
+      expect(r.ready_made.map((t: { id: string }) => t.id), startDate).toEqual(["osaka-kyoto-nara-5"]);
+    }
+    // No dates: nothing to check against, so it is offered as before.
+    const undated = JSON.parse(await suggest(new MemoryStore({ prefs: owner }), { nights: 4 }));
+    expect(undated.ready_made.map((t: { id: string }) => t.id)).toEqual(["osaka-kyoto-nara-5"]);
+  });
+
   it("takes nights given as a trip of one more day, or of as many days when none is that long", async () => {
     const asked = JSON.parse(await suggest(new MemoryStore({ prefs: owner }), { nights: 6 }));
     expect(asked.ready_made.map((t: { id: string }) => t.id)).toEqual(["kansai-hiroshima-7"]);
@@ -348,6 +365,16 @@ describe("suggest_route and the ready-made trips", () => {
       }
     }
     expect(offered).toBeGreaterThan(5);
+  });
+
+  it("gives the route-suggest-kansai-5 eval scenario the ready-made trip, unchanged by the closure check", async () => {
+    // 20–24 Nov puts no must-see on a closed day, so the dated check must
+    // leave the result exactly as for the same five days without dates.
+    const s = SCENARIOS.find((x) => x.id === "route-suggest-kansai-5")!;
+    const dated = await suggest(new MemoryStore(s.setup));
+    expect(JSON.parse(dated).ready_made.map((t: { id: string }) => t.id)).toEqual(["osaka-kyoto-nara-5"]);
+    expect(await suggest(new MemoryStore(s.setup), { nights: 4 })).toBe(dated);
+    expect(await suggest(new MemoryStore({ ...s.setup, trip: undefined }), { nights: 4 })).toBe(dated);
   });
 
   it("leaves the corridor table's result byte for byte as it was when nothing matches", async () => {

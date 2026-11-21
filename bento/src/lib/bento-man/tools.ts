@@ -17,6 +17,7 @@ import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types"
 import { placeRoute, route, type Graph } from "@/lib/transit/graph";
 import { readyMadeToPlan } from "@/lib/trips/ready-made/to-plan";
 import { readyMadeForNights, shorterNote } from "@/lib/trips/ready-made/suggest";
+import { closedMustSees } from "@/lib/trips/ready-made/closed";
 import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
@@ -390,16 +391,20 @@ const LAYOUT_DATE = "2027-01-04";
 /** suggest_route's answer when ready-made trips match the length: the ones
  *  the picker would offer for it, in the picker's words, with nothing about
  *  them that isn't on file. A trip whose must-see place this store can't
- *  show is left out, as starting it would be refused (start.ts). Null when
- *  none is left, and the corridor table answers as before. */
-async function readyMadeResult(store: TripStore, nights: number, allowShorter: boolean, cities: CityFacts[], graph: Graph) {
+ *  show is left out, as starting it would be refused (start.ts). So is one
+ *  whose must-see would be closed on its day when the trip starts on
+ *  `startDate` (the trip's own start, null without dates): the picker
+ *  refuses that start too (closed.ts). Null when none is left, and the
+ *  corridor table answers as before. */
+async function readyMadeResult(store: TripStore, nights: number, allowShorter: boolean, cities: CityFacts[], graph: Graph, startDate: string | null) {
   const facts = factsMap(cities);
   const match = readyMadeForNights(nights, new Map(cities.map((c) => [c.id, c.tier])), { allowShorter });
-  const placesCache = new Map<string, Map<string, string>>();
-  const placeNames = async (cityId: string) => {
-    if (!placesCache.has(cityId)) placesCache.set(cityId, new Map((await store.places(cityId)).map((p) => [p.id, p.name])));
+  const placesCache = new Map<string, Map<string, PlaceInput>>();
+  const placesOf = async (cityId: string) => {
+    if (!placesCache.has(cityId)) placesCache.set(cityId, new Map((await store.places(cityId)).map((p) => [p.id, p])));
     return placesCache.get(cityId)!;
   };
+  const placeNames = async (cityId: string) => new Map([...(await placesOf(cityId))].map(([id, p]) => [id, p.name]));
   const name = (id: string) => facts.get(id)?.name ?? id;
 
   const offered = [];
@@ -416,6 +421,11 @@ async function readyMadeResult(store: TripStore, nights: number, allowShorter: b
       if (places.length) mustSee.push({ day: i + 1, city: name(d.cityId), places });
     }
     if (missing) continue;
+    if (startDate) {
+      const known = new Map<string, PlaceInput>();
+      for (const d of readyMadeToPlan(trip, startDate).days) for (const [id, p] of await placesOf(d.cityId)) known.set(id, p);
+      if (closedMustSees(trip, startDate, known).length) continue;
+    }
     const route = trip.route.map((c) => ({ cityId: c.cityId, nights: c.nights }));
     offered.push({
       id: trip.id,
@@ -792,7 +802,9 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       // the trip has no dates to fit: with dates, propose_route would
       // refuse it.
       const dated = nightsBetween(state.trip.startDate, state.trip.endDate);
-      const readyMade = await readyMadeResult(store, nights, p.data.nights != null && !dated, cities, graph);
+      // With a start date, a trip whose must-see that start puts on a closed
+      // day isn't offered: the picker would refuse that start.
+      const readyMade = await readyMadeResult(store, nights, p.data.nights != null && !dated, cities, graph, state.trip.startDate ?? null);
       if (readyMade) return { result: j(readyMade) };
       const s = suggestRoute(nights, state.prefs.interestTags);
       const a = assessRoute(s.cities, facts, graph, nights);

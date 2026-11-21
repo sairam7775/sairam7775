@@ -21,6 +21,7 @@ import type { TripStore } from "@/lib/bento-man/store";
 import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
 import { readyMadeTrips } from "./index";
+import { closedMustSees, closedMustSeeWords, nearestOpenStart } from "./closed";
 import { readyMadeToPlan } from "./to-plan";
 import type { ReadyMadeTrip, ReadyMadeTripId } from "./types";
 
@@ -98,7 +99,7 @@ export interface ReadyMadeStartDeps {
 
 export type ReadyMadeStartResult = { ok: true; tripId: string } | { ok: false; error: string };
 
-export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeStart): Promise<ReadyMadeStartResult> {
+export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeStart, now: Date = new Date()): Promise<ReadyMadeStartResult> {
   const trip = readyMadeTrips.find((t) => t.id === input.tripId);
   if (!trip) return { ok: false, error: e.trip };
 
@@ -120,6 +121,17 @@ export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeS
   // would come out without one of the places it is built on.
   const missing = plan.days.some((d) => (d.locked ?? []).some((l) => !placesByCity[d.cityId].some((p) => p.id === l.placeId)));
   if (missing) return { ok: false, error: e.notYet };
+  // A must-see closed on the day this start puts it on (the year-end break,
+  // a weekly closing day, a one-off date) is refused, not planned with a
+  // warning: the traveller picks another first day.
+  // Every one is named, with the nearest start that works (never one the
+  // form would refuse as past).
+  const known = new Map(Object.values(placesByCity).flat().map((p) => [p.id, p]));
+  const closed = closedMustSees(trip, input.startDate, known);
+  if (closed.length) {
+    const nearest = nearestOpenStart(trip, input.startDate, known, dayBefore(tokyoToday(now)));
+    return { ok: false, error: closedMustSeeWords(closed, nearest) };
+  }
 
   const text = copy.readyMade.trips[trip.id];
   let made: { id: string; store: TripStore };

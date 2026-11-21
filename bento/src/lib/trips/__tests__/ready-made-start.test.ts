@@ -257,6 +257,30 @@ describe("startReadyMade", () => {
     expect(created).toHaveLength(0);
   });
 
+  it("refuses a start that puts a must-see on a day it closes every year, names each one, and creates nothing", async () => {
+    const { d, created } = deps();
+    const nearest = (day: string) => e.closedNearest(day);
+    expect(await startReadyMade(d, { tripId: "osaka-day", startDate: "2026-12-30", people: 1 }, NOW))
+      .toEqual({ ok: false, error: `${e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Wed 30 Dec")} ${nearest("Sun 27 Dec")}` });
+    expect(await startReadyMade(d, { tripId: "osaka-day", startDate: "2027-01-01", people: 1 }, NOW))
+      .toEqual({ ok: false, error: `${e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Fri 1 Jan")} ${nearest("Sat 2 Jan")}` });
+    // Day 2 of the five days is 31 Dec.
+    expect(await startReadyMade(d, { tripId: "osaka-kyoto-nara-5", startDate: "2026-12-30", people: 2 }, NOW))
+      .toEqual({ ok: false, error: `${e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Thu 31 Dec")} ${nearest("Fri 1 Jan")}` });
+    // Two closed must-sees: both named.
+    expect(await startReadyMade(d, { tripId: "kansai-hiroshima-7", startDate: "2026-12-25", people: 2 }, NOW)).toEqual({
+      ok: false,
+      error: [
+        e.closedYearly("Peace Memorial Museum", "30 Dec – 31 Dec", "Wed 30 Dec"),
+        e.closedYearly("Shukkeien Garden", "29 Dec – 31 Dec", "Thu 31 Dec"),
+        nearest("Sun 27 Dec"),
+      ].join(" "),
+    });
+    expect(created).toHaveLength(0);
+    // A day later the castle is open again on its day.
+    expect((await startReadyMade(d, { tripId: "osaka-day", startDate: "2027-01-02", people: 1 }, NOW)).ok).toBe(true);
+  });
+
   it("throws the half-made trip away when the save fails", async () => {
     const { d, created, discarded } = deps({ failApply: true });
     expect(await startReadyMade(d, { tripId: "osaka-day", startDate: "2027-05-10", people: 1 })).toEqual({ ok: false, error: e.failed });
