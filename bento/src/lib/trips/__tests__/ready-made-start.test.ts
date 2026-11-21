@@ -257,6 +257,20 @@ describe("startReadyMade", () => {
     expect(created).toHaveLength(0);
   });
 
+  it("refuses a start that puts a must-see on a day it closes every year, and creates nothing", async () => {
+    const { d, created } = deps();
+    expect(await startReadyMade(d, { tripId: "osaka-day", startDate: "2026-12-30", people: 1 }))
+      .toEqual({ ok: false, error: e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Wed 30 Dec") });
+    expect(await startReadyMade(d, { tripId: "osaka-day", startDate: "2027-01-01", people: 1 }))
+      .toEqual({ ok: false, error: e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Fri 1 Jan") });
+    // Day 2 of the five days is 31 Dec.
+    expect(await startReadyMade(d, { tripId: "osaka-kyoto-nara-5", startDate: "2026-12-30", people: 2 }))
+      .toEqual({ ok: false, error: e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Thu 31 Dec") });
+    expect(created).toHaveLength(0);
+    // A day later the castle is open again on its day.
+    expect((await startReadyMade(d, { tripId: "osaka-day", startDate: "2027-01-02", people: 1 })).ok).toBe(true);
+  });
+
   it("throws the half-made trip away when the save fails", async () => {
     const { d, created, discarded } = deps({ failApply: true });
     expect(await startReadyMade(d, { tripId: "osaka-day", startDate: "2027-05-10", people: 1 })).toEqual({ ok: false, error: e.failed });

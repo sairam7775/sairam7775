@@ -21,6 +21,7 @@ import type { TripStore } from "@/lib/bento-man/store";
 import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
 import { readyMadeTrips } from "./index";
+import { closedMustSees, closedMustSeeWords } from "./closed";
 import { readyMadeToPlan } from "./to-plan";
 import type { ReadyMadeTrip, ReadyMadeTripId } from "./types";
 
@@ -120,6 +121,11 @@ export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeS
   // would come out without one of the places it is built on.
   const missing = plan.days.some((d) => (d.locked ?? []).some((l) => !placesByCity[d.cityId].some((p) => p.id === l.placeId)));
   if (missing) return { ok: false, error: e.notYet };
+  // A must-see closed on the day this start puts it on (the year-end break,
+  // a weekly closing day, a one-off date) is refused, not planned with a
+  // warning: the traveller picks another first day.
+  const closed = closedMustSees(trip, input.startDate, new Map(Object.values(placesByCity).flat().map((p) => [p.id, p])));
+  if (closed.length) return { ok: false, error: closedMustSeeWords(closed[0]) };
 
   const text = copy.readyMade.trips[trip.id];
   let made: { id: string; store: TripStore };

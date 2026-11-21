@@ -9,6 +9,7 @@ import { travelFromGraph } from "@/lib/engine/travel";
 import { cityTrainMinutes } from "@/lib/engine/travel-day";
 import { parseClock } from "@/lib/engine/filter";
 import { closedYearlyOn } from "@/lib/engine/closures";
+import { closedMustSees } from "../ready-made/closed";
 import type { PlaceInput } from "@/lib/engine/types";
 import type { TravelPace } from "@/lib/types";
 import { copy } from "@/copy";
@@ -43,15 +44,12 @@ const SEASONS = { winter: "2027-01-20", spring: "2027-04-01", summer: "2027-07-1
 const YEAR_END = ["2026-12-30", "2027-01-01"];
 const STARTS = [...WEEK, ...Object.values(SEASONS), ...YEAR_END];
 
-// Must-sees found closed over the year-end starts, "<place> <date>" per
-// trip. Both pin Osaka Castle, whose main tower closes 28 Dec – 1 Jan: the
-// planner keeps the pin and warns. Reported to the owner, trips unchanged
-// (the fix is a product choice: another must-see over New Year, or refusing
-// those start dates). Any other closed must-see still fails.
-const KNOWN_YEAR_END: Record<string, string[]> = {
-  "osaka-day": ["osk-osaka-castle 2026-12-30", "osk-osaka-castle 2027-01-01"],
-  "osaka-kyoto-nara-5": ["osk-osaka-castle 2026-12-31"],
-};
+// A start that would put a must-see on a day it is closed is refused before
+// anything is planned (`closedMustSees`: the picker, and suggest_route for a
+// trip with dates; the owner's call, 21 Nov 2026). Among the starts here
+// that is Osaka Castle, whose main tower closes 28 Dec – 1 Jan, on these
+// starts only; every other start must plan with every must-see open.
+const REFUSED: [string, string][] = [["osaka-day", "2026-12-30"], ["osaka-day", "2027-01-01"], ["osaka-kyoto-nara-5", "2026-12-30"]];
 const PACES: TravelPace[] = ["relaxed", "standard", "packed"];
 const CROWDS = [0.2, 0.6]; // an early riser (07:00) and a 09:00 start
 
@@ -130,6 +128,15 @@ describe("ready-made trips", () => {
         expect(a.legs.filter((l) => l.minutes == null).map((l) => `${l.fromCityId} → ${l.toCityId}`)).toEqual([]);
       });
 
+      it("is refused on exactly the starts that put a must-see on a closed day", () => {
+        for (const start of STARTS) {
+          const refused = REFUSED.some(([id, d]) => id === trip.id && d === start);
+          const closed = closedMustSees(trip, start, placeById);
+          expect(closed.length > 0, `${trip.id} ${start}`).toBe(refused);
+          if (refused) expect(closed.map((c) => c.name)).toEqual(["Osaka Castle"]);
+        }
+      });
+
       it("never puts two must-see places that conflict on one day (pins skip the planner's check)", () => {
         trip.mustSee.forEach((ids, i) => {
           for (const a of ids)
@@ -142,8 +149,9 @@ describe("ready-made trips", () => {
 
       it("plans every day and keeps every must-see, open and in its hours, for a start on each weekday and with each season's scoring", () => {
         const bad: string[] = [];
-        const yearEndSeen = new Set<string>();
-        for (const start of STARTS)
+        for (const start of STARTS) {
+          // Refused before planning: no traveller gets this start.
+          if (closedMustSees(trip, start, placeById).length) continue;
           for (const pace of PACES)
             for (const crowdTolerance of CROWDS) {
               const input = readyMadeToPlan(trip, start);
@@ -166,8 +174,7 @@ describe("ready-made trips", () => {
                   if (!item) { bad.push(`${at}: ${id} missing`); continue; }
                   if (seed.closedWeekdays?.includes(weekday)) bad.push(`${at}: ${id} is closed that day`);
                   const yearly = closedYearlyOn(seed, day.date);
-                  if (yearly && KNOWN_YEAR_END[trip.id]?.includes(`${id} ${day.date}`)) yearEndSeen.add(`${id} ${day.date}`);
-                  else if (yearly) bad.push(`${at}: ${id} is closed that date every year`);
+                  if (yearly) bad.push(`${at}: ${id} is closed that date every year`);
                   if (seed.booking === "required") bad.push(`${at}: ${id} needs a ticket`);
                   const closes = parseClock(seed.closes);
                   if (closes != null && item.endMin > closes) bad.push(`${at}: ${id} runs past closing`);
@@ -176,8 +183,7 @@ describe("ready-made trips", () => {
                 for (const x of day.items)
                   for (const y of day.items)
                     if ((placeById.get(x.placeId)!.conflicts ?? []).includes(y.placeId)) bad.push(`${at}: ${x.placeId} with ${y.placeId}`);
-                const knownClosed = must.filter((id) => KNOWN_YEAR_END[trip.id]?.includes(`${id} ${day.date}`)).map((id) => placeById.get(id)!.name);
-                for (const w of day.warnings) if (/pinned/i.test(w) && !knownClosed.some((n) => w.startsWith(`${n} is pinned but closed`))) bad.push(`${at}: ${w}`);
+                for (const w of day.warnings) if (/pinned/i.test(w)) bad.push(`${at}: ${w}`);
                 // Every warning speaks only of this day's stops: one naming a
                 // place of the city names one the day holds. (A name inside
                 // the name of a stop the day holds doesn't count.)
@@ -199,10 +205,8 @@ describe("ready-made trips", () => {
                 for (const r of day.considered) if (r.stage === "validate" && madeWay.has(r.detail)) bad.push(`${at}: ${r.placeId} ${r.detail}`);
               });
             }
+        }
         expect(bad).toEqual([]);
-        // The known year-end gaps are still there; when a trip is changed to
-        // avoid one, take it off KNOWN_YEAR_END.
-        expect([...yearEndSeen].sort()).toEqual([...(KNOWN_YEAR_END[trip.id] ?? [])].sort());
         // Every start, pace and crowd setting: Tokyo's trips plan over the
         // whole Kanto network, which takes a few seconds on a busy runner.
       }, 30_000);
