@@ -6,6 +6,7 @@
  *  days through the same paths a chat-built trip uses. */
 import { allocateDates, type RouteCityInput } from "@/lib/engine/route";
 import type { TripDay } from "@/lib/engine/trip";
+import { travelDayOrigins } from "@/lib/engine/travel-day";
 import { copy } from "@/copy";
 import type { ReadyMadeTrip } from "./types";
 
@@ -41,12 +42,16 @@ export function readyMadeToPlan(trip: ReadyMadeTrip, startDate: string): ReadyMa
   const dayTrips = trip.dayTrips.map((t) => ({ date: addDays(startDate, t.day - 1), cityId: t.cityId }));
   for (const t of dayTrips) cityOn.set(t.date, t.cityId);
 
+  // A travel day keeps the city it was given (Himeji, on the way to
+  // Hiroshima) and starts after the move there from the last stay.
+  const origins = travelDayOrigins(startDate, route, endDate);
   const days: TripDay[] = [];
   for (let i = 0; i < trip.days; i++) {
     const date = addDays(startDate, i);
     const cityId = cityOn.get(date);
     if (!cityId) throw new Error(`${trip.id}: day ${i + 1} has no city`);
-    days.push({ date, cityId, locked: (trip.mustSee[i] ?? []).map((placeId) => ({ placeId })) });
+    const movingFrom = origins.get(date);
+    days.push({ date, cityId, locked: (trip.mustSee[i] ?? []).map((placeId) => ({ placeId })), ...(movingFrom ? { movingFrom } : {}) });
   }
   return { startDate, endDate, route, days, dayTrips };
 }

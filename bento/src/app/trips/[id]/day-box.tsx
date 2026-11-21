@@ -41,6 +41,8 @@ export interface DayBoxProps {
   tier: string;
   items: DayBoxItem[];
   budgetMin: number;
+  /** How full the day is, 0–100 (`fillPercent`, worked out on the server). */
+  fillPct: number;
   activeMin: number;
   overBy: number;
   overFromIndex: number | null;
@@ -100,7 +102,7 @@ export function DayBox(p: DayBoxProps) {
     ...order.map((id) => byId.get(id)).filter((i): i is DayBoxItem => Boolean(i)),
     ...p.items.filter((i) => !order.includes(i.placeId)),
   ];
-  const fillPct = Math.min(100, Math.round((p.activeMin / p.budgetMin) * 100));
+  const fillPct = p.fillPct;
   const lunchBeforeIndex = p.lunch ? items.findIndex((it) => it.startMin != null && it.startMin >= p.lunch!.endMin) : -1;
 
   // A booking in the plan sits in every day it covers — a stay from

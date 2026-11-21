@@ -7,7 +7,9 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { retimeDay } from "@/lib/engine/retime";
 import { travelFromGraph } from "@/lib/engine/travel";
-import { replanDay, type ReplanFailure } from "@/lib/bento-man/tools";
+import { movesFor, replanDay, type ReplanFailure } from "@/lib/bento-man/tools";
+import { usualDayStart } from "@/lib/engine/schedule";
+import { travelDayStart } from "@/lib/engine/travel-day";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { clock } from "@/lib/bento-man/diff";
 import type { DayRow, ItemRow, TripStore } from "@/lib/bento-man/store";
@@ -27,19 +29,19 @@ export async function reorderDay(formData: FormData) {
   const { store, tripId, date } = await guard(formData);
   const order = z.array(z.string()).safeParse(JSON.parse(String(formData.get("order") ?? "[]")));
   if (!order.success) redirect(`/trips/${tripId}?day=${date}`);
-  await editDay(store, date, (items) => {
+  const edited = await editDay(store, date, (items) => {
     const byId = new Map(items.map((i) => [i.placeId, i]));
     const kept = order.data.map((id) => byId.get(id)).filter((i): i is ItemRow => Boolean(i));
     const missing = items.filter((i) => !order.data.includes(i.placeId));
     return [...kept, ...missing];
   });
-  done(tripId, date);
+  done(tripId, date, edited);
 }
 
 export async function moveItem(formData: FormData) {
   const { store, tripId, date, placeId } = await guardPlace(formData);
   const dir = formData.get("dir") === "up" ? -1 : 1;
-  await editDay(store, date, (items) => {
+  const edited = await editDay(store, date, (items) => {
     const i = items.findIndex((x) => x.placeId === placeId);
     const j = i + dir;
     if (i < 0 || j < 0 || j >= items.length) return items;
@@ -47,21 +49,21 @@ export async function moveItem(formData: FormData) {
     [next[i], next[j]] = [next[j], next[i]];
     return next;
   });
-  done(tripId, date);
+  done(tripId, date, edited);
 }
 
 export async function togglePin(formData: FormData) {
   const { store, tripId, date, placeId } = await guardPlace(formData);
-  await editDay(store, date, (items) =>
+  const edited = await editDay(store, date, (items) =>
     items.map((it) => (it.placeId === placeId ? { ...it, locked: !it.locked } : it)),
   );
-  done(tripId, date);
+  done(tripId, date, edited);
 }
 
 export async function removeItem(formData: FormData) {
   const { store, tripId, date, placeId } = await guardPlace(formData);
-  await editDay(store, date, (items) => items.filter((it) => it.placeId !== placeId));
-  done(tripId, date);
+  const edited = await editDay(store, date, (items) => items.filter((it) => it.placeId !== placeId));
+  done(tripId, date, edited);
 }
 
 /** The engine re-plans the day around what is pinned; the result is a
@@ -71,9 +73,9 @@ export async function replanDayAction(formData: FormData) {
   const state = await store.state();
   const day = state.days.find((d) => d.date === date);
   const pinned = (day?.items ?? []).filter((i) => i.locked);
-  const ops = pinned.length
-    ? pinned.map((i) => ({ op: "pin" as const, place_id: i.placeId, time: i.startMin == null ? undefined : clock(i.startMin) }))
-    : [{ op: "start_at" as const, time: clock(day?.items[0]?.startMin ?? (state.prefs.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60)) }];
+  // With no pins, no ops: replanDay keeps the first stop's start itself
+  // (and on a travel day, never before the move lets the traveller arrive).
+  const ops = pinned.map((i) => ({ op: "pin" as const, place_id: i.placeId, time: i.startMin == null ? undefined : clock(i.startMin) }));
   const r = await replanDay(store, date, ops);
   // r.error is written for Bento Man (ids, tool calls): the page says why in
   // its own words.
@@ -94,14 +96,20 @@ function replanError(r: ReplanFailure): string {
   }
 }
 
-async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) => ItemRow[]) {
-  const [state, graph] = await Promise.all([store.state(), store.graph()]);
+/** Re-times the day after an edit. Returns whether a kept start was lifted
+ *  to the travel day's arrival, so the page can say so. */
+async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) => ItemRow[]): Promise<{ lifted: boolean }> {
+  // Without the city list there is no move: an edit never fails on it.
+  const [state, graph, cities] = await Promise.all([store.state(), store.graph(), store.cities().catch(() => null)]);
   const day = state.days.find((d) => d.date === date);
-  if (!day || !day.cityId) return;
+  if (!day || !day.cityId) return { lifted: false };
+  const move = cities ? movesFor(state, graph, new Map(cities.map((c) => [c.id, c])))(date, day.cityId) : undefined;
   const items = edit(day.items);
   const places = new Map((await store.places(day.cityId)).map((p) => [p.id, p]));
   const starts = day.items.map((i) => i.startMin).filter((m): m is number => m != null);
-  const dayStart = starts.length ? Math.min(...starts) : state.prefs.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60;
+  // The same rule as a re-plan: a travel day never starts before the move.
+  const kept = starts.length ? Math.min(...starts) : null;
+  const dayStart = travelDayStart(kept, usualDayStart(state.prefs.crowdTolerance), move);
 
   const timed = retimeDay({
     items: items.map((i) => ({
@@ -132,11 +140,14 @@ async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) 
     }),
   };
   await store.saveDay(next);
+  return { lifted: move != null && kept != null && dayStart > kept };
 }
 
-function done(tripId: string, date: string) {
+/** Back to the day. `lifted` adds a key, never words: the page says it
+ *  from its own data (`copy.plan.warnings.liftedStart`). */
+function done(tripId: string, date: string, edited?: { lifted: boolean }) {
   revalidatePath(`/trips/${tripId}`);
-  redirect(`/trips/${tripId}?day=${date}`);
+  redirect(`/trips/${tripId}?day=${date}${edited?.lifted ? "&note=start-lifted" : ""}`);
 }
 
 async function guard(formData: FormData) {

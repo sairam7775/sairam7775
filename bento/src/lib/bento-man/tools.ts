@@ -7,8 +7,9 @@
  *  here writes an itinerary. */
 import type { ModelTool } from "./provider";
 import { z } from "zod";
-import { planDay } from "@/lib/engine/schedule";
+import { planDay, usualDayStart } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
+import { cityTrainMinutes, toFive, travelDayMoves, travelDayStart } from "@/lib/engine/travel-day";
 import { costBandWords } from "@/lib/engine/cost-band";
 import { yearlyRangeWords } from "@/lib/engine/closures";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
@@ -516,7 +517,8 @@ function dayNarration(d: ReturnType<typeof computeDayDiff>, tier: CoverageTier) 
     removed: d.removed.map((r) => r.name),
     left_out: d.considered.slice(0, 6).map((c) => `${c.name}: ${c.detail}`),
     warnings: d.warnings,
-    active: `${Math.floor(d.activeMin / 60)}h ${d.activeMin % 60}m of ${d.budgetMin / 60}h`,
+    // A travel day's budget is the day less the move, so not always whole hours.
+    active: `${Math.floor(d.activeMin / 60)}h ${d.activeMin % 60}m of ${d.budgetMin % 60 ? `${Math.floor(d.budgetMin / 60)}h ${d.budgetMin % 60}m` : `${d.budgetMin / 60}h`}`,
     cost: `${d.fareKind === "exact" && !d.after.some((it) => it.costJpy > 0) ? "" : "~"}¥${d.costJpy}`,
     ...mainSights(tier),
   };
@@ -559,6 +561,13 @@ export type ReplanFailure =
   | { error: string; reason: "not-a-day" | "unknown-place" | "bad-op" }
   | { error: string; reason: "not-covered"; city: string };
 
+/** Each travel day's move, from the route (`travelDayMoves`), so plan_days,
+ *  a re-plan and the day box agree. */
+export function movesFor(state: TripState, graph: Graph, facts: Map<string, CityFacts>) {
+  const route = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
+  return travelDayMoves(state.trip.startDate, state.trip.endDate, route, cityTrainMinutes(graph, facts));
+}
+
 /** One day re-planned around the traveller's pins and the given ops. Used
  *  by the replan_day tool and by the "re-plan this day" button, so a hand
  *  edit and a spoken one go through the same engine call. */
@@ -580,7 +589,15 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   // traveller asks for a different one — otherwise "drop the museum" after
   // an accepted 10:00 start would quietly put the day back at 09:00.
   const firstStop = [...(existing?.items ?? [])].sort((x, y) => x.sortOrder - y.sortOrder)[0];
-  let dayStartMin: number | undefined = firstStop && !firstStop.locked ? firstStop.startMin ?? undefined : undefined;
+  // On a travel day a kept start is never before the move lets the
+  // traveller arrive: a day saved before the move was allowed for starts
+  // after it now. A start they name (start_at) is taken as it is.
+  const move = movesFor(state, graph, factsMap(cities))(date, cityId);
+  const kept = firstStop && !firstStop.locked ? firstStop.startMin ?? undefined : undefined;
+  let dayStartMin: number | undefined = kept != null || move ? travelDayStart(kept, usualDayStart(state.prefs.crowdTolerance), move) : undefined;
+  // A kept start lifted to the arrival: the traveller may have named an
+  // early start for an early train. Say so; a named start_at overrides it.
+  let lifted = move != null && kept != null && dayStartMin != null && dayStartMin > kept;
   for (const op of ops) {
     if (["pin", "unpin", "remove", "add"].includes(op.op)) {
       if (!op.place_id) return { error: `${op.op} needs place_id`, reason: "bad-op" };
@@ -607,6 +624,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
         const m = parseHHMM(op.time);
         if (m == null) return { error: "start_at needs time HH:MM", reason: "bad-op" };
         dayStartMin = m;
+        lifted = false;
         break;
       }
     }
@@ -624,7 +642,11 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     usedPlaceIds: [...used],
     dayStartMin,
     bookedPlaceIds: bookedPlaceIds(bookings, pool, date),
+    // A travel day keeps its move: the kept or named start is a clock time,
+    // and the move still comes out of the day, as when it was planned.
+    move,
   });
+  if (lifted) plan.warnings.push(copy.plan.warnings.liftedStart(clock(toFive(dayStartMin!)), factsMap(cities).get(move!.fromCityId)?.name ?? move!.fromCityId));
   return { diff: computeDayDiff(existing?.items ?? [], plan, pool), tier: f.tier };
 }
 
@@ -815,6 +837,9 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       targets.sort((x, y) => x.date.localeCompare(y.date));
 
       const travel = travelFromGraph(graph);
+      // A travel day starts after the move from the last stay. A day trip
+      // there and back is not a move, and neither is the trip's first day.
+      const moveOn = movesFor(state, graph, facts);
       const placesCache = new Map<string, PlaceInput[]>();
       const targetDates = new Set(targets.map((t) => t.date));
       const used = new Set(state.days.filter((d) => !targetDates.has(d.date)).flatMap((d) => d.items.map((i) => i.placeId)));
@@ -842,6 +867,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           usedPlaceIds: [...used],
           // A ticket the traveller holds lets a booking-required place in.
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
+          move: moveOn(t.date, t.cityId),
         });
         for (const it of plan.items) used.add(it.placeId);
         tiers.push(f.tier);

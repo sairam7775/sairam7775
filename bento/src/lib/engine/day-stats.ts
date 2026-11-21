@@ -23,8 +23,17 @@ export interface DayStats {
 const LUNCH_EARLIEST = 11 * 60 + 30;
 const LUNCH_LATEST = 14 * 60;
 
-export function dayStats(items: StatItem[], pace: TravelPace): DayStats {
-  const budgetMin = DAY_BUDGET_MINUTES[pace];
+/** `moveMin`: on a travel day, the move (`travelDayMoves`), which the
+ *  planner took out of the day's time; the box measures against the same. */
+/** How full a day is, 0–100, for a bar or ring. A day with no time left
+ *  (a move longer than the day) reads as full once anything is in it. */
+export function fillPercent(activeMin: number, budgetMin: number): number {
+  if (budgetMin <= 0) return activeMin > 0 ? 100 : 0;
+  return Math.min(100, Math.round((activeMin / budgetMin) * 100));
+}
+
+export function dayStats(items: StatItem[], pace: TravelPace, moveMin = 0): DayStats {
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[pace] - moveMin);
   let activeMin = 0;
   let overFromIndex: number | null = null;
   items.forEach((it, i) => {

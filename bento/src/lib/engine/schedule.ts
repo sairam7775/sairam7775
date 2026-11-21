@@ -3,6 +3,7 @@ import { hardFilter, parseClock, parseWindow } from "./filter";
 import { buildReason, chooseDuration, DEFAULT_WEIGHTS, scorePlace, type ScoreContext } from "./score";
 import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, Weights } from "./types";
 import { copy } from "@/copy";
+import { toFive } from "./travel-day";
 
 /** When the graph cannot say, assume this and warn. Never silently zero. */
 const FALLBACK_TRAVEL_MIN = 45;
@@ -24,6 +25,11 @@ interface Draft {
   alternatives: Alternative[];
 }
 
+/** The day's usual start: 07:00 for a crowd-avoider, else 09:00. */
+export function usualDayStart(crowdTolerance: number): number {
+  return crowdTolerance < 0.35 ? 7 * 60 : 9 * 60;
+}
+
 /** Scheduler, §05 Fig. 2. Greedy insertion with local search — not
  *  optimal, and it does not need to be. It needs to be right, fast, and
  *  explainable: every item carries the terms that put it there, and every
@@ -36,12 +42,21 @@ export function planDay(input: DayInput): DayPlan {
   const month = day.getUTCMonth() + 1;
 
   // 1 BUDGET
-  const budgetMin = DAY_BUDGET_MINUTES[t.pace];
-  const dayStart = input.dayStartMin ?? (t.crowdTolerance < 0.35 ? 7 * 60 : 9 * 60);
+  // A travel day starts once the traveller is in the new city, and ends
+  // when any day would: the move comes out of the day's time. A start given
+  // as a clock time (a re-plan keeping its start, "start at 10:00") is
+  // taken as it is; the move still comes out of the day.
+  const moveMin = input.move?.minutes ?? 0;
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[t.pace] - moveMin);
+  const arriveMin = usualDayStart(t.crowdTolerance) + moveMin;
+  const dayStart = input.dayStartMin ?? arriveMin;
   const maxItems = input.maxItems ?? (t.pace === "packed" ? 7 : t.pace === "relaxed" ? 4 : 5);
 
   const considered: Rejected[] = [];
   const warnings: string[] = [];
+  if (input.move && input.move.trainMin == null) warnings.push(copy.plan.warnings.moveUnknown(input.move.minutes));
+  // A start the traveller named, before the move lets them arrive.
+  if (input.move && dayStart < arriveMin) warnings.push(copy.plan.warnings.beforeArrival(clock(dayStart), clock(toFive(arriveMin))));
   const byId = new Map(places.map((p) => [p.id, p]));
 
   // 2 FILTER

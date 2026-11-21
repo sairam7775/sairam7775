@@ -6,6 +6,7 @@ import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { assessRoute, hubFor, type CityFacts } from "@/lib/engine/route";
 import { planTrip } from "@/lib/engine/trip";
 import { travelFromGraph } from "@/lib/engine/travel";
+import { cityTrainMinutes } from "@/lib/engine/travel-day";
 import { parseClock } from "@/lib/engine/filter";
 import { closedYearlyOn } from "@/lib/engine/closures";
 import type { PlaceInput } from "@/lib/engine/types";
@@ -28,6 +29,7 @@ for (const p of allPlaces) (placesByCity[p.city] ??= []).push(seedToPlaceInput(p
 const facts = new Map<string, CityFacts>(
   READY_MADE_CITIES.map((id) => [id, { id, name: id, tier: "deep", verifiedPlaces: placesByCity[id]?.length ?? 0, transitNote: null, hubStation: hubFor(id, graph) }]),
 );
+const trainMinutes = cityTrainMinutes(graph, facts);
 
 // Each day of the week (Monday 10 to Sunday 16 May 2027), then one start
 // in each season, then two over the year-end break (30 Dec and 1 Jan), when
@@ -151,6 +153,7 @@ describe("ready-made trips", () => {
                 budgetByCity: {},
                 placesByCity,
                 travel,
+                trainMinutes,
               });
               plan.days.forEach((day, i) => {
                 const at = `${start} ${pace} crowd ${crowdTolerance} day ${i + 1} (${day.date})`;
@@ -186,8 +189,11 @@ describe("ready-made trips", () => {
                     bad.push(`${at}: "${w}" names ${p.name}, not in the day`);
                   }
                 // A full day has at least one stop the planner chose, and no
-                // chosen stop had to make way for a must-see.
-                const full = trip.days === 1 || (i > 0 && i < trip.days - 1);
+                // chosen stop had to make way for a must-see. A relaxed travel
+                // day may hold only its must-sees: the move takes the time a
+                // stop of the planner's own would have had (engine.md).
+                const relaxedMove = pace === "relaxed" && input.days[i].movingFrom != null;
+                const full = (trip.days === 1 || (i > 0 && i < trip.days - 1)) && !relaxedMove;
                 if (full && !day.items.some((x) => !x.locked)) bad.push(`${at}: nothing chosen around the must-sees`);
                 const madeWay = new Set(must.map((id) => copy.plan.leftOut.makesPinLate(placeById.get(id)!.name)));
                 for (const r of day.considered) if (r.stage === "validate" && madeWay.has(r.detail)) bad.push(`${at}: ${r.placeId} ${r.detail}`);
@@ -219,6 +225,23 @@ describe("readyMadeToPlan", () => {
     ]);
     expect(p.dayTrips).toEqual([{ date: "2026-11-25", cityId: "nara-city" }]);
     expect(p.days[1].locked).toEqual(trip.mustSee[1].map((placeId) => ({ placeId })));
+  });
+
+  it("marks each travel day with the stay the traveller moves from, and no other day", () => {
+    const five = readyMadeToPlan(readyMadeTrips.find((t) => t.id === "osaka-kyoto-nara-5")!, "2026-11-24");
+    expect(five.days.map((d) => d.movingFrom)).toEqual([undefined, undefined, "osaka-city", undefined, undefined]);
+    expect(readyMadeToPlan(trip, "2026-11-24").days.every((d) => d.movingFrom === undefined)).toBe(true);
+    // Himeji on the way to Hiroshima: the day there starts after the ride from Kyoto.
+    const seven = readyMadeToPlan(readyMadeTrips.find((t) => t.id === "kansai-hiroshima-7")!, "2026-11-24");
+    expect(seven.days.map((d) => [d.cityId, d.movingFrom])).toEqual([
+      ["osaka-city", undefined],
+      ["nara-city", undefined],
+      ["kyoto-city", "osaka-city"],
+      ["kyoto-city", undefined],
+      ["himeji", "kyoto-city"],
+      ["hiroshima-city", undefined],
+      ["hiroshima-city", undefined],
+    ]);
   });
 
   it("refuses a start that is not a real date", () => {

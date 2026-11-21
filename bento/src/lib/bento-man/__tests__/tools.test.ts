@@ -13,6 +13,8 @@ import { clean, cleanToolResult } from "../guard";
 import { placeSeeds } from "@/lib/places/seed";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { copy } from "@/copy";
+import { cityTrainMinutes, MOVE_ALLOWANCE_MIN } from "@/lib/engine/travel-day";
+import { DAY_BUDGET_MINUTES } from "@/lib/types";
 
 const owner = { pace: "standard" as const, interestTags: ["shrines", "history", "nature"] as ("shrines" | "history" | "nature")[], energy: 0.25, crowdTolerance: 0.15, discovery: 0.5, excludes: ["beaches", "hiking"] };
 const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -373,6 +375,78 @@ describe("days", () => {
     for (const d of ctx.proposal!.days) expect(d.after.every((i) => i.change === "added")).toBe(true);
   });
 
+  it("plan_days starts each travel day after the move, and every other day as usual", async () => {
+    const store = routed();
+    const ctx = ctxFor(store);
+    await runTool("plan_days", {}, ctx);
+    const graph = await store.graph();
+    const train = cityTrainMinutes(graph);
+    // Osaka → Kyoto on the 22nd, Kyoto → Hiroshima on the 27th.
+    const moves = new Map([
+      ["2026-11-22", MOVE_ALLOWANCE_MIN + train("osaka-city", "kyoto-city")!],
+      ["2026-11-27", MOVE_ALLOWANCE_MIN + train("kyoto-city", "hiroshima-city")!],
+    ]);
+    for (const d of ctx.proposal!.days) {
+      const move = moves.get(d.date) ?? 0;
+      expect(d.budgetMin, d.date).toBe(DAY_BUDGET_MINUTES.standard - move);
+      // The owner rises early: 07:00.
+      if (move) expect(d.after[0].startMin, d.date).toBeGreaterThanOrEqual(7 * 60 + move);
+    }
+    // A day trip on a stay's own days is not a move.
+    const trip = ctxFor(routed());
+    await runTool("plan_days", { dates: [{ date: "2026-11-24", city_id: "nara-city" }] }, trip);
+    expect(trip.proposal!.days[0].budgetMin).toBe(DAY_BUDGET_MINUTES.standard);
+  });
+
+  it("replan_day keeps a travel day's move: the same start and the same shorter day", async () => {
+    const store = routed();
+    const ctx = ctxFor(store);
+    await runTool("plan_days", {}, ctx);
+    await store.applyProposal(ctx.proposal!);
+    const move = MOVE_ALLOWANCE_MIN + cityTrainMinutes(await store.graph())("osaka-city", "kyoto-city")!;
+    const planned = ctx.proposal!.days.find((d) => d.date === "2026-11-22")!;
+    const again = await replanDay(store, "2026-11-22", []);
+    if (!("diff" in again)) throw new Error(again.error);
+    expect(again.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+    expect(again.diff.after[0].startMin).toBe(planned.after[0].startMin);
+    expect(again.diff.activeMin).toBeLessThanOrEqual(again.diff.budgetMin);
+    // A start the traveller names is a clock time; the move still comes out of the day.
+    const ten = await replanDay(store, "2026-11-22", [{ op: "start_at", time: "10:00" }]);
+    if (!("diff" in ten)) throw new Error(ten.error);
+    expect(ten.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+    expect(ten.diff.after[0].startMin).toBeGreaterThanOrEqual(10 * 60);
+    expect(ten.diff.after[0].startMin).toBeLessThan(10 * 60 + move);
+    // Any other day keeps the whole day.
+    const other = await replanDay(store, "2026-11-23", []);
+    if (!("diff" in other)) throw new Error(other.error);
+    expect(other.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard);
+  });
+
+  it("replan_day moves a travel day saved before the move was allowed for to after it", async () => {
+    // Saved under the old rule: the first stop at 07:00 on the day the
+    // traveller arrives from Osaka.
+    const store = new MemoryStore({
+      trip: nov, prefs: owner,
+      cities: [{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 5 }, { cityId: "hiroshima-city", nights: 2 }],
+      days: [{ date: "2026-11-22", cityId: "kyoto-city", items: [
+        { placeId: "kyt-kiyomizu", name: "Kiyomizu-dera", sortOrder: 0, startMin: 7 * 60, durationMin: 90, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null },
+      ] }],
+    });
+    const move = MOVE_ALLOWANCE_MIN + cityTrainMinutes(await store.graph())("osaka-city", "kyoto-city")!;
+    const r = await replanDay(store, "2026-11-22", []);
+    if (!("diff" in r)) throw new Error(r.error);
+    expect(r.diff.after[0].startMin).toBeGreaterThanOrEqual(7 * 60 + move);
+    expect(r.diff.budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+  });
+
+  it("plan_days moves a day trip on an arrival date: from the last stay to the day trip", async () => {
+    const store = routed();
+    const ctx = ctxFor(store);
+    await runTool("plan_days", { dates: [{ date: "2026-11-22", city_id: "nara-city" }] }, ctx);
+    const move = MOVE_ALLOWANCE_MIN + cityTrainMinutes(await store.graph())("osaka-city", "nara-city")!;
+    expect(ctx.proposal!.days[0].budgetMin).toBe(DAY_BUDGET_MINUTES.standard - move);
+  });
+
   it("plan_days keeps Fushimi Inari and Arashiyama on different days and honours 'no hiking'", async () => {
     const ctx = ctxFor(routed());
     await runTool("plan_days", {}, ctx);
@@ -498,17 +572,19 @@ describe("days", () => {
     // First taken on the code before Q12; refreshed when the Kyoto seed
     // gained the Arashiyama-area conflicts, which changed these plans, and
     // when "has no station" warnings stopped naming places a day doesn't
-    // hold (same stops, fewer warnings).
+    // hold (same stops, fewer warnings), and when travel days started after
+    // the move (the 22nd and 27th; the re-planned 23rd differs because the
+    // days before it hold other places).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("56ec0e6bc770f47f2d63fd92bfb310e4cad7bb0cab4487a067b50987ccb96ea2");
+    expect(sha(plan)).toBe("e9773122d27c52002e5758eae98dfeb50f0f52465baecd6f18c8dd72bfe077a4");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("75e91ea52a0ff78e1447ae36c8fb496a0a265a8d5b694acdf3d96584f261ed55");
+    expect(sha(replan)).toBe("1c89631dc06bb67f72e03b18ed2dffccff8172e6147d5996584a6988807d9acd");
   });
 
   it("the main-sights line passes the voice lint", () => {

@@ -502,6 +502,10 @@ export const en = {
       tickets: "Keep the tickets in Bookings →",
       directions: "Directions",
       openDirections: (from: string, to: string) => `Open directions from ${from} to ${to} in Google Maps`,
+      /** The move the plan allows on this day: a duration from `copy.time.duration`. */
+      move: (from: string, about: string) => `The plan allows about ${about} to move from ${from}: checking out, the train and leaving your bags.`,
+      /** No train time: no figure here; the plan's warning says the guess once. */
+      moveUnknown: (from: string) => `The plan allows time to move from ${from}: checking out, the train and leaving your bags.`,
     },
     emptyBox: {
       title: "An empty box.",
@@ -1191,6 +1195,9 @@ export const en = {
       noStation: (name: string, min: number) => `${name} has no station in Bento's train data yet — legs to it are estimated at ${min} min`,
       noRoute: (from: string, to: string, min: number) => `No route between ${from} and ${to} in Bento's train data yet — estimated at ${min} min`,
       pinnedMissing: (id: string) => `Pinned place ${id} is not in this city's list`,
+      liftedStart: (at: string, from: string) => `This day now starts about ${at}, after you could arrive from ${from}. Say a start time to change it`,
+      beforeArrival: (start: string, arrive: string) => `This day starts at ${start}, before you could arrive from your last stay (about ${arrive}, after checking out and the train)`,
+      moveUnknown: (min: number) => `This day allows ${Math.floor(min / 60)}h ${min % 60}m for the move: checking out, the train and leaving your bags. Bento doesn't have this train's time yet, so check it`,
       opensLate: (name: string, time: string, wait: number) => `${name} opens at ${time} — the day waits ${wait} min for it`,
       pinnedLate: (name: string, pinned: string, reached: string) => `${name} is pinned for ${pinned} but the day only reaches it by ${reached}`,
       hoursNotFitted: "Some places could not be fitted to their opening hours",

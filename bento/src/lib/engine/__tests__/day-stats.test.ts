@@ -1,7 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { dayStats } from "../day-stats";
+import { dayStats, fillPercent } from "../day-stats";
+
+describe("fillPercent", () => {
+  it("is the share of the day used, capped at 100, and never NaN for a day with no time left", () => {
+    expect(fillPercent(240, 480)).toBe(50);
+    expect(fillPercent(600, 480)).toBe(100);
+    expect(fillPercent(0, 0)).toBe(0);
+    expect(fillPercent(30, 0)).toBe(100);
+  });
+});
 
 describe("dayStats", () => {
+  it("measures a travel day against the day less the move", () => {
+    const items = [{ startMin: 600, durationMin: 300, arriveMinutes: null }];
+    expect(dayStats(items, "standard").budgetMin).toBe(480);
+    const moved = dayStats(items, "standard", 73);
+    expect(moved.budgetMin).toBe(407);
+    expect(moved.overBy).toBe(0);
+    expect(dayStats(items, "relaxed", 73).overBy).toBe(300 - (360 - 73));
+  });
+
   it("sums places and legs, finds the lunch gap, and marks where the budget runs out", () => {
     const s = dayStats(
       [
