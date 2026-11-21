@@ -165,10 +165,16 @@ Explained in `../docs/bento/30-software/engine.md`.
 - Ordering moves runs of the planner's own stops past pins (or-opt) as
   well as reversing them (2-opt); pins keep their order. A hop is the
   train between stations or a walk straight across when quicker
-  (`travel.ts`: straight line × 1.3 at 80 m a minute; at most 20 min in
-  place of a train; by one station, always the shorter walk). Places need
-  `lat`/`lon` for that (`places_public.coords`, read with `readPoint`).
-  `ready-made-order.test.ts` keeps days from crossing town and back.
+  (`travel.ts`: straight line × 1.3 at 80 m a minute, all assumptions; at
+  most 20 min in place of a train; by one station, always the shorter
+  walk). A straight walk is an estimate and reads "About a 14-min walk".
+  Never straight to or from a hike or a castle, nor in place of a train to
+  or from a steep place (`physicalDemand` ≥ 0.5); a hard mobility need gets
+  5 minutes at most, so `travelFromGraph` takes the traveller's mobility.
+  Ordering also charges a whole day for a stop finished after closing.
+  Places need `lat`/`lon` for that (`places_public.coords`, read with
+  `readPoint`). `ready-made-order.test.ts` keeps days from crossing town
+  and back.
 - Scores shown on items are recomputed against the final order, so "your
   third temple today" is the third one shown.
 - Known gaps: windows are soft except for the anchor; a place with no

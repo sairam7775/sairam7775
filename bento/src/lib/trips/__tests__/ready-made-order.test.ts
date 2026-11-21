@@ -6,6 +6,7 @@ import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { hubFor, type CityFacts } from "@/lib/engine/route";
 import { planTrip, type TripPlan } from "@/lib/engine/trip";
 import { travelFromGraph } from "@/lib/engine/travel";
+import { parseClock } from "@/lib/engine/filter";
 import { cityTrainMinutes } from "@/lib/engine/travel-day";
 import type { DayPlan, PlaceInput } from "@/lib/engine/types";
 import type { TravelPace } from "@/lib/types";
@@ -53,14 +54,21 @@ const km = (a: string, b: string) => {
 
 /** Every time the day leaves a stop's area and comes back to it: a later
  *  stop within 600 m of an earlier one, reached by a detour of more than
- *  `detourKm` (a kilometre and a half unless said) through stops between. */
+ *  `detourKm` (a kilometre and a half unless said) through stops between.
+ *  Two returns are not the ordering's to fix, so they don't count: to an
+ *  evening place (it opens at 17:00 or later, so the day ends there,
+ *  wherever it began), and through a stop reached by the no-route estimate
+ *  (a steep place with no station: the engine can't tell where it is, and
+ *  the day warns). */
 const returns = (day: DayPlan, detourKm = 1.5): string[] => {
   const ids = day.items.map((i) => i.placeId);
   const out: string[] = [];
+  const evening = (id: string) => (parseClock(seedById.get(id)!.opens ?? null) ?? 0) >= 17 * 60;
   for (let i = 0; i < ids.length; i++)
     for (let k = i + 2; k < ids.length; k++) {
       const direct = km(ids[i], ids[k]);
-      if (direct > 0.6) continue;
+      if (direct > 0.6 || evening(ids[k])) continue;
+      if (day.items.slice(i + 1, k + 1).some((it) => it.arriveBy?.mode === "estimate")) continue;
       let path = 0;
       for (let j = i; j < k; j++) path += km(ids[j], ids[j + 1]);
       if (path - direct > detourKm) out.push(`${day.date}: ${ids.slice(i, k + 1).join(" > ")}`);
@@ -102,6 +110,8 @@ describe("ready-made days don't go back and forth", () => {
       // Between Kiyomizu-dera and Gion nothing west of the river's east bank.
       const from = ids.indexOf("kyt-kiyomizu");
       const to = ids.indexOf("kyt-gion");
+      expect(from, ids.join(" > ")).toBeGreaterThanOrEqual(0);
+      expect(to, ids.join(" > ")).toBeGreaterThan(from);
       for (const id of ids.slice(from + 1, to)) expect(seedById.get(id)!.lon, `${tripId}: ${ids.join(" > ")}`).toBeGreaterThan(135.772);
       expect(travelMin(day)).toBeLessThan(48);
     }

@@ -268,6 +268,9 @@ export function planDay(input: DayInput): DayPlan {
   // charge for every busy place that would miss its quiet window, so a
   // "before 08:00" shrine is not shuffled to midday just to save a hop.
   const WINDOW_MISS_MIN = 30;
+  // And a whole day's travel for a stop reached too late to finish before
+  // it closes, so no reordering trades a stop's hours for a shorter route.
+  const CLOSED_MIN = 24 * 60;
   // A shorter route that reaches a pin after closing is not better.
   const makesPinLate = (was: Draft[]): boolean => {
     if (!seq.some((d) => d.locked)) return false;
@@ -283,6 +286,7 @@ export function planDay(input: DayInput): DayPlan {
       let travelMin = 0;
       let clockAt = dayStart;
       let miss = 0;
+      let late = 0;
       seq.forEach((d, i) => {
         const hop = i ? tmin(seq[i - 1].place, d.place) : 0;
         travelMin += hop;
@@ -296,9 +300,13 @@ export function planDay(input: DayInput): DayPlan {
           });
           if (!ok) miss++;
         }
+        // Past closing costs more than any route saves: an order that saves
+        // a hop by reaching a stop after it shuts would only lose the stop.
+        const closes = parseClock(d.place.closesAt);
+        if (closes != null && clockAt + d.durationMin > closes) late++;
         clockAt += d.durationMin;
       });
-      return travelMin + miss * WINDOW_MISS_MIN;
+      return travelMin + miss * WINDOW_MISS_MIN + late * CLOSED_MIN;
     };
     const tryOrder = (next: Draft[]): boolean => {
       const before = total();

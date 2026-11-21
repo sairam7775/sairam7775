@@ -157,7 +157,7 @@ export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeS
       },
       budgetByCity: {},
       placesByCity,
-      travel: travelFromGraph(graph),
+      travel: travelFromGraph(graph, { mobility: prefs.mobility }),
       trainMinutes: cityTrainMinutes(graph, facts),
     });
     // Pins are never dropped by the engine; this is the proof before saving.

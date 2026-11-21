@@ -647,7 +647,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     cityId,
     places: pool,
     traveller: travellerFor(state.prefs, budget),
-    travel: travelFromGraph(graph),
+    travel: travelFromGraph(graph, { mobility: state.prefs.mobility }),
     locked: [...lockedMap.values()],
     usedPlaceIds: [...used],
     dayStartMin,
@@ -848,7 +848,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       }
       targets.sort((x, y) => x.date.localeCompare(y.date));
 
-      const travel = travelFromGraph(graph);
+      const travel = travelFromGraph(graph, { mobility: state.prefs.mobility });
       // A travel day starts after the move from the last stay. A day trip
       // there and back is not a move, and neither is the trip's first day.
       const moveOn = movesFor(state, graph, facts);
