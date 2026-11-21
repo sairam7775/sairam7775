@@ -616,17 +616,22 @@ describe("days", () => {
     // to or from hikes or, in place of a train, steep places, and round a
     // castle's moat at 1.8; and move past pins, never past closing), so legs
     // are shorter and the days
-    // hold other stops in other orders.
+    // hold other stops in other orders, and when evening places stopped
+    // being planned by day (Hozenji 10:08 and Shinsekai 11:26 on the 21st,
+    // Gion 10:46 on the 23rd and Nagarekawa 12:31 on the 29th are left out
+    // with "best after 17:30" and other stops fill their slots; Ogonzan
+    // goes in at 17:30 on the 29th; the re-planned 23rd keeps its stops and
+    // lists Ninenzaka, not Gion, as removed).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("2cf33bfa443515282535636cc682ef071594e2ba2af8bea2090d5462ccbf5b76");
+    expect(sha(plan)).toBe("195a583f8a3afce6e4f7f3702c5d4ed5a957399887dca2ed15bafd99c7891b74");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("2f90ac76bef6979269b4a544f58500b8e3243bf9e23f7544c0b24c1f0f174f93");
+    expect(sha(replan)).toBe("4f544aa1d647b597da3cb8c8be34e26115b9406592467f49817420d85ee28369");
   });
 
   it("the main-sights line passes the voice lint", () => {

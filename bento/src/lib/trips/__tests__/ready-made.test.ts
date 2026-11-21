@@ -7,7 +7,7 @@ import { assessRoute, hubFor, type CityFacts } from "@/lib/engine/route";
 import { planTrip } from "@/lib/engine/trip";
 import { travelFromGraph } from "@/lib/engine/travel";
 import { cityTrainMinutes } from "@/lib/engine/travel-day";
-import { parseClock } from "@/lib/engine/filter";
+import { parseClock, parseWindow } from "@/lib/engine/filter";
 import { closedYearlyOn } from "@/lib/engine/closures";
 import { closedMustSees } from "../ready-made/closed";
 import type { PlaceInput } from "@/lib/engine/types";
@@ -219,6 +219,18 @@ describe("ready-made trips", () => {
                   if (seed.booking === "required") bad.push(`${at}: ${id} needs a ticket`);
                   const closes = parseClock(seed.closes);
                   if (closes != null && item.endMin > closes) bad.push(`${at}: ${id} runs past closing`);
+                }
+                // The right time of day (time-of-day.test.ts): an evening
+                // place ("after 17:30") never by day, and "unavoidable" only on
+                // a travel day that starts after every quiet window.
+                for (const x of day.items) {
+                  const wins = (placeById.get(x.placeId)!.window ?? []).map(parseWindow);
+                  const eve = wins.length && wins.every((w) => w.after != null && w.after >= 17 * 60);
+                  if (eve && x.startMin < Math.min(...wins.map((w) => w.after!))) bad.push(`${at}: ${x.placeId} by day`);
+                  if (x.reason.includes(copy.plan.reasons.busiestHour)) {
+                    const reachable = wins.some((w) => (w.before != null && day.startMin <= w.before) || w.after != null);
+                    if (input.days[i].movingFrom == null || reachable) bad.push(`${at}: ${x.placeId} called unavoidable`);
+                  }
                 }
                 // The whole day, pins included, holds no conflicting pair.
                 for (const x of day.items)

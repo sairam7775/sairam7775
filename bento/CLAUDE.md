@@ -180,7 +180,13 @@ Explained in `../docs/bento/30-software/engine.md`.
   and back.
 - Scores shown on items are recomputed against the final order, so "your
   third temple today" is the third one shown.
-- Known gaps: windows are soft except for the anchor; a place with no
+- An evening place (every best window "after" 17:00 or later, `eveningFrom`)
+  is never planned before its window: it goes after the day's other stops,
+  only where the day reaches it within an hour, else it is left out with a
+  reason. A pinned one is timed into its window. "Unavoidable" (busy) is
+  said only when no start on that day reaches a window; otherwise
+  `busyNow` names the quiet windows.
+- Known gaps: other windows are soft except for the anchor; a place with no
   station costs a flat 45 min and a warning (only for a leg the returned
   day travels, never a candidate it left out; a short walk from its
   neighbour is the walk instead); season tags are optional and
