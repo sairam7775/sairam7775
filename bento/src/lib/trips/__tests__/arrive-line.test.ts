@@ -20,7 +20,9 @@ describe("the line between two stops", () => {
     expect(arriveMinutesSuffix(null, 45)).toBe(45);
   });
 
-  it("says a straight walk is an estimate, leading with the walk", () => {
-    expect(copy.plan.transit.walkStraight(14)).toBe("About a 14-min walk");
+  it("says a straight walk is an estimate, leading with the walk, the same way as any walk", () => {
+    expect(copy.plan.transit.walkStraight(14)).toBe("Walk · about 14 min");
+    // No a/an to get wrong: "About a 8-min walk" was shown for 8, 11 and 18.
+    for (const n of [8, 11, 18]) expect(copy.plan.transit.walkStraight(n)).toBe(`Walk · about ${n} min`);
   });
 });

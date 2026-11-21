@@ -612,9 +612,10 @@ describe("days", () => {
     // 29-minute Special Rapid, not the 13-minute Nozomi, so its times start
     // 16 minutes later with the same stops; the old hub gives the old hash),
     // and when days stopped going back and forth (stops walk straight
-    // between neighbours, said as estimates, "About a N-min walk", never
-    // to or from hikes, castles or, in place of a train, steep places; and
-    // move past pins, never past closing), so legs are shorter and the days
+    // between neighbours, said as estimates, "Walk · about N min", never
+    // to or from hikes or, in place of a train, steep places, and round a
+    // castle's moat at 1.8; and move past pins, never past closing), so legs
+    // are shorter and the days
     // hold other stops in other orders.
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -622,10 +623,10 @@ describe("days", () => {
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("8c24bf36b04fa659cf76f45b0410b09c80f0042a9291ba6a73c74d955e274e12");
+    expect(sha(plan)).toBe("2cf33bfa443515282535636cc682ef071594e2ba2af8bea2090d5462ccbf5b76");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("204a84816d84b36701ae543a7d666458a1541a08cea346bc8f317c2cc679a2cd");
+    expect(sha(replan)).toBe("2f90ac76bef6979269b4a544f58500b8e3243bf9e23f7544c0b24c1f0f174f93");
   });
 
   it("the main-sights line passes the voice lint", () => {

@@ -6,7 +6,7 @@ import { copy } from "@/copy";
 
 // Walks straight between two places are estimates from their positions,
 // never measured routes. Each figure below is an assumption, chosen to err
-// long, and is said as one ("About a 14-min walk").
+// long, and is said as one ("Walk · about 14 min").
 
 /** Assumed walking pace: 80 m a minute, the pace Japanese property
  *  listings quote "minutes on foot" at (from memory, not checked against
@@ -28,8 +28,9 @@ export const MOBILITY_WALK_MAX_MIN = 5;
 /** A straight line knows nothing of hills or moats. Review flagged straight
  *  lines from Zeniarai Benten to Kotoku-in and over Kuzuharaoka, and from
  *  Osaka Castle to the Museum of History. So:
- *  - a hike, or a castle (inside its moats and walls, entered at a few
- *    gates), is never walked to or from in a straight line;
+ *  - a hike is never walked to or from in a straight line;
+ *  - a castle (inside its moats and walls, entered at a few gates) is
+ *    walked to and from with `CASTLE_DETOUR` in place of `WALK_DETOUR`;
  *  - a steep place (`physicalDemand` 0.5 and over) with a station never has
  *    a straight walk in place of a train. Beside another place by its own
  *    station it keeps the shorter walk: both are a walk from that station
@@ -37,9 +38,15 @@ export const MOBILITY_WALK_MAX_MIN = 5;
  *    Ninenzaka). With no station it walks straight like any place: its
  *    only other time is the flat 45-minute guess (Otokoyama in Himeji). */
 export const STEEP_DEMAND = 0.5;
-const NO_STRAIGHT_LINE = new Set(["hike", "castle"]);
+/** Assumed street allowance to or from a castle: the way out goes round a
+ *  corner of the moat to a gate. Going round a corner instead of across
+ *  the diagonal is √2 (about 1.4) times the straight line, and the streets
+ *  beyond add the usual 1.3: 1.4 × 1.3 ≈ 1.8. Not measured on any castle. */
+export const CASTLE_DETOUR = 1.8;
+const NO_STRAIGHT_LINE = new Set(["hike"]);
 
 const blocksStraightWalk = (p: PlaceInput) => NO_STRAIGHT_LINE.has(p.category);
+const detourFor = (a: PlaceInput, b: PlaceInput) => (a.category === "castle" || b.category === "castle" ? CASTLE_DETOUR : WALK_DETOUR);
 // A steep place with a station never walks straight in place of a train.
 // With no station it has only the flat 45-minute guess otherwise, and the
 // slope is there whichever way you arrive, so it walks straight like any.
@@ -61,7 +68,7 @@ export function metresBetween(a: PlaceInput, b: PlaceInput): number | null {
 export function directWalkMin(a: PlaceInput, b: PlaceInput): number | null {
   if (blocksStraightWalk(a) || blocksStraightWalk(b)) return null;
   const m = metresBetween(a, b);
-  return m == null ? null : Math.max(3, Math.ceil((m * WALK_DETOUR) / WALK_M_PER_MIN));
+  return m == null ? null : Math.max(3, Math.ceil((m * detourFor(a, b)) / WALK_M_PER_MIN));
 }
 
 /** Door to door over the P3 graph, or on foot when walking straight there
