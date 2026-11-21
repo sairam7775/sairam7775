@@ -15,6 +15,7 @@ import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { copy } from "@/copy";
 import { cityTrainMinutes, MOVE_ALLOWANCE_MIN } from "@/lib/engine/travel-day";
 import { DAY_BUDGET_MINUTES } from "@/lib/types";
+import { SCENARIOS } from "../evals/scenarios";
 
 const owner = { pace: "standard" as const, interestTags: ["shrines", "history", "nature"] as ("shrines" | "history" | "nature")[], energy: 0.25, crowdTolerance: 0.15, discovery: 0.5, excludes: ["beaches", "hiking"] };
 const nov = { startDate: "2026-11-20", endDate: "2026-11-29" };
@@ -364,6 +365,16 @@ describe("suggest_route and the ready-made trips", () => {
       }
     }
     expect(offered).toBeGreaterThan(5);
+  });
+
+  it("gives the route-suggest-kansai-5 eval scenario the ready-made trip, unchanged by the closure check", async () => {
+    // 20–24 Nov puts no must-see on a closed day, so the dated check must
+    // leave the result exactly as for the same five days without dates.
+    const s = SCENARIOS.find((x) => x.id === "route-suggest-kansai-5")!;
+    const dated = await suggest(new MemoryStore(s.setup));
+    expect(JSON.parse(dated).ready_made.map((t: { id: string }) => t.id)).toEqual(["osaka-kyoto-nara-5"]);
+    expect(await suggest(new MemoryStore(s.setup), { nights: 4 })).toBe(dated);
+    expect(await suggest(new MemoryStore({ ...s.setup, trip: undefined }), { nights: 4 })).toBe(dated);
   });
 
   it("leaves the corridor table's result byte for byte as it was when nothing matches", async () => {
