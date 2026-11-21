@@ -3,6 +3,8 @@ import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed/kansai-sanyo";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts } from "../route";
 import * as tokyoSeed from "@/lib/transit/seed/tokyo";
+import * as allSeeds from "@/lib/transit/seed";
+import { cityTrainMinutes } from "../travel-day";
 import { copy } from "@/copy";
 
 const graph = buildGraph(stations, edges);
@@ -43,9 +45,9 @@ describe("assessRoute", () => {
   it("is fine with two cities and six nights", () => {
     const a = assessRoute([{ cityId: "osaka-city", nights: 2 }, { cityId: "kyoto-city", nights: 4 }], facts, graph, 6);
     expect(a.verdict).toBe("fine");
-    expect(a.legs[0].summary).toMatch(/Shin-Osaka → Kyoto/);
+    expect(a.legs[0].summary).toMatch(/Osaka → Kyoto/);
     expect(a.legs[0]).toMatchObject({
-      fromStation: { name: "Shin-Osaka", lat: 34.7335, lon: 135.5 },
+      fromStation: { name: "Osaka", lat: 34.7025, lon: 135.4959 },
       toStation: { name: "Kyoto", lat: 34.9858, lon: 135.7588 },
     });
   });
@@ -150,5 +152,45 @@ describe("hubFor", () => {
 
   it("has no hub for a city with no stations", () => {
     expect(hubFor("kamakura", both)).toBeNull();
+  });
+});
+
+describe("city-to-city legs start where the traveller is", () => {
+  // Osaka's hub is Osaka Station (Umeda), where a stay in Osaka starts, not
+  // Shin-Osaka, which is only where the Shinkansen stops. From Shin-Osaka
+  // the Kyoto leg was a 13-minute Nozomi whose own note says it isn't worth
+  // it over the Special Rapid.
+  const all = buildGraph(allSeeds.stations, allSeeds.edges);
+  const leg = (a: string, b: string) => {
+    const l = assessRoute([{ cityId: a, nights: 2 }, { cityId: b, nights: 2 }], facts, all, 4).legs[0];
+    return { minutes: l.minutes, fareJpy: l.fareJpy, lines: l.lines };
+  };
+
+  it("lands an Osaka leg at Osaka Station", () => {
+    expect(hubFor("osaka-city", all)).toBe("osaka");
+  });
+
+  it("takes the Special Rapid between Osaka and Kyoto, both ways", () => {
+    expect(leg("osaka-city", "kyoto-city")).toEqual({ minutes: 29, fareJpy: 580, lines: [expect.stringMatching(/^JR Kyoto Line · Special Rapid · Osaka → Kyoto · .*29 min · ¥580/)] });
+    expect(leg("kyoto-city", "osaka-city")).toEqual({ minutes: 29, fareJpy: 580, lines: [expect.stringMatching(/^JR Kyoto Line · Special Rapid · Kyoto → Osaka · .*29 min · ¥580/)] });
+    expect(cityTrainMinutes(all)("osaka-city", "kyoto-city")).toBe(29);
+  });
+
+  it("keeps Kyoto → Hiroshima on the through Nozomi", () => {
+    expect(leg("kyoto-city", "hiroshima-city")).toMatchObject({ minutes: 100, fareJpy: 10890, lines: [expect.stringMatching(/^Tokaido–Sanyo Shinkansen · Nozomi · Kyoto → Hiroshima/)] });
+  });
+
+  it("goes from Osaka to Hiroshima by the Shinkansen from Shin-Osaka", () => {
+    const l = leg("osaka-city", "hiroshima-city");
+    expect(l.lines.map((s) => s.split(" · ").slice(0, 2).join(" · "))).toEqual(["JR Kyoto Line · Osaka → Shin-Osaka", "Sanyo Shinkansen · Nozomi"]);
+    expect(l.minutes).toBe(4 + 5 + 85);
+  });
+
+  it("leaves Kyoto ⇄ Nara on the Kintetsu limited express", () => {
+    expect(leg("kyoto-city", "nara-city")).toMatchObject({ minutes: 35, fareJpy: 1280, lines: [expect.stringMatching(/^Kintetsu Kyoto Line · Limited Express · Kyoto → Kintetsu-Nara/)] });
+  });
+
+  it("never offers the Kyoto–Shin-Osaka Nozomi for an Osaka–Nara day trip", () => {
+    expect(leg("osaka-city", "nara-city").lines.join(" ")).not.toMatch(/Shinkansen/);
   });
 });

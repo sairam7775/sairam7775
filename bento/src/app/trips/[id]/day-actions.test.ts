@@ -55,8 +55,9 @@ describe("re-plan this day, on a travel day", () => {
     await replanDayAction(form).catch(() => null);
     const proposal = append.mock.calls[0][2]!;
     expect(proposal.days![0].after[0].startMin).toBeGreaterThan(9 * 60 + 60);
-    // The lift is said, with the arrival time to five minutes (09:00 + 73 min).
-    expect(proposal.days![0].warnings).toContain(copy.plan.warnings.liftedStart("10:15", "Osaka"));
+    // The lift is said, with the arrival time to five minutes (09:00 + 89
+    // min: the hour's allowance and the 29-minute Special Rapid).
+    expect(proposal.days![0].warnings).toContain(copy.plan.warnings.liftedStart("10:30", "Osaka"));
   });
 
   it("an edit lifts a start saved before the move and says so on the page", async () => {

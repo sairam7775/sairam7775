@@ -686,7 +686,13 @@ Explained in `../docs/bento/30-software/transit.md`.
   used twice, a repeated (from, to, line) edge, an edge to an unknown
   station or a place id used twice. A new network goes in a NEW file,
   registered there, with its city's hub in `CITY_HUBS` (`engine/route.ts`)
-  in the same change. Edit seed files directly; never regenerate
+  in the same change. A hub is the station a stay there starts from, not
+  the fast train's stop: Osaka is `osaka` (Umeda), so Osaka → Kyoto is the
+  Special Rapid and the Shinkansen legs start with the ride to Shin-Osaka.
+  One hub per city (best-of-several-hubs would pick Kyoto → Shin-Osaka by
+  Nozomi again). Hubs live only in code (no database column), and every
+  city-to-city figure (route legs, travel-day card, move minutes, ready-made
+  trips) goes through `routeBetweenCities`. Edit seed files directly; never regenerate
   `tokyo.ts` from the tools that first built it. `MemoryStore` keeps
   importing the corridor files alone, on purpose.
 - `loadGraph` (and every whole-table reference read) pages through

@@ -354,10 +354,14 @@ describe("suggest_route and the ready-made trips", () => {
     // Taken on main (c0e5614) before ready-made trips reached this tool.
     // Nine nights: the 10-day trip goes through Tokyo; eight: no 9- or 8-day
     // trip; thirteen: the 14-day trip goes through Kamakura and Yokohama.
+    // Refreshed when Osaka's hub became Osaka Station: only the Osaka →
+    // Kyoto leg (Special Rapid, 29 min, ¥580, not the 13-minute Nozomi from
+    // Shin-Osaka) and the train hours in the arithmetic (3h 09m → 3h 25m)
+    // changed; with the old hub put back, all three hash to the previous values.
     const store = () => new MemoryStore({ trip: nov, prefs: owner });
-    expect(sha(await suggest(store()))).toBe("b75ef722a54f18d11903f35ed5705bedf904786a66b59c743e787291433d5b47");
-    expect(sha(await suggest(store(), { nights: 8 }))).toBe("bf2c057f0c9eb28cae77c45d7d41c3c71d95bfe5bf9eef7db4e27984c0252324");
-    expect(sha(await suggest(store(), { nights: 13 }))).toBe("6920428e013bad095e968f44be48bb4e7bfe6d8fc22940f613079d8e9c76a5a2");
+    expect(sha(await suggest(store()))).toBe("3910d0703f8be3c68a82cfd13a64f845912b98ba65f49aa0ca104654541d32b5");
+    expect(sha(await suggest(store(), { nights: 8 }))).toBe("70d8970c0ca6b862a2db29f828f8821eec4b94df43002cb1adc43617a0fb508e");
+    expect(sha(await suggest(store(), { nights: 13 }))).toBe("285616f4928d7d77b9fcb3ec45cddc9e1cf2f9e11cbaa846a452e25c8dc69055");
   });
 });
 
@@ -576,14 +580,17 @@ describe("days", () => {
     // the move (the 22nd and 27th; the re-planned 23rd differs because the
     // days before it hold other places), and when the season reason became
     // "usually at its best around now" (same stops; with the old wording
-    // put back, both results hash to the previous values).
+    // put back, both results hash to the previous values), and when Osaka's
+    // hub became Osaka Station (plan_days only: the 22nd's move is the
+    // 29-minute Special Rapid, not the 13-minute Nozomi, so its times start
+    // 16 minutes later with the same stops; the old hub gives the old hash).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("4849d75d71637b417b3be0a6c7e008c65ed552b056fa93d7ab4356240cf7d1fa");
+    expect(sha(plan)).toBe("4fd4e96b8a4dd190cf347df6c85b19e495fff7b271084f6db87d6fa3748fdb5a");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
     expect(sha(replan)).toBe("b6e568de65b7fe1edb97c747652fce83cdbe6d84d51f047795e60901c715e315");
