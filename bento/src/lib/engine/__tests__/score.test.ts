@@ -3,10 +3,10 @@ import { buildReason, chooseDuration, scorePlace } from "../score";
 import { kyoto, owner } from "../__fixtures__/kyoto";
 
 const p = (id: string) => kyoto.find((x) => x.id === id)!;
-const ctx = (over: Partial<{ counts: [string, number][]; remaining: number; month: number }> = {}) => ({
+const ctx = (over: Partial<{ counts: [string, number][]; remaining: number; date: string }> = {}) => ({
   categoryCounts: new Map(over.counts ?? []),
   remainingMin: over.remaining ?? 480,
-  month: over.month ?? 11,
+  date: over.date ?? "2026-11-25",
 });
 
 describe("scorePlace", () => {
@@ -33,8 +33,8 @@ describe("scorePlace", () => {
   });
 
   it("knows what is in season", () => {
-    const nov = scorePlace(p("kyt-tofukuji"), owner, ctx({ month: 11 })).terms.find((x) => x.term === "season_fit")!;
-    const jul = scorePlace(p("kyt-tofukuji"), owner, ctx({ month: 7 })).terms.find((x) => x.term === "season_fit")!;
+    const nov = scorePlace(p("kyt-tofukuji"), owner, ctx({ date: "2026-11-25" })).terms.find((x) => x.term === "season_fit")!;
+    const jul = scorePlace(p("kyt-tofukuji"), owner, ctx({ date: "2026-07-15" })).terms.find((x) => x.term === "season_fit")!;
     expect(nov.value).toBe(1);
     expect(nov.clause).toMatch(/autumn colour/);
     expect(jul.value).toBeLessThan(nov.value);

@@ -1151,7 +1151,8 @@ export const en = {
     reasons: {
       matches: (interests: string) => `matches ${interests}`,
       signature: "the one first-timers regret missing",
-      inSeason: (season: string) => `at its best now — ${season}`,
+      // Typical timing, never a forecast: the peak moves by a week or more from year to year.
+      inSeason: (season: string) => `usually at its best around now — ${season}`,
       hidden: "most visitors miss it",
       repeat: (nth: string, category: string) => `your ${nth} ${category} today`,
       quietEarly: "quiet if you're there early",

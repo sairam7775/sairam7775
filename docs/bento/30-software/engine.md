@@ -21,7 +21,7 @@ The reason shown with a stop is assembled from the terms that actually moved its
 | interest match | + 2.5 | Overlap between the place's tags and the traveller's interests (0–1) |
 | signature | + 1.5 | How significant it is for a first-timer, set by hand (0–1) |
 | confidence | + 1.0 | Verified 1.0, draft 0.4; stub places are excluded |
-| season fit | + 0.8 | Autumn leaves in November, cherry blossom in April, festivals |
+| season fit | + 0.8 | Whether a place's season (cherry blossom, autumn colour) is typically at its best in that city on that date. 1 inside the window, 0.3 outside it, 0.5 for a place with no season tags |
 | discovery fit | + 0.5 | How well-known or off the beaten track, against the traveller's preference |
 | redundancy | − 2.0 | The nth place of the same category; decays as 1/n |
 | crowds | 1.2 | Crowds against the traveller's crowd tolerance |
@@ -71,7 +71,8 @@ A travel day is the day a traveller moves from one stay to the next: the arrival
 - It never invents a travel time. A place with no station costs a flat 45 minutes and a warning.
 - A closure that comes every year is a month-day range, `"MM-DD..MM-DD"` or one `"MM-DD"`; an end before the start wraps the year (`"12-28..01-01"` is 28 Dec to 1 Jan). The same check (`closedYearlyOn`) leaves a place out of a day, warns about a pinned one ("Osaka Castle is pinned but closed 28 Dec – 1 Jan every year — kept because you pinned it"), and refuses a date change that would move a planned stop into it (`shift.ts`). Bento Man's `get_place` adds `closed_every_year` ("28 Dec – 1 Jan") next to the hours, only for places that have one.
 - Only the returned day warns: its timing ("opens at …", "pinned for … but the day only reaches it by …") and its own legs ("has no station in Bento's train data", "no route between …"), each said once. The trial days and the candidates growing and ordering look at never add warnings. A no-station stop alone in its day has no leg to estimate, so it doesn't warn. `ready-made.test.ts` checks that no warning on any ready-made day names a place the day doesn't hold.
-- **Known gaps:** opening windows are soft except for the anchor; season tags are optional and neutral when absent.
+- **Seasons are typical windows, not months** (`bento/src/lib/engine/seasons.ts`). One table holds each city's typical best-viewing dates per season, as month-day ranges, with an area override where a city spans very different heights (Okunikko's lakes and falls colour weeks before Nikko's shrines). Each window comes from one named spot's "typical best viewing" (例年の見頃) on Weathernews (Nara's cherry blossom: tenki.jp, for its Somei-Yoshino), read November 2026, and the source sits beside it in the table. No margin is added either side, because no source gives one. Only a date inside the window counts as in season. Then the reason says "usually at its best around now", because the peak moves by a week or more from year to year and Bento makes no forecast. Outside the window a season tag earns no boost and no claim. A city with no windows (a new city, or a season the table doesn't list for it) never counts as in season. `bento/src/lib/engine/__tests__/seasons.test.ts` covers it, including 31 December and 8 March in Kyoto.
+- **Known gaps:** opening windows are soft except for the anchor; season tags are optional and neutral when absent; season windows are per city (or area), not per place, and they don't follow a given year's forecast.
 
 ## Ready-made trips
 

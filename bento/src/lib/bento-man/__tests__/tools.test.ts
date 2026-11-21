@@ -574,17 +574,19 @@ describe("days", () => {
     // when "has no station" warnings stopped naming places a day doesn't
     // hold (same stops, fewer warnings), and when travel days started after
     // the move (the 22nd and 27th; the re-planned 23rd differs because the
-    // days before it hold other places).
+    // days before it hold other places), and when the season reason became
+    // "usually at its best around now" (same stops; with the old wording
+    // put back, both results hash to the previous values).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("e9773122d27c52002e5758eae98dfeb50f0f52465baecd6f18c8dd72bfe077a4");
+    expect(sha(plan)).toBe("4849d75d71637b417b3be0a6c7e008c65ed552b056fa93d7ab4356240cf7d1fa");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("1c89631dc06bb67f72e03b18ed2dffccff8172e6147d5996584a6988807d9acd");
+    expect(sha(replan)).toBe("b6e568de65b7fe1edb97c747652fce83cdbe6d84d51f047795e60901c715e315");
   });
 
   it("the main-sights line passes the voice lint", () => {

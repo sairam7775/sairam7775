@@ -168,6 +168,10 @@ Explained in `../docs/bento/30-software/engine.md`.
   station costs a flat 45 min and a warning (only for a leg the returned
   day travels, never a candidate it left out); season tags are optional and
   neutral when absent.
+- A season counts only inside its typical window for the city (or area) on
+  that date (`seasons.ts`, one table with a source per row), never by
+  month. The reason says "usually at its best around now": typical
+  timing, never a forecast. Outside the window there is no boost and no claim.
 - Tests: `src/lib/engine/__tests__`, fixtures in `__fixtures__/kyoto.ts`.
   The traps must stay green: Arashiyama and Fushimi Inari never share a
   day; a Monday never fills with something closed on Mondays; "no hiking"
