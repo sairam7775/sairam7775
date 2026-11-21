@@ -151,4 +151,60 @@ describe("planDay and pins", () => {
     if (order.includes("x")) expect(order.indexOf("x")).toBeGreaterThan(order.indexOf("b"));
     else expect(plan.considered.find((r) => r.placeId === "x")?.detail).toBe(copy.plan.leftOut.makesPinLate("B"));
   });
+
+  it("moves a chosen stop past a pin when growing left it on the wrong side of town", () => {
+    // A grid, five minutes a unit. Pins A (south) then B (north); X just
+    // west of B, Y just east of it, Z far to the east. Growing adds Y
+    // first, while the day is only A and B, so between them; then X, then
+    // Z: A > Y > B > X > Z, 81 minutes, crossing from east to west at B.
+    // Reversing runs of chosen stops can't fix it (every run has B in it);
+    // moving Y past B can: A > X > B > Y > Z, 66 minutes.
+    const base: PlaceInput = {
+      id: "", cityId: "test-city", name: "", category: "", interestTags: [], energy: 0.3, crowdLevel: 0.3,
+      discovery: 0.5, signature: 0.9, physicalDemand: null, durationTasteMin: 30, durationTypicalMin: 30,
+      durationFullMin: 30, bestWindow: [], skipIf: [], worthItIf: [], costJpy: 0, bookingReq: "none",
+      bookingLeadDays: null, opensAt: null, closesAt: null, closedWeekdays: [], closedDates: [], conflictsWith: [],
+      pairsWith: [], verificationStatus: "verified", coverageTier: "deep", nearestStation: "s", stationWalkMin: 0,
+    };
+    const pos: Record<string, [number, number]> = { a: [3, 4], b: [3, 9], x: [2, 8], y: [5, 8], z: [10, 10] };
+    const signature: Record<string, number> = { a: 0.9, b: 0.9, x: 0.72, y: 0.85, z: 0.88 };
+    const places = Object.keys(pos).map((id, i) => ({ ...base, id, name: id.toUpperCase(), category: `c${i}`, signature: signature[id] }));
+    const grid: TravelFn = (p, q) => ({
+      mode: "walk", fareJpy: 0, fareKind: "exact", detail: "", lines: [],
+      minutes: Math.round(Math.hypot(pos[p.id][0] - pos[q.id][0], pos[p.id][1] - pos[q.id][1]) * 5),
+    });
+    const plan = planDay({
+      date: "2027-05-19", cityId: "test-city", places, travel: grid, traveller,
+      locked: [{ placeId: "a" }, { placeId: "b" }],
+    });
+    expect(plan.items.map((i) => i.placeId).join(" > ")).toBe("a > x > b > y > z");
+    expect(plan.items.reduce((s, i) => s + (i.arriveBy?.minutes ?? 0), 0)).toBe(66);
+  });
+
+  it("doesn't move a chosen stop past its closing time to save a hop", () => {
+    // The same grid, but Y closes at 10:45. Before B it ends at 10:22; moved
+    // past B (the shorter day) it would start at 11:09, after closing, and
+    // then be dropped. Ordering counts the closing time, so Y stays first.
+    const base: PlaceInput = {
+      id: "", cityId: "test-city", name: "", category: "", interestTags: [], energy: 0.3, crowdLevel: 0.3,
+      discovery: 0.5, signature: 0.9, physicalDemand: null, durationTasteMin: 30, durationTypicalMin: 30,
+      durationFullMin: 30, bestWindow: [], skipIf: [], worthItIf: [], costJpy: 0, bookingReq: "none",
+      bookingLeadDays: null, opensAt: null, closesAt: null, closedWeekdays: [], closedDates: [], conflictsWith: [],
+      pairsWith: [], verificationStatus: "verified", coverageTier: "deep", nearestStation: "s", stationWalkMin: 0,
+    };
+    const pos: Record<string, [number, number]> = { a: [3, 4], b: [3, 9], x: [2, 8], y: [5, 8], z: [10, 10] };
+    const signature: Record<string, number> = { a: 0.9, b: 0.9, x: 0.72, y: 0.85, z: 0.88 };
+    const places = Object.keys(pos).map((id, i) => ({ ...base, id, name: id.toUpperCase(), category: `c${i}`, signature: signature[id], closesAt: id === "y" ? "10:45" : null }));
+    const grid: TravelFn = (p, q) => ({
+      mode: "walk", fareJpy: 0, fareKind: "exact", detail: "", lines: [],
+      minutes: Math.round(Math.hypot(pos[p.id][0] - pos[q.id][0], pos[p.id][1] - pos[q.id][1]) * 5),
+    });
+    const plan = planDay({
+      date: "2027-05-19", cityId: "test-city", places, travel: grid, traveller,
+      locked: [{ placeId: "a" }, { placeId: "b" }],
+    });
+    const y = plan.items.find((i) => i.placeId === "y");
+    expect(y, plan.items.map((i) => i.placeId).join(" > ")).toBeDefined();
+    expect(y!.endMin).toBeLessThanOrEqual(10 * 60 + 45);
+  });
 });

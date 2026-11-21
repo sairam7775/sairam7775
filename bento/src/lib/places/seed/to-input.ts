@@ -42,6 +42,8 @@ export function seedToPlaceInput(
     coverageTier: opts.tier ?? "deep",
     nearestStation: s.station,
     stationWalkMin: s.walk,
+    lat: s.lat,
+    lon: s.lon,
     seasons: s.seasons ?? [],
     crowdNote: s.crowdNote,
     localTip: s.tip,

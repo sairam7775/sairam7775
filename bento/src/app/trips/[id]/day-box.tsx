@@ -10,6 +10,7 @@ import { copy } from "@/copy";
 import { track } from "@/lib/analytics/client";
 import { placeMapUrl } from "@/lib/maps/links";
 import { showsMainSights } from "@/lib/trips/route-card";
+import { arriveMinutesSuffix } from "@/lib/trips/arrive-line";
 
 const t = copy.day;
 const bk = copy.bookings;
@@ -225,6 +226,7 @@ export function DayBox(p: DayBoxProps) {
             const showLunchBefore = i === lunchBeforeIndex;
             const height = Math.max(MIN_TILE, (it.durationMin ?? 60) * PX_PER_MIN);
             const clash = clashingBookings(it, p.bookings, p.date).map((b) => b.title);
+            const suffix = arriveMinutesSuffix(it.arriveMode, it.arriveMinutes);
             return (
               <div key={it.placeId} className="contents">
                 {blockAt(i).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
@@ -233,7 +235,7 @@ export function DayBox(p: DayBoxProps) {
                     <span className="mono inline-flex items-center gap-2 text-[0.68rem] text-rice/85">
                       <span aria-hidden className="inline-block h-[1px] w-4 bg-rice/40" />
                       {it.arriveDetail}
-                      {it.arriveMinutes != null && <span className="text-rice/60">· {copy.time.minutes(it.arriveMinutes)}</span>}
+                      {suffix != null && <span className="text-rice/60">· {copy.time.minutes(suffix)}</span>}
                     </span>
                   </div>
                 )}

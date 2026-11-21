@@ -162,11 +162,28 @@ Explained in `../docs/bento/30-software/engine.md`.
 - The anchor holds position 0 through growth and ordering. Timed pins are
   slotted where the clock reaches them. Ordering charges 30 min for a busy
   place that would miss its quiet window.
+- Ordering moves runs of the planner's own stops past pins (or-opt) as
+  well as reversing them (2-opt); pins keep their order. A hop is the
+  train between stations or a walk straight across when quicker
+  (`travel.ts`: straight line × 1.3 at 80 m a minute, all assumptions; at
+  most 20 min in place of a train). By one station it is the shorter of
+  via the station and straight across, except for a hike, which always
+  goes via the station. A straight walk is an estimate and reads
+  "Walk · about 14 min". Never straight to or from a hike; to or from a
+  castle with 1.8 for its moat (`CASTLE_DETOUR`); never in place of a
+  train to or from a steep place with a station (`physicalDemand` ≥ 0.5);
+  a hard mobility need gets 5 minutes at most, so `travelFromGraph` takes
+  the traveller's mobility.
+  Ordering also charges a whole day for a stop finished after closing.
+  Places need `lat`/`lon` for that (`places_public.coords`, read with
+  `readPoint`). `ready-made-order.test.ts` keeps days from crossing town
+  and back.
 - Scores shown on items are recomputed against the final order, so "your
   third temple today" is the third one shown.
 - Known gaps: windows are soft except for the anchor; a place with no
   station costs a flat 45 min and a warning (only for a leg the returned
-  day travels, never a candidate it left out); season tags are optional and
+  day travels, never a candidate it left out; a short walk from its
+  neighbour is the walk instead); season tags are optional and
   neutral when absent.
 - A season counts only inside its typical window for the city (or area) on
   that date (`seasons.ts`, one table with a source per row), never by

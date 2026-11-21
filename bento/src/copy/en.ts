@@ -1295,6 +1295,9 @@ export const en = {
       yen: (amount: string, estimate: boolean) => `${estimate ? "~" : ""}¥${amount}`,
       walk: (from: string, to: string, min: number) => `Walk · ${from} → ${to} · ${min} min`,
       walkOnly: (min: number) => `Walk · ${min} min`,
+      /** A walk straight between two places, estimated from where they are:
+       *  the walk is sure, the minutes are near enough. */
+      walkStraight: (min: number) => `Walk · about ${min} min`,
       nonstop: "nonstop",
       stops: (n: number) => `${n} stops`,
       ride: (line: string, from: string, to: string, stops: string, min: number, fare: string, notes: string) =>

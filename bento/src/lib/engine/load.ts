@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { selectAll } from "@/lib/supabase/select-all";
+import { readPoint } from "@/lib/transit/point";
 import type { PlaceInput } from "./types";
 import type { CoverageTier } from "@/lib/types";
 
@@ -23,6 +24,7 @@ export async function loadPlacesForCity(cityId: string): Promise<PlaceInput[]> {
  *  store so both paths read the same gate the same way. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
+  const point = readPoint(r.coords);
   return {
     id: r.id,
     cityId: r.city_id,
@@ -57,6 +59,8 @@ export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
     coverageTier: tier,
     nearestStation: r.nearest_station,
     stationWalkMin: r.station_walk_min,
+    lat: point?.lat ?? null,
+    lon: point?.lon ?? null,
     seasons: r.seasons ?? [],
     crowdNote: r.crowd_note,
     localTip: r.local_tip,

@@ -13,3 +13,26 @@ describe("rowToPlace", () => {
     expect(rowToPlace({ id: "garden", city_id: "kyoto-city", name: "Garden" }, "deep").nameJa).toBeNull();
   });
 });
+
+describe("rowToPlace position", () => {
+  /** places_public.coords as PostgREST sends it: hex EWKB, little-endian,
+   *  point with an SRID (4326), longitude then latitude. */
+  const ewkb = (lon: number, lat: number) => {
+    const b = Buffer.alloc(25);
+    b.writeUInt8(1, 0);
+    b.writeUInt32LE(0x20000001, 1);
+    b.writeUInt32LE(4326, 5);
+    b.writeDoubleLE(lon, 9);
+    b.writeDoubleLE(lat, 17);
+    return b.toString("hex");
+  };
+
+  it("reads lat and lon from the coords column", () => {
+    expect(rowToPlace({ id: "osk-museum-of-history", city_id: "osaka-city", name: "Museum", coords: ewkb(135.52, 34.683) }, "deep")).toMatchObject({ lat: 34.683, lon: 135.52 });
+  });
+
+  it("has no position when coords is missing or not a point", () => {
+    expect(rowToPlace({ id: "a", city_id: "c", name: "A" }, "deep")).toMatchObject({ lat: null, lon: null });
+    expect(rowToPlace({ id: "a", city_id: "c", name: "A", coords: "POINT(135 34)" }, "deep")).toMatchObject({ lat: null, lon: null });
+  });
+});

@@ -46,6 +46,11 @@ export interface PlaceInput {
   coverageTier: CoverageTier;
   nearestStation: string | null;
   stationWalkMin: number | null;
+  /** Where the place is (places_public.coords). Lets a day walk straight
+   *  between two places close together instead of via their stations.
+   *  Absent or null: the stations only, as before. */
+  lat?: number | null;
+  lon?: number | null;
   /** "koyo", "sakura" — when a place is at its best. Optional. */
   seasons?: string[];
   crowdNote?: string | null;

@@ -119,7 +119,7 @@ async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) 
       startMin: i.locked ? i.startMin : null,
     })),
     places,
-    travel: travelFromGraph(graph),
+    travel: travelFromGraph(graph, { mobility: state.prefs.mobility }),
     pace: state.prefs.pace,
     dayStartMin: dayStart,
   });
