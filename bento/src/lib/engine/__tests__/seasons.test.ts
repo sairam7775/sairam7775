@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { seasonsOn } from "../seasons";
+import { CITY_WINDOWS, PLACE_WINDOWS, seasonsOn } from "../seasons";
+import { allPlaces } from "@/lib/places/seed";
+import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { scorePlace, DEFAULT_WEIGHTS } from "../score";
 import { planDay } from "../schedule";
 import { travelFromGraph } from "../travel";
@@ -32,9 +34,48 @@ describe("seasonsOn — typical windows, not whole months", () => {
   it("follows each city's own window: Tokyo's colour lasts past Kyoto's", () => {
     expect(seasonsOn("2026-12-15", tokyo)).toEqual(["koyo"]);
     expect(seasonsOn("2026-12-15", kyt)).toEqual([]);
-    // Tokyo's blossom is typically over by early April; Kyoto's is not.
-    expect(seasonsOn("2027-04-05", tokyo)).toEqual([]);
+    // Tokyo's blossom typically runs late March to early April, like Kyoto's.
+    expect(seasonsOn("2027-04-05", tokyo)).toEqual(["sakura"]);
     expect(seasonsOn("2027-04-05", kyt)).toEqual(["sakura"]);
+    expect(seasonsOn("2027-04-11", tokyo)).toEqual([]);
+  });
+
+  it("starts Nara's blossom in late March (Somei-Yoshino), not April", () => {
+    expect(seasonsOn("2027-03-25", nara)).toEqual(["sakura"]);
+    expect(seasonsOn("2027-03-20", nara)).toEqual([]);
+  });
+
+  it("goes by the place's own city, not the day's: a Miyajima stop on a Hiroshima day", () => {
+    const miyajima = seedToPlaceInput(allPlaces.find((p) => p.id === "miy-momijidani")!, { tier: "outline", status: "verified" });
+    const hiroshima = seedToPlaceInput(allPlaces.find((p) => p.city === "hiroshima-city" && p.seasons?.includes("koyo"))!, { tier: "outline", status: "verified" });
+    // 15 November: inside Miyajima's window (mid to late November), before
+    // Hiroshima's (late November).
+    const fit = (p: typeof miyajima) =>
+      scorePlace(p, owner, { categoryCounts: new Map(), remainingMin: 480, date: "2026-11-15" }).terms.find((x) => x.term === "season_fit")!;
+    expect(fit(miyajima).value).toBe(1);
+    expect(fit(miyajima).clause).toMatch(/autumn colour/);
+    expect(fit(hiroshima).value).toBe(0.3);
+    expect(fit(hiroshima).clause).toBeUndefined();
+  });
+
+  it("keeps every window inside one year and points every area override at a real place", () => {
+    const all = [...Object.values(CITY_WINDOWS), ...Object.values(PLACE_WINDOWS)].flatMap((c) => Object.values(c));
+    expect(all.length).toBeGreaterThan(0);
+    for (const win of all) {
+      const [fm, fd] = win.from;
+      const [tm, td] = win.to;
+      expect(fm * 100 + fd).toBeLessThanOrEqual(tm * 100 + td);
+      for (const [m, d] of [win.from, win.to]) {
+        expect(m).toBeGreaterThanOrEqual(1);
+        expect(m).toBeLessThanOrEqual(12);
+        expect(d).toBeGreaterThanOrEqual(1);
+        expect(d).toBeLessThanOrEqual(31);
+      }
+    }
+    const ids = new Set(allPlaces.map((p) => p.id));
+    for (const id of Object.keys(PLACE_WINDOWS)) expect(ids.has(id), id).toBe(true);
+    const cities = new Set(allPlaces.map((p) => p.city));
+    for (const city of Object.keys(CITY_WINDOWS)) expect(cities.has(city), city).toBe(true);
   });
 
   it("colours Okunikko weeks before Nikko's shrines", () => {

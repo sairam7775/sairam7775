@@ -19,8 +19,9 @@ type CityWindows = Partial<Record<SeasonKey, Window>>;
 const w = (from: MonthDay, to: MonthDay): Window => ({ from, to });
 
 /** City id → season → typical window. Sources are Weathernews spot pages,
- *  "例年の見頃" (typical best viewing), weathernews.jp/<season>/spot/<id>/. */
-const CITY_WINDOWS: Record<string, CityWindows> = {
+ *  "例年の見頃" (typical best viewing), weathernews.jp/<season>/spot/<id>/,
+ *  unless a row names another. */
+export const CITY_WINDOWS: Record<string, CityWindows> = {
   "kyoto-city": {
     sakura: w([3, 21], [4, 10]), // Maruyama Park, sakura/spot/305: 3月下旬〜4月上旬
     koyo: w([11, 11], [12, 10]), // Tofukuji, koyo/spot/26111: 11月中旬〜12月上旬
@@ -30,7 +31,10 @@ const CITY_WINDOWS: Record<string, CityWindows> = {
     koyo: w([11, 11], [12, 10]), // Osaka Castle Park, koyo/spot/26207: 11月中旬〜12月上旬
   },
   "nara-city": {
-    sakura: w([4, 1], [4, 10]), // Nara Park, sakura/spot/338: 4月上旬
+    // tenki.jp (Japan Weather Association), Nara Park Somei-Yoshino,
+    // tenki.jp/sakura/6/32/56421.html: 例年の見ごろ 3月下旬～4月上旬. (Weathernews
+    // sakura/spot/338 says 4月上旬, but for the later Naranokokonoe-zakura.)
+    sakura: w([3, 21], [4, 10]),
     koyo: w([11, 11], [12, 10]), // Nara Park, koyo/spot/26402: 11月中旬〜12月上旬
   },
   himeji: {
@@ -45,7 +49,7 @@ const CITY_WINDOWS: Record<string, CityWindows> = {
     koyo: w([11, 11], [11, 30]), // Miyajima, koyo/spot/26712: 11月中旬〜11月下旬
   },
   "tokyo-city": {
-    sakura: w([3, 21], [3, 31]), // Ueno Park, sakura/spot/106: 3月下旬
+    sakura: w([3, 21], [4, 10]), // Chidorigafuchi, sakura/spot/4410: 3月下旬〜4月上旬 (Ueno, spot/106, says 3月下旬 alone)
     koyo: w([11, 21], [12, 20]), // Rikugien, koyo/spot/24406: 11月下旬〜12月中旬
   },
   yokohama: {
@@ -68,7 +72,7 @@ const CITY_WINDOWS: Record<string, CityWindows> = {
 const OKUNIKKO: CityWindows = {
   koyo: w([10, 11], [11, 10]), // Lake Chuzenji, koyo/spot/24104: 10月中旬〜11月上旬
 };
-const PLACE_WINDOWS: Record<string, CityWindows> = {
+export const PLACE_WINDOWS: Record<string, CityWindows> = {
   "nko-kegon": OKUNIKKO,
   "nko-lake-chuzenji": OKUNIKKO,
   "nko-ryuzu": OKUNIKKO,
