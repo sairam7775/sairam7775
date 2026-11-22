@@ -64,7 +64,7 @@ export default async function Trips() {
       {user && <AnalyticsUser id={user.id} />}
       <Tour id="trips" seen={await tourSeen("trips")} />
 
-      <div className="up mt-8 flex items-center gap-4">
+      <div className="settle mt-8 flex items-center gap-4">
         <BentoManFigure figure="full-hello" size={72} />
         <div className="min-w-0">
           <p className="flex flex-wrap items-baseline gap-x-2.5 text-[1.05rem]">

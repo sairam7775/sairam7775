@@ -474,8 +474,11 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   from the database as hex EWKB (`readPoint` in `transit/load.ts`).
 - Palette and motion live in `globals.css`: `paper`/`surface`/`sunk`/
   `lacquer`/`rice`, ink levels, `accent` (salmon), `ume`, `edamame`,
-  `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.pop`, `.grow`,
-  `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
+  `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.settle`, `.pop`,
+  `.grow`, `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
+  The first screen's text (header, heading, first tile) uses `.settle`, which
+  moves without fading: text at opacity 0 isn't painted, so `.up` there
+  delays the page's LCP (`first-paint.test.ts`).
 - Fonts are fontsource packages, read into one generated stylesheet,
   `src/app/fonts.css` (`npm run fonts`, `lib/fonts/font-css.ts`), imported
   in `layout.tsx` — no build-time fetch. Never import fontsource's own CSS:

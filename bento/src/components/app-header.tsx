@@ -11,7 +11,7 @@ import { copy } from "@/copy";
  *  and pages keep wide badges out of `children` below `sm`. */
 export function AppHeader({ back, children }: { back?: { href: string; label: string }; children?: ReactNode }) {
   return (
-    <header className="up flex items-center gap-2 sm:gap-3">
+    <header className="settle flex items-center gap-2 sm:gap-3">
       <Link href="/trips" className="inline-flex shrink-0" aria-label={copy.common.tripsHomeLabel}>
         <BentoLogo wordClassName={back ? "hidden sm:inline" : ""} />
       </Link>

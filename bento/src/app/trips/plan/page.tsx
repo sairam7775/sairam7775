@@ -45,7 +45,7 @@ export default async function PlanATrip() {
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
       <AppHeader back={{ href: "/trips", label: copy.common.yourTrips }} />
       <AnalyticsUser id={user.id} />
-      <section className="tile up mt-8 p-6 sm:p-8">
+      <section className="tile settle mt-8 p-6 sm:p-8">
         <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>
         <PlanTabs
           tabs={tabs}

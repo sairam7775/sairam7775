@@ -233,7 +233,16 @@ h1, h2, h3, h4 {
 @keyframes ring {
   from { stroke-dashoffset: var(--ring-full); }
 }
+/* The first screen's text settles by movement only: an element at opacity 0
+   isn't painted, so fading it in held back the page's Largest Contentful
+   Paint (the home hero by about a second and a half). `.up` is for what
+   comes after it. */
+@keyframes settle {
+  from { transform: translateY(16px) scale(0.985); }
+  to { transform: none; }
+}
 .up { animation: rise 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.settle { animation: settle 0.62s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .grow { transform-origin: left center; animation: grow 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .pop { animation: pop 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .ring { animation: ring 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
@@ -435,7 +444,7 @@ h1, h2, h3, h4 {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .up, .grow, .pop, .ring { animation: none; }
+  .up, .settle, .grow, .pop, .ring { animation: none; }
   .season-backdrop, .season-canopy, .season-steam, .season-blink, .season-monkey { animation: none; }
   .season-ripple, .season-glint, .season-lantern, .season-burst { animation: none; }
   .season-fall, .season-snow, .season-firefly, .season-rain, .season-mote { display: none; }

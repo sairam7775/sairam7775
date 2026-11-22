@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useReportWebVitals } from "next/web-vitals";
 import { setAnalytics } from "@/app/settings/actions";
 import { ChoiceButton } from "@/components/form-controls";
 import { analyticsConfigured, forgetUser, identify, start, stop, track } from "@/lib/analytics/client";
 import type { Consent } from "@/lib/analytics/consent";
 import { isSharedPath } from "@/lib/analytics/url";
+import { webVitalProps } from "@/lib/analytics/web-vitals";
 import { copy } from "@/copy";
 
 const choice = "min-h-10 min-w-28 rounded-full border border-ink/25 bg-surface px-5 text-[0.9rem] font-medium text-ink hover:bg-sunk";
@@ -55,6 +57,23 @@ export function Analytics({ consent }: { consent: Consent | null }) {
       </form>
     </div>
   );
+}
+
+// Stable for the page's life, as useReportWebVitals asks (a new function
+// would be handed the metrics again).
+const reportVital = (metric: { name: string; value: number; rating?: string }) => {
+  if (!analyticsConfigured() || isSharedPath(window.location.pathname)) return;
+  const props = webVitalProps(metric);
+  if (props) track("web_vital", props);
+};
+
+/** Real visitors' LCP, INP and CLS (`lib/analytics/web-vitals.ts`). Through
+ *  `track`, so nothing is sent unless analytics are allowed: before an
+ *  answer they wait, and a "no" drops them. Not on a shared plan, where
+ *  analytics never start. */
+export function WebVitals() {
+  useReportWebVitals(reportVital);
+  return null;
 }
 
 /** Records one event when it renders: for outcomes only the server knows,

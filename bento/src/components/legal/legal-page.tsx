@@ -33,7 +33,7 @@ export function LegalPage({ title, updated, intro, current, children }: {
         <Link href="/" className="min-h-10 rounded-full px-3 py-2 text-[0.88rem] text-ink-2 hover:bg-sunk hover:text-ink">{copy.common.homeBack}</Link>
       </header>
 
-      <article className="tile up mt-8 p-6 sm:p-8">
+      <article className="tile settle mt-8 p-6 sm:p-8">
         <h1 className="text-[2rem] font-bold leading-tight">{title}</h1>
         <p className="mono mt-2 text-[0.75rem] text-ink-3">{updated}</p>
         <p className="mt-4 text-[0.98rem] leading-relaxed text-ink-2">{intro}</p>

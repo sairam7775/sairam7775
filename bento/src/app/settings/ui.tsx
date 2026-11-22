@@ -29,7 +29,7 @@ export function SettingsPage({ title, userId, back, wide = true, children }: {
     <main className={`mx-auto w-full ${wide ? "max-w-3xl" : "max-w-xl"} px-5 py-10 sm:py-14`}>
       <AppHeader back={back ?? { href: SETTINGS.home, label: copy.common.settings }} />
       <AnalyticsUser id={userId} />
-      <h1 className="up mt-8 text-3xl font-bold tracking-tight">{title}</h1>
+      <h1 className="settle mt-8 text-3xl font-bold tracking-tight">{title}</h1>
       {children}
     </main>
   );
