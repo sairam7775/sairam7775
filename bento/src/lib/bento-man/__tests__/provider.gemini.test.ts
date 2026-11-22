@@ -105,7 +105,7 @@ describe("GeminiProvider", () => {
       .mockResolvedValueOnce(new Response("{}", { status: 503 }))
       .mockResolvedValueOnce(new Response("{}", { status: 500 }))
       .mockResolvedValueOnce(sse([{ candidates: [{ content: { parts: [{ text: "Hi." }] }, finishReason: "STOP" }] }]));
-    const wait = vi.fn(async () => {});
+    const wait = vi.fn<(ms: number, signal?: AbortSignal) => Promise<void>>(async () => {});
     const result = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, wait).call(request);
     expect(result.text).toBe("Hi.");
     expect(fetcher).toHaveBeenCalledTimes(3);
