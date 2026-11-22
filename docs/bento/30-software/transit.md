@@ -39,7 +39,7 @@ That last clause is the difference between a plan and a guide. **Today** a leg s
 
 ## How the graph is loaded
 
-- **The product reads the whole graph from the database** (`bento/src/lib/transit/load.ts`, `loadGraph`), and each server instance keeps it for ten minutes.
+- **The product reads the whole graph from the database** (`bento/src/lib/transit/load.ts`, `loadGraph`), and each server instance keeps it for ten minutes. Loads that start while a read is under way share that read, so a page that works out its moves and its travel days at once reads the graph once.
 - **It is read a page at a time.** Supabase's API answers at most 1,000 rows per request by default and drops the rest without an error, and the seed already has more than 1,000 edges. So `selectAll` (`bento/src/lib/supabase/select-all.ts`) reads each table in order of its key, 1,000 rows a request, with an exact row count, until every row has arrived. This works even if the project's row limit is set lower than 1,000.
   - If any page fails, the whole load fails and nothing is cached; a partial graph is never used.
   - If the row count changes between pages (a row added or removed mid-read), the read starts again from the first page, since the offsets have shifted. After three tries it fails rather than return a table with a row skipped or repeated.

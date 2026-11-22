@@ -5,6 +5,8 @@ import { readPoint } from "./point";
 import type { Edge, Mode, Station } from "./types";
 
 let cache: { graph: Graph; at: number } | null = null;
+// A read under way, so loads that start before it finishes share it.
+let reading: Promise<Graph> | null = null;
 const TTL_MS = 10 * 60 * 1000;
 
 /** The whole graph from the database, cached per server instance for ten
@@ -13,7 +15,13 @@ const TTL_MS = 10 * 60 * 1000;
  *  under RLS. */
 export async function loadGraph(): Promise<Graph> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.graph;
+  reading ??= readGraph().finally(() => {
+    reading = null;
+  });
+  return reading;
+}
 
+async function readGraph(): Promise<Graph> {
   const db = await createClient();
   // Paged on each table's key, so the API's row limit can't cut the graph
   // short; a failed page fails the load and nothing is cached.
@@ -57,4 +65,5 @@ export async function loadGraph(): Promise<Graph> {
 
 export function invalidateGraphCache() {
   cache = null;
+  reading = null;
 }

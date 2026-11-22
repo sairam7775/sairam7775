@@ -153,4 +153,24 @@ describe("loadGraph", () => {
 
     expect(from.mock.calls.length).toBe(calls);
   });
+
+  // The trip page works out its travel days and its moves at once; with no
+  // graph cached yet, both used to read the whole network.
+  it("shares one read between loads that start before it finishes", async () => {
+    const { from } = fakeDb(network(3, 3));
+
+    const [a, b] = await Promise.all([loadGraph(), loadGraph()]);
+
+    expect(a).toBe(b);
+    expect(from.mock.calls.map(([t]) => t).sort()).toEqual(["station_edges", "stations"]);
+  });
+
+  it("lets a load after a shared failure read again", async () => {
+    fakeDb(network(40, 1008), { fail: { table: "station_edges", page: 1 } });
+    const both = await Promise.allSettled([loadGraph(), loadGraph()]);
+    expect(both.map((r) => r.status)).toEqual(["rejected", "rejected"]);
+
+    fakeDb(network(40, 1008));
+    expect(edgeCount(await loadGraph())).toBe(1008);
+  });
 });

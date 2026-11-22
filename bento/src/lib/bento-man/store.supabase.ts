@@ -293,11 +293,14 @@ export class SupabaseStore implements TripStore {
   }
 
   private async loadCities(): Promise<CityFacts[]> {
-    // Every city, past the API's row limit: whole-Japan coverage outgrows one page.
-    const data = await selectAll((from, to) =>
-      this.db.from("city_coverage").select("city_id, name, coverage_tier, transit_note, verified_places", { count: "exact" }).order("city_id").range(from, to),
-    );
-    const graph = await this.graph();
+    // Every city, past the API's row limit: whole-Japan coverage outgrows
+    // one page. The graph (for each city's hub) is read alongside.
+    const [data, graph] = await Promise.all([
+      selectAll((from, to) =>
+        this.db.from("city_coverage").select("city_id, name, coverage_tier, transit_note, verified_places", { count: "exact" }).order("city_id").range(from, to),
+      ),
+      this.graph(),
+    ]);
     this.tierCache = new Map(data.map((c) => [c.city_id, c.coverage_tier as CoverageTier]));
     return data.map((c) => {
       const hubStation = hubFor(c.city_id, graph);
