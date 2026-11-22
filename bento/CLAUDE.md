@@ -476,8 +476,12 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   `lacquer`/`rice`, ink levels, `accent` (salmon), `ume`, `edamame`,
   `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.pop`, `.grow`,
   `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
-- Fonts are fontsource packages imported in `layout.tsx` — no build-time
-  fetch. Zen Maru Gothic display, Zen Kaku Gothic New body, DM Mono data.
+- Fonts are fontsource packages, read into one generated stylesheet,
+  `src/app/fonts.css` (`npm run fonts`, `lib/fonts/font-css.ts`), imported
+  in `layout.tsx` — no build-time fetch. Never import fontsource's own CSS:
+  it is one render-blocking file per weight. A new weight goes in `FONTS`;
+  `font-css.test.ts` fails while the file is stale. Zen Maru Gothic
+  display, Zen Kaku Gothic New body, DM Mono data.
   The logo wordmark stays outlined Bricolage Grotesque (it is artwork).
 - The seasonal scenes and particles (`components/seasonal/`) are the one
   exception to "tokens, not hex": they are illustration with their own

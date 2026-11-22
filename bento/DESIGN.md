@@ -224,7 +224,7 @@ Text: `{colors.ink}` for headings and body, `{colors.ink-2}` for secondary copy,
 - Headlines use the `.disp` class or `h1–h4`; they get `text-wrap: balance`.
 - Minimum readable size is 12px. Anything a traveller taps or must read to decide is at least 13px.
 - Uppercase mono is for short tags only (`DAY 3 · SUN`, `BLOCKING`). Never for sentences — a proposal summary is a sentence.
-- Fonts are self-hosted with fontsource. Both Zen faces are split by unicode-range, so Japanese place names (伏見稲荷大社, 姫路城) render in the same family and only the glyph ranges used are downloaded.
+- Fonts are self-hosted with fontsource. Both Zen faces are split by unicode-range, so Japanese place names (伏見稲荷大社, 姫路城) render in the same family and only the glyph ranges used are downloaded. The weights in the table are the only ones loaded (Maru 700/900, Kaku 400/500/700, Mono 400/500; 600 shows as 700, 800 as 900), all from one generated stylesheet, `src/app/fonts.css` (`npm run fonts`). Arrows and check marks (← → ↗ ✓) are drawn by the system font: the Zen fonts keep them only in their Japanese files, and one back arrow cost a page a file of kanji.
 - The **logo wordmark** is outlined from Bricolage Grotesque 800 (`public/logo/`, `scripts/build-wordmark.mjs`) and stays as drawn; it is artwork, not live text.
 
 ## Layout
