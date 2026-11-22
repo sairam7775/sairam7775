@@ -31,6 +31,7 @@ export function DateRangeInputs({
   defaultEnd,
   labelClass,
   inputClass,
+  idPrefix = "",
 }: {
   startName?: string;
   endName?: string;
@@ -40,11 +41,15 @@ export function DateRangeInputs({
   defaultEnd?: string | null;
   labelClass: string;
   inputClass: string;
+  /** Keeps the ids apart when two of these share a page; the names stay. */
+  idPrefix?: string;
 }) {
   const [start, setStart] = useState(defaultStart ?? "");
   const [end, setEnd] = useState(defaultEnd ?? "");
   const summary = summariseDateRange(start, end);
-  const summaryId = `${startName}-date-words`;
+  const startId = `${idPrefix}${startName}`;
+  const endId = `${idPrefix}${endName}`;
+  const summaryId = `${startId}-date-words`;
   const summaryText = summary?.kind === "arrival"
     ? copy.trips.new.datesInWords.arrival(formatDateInWords(summary.date))
     : summary?.kind === "departure"
@@ -61,9 +66,9 @@ export function DateRangeInputs({
   return (
     <>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={startName} className={labelClass}>{startLabel}</label>
+        <label htmlFor={startId} className={labelClass}>{startLabel}</label>
         <DateInput
-          id={startName}
+          id={startId}
           name={startName}
           value={start}
           aria-describedby={summaryId}
@@ -77,8 +82,8 @@ export function DateRangeInputs({
         />
       </div>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor={endName} className={labelClass}>{endLabel}</label>
-        <DateInput id={endName} name={endName} value={end} min={start || undefined} aria-describedby={summaryId} onChange={(e) => setEnd(e.target.value)} className={inputClass} />
+        <label htmlFor={endId} className={labelClass}>{endLabel}</label>
+        <DateInput id={endId} name={endName} value={end} min={start || undefined} aria-describedby={summaryId} onChange={(e) => setEnd(e.target.value)} className={inputClass} />
       </div>
       <p
         id={summaryId}

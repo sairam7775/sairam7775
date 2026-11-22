@@ -331,16 +331,17 @@ export const en = {
       pending: "Creating…",
     },
     // The guided way in: a few questions, then Bento Man with a first
-    // message written from the answers. The blank form stays beside it.
+    // message written from the answers, beside ready-made trips and a blank one.
     guided: {
       cardTitle: "Plan a Japan trip",
       cardBody: "Not sure of dates or places yet? Answer a few questions — roughly when, who, your pace and what you like — and Bento Man suggests a route. Nothing is fixed until you accept it.",
       cardCta: "Plan a Japan trip →",
-      blankTitle: "Or start a blank trip",
       title: "Plan a Japan trip",
       intro: "Answer what you can. All of it is optional and can change later.",
-      // The two ways to start, as tabs at the top of the page.
-      tabs: { label: "How to start", own: "Plan your own", readyMade: "Ready-made trips" },
+      // The ways to start, as tabs at the top of the page.
+      tabs: { label: "How to start", own: "Plan your own", readyMade: "Ready-made trips", blank: "Blank trip",
+        // On a phone, where three full labels don't fit.
+        short: { own: "Your own", readyMade: "Ready-made", blank: "Blank" } },
       when: {
         legend: "When are you going?",
         dates: "I know my dates",
@@ -1804,7 +1805,7 @@ export const en = {
       },
       newTrip: {
         title: "Start a trip here",
-        body: "Plan a Japan trip asks roughly when, who, your pace and what you like, then hands over to Bento Man. Or start a blank trip below with a name and dates. All of it can change later.",
+        body: "Plan a Japan trip asks roughly when, who, your pace and what you like, then hands over to Bento Man. Its Blank trip tab starts one with just a name and dates. All of it can change later.",
       },
       open: {
         title: "Then open it",

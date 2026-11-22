@@ -8,6 +8,7 @@ import { READY_MADE_CITIES } from "@/lib/trips/ready-made";
 import { availableReadyMade, tokyoToday } from "@/lib/trips/ready-made/start";
 import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
+import { BlankTripForm } from "./blank-trip-form";
 import { GuidedForm } from "./guided-form";
 import { PlanTabs } from "./plan-tabs";
 import { ReadyMadePicker, type PickerTrip } from "./ready-made-picker";
@@ -15,10 +16,11 @@ import { ReadyMadePicker, type PickerTrip } from "./ready-made-picker";
 const t = copy.trips.guided;
 const r = copy.readyMade.picker;
 
-/** "Plan a Japan trip": two tabs, a few questions for someone who has an idea
- *  but not the details yet (the default), and ready-made trips to start from
- *  (`?tab=ready-made`, read by the tabs from the address). With no
- *  ready-made trip to offer, the questions alone, without tabs. The blank form stays on the trips list. */
+/** "Plan a Japan trip": three tabs, a few questions for someone who has an
+ *  idea but not the details yet (the default), ready-made trips to start
+ *  from (`?tab=ready-made`) and a blank trip with a name and dates
+ *  (`?tab=blank`), read by the tabs from the address. With no ready-made
+ *  trip to offer, the questions and the blank trip. */
 export default async function PlanATrip() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -38,12 +40,6 @@ export default async function PlanATrip() {
 
   const tabs = planTabs(trips.length);
   const months = monthOptions(new Date());
-  const own = (gap: string) => (
-    <>
-      <p className={`${gap} text-[0.95rem] text-ink-2`}>{t.intro}</p>
-      <GuidedForm months={months} />
-    </>
-  );
 
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-10 sm:py-14">
@@ -51,22 +47,29 @@ export default async function PlanATrip() {
       <AnalyticsUser id={user.id} />
       <section className="tile up mt-8 p-6 sm:p-8">
         <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>
-        {tabs.length > 1 ? (
-          <PlanTabs
-            tabs={tabs}
-            panels={{
-              own: own("mt-6"),
-              "ready-made": (
-                <>
-                  <p className="mt-6 text-[0.95rem] text-ink-2">{r.intro}</p>
-                  <ReadyMadePicker trips={trips} today={tokyoToday()} />
-                </>
-              ),
-            }}
-          />
-        ) : (
-          own("mt-2")
-        )}
+        <PlanTabs
+          tabs={tabs}
+          panels={{
+            own: (
+              <>
+                <p className="mt-6 text-[0.95rem] text-ink-2">{t.intro}</p>
+                <GuidedForm months={months} />
+              </>
+            ),
+            "ready-made": (
+              <>
+                <p className="mt-6 text-[0.95rem] text-ink-2">{r.intro}</p>
+                <ReadyMadePicker trips={trips} today={tokyoToday()} />
+              </>
+            ),
+            blank: (
+              <>
+                <p className="mt-6 text-[0.95rem] text-ink-2">{copy.trips.new.body}</p>
+                <BlankTripForm />
+              </>
+            ),
+          }}
+        />
       </section>
     </main>
   );

@@ -4,10 +4,8 @@ import { selectAll } from "@/lib/supabase/select-all";
 import { Tour } from "@/components/tour/tour";
 import { tourSeen } from "@/components/tour/seen";
 import { AppHeader } from "@/components/app-header";
-import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-controls";
-import { fieldInput, fieldLabel } from "@/components/form-styles";
-import { createTrip, deleteTrip } from "./actions";
-import { ErrorNote } from "../(auth)/ui";
+import { ConfirmButton } from "@/components/form-controls";
+import { deleteTrip } from "./actions";
 import { copy } from "@/copy";
 import { AnalyticsUser } from "@/components/analytics/analytics";
 import { reviewOpen } from "@/lib/trips/review";
@@ -35,7 +33,7 @@ function formatRange(start: string | null, end: string | null) {
 }
 
 
-export default async function Trips({ searchParams }: PageProps<"/trips">) {
+export default async function Trips() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -56,8 +54,6 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
   const hasReview = new Set((reviewed ?? []).map((r) => r.trip_id));
   const today = new Date().toISOString().slice(0, 10);
 
-  const params = await searchParams;
-  const error = typeof params.error === "string" ? params.error : null;
   const name = displayName(user);
   // はじめまして until the first trip exists, おかえりなさい after.
   const hello = trips && trips.length > 0 ? t.greeting.returning : t.greeting.first;
@@ -82,12 +78,8 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
         {t.signedInAs} <span className="mono break-all text-[0.85rem]">{user?.email}</span>
       </p>
 
-      <div className="mt-8">
-        <ErrorNote message={error} />
-      </div>
-
       {trips && trips.length > 0 ? (
-        <ul className="box flex flex-col gap-2.5 p-3">
+        <ul className="box mt-8 flex flex-col gap-2.5 p-3">
           {trips.map((trip) => (
             <li
               key={trip.id}
@@ -121,13 +113,13 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
           ))}
         </ul>
       ) : (
-        <p className="tile up px-5 py-8 text-center text-[0.95rem] text-ink-2">
+        <p className="tile up mt-8 px-5 py-8 text-center text-[0.95rem] text-ink-2">
           {t.empty}
         </p>
       )}
 
-      {/* The guided way in first, for someone with an idea but not the
-          details; the blank form stays below it. */}
+      {/* The way to start a trip: "Plan a Japan trip" holds the guided
+          questions, the ready-made trips and the blank trip, as tabs. */}
       <section data-tour="new-trip" className="tile up mt-10 p-6" style={{ animationDelay: ".12s" }}>
         <h2 className="text-lg font-bold">{t.guided.cardTitle}</h2>
         <p className="mt-1 max-w-[60ch] text-[0.9rem] text-ink-2">{t.guided.cardBody}</p>
@@ -136,55 +128,6 @@ export default async function Trips({ searchParams }: PageProps<"/trips">) {
         </Link>
       </section>
 
-      <section className="tile up mt-4 p-6" style={{ animationDelay: ".15s" }}>
-        <h2 className="text-lg font-bold">{t.guided.blankTitle}</h2>
-        <p className="mt-1 text-[0.9rem] text-ink-2">{t.new.body}</p>
-        <form action={createTrip} className="mt-5 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label
-              htmlFor="title"
-              className={fieldLabel}
-            >
-              {t.new.name}
-            </label>
-            <input
-              id="title"
-              name="title"
-              type="text"
-              placeholder={t.new.namePlaceholder}
-              className={fieldInput}
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3">
-            <DateRangeInputs startLabel={t.new.arrive} endLabel={t.new.leave} labelClass={fieldLabel} inputClass={fieldInput} />
-            <div className="flex flex-col gap-1.5 sm:col-start-3 sm:row-start-1">
-              <label
-                htmlFor="partySize"
-                className={fieldLabel}
-              >
-                {t.new.people}
-              </label>
-              <input
-                id="partySize"
-                name="partySize"
-                type="number"
-                min={1}
-                max={20}
-                defaultValue={1}
-                className={fieldInput}
-              />
-            </div>
-          </div>
-
-          <SubmitButton
-            pending={t.new.pending}
-            className="mt-1 self-start rounded-full border border-rule bg-surface px-5 py-2.5 text-sm font-medium hover:bg-sunk"
-          >
-            {t.new.submit}
-          </SubmitButton>
-        </form>
-      </section>
     </main>
   );
 }

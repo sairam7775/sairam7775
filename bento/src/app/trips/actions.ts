@@ -127,12 +127,25 @@ const newTrip = z.object({
   partySize: z.coerce.number().int(e.wholePeople).min(1, e.minPeople).max(20, e.maxPeople),
 });
 
-export async function createTrip(formData: FormData) {
+/** On a refusal, what was sent comes back too, so the Blank trip tab puts
+ *  it back (React resets a form's uncontrolled fields after an action). */
+export type NewTripState = { error: string; values: { title: string; startDate: string; endDate: string; partySize: string } } | null;
+
+/** The Blank trip tab of "Plan a Japan trip": a name, dates and the party,
+ *  all optional. A refusal stays on that tab with the answers kept. */
+export async function createTrip(_prev: NewTripState, formData: FormData): Promise<NewTripState> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/sign-in");
+
+  const sent = (k: string, max: number) => {
+    const v = formData.get(k);
+    return typeof v === "string" ? v.slice(0, max) : "";
+  };
+  // A title is echoed past its 120-character limit, so the refused one can be shortened.
+  const values = { title: sent("title", 200), startDate: sent("startDate", 40), endDate: sent("endDate", 40), partySize: sent("partySize", 40) };
 
   const parsed = newTrip.safeParse({
     title: formData.get("title") || undefined,
@@ -141,15 +154,11 @@ export async function createTrip(formData: FormData) {
     partySize: formData.get("partySize") || 1,
   });
 
-  if (!parsed.success) {
-    redirect(`/trips?error=${encodeURIComponent(parsed.error.issues[0].message)}`);
-  }
+  if (!parsed.success) return { error: parsed.error.issues[0].message, values };
 
   const { title, startDate, endDate, partySize } = parsed.data;
 
-  if (startDate && endDate && endDate < startDate) {
-    redirect("/trips?error=" + encodeURIComponent(e.endBeforeStart));
-  }
+  if (startDate && endDate && endDate < startDate) return { error: e.endBeforeStart, values };
 
   // user_id is set explicitly, and the RLS policy checks it matches the
   // caller — so a forged id fails at the database rather than here.
@@ -161,9 +170,7 @@ export async function createTrip(formData: FormData) {
     party_size: partySize,
   }).select("id").single();
 
-  if (error || !trip) {
-    redirect(`/trips?error=${encodeURIComponent(dbErrorMessage(error, e.create))}`);
-  }
+  if (error || !trip) return { error: dbErrorMessage(error, e.create), values };
 
   // Straight into the new trip: that's where the planning starts.
   revalidatePath("/trips");
