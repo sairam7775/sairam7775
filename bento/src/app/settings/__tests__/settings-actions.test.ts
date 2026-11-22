@@ -3,11 +3,11 @@ import { copy } from "@/copy";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(), updateUser: vi.fn(), signInWithPassword: vi.fn(), maybeSingle: vi.fn(),
-  requireAdmin: vi.fn(), cookieGet: vi.fn(), cookieDelete: vi.fn(), deleteAccountData: vi.fn(), signOut: vi.fn(),
+  requireAdmin: vi.fn(), cookieGet: vi.fn(), cookieDelete: vi.fn(), cookieSet: vi.fn(), deleteAccountData: vi.fn(), signOut: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({ redirect: (path: string) => { throw new Error(`redirect:${path}`); } }));
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ get: mocks.cookieGet, delete: mocks.cookieDelete, set: vi.fn() }),
+  cookies: async () => ({ get: mocks.cookieGet, delete: mocks.cookieDelete, set: mocks.cookieSet }),
   headers: async () => new Headers(),
 }));
 vi.mock("@/lib/supabase/server", () => ({
@@ -20,7 +20,7 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 vi.mock("@/lib/account/delete", () => ({ deleteAccountData: mocks.deleteAccountData, postHogDeleter: vi.fn() }));
 vi.mock("@/lib/admin", () => ({ requireAdmin: mocks.requireAdmin }));
 
-import { setDisplayName } from "../actions";
+import { setBackground, setDisplayName } from "../actions";
 import { addAdmin } from "../admin-actions";
 import { deleteAccount, updatePassword } from "../../(auth)/actions";
 
@@ -52,6 +52,30 @@ describe("Settings → Personal information → name", () => {
   it("sends a signed-out visitor to sign in, then back to the page", async () => {
     mocks.getUser.mockResolvedValue({ data: { user: null } });
     await expect(setDisplayName(null, form({ name: "Sai" }))).rejects.toThrow("redirect:/sign-in?next=/settings/personal");
+  });
+});
+
+describe("Settings → Appearance → Background", () => {
+  it("keeps a chosen scene in the cookie", async () => {
+    await setBackground(form({ background: "fuji" }));
+    expect(mocks.cookieSet).toHaveBeenCalledWith("bento_season", "fuji", expect.objectContaining({ httpOnly: expect.any(Boolean) }));
+  });
+
+  it("keeps a chosen season too", async () => {
+    await setBackground(form({ background: "winter" }));
+    expect(mocks.cookieSet).toHaveBeenCalledWith("bento_season", "winter", expect.anything());
+  });
+
+  it("clears the cookie for Automatic", async () => {
+    await setBackground(form({ background: "auto" }));
+    expect(mocks.cookieDelete).toHaveBeenCalledWith("bento_season");
+    expect(mocks.cookieSet).not.toHaveBeenCalled();
+  });
+
+  it("changes nothing for a value it doesn't know", async () => {
+    await setBackground(form({ background: "night-city" }));
+    expect(mocks.cookieSet).not.toHaveBeenCalled();
+    expect(mocks.cookieDelete).not.toHaveBeenCalled();
   });
 });
 

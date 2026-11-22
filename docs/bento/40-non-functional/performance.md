@@ -17,7 +17,7 @@ last_reviewed: 2026-11-13
 | F1 | **The app runs next to its database:** the Vercel functions and the Supabase project are in the same region (Tokyo), because one chat turn makes several database round trips |
 | F2 | **The engine plans in milliseconds** and costs nothing per run (pure code, no network) |
 | F3 | **The chat streams,** so the traveller sees text long before a long turn finishes; `/api/chat` may run up to 120 seconds |
-| F4 | **The seasonal scene doesn't re-blur every frame:** no `filter` or `backdrop-filter` on anything that moves |
+| F4 | **The seasonal scene doesn't re-blur every frame:** no `filter` or `backdrop-filter` on anything that moves. Heavy shapes stay still, and a hidden tab pauses all of its animation |
 | F5 | **Fonts and art need no fetch at build or run time** (self-hosted fonts; the scenes and figure drawn in SVG and CSS; the animation player loaded only when needed) |
 | F6 | Page-load and chat-response time targets: **not set yet** |
 

@@ -1494,12 +1494,17 @@ export const en = {
     },
     background: {
       heading: "Background",
-      body: "The scene behind every page. Automatic follows today’s date, and a trip’s own dates on its page. Kept on this device.",
+      body: "The scene behind every page. Automatic shows the season of today’s date, and of a trip’s own dates on its page; any other choice shows everywhere. Kept on this device.",
       auto: "Automatic",
       spring: "Spring",
       summer: "Summer",
       autumn: "Autumn",
       winter: "Winter",
+      tsuyu: "Rainy season",
+      fuji: "Mount Fuji",
+      night: "Night city",
+      matsuri: "Summer festival",
+      shrine: "Grand shrine",
     },
     tour: {
       heading: "Tour",
