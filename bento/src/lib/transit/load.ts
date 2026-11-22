@@ -5,8 +5,12 @@ import { readPoint } from "./point";
 import type { Edge, Mode, Station } from "./types";
 
 let cache: { graph: Graph; at: number } | null = null;
-// A read under way, so loads that start before it finishes share it.
+// A read under way, so loads that start before it finishes share it (and
+// share its failure: one caller's expired session fails the loads that
+// joined it). `generation` moves on when the cache is cleared, so a read
+// started before that never fills the cache.
 let reading: Promise<Graph> | null = null;
+let generation = 0;
 const TTL_MS = 10 * 60 * 1000;
 
 /** The whole graph from the database, cached per server instance for ten
@@ -15,13 +19,16 @@ const TTL_MS = 10 * 60 * 1000;
  *  under RLS. */
 export async function loadGraph(): Promise<Graph> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.graph;
-  reading ??= readGraph().finally(() => {
-    reading = null;
-  });
+  if (!reading) {
+    const p: Promise<Graph> = readGraph(generation).finally(() => {
+      if (reading === p) reading = null;
+    });
+    reading = p;
+  }
   return reading;
 }
 
-async function readGraph(): Promise<Graph> {
+async function readGraph(gen: number): Promise<Graph> {
   const db = await createClient();
   // Paged on each table's key, so the API's row limit can't cut the graph
   // short; a failed page fails the load and nothing is cached.
@@ -59,11 +66,12 @@ async function readGraph(): Promise<Graph> {
   }));
 
   const graph = buildGraph(stations, edges);
-  cache = { graph, at: Date.now() };
+  if (gen === generation) cache = { graph, at: Date.now() };
   return graph;
 }
 
 export function invalidateGraphCache() {
   cache = null;
   reading = null;
+  generation++;
 }

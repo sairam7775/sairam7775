@@ -9,7 +9,7 @@ import { AppHeader } from "@/components/app-header";
 import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { nightsBetween, type TripState } from "@/lib/bento-man/store";
+import { nightsBetween } from "@/lib/bento-man/store";
 import { buildTripView, dayCoverage, startLiftedLine, travelMoveLine, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { fillPercent } from "@/lib/engine/day-stats";
 import { journeyMapUrl } from "@/lib/maps/links";
@@ -27,7 +27,7 @@ import { TripChat } from "./trip-chat";
 import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
 import { Chat } from "./chat";
-import { loadChat } from "./load-chat";
+import { readTrip } from "./load-trip";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
@@ -54,26 +54,11 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const requested = typeof sp.day === "string" ? sp.day : null;
   const today = new Date().toISOString().slice(0, 10);
 
-  // Everything that needs only the trip's id is read at once. The chat
-  // takes the route's city names when the trip read has them; a trip that
-  // can't be read is a 404, whatever the other reads did.
-  const statePromise: Promise<TripState | null> = store.state().catch(() => null);
-  const [loaded, chat, { data: bookingRows }, { data: reviewRow }, { data: share }, { data: dismissals }] = await Promise.all([
-    statePromise,
-    loadChat(db, id, statePromise.then((s) => (s?.cities ?? []).map((c) => ({ id: c.cityId, name: c.name })))),
-    // For the Bookings column and the gap check. Never the reference: it is
-    // decrypted only on the vault page.
-    db.from("bookings")
-      .select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on, city_id, to_city_id, place_id")
-      .eq("trip_id", id),
-    // "How did the plan hold up?" once the trip has ended (0019).
-    db.from("trip_reviews").select("outcome, challenges, hard_days, note, plan").eq("trip_id", id).maybeSingle(),
-    // The companions' link, if the trip is shared (0020/0024).
-    db.from("trip_shares").select("token, expires_at, until_trip_end").eq("trip_id", id).maybeSingle(),
-    db.from("gap_dismissals").select("gap_key").eq("trip_id", id),
-  ]);
-  if (!loaded) notFound();
-  const state = loaded;
+  // Everything that needs only the trip's id is read at once (`readTrip`); a
+  // trip that can't be read is a 404, whatever the other reads did.
+  const read = await readTrip(db, store, id);
+  if (!read) notFound();
+  const { state, chat, bookingRows, reviewRow, share, dismissals } = read;
   const { messages, cityNames, cityTiers } = chat;
 
   // The selected day doesn't depend on the moves (only its measure does),

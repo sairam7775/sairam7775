@@ -22,14 +22,14 @@ last_reviewed: 2026-11-22
 | F4 | **The seasonal scene doesn't re-blur every frame:** no `filter` or `backdrop-filter` on anything that moves. Heavy shapes stay still, and a hidden tab pauses all of its animation |
 | F5 | **Fonts and art need no fetch at build or run time** (self-hosted fonts; the scenes and figure drawn in SVG and CSS; the animation player loaded only when needed) |
 | F6 | Page-load and chat-response time targets: **not set yet** |
-| F7 | **A page reads what it needs at once:** reads that need only the trip's id start together, a later read waits only for the data it needs, and nothing is read twice in one render (the trip page and Bookings) |
+| F7 | **A page reads what it needs at once:** reads that need only the trip's id start together, a later read waits only for the data it needs, and the trip, its route, its days and its bookings are each read once in a render (the trip page and Bookings; the planned places are still read twice, for their names and for their booking needs) |
 
 ## How it's checked
 
 - F1: the `x-vercel-id` response header includes `hnd1` (checked 13 November 2026).
 - F2: engine tests run in milliseconds in `npm test`.
 - F5: `npm run build` (no network fetch for fonts).
-- F7: by hand, with a local probe that logs each request to Supabase during a render (not in the repo). The trip page (`bento/src/app/trips/[id]/page.tsx`) waits on the sign-in check, then one round of reads (the trip store's five, the chat, bookings, review, share, dismissed gaps), then the place names and the chat's cities, then the travel days, backgrounds and ticket needs together. The gap check (`gapsFrom`, `bento/src/lib/vault/store.ts`) takes the trip, route, days and bookings the page already read. Bookings (`bento/src/app/trips/[id]/vault/page.tsx`) reads the trip, route, days, bookings, rates and chat together. The graph is read once even when two loads start together (`loadGraph`).
+- F7: by hand, with a local probe that logs each request to Supabase during a render (not in the repo). The trip page (`bento/src/app/trips/[id]/page.tsx`) waits on the sign-in check, then one round of reads (`readTrip`, `bento/src/app/trips/[id]/load-trip.ts`: the trip store's five, the chat, bookings, review, share, dismissed gaps), then the place names and the chat's cities, then the travel days, backgrounds and ticket needs together. The gap check (`gapsFrom`, `bento/src/lib/vault/store.ts`) takes the trip, route, days and bookings the page already read. Bookings (`bento/src/app/trips/[id]/vault/page.tsx`) reads the trip, route, days, bookings, rates and chat together. The graph is read once even when two loads start together (`loadGraph`).
 
 ## Evidence
 
