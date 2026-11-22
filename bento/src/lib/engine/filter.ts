@@ -83,17 +83,31 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
   return null;
 }
 
+// The planner reads the same few clock strings many thousand times for a day
+// (every trial order is timed): each is parsed once.
+const clockMemo = new Map<string, number | null>();
+const windowMemo = new Map<string, Readonly<{ before?: number; after?: number }>>();
+
 /** Minutes since midnight from "HH:MM", or null. */
 export function parseClock(hhmm: string | null | undefined): number | null {
   if (!hhmm) return null;
-  const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
-  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+  let v = clockMemo.get(hhmm);
+  if (v === undefined) {
+    const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
+    v = m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    clockMemo.set(hhmm, v);
+  }
+  return v;
 }
 
 /** "before 08:00" → { before: 480 }; "after 17:30" → { after: 1050 }. */
 export function parseWindow(win: string): { before?: number; after?: number } {
-  const m = /^(before|after)\s+(\d{1,2}:\d{2})/i.exec(win.trim());
-  if (!m) return {};
-  const at = parseClock(m[2])!;
-  return m[1].toLowerCase() === "before" ? { before: at } : { after: at };
+  let v = windowMemo.get(win);
+  if (v === undefined) {
+    const m = /^(before|after)\s+(\d{1,2}:\d{2})/i.exec(win.trim());
+    const at = m ? parseClock(m[2])! : 0;
+    v = Object.freeze(!m ? {} : m[1].toLowerCase() === "before" ? { before: at } : { after: at });
+    windowMemo.set(win, v);
+  }
+  return { ...v };
 }

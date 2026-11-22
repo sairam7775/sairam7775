@@ -5,6 +5,7 @@
 import { allocateDates, routeBetweenCities, type CityFacts, type RouteCityInput } from "./route";
 import type { Graph } from "@/lib/transit/graph";
 import type { TravelMove } from "./types";
+import { DAY_BUDGET_MINUTES, type TravelPace } from "@/lib/types";
 
 /** The morning of a move, besides the train: checking out, getting to the
  *  departure station and onto the platform with bags, and from the arrival
@@ -24,6 +25,13 @@ export const UNKNOWN_TRAIN_MIN = 150;
 /** The move to a city from the stay before, with its train when known. */
 export function travelMove(fromCityId: string, trainMin: number | null): TravelMove {
   return { fromCityId, trainMin, minutes: MOVE_ALLOWANCE_MIN + (trainMin ?? UNKNOWN_TRAIN_MIN) };
+}
+
+/** How much of a whole day a day is, for sharing a city's places across a
+ *  stay (`cityDaysLeft`): a travel day counts for the time the move leaves. */
+export function dayShare(pace: TravelPace, move?: TravelMove | null): number {
+  const full = DAY_BUDGET_MINUTES[pace];
+  return Math.max(0, full - (move?.minutes ?? 0)) / full;
 }
 
 /** Each travel day's date, with the city the traveller slept in the night

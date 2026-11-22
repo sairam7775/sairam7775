@@ -627,17 +627,19 @@ describe("days", () => {
     // was spent instead of stopping at a count of stops per pace (more
     // stops, later ends; a stop fits its closing and opening times when it
     // is chosen; a long stay shares its city; a day that crosses town and
-    // comes back loses the stop it came back for).
+    // comes back loses the stop it came back for), and when growing kept
+    // stops on the day's way, a chosen daytime stop ended by the day's end
+    // and a re-plan shared the stay's unplanned days (stops nearer the day's way).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("57550d21a680e2ab70d5751b124866d769744f93609257d354aad1c606aef67e");
+    expect(sha(plan)).toBe("10348a48542b618cbd47c73c17261ef983e48d69544f217a7d5675cc6a39e70a");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("0ea8c69a45794eacee8ebf5358656c902f92627753bd746dd290482b7276580f");
+    expect(sha(replan)).toBe("30a969c1ead1f9fa65aa412aae58ba4c58c23987d1cef43b813139e8e48a8426");
   });
 
   it("the main-sights line passes the voice lint", () => {

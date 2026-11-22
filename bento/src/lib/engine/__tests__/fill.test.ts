@@ -33,13 +33,14 @@ const DATES = ["2027-05-12", "2026-11-23"];
 // visit plus its train. Standard: 85%, 72 min left of 8 hours. Relaxed: 80%,
 // 72 min of 6 hours: its visits are the full ones (45–180 min), so a gap of
 // under an hour often holds none (a Monday in Kyoto leaves 55 min, and Kodai-ji
-// alone takes 90). Packed: 70%, 7 of its 10 hours, still more than standard's
-// bound (6h 48m). Its visits are the short ones (10–45 min), and most of
-// Kyoto's and Osaka's sights close between 16:00 and 17:30, so the rest of its
-// hours could only go to evening places, and the seeds hold few: the day stops
-// rather than make one up. Before this change these days reached 39–55%
+// alone takes 90). Packed: 68%, 6h 48m of its 10 hours, what standard must
+// reach. Its visits are the short ones (10–45 min), so it reaches the guard of
+// 12 stops; most of Kyoto's and Osaka's sights close between 16:00 and
+// 17:30, a chosen daytime stop ends by 19:00, and the seeds hold few evening
+// places: the day stops rather than make one up, or go out of its way (a
+// Monday in Kyoto: 12 stops, 418 min). Before this change these days reached 39–55%
 // packed and 63–80% standard (a fixed count of stops per pace: 4, 5, 7).
-const MIN_SHARE: Record<TravelPace, number> = { relaxed: 0.8, standard: 0.85, packed: 0.7 };
+const MIN_SHARE: Record<TravelPace, number> = { relaxed: 0.8, standard: 0.85, packed: 0.68 };
 
 /** The evening rule is time-of-day's (`eveningFrom`): a fuller day still
  *  never starts an evening-only place before its evening. */

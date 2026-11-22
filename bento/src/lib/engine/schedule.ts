@@ -28,6 +28,10 @@ const OPEN_WAIT_LAST_RESORT_MIN = 120;
  *  RETURN_DETOUR_KM, brings the day back across town (validate, below). */
 const RETURN_NEAR_M = 600;
 const RETURN_DETOUR_KM = 1.5;
+/** No chosen daytime stop ends after this (an evening place may). */
+const DAY_END_LATEST = 19 * 60;
+/** The 09:00 start a day's end is measured from (`usualDayStart`). */
+const USUAL_LATE_START = 9 * 60;
 
 /** A best window starting at or after this is the evening. */
 const EVENING_FROM = 17 * 60;
@@ -100,6 +104,12 @@ export function planDay(input: DayInput): DayPlan {
   // because its visits are the full ones and its budget the shortest. On a
   // long stay it takes no more than its share of the places left (below).
   let maxItems = input.maxItems ?? MAX_STOPS;
+  // When a chosen daytime stop must end: a 09:00 start, the pace's time
+  // and an hour for lunch, or later for a later start, never after 19:00:
+  // relaxed 16:00, standard 18:00, packed 19:00. An early riser starts
+  // early to beat the crowds, not to finish early; a travel day starts
+  // later by the move and has that much less time, so it ends as any day.
+  const dayEndMin = Math.min(DAY_END_LATEST, Math.max(dayStart + budgetMin, USUAL_LATE_START + DAY_BUDGET_MINUTES[t.pace]) + LUNCH_MIN);
 
   const considered: Rejected[] = [];
   const warnings: string[] = [];
@@ -127,9 +137,12 @@ export function planDay(input: DayInput): DayPlan {
     if (r && lockedIds.has(p.id)) warnings.push(copy.plan.warnings.pinnedAnyway(p.name, r.detail));
     pool.push(p);
   }
-  // Never thinner than a relaxed day (about four stops) for the share's sake.
-  const daysLeft = input.cityDaysLeft ?? 1;
-  if (input.maxItems == null && daysLeft > 1) maxItems = Math.min(maxItems, Math.max(lockedIds.size, SHARE_FLOOR, Math.floor(pool.length / daysLeft)));
+  // A long stay's share: this day's part of the days left (a travel day
+  // counts for what its move leaves), never thinner than a relaxed day
+  // (about four stops).
+  const ownShare = budgetMin / DAY_BUDGET_MINUTES[t.pace];
+  const daysLeft = input.cityDaysLeft ?? ownShare;
+  if (input.maxItems == null && daysLeft > ownShare) maxItems = Math.min(maxItems, Math.max(lockedIds.size, SHARE_FLOOR, Math.floor((pool.length * ownShare) / daysLeft)));
 
   // Travel, with an honest fallback. Growing and ordering price legs to
   // places that never make the day, so a fallback leg warns only when the
@@ -242,6 +255,85 @@ export function planDay(input: DayInput): DayPlan {
     ...tm.violations.filter((v) => seq.some((d) => d.locked && d.place.id === v.placeId)).map((v) => v.placeId),
     ...tm.items.filter((i) => seq.some((d) => d.place.id === i.placeId && d.lockedStart != null && i.startMin > d.lockedStart)).map((i) => i.placeId),
   ]);
+
+  // ---- the day's shape, in straight lines between places' positions. A
+  // place without one has no shape to break (0 km).
+  const kmMemo = new Map<string, number>();
+  const km = (a: PlaceInput, b: PlaceInput): number => {
+    const key = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`;
+    let v = kmMemo.get(key);
+    if (v == null) { v = (metresBetween(a, b) ?? 0) / 1000; kmMemo.set(key, v); }
+    return v;
+  };
+  const hasPoint = (p: PlaceInput) => p.lat != null && p.lon != null;
+  /** Is a stop `direct` km from an earlier one, by `path` km through the
+   *  stops between, a return to it? Back within RETURN_NEAR_M (or within a
+   *  quarter of the way round, across a city: Kappabashi, 700 m from
+   *  Senso-ji after Kabuki-za), by a detour of over RETURN_DETOUR_KM. */
+  const isReturn = (direct: number, path: number) => direct <= Math.max(RETURN_NEAR_M / 1000, path / 4) && path - direct > RETURN_DETOUR_KM;
+  /** Would a stop at `at` take the day out of its way? Between two stops:
+   *  a detour of over RETURN_DETOUR_KM off the straight line between them
+   *  (Kyoto Tower between Yasaka Shrine and Gion). At the day's end: back
+   *  to an area the day already left, away from where it is now (Kappabashi
+   *  after Kabuki-za, beside Senso-ji where the day began). */
+  const strays = (p: PlaceInput, at: number): boolean => {
+    if (!hasPoint(p)) return false;
+    const prev = seq[at - 1]?.place;
+    const next = seq[at]?.place;
+    if (prev && next) return km(prev, p) + km(p, next) - km(prev, next) > RETURN_DETOUR_KM;
+    const near = RETURN_NEAR_M / 1000;
+    if (prev) {
+      if (km(prev, p) <= near) return false;
+      for (let i = 0; i < at - 1; i++) {
+        if (!hasPoint(seq[i].place)) continue;
+        let path = km(prev, p);
+        for (let j = i; j < at - 1; j++) path += km(seq[j].place, seq[j + 1].place);
+        if (isReturn(km(seq[i].place, p), path)) return true;
+      }
+      return false;
+    }
+    // At the day's start, the same the other way round: not where the day
+    // will come back to after leaving (Tsukiji before Senso-ji, when Kabuki-za
+    // beside Tsukiji is pinned after it).
+    if (!next || km(p, next) <= near) return false;
+    // Nor across town from a pin the day opens with: the pin is where the
+    // traveller chose to be (Nijo Castle before Kiyomizu-dera, on a day of
+    // the east bank).
+    if (seq[at].locked && km(p, next) > RETURN_DETOUR_KM) return true;
+    for (let k = at + 1; k < seq.length; k++) {
+      if (!hasPoint(seq[k].place)) continue;
+      let path = km(p, next);
+      for (let j = at; j < k; j++) path += km(seq[j].place, seq[j + 1].place);
+      if (isReturn(km(seq[k].place, p), path)) return true;
+    }
+    return false;
+  };
+  /** Where a day comes back to an area it left: a stop within RETURN_NEAR_M
+   *  of an earlier one, reached by a detour of over RETURN_DETOUR_KM through
+   *  the stops between. Not when a pin lies between them (the pins made
+   *  the day cross town; `acrossPins` counts those too), nor a return to
+   *  an evening stop in its evening (the day ends there wherever it
+   *  began). One per returning stop. */
+  const returnsOf = (s: Draft[], tm: ReturnType<typeof time>, acrossPins = false): { i: number; k: number }[] => {
+    const starts = new Map(tm.items.map((it) => [it.placeId, it.startMin]));
+    const out: { i: number; k: number }[] = [];
+    for (let k = 2; k < s.length; k++) {
+      if (!hasPoint(s[k].place)) continue;
+      const from = eveningOf(s[k]) ?? eveningWindow(s[k].place);
+      if (from != null && (starts.get(s[k].place.id) ?? 0) >= from) continue;
+      for (let i = 0; i < k - 1; i++) {
+        if (!hasPoint(s[i].place)) continue;
+        if (!acrossPins && s.slice(i + 1, k).some((d) => d.locked)) continue;
+        let path = 0;
+        for (let j = i; j < k; j++) path += km(s[j].place, s[j + 1].place);
+        if (isReturn(km(s[i].place, s[k].place), path)) { out.push({ i, k }); break; }
+      }
+    }
+    return out;
+  };
+  /** The longest wait for a chosen daytime stop to open, in a timing. */
+  const longestWait = (s: Draft[], tm: ReturnType<typeof time>): number =>
+    Math.max(0, ...s.filter((d) => !d.locked && !isEvening(d)).map((d) => tm.waits.get(d.place.id) ?? 0));
 
   // 4 GROW — insert the candidate with the best marginal (score minus the
   // travel it adds) until the budget is spent or nothing is worth adding.
@@ -357,12 +449,17 @@ export function planDay(input: DayInput): DayPlan {
           let own: Rejected | null = null;
           let pushed: string | null = null;
           let waited: number | null = null;
+          let strayed = false;
           for (const at of spots) {
             const prev = seq[at - 1]?.place;
             const next = seq[at]?.place;
             const dTravel = tmin(prev, o.p) + tmin(o.p, next) - tmin(prev, next);
             // Another spot can cost more travel than the time left.
             if (o.duration + dTravel > rem) continue;
+            // A fuller day has time to wander: a stop goes only where it is
+            // on the day's way, never out and back again.
+            // (Not an evening place: the day ends there, wherever it began.)
+            if (eveningStart(o.p, o.duration) == null && strays(o.p, at)) { strayed = true; continue; }
             const saved = seq;
             seq = [...seq.slice(0, at), draftOf(o.p), ...seq.slice(at)];
             const trial = time(true);
@@ -381,6 +478,9 @@ export function planDay(input: DayInput): DayPlan {
             pushed ??= bad.find((v) => v.placeId !== o.p.id)?.name ?? null;
             if (!late && !bad.length) {
               waited = Math.min(waited ?? Infinity, wait);
+              // The best-ranked place that fits with a wait is the one kept,
+              // at its spot with the shortest wait; a lower-ranked place
+              // never takes its turn, even with a shorter wait.
               if (wait <= OPEN_WAIT_LAST_RESORT_MIN && (!patient || (patient.p === o.p && wait < patientWait))) {
                 patient = { ...o, at, dTravel };
                 patientWait = wait;
@@ -395,6 +495,8 @@ export function planDay(input: DayInput): DayPlan {
           else if (waited != null) tooEarly.push(skip(copy.plan.leftOut.opensLater(clock(parseClock(o.p.opensAt)!), waited)));
           else if (madeLate) clockSkips.push(skip(copy.plan.leftOut.makesPinLate(seq.find((d) => d.place.id === madeLate)?.place.name ?? madeLate)));
           else if (pushed) clockSkips.push(skip(copy.plan.leftOut.makesPinLate(pushed)));
+          // Out of the way only for now: the day may come its way as it fills.
+          else if (strayed) tooEarly.push({ placeId: o.p.id, name: o.p.name, stage: "grow", term: "travel", detail: copy.plan.leftOut.outOfWay });
         }
       }
       considered.push(...clockSkips);
@@ -443,19 +545,32 @@ export function planDay(input: DayInput): DayPlan {
   // undoes what growing fitted: a chosen stop past closing, or more travel
   // than the day has time for (the window charge can trade travel for a
   // quiet hour).
+  // Nor one that comes back across town, or keeps the day waiting longer
+  // than OPEN_WAIT_LAST_RESORT_MIN for a stop to open (Tōshō-gū at 07:00,
+  // then Ekie, which opens at 11:00).
+  // The day as it stands is timed once per order it is compared with.
+  let wasTimed: { s: Draft[]; tm: ReturnType<typeof time>; used: number } | null = null;
   const breaksDay = (was: Draft[]): boolean => {
     const now = seq;
     const used = usedMin();
     const tNow = time(true);
     const after = new Set([...tNow.violations.map((v) => v.placeId), ...latePinsOf(tNow)]);
     seq = was;
-    const usedWas = usedMin();
-    const tWas = time(true);
+    if (wasTimed?.s !== was) wasTimed = { s: was, tm: time(true), used: usedMin() };
+    const { tm: tWas, used: usedWas } = wasTimed;
     const before = new Set([...tWas.violations.map((v) => v.placeId), ...latePinsOf(tWas)]);
     seq = now;
-    return (used > budgetMin && used > usedWas) || [...after].some((id) => !before.has(id));
+    if (used > budgetMin && used > usedWas) return true;
+    if ([...after].some((id) => !before.has(id))) return true;
+    const waitNow = longestWait(now, tNow);
+    if (waitNow > OPEN_WAIT_LAST_RESORT_MIN && waitNow > longestWait(was, tWas)) return true;
+    // Counted across pins too: a reordering never makes a return a pin excuses.
+    const backBefore = new Set(returnsOf(was, tWas, true).map(({ k }) => was[k].place.id));
+    return returnsOf(now, tNow, true).some(({ k }) => !backBefore.has(now[k].place.id));
   };
   const order = () => {
+    // Growing splices into `seq` in place: never compare with a stale timing.
+    wasTimed = null;
     const total = () => {
       let travelMin = 0;
       let clockAt = dayStart;
@@ -665,6 +780,11 @@ export function planDay(input: DayInput): DayPlan {
       if (endMin > closes) {
         violations.push({ placeId: p.id, name: p.name, stage: "validate", term: "hours",
           detail: copy.plan.leftOut.closesBefore(clock(closes), clock(startMin), d.durationMin) });
+      } else if (!d.locked && evening == null && endMin > dayEndMin) {
+        // A chosen daytime stop ends by the day's end; an evening place, or
+        // one with an evening window it is in, may run later.
+        const win = eveningWindow(p);
+        if (win == null || startMin < win) violations.push({ placeId: p.id, name: p.name, stage: "validate", term: "day_end", detail: copy.plan.leftOut.pastDayEnd(clock(dayEndMin)) });
       }
 
       if (lite) {
@@ -674,7 +794,7 @@ export function planDay(input: DayInput): DayPlan {
         return;
       }
       // Window clauses: the honest version of "go early".
-      const wins =p.bestWindow.map(parseWindow).filter((x) => x.before != null || x.after != null);
+      const wins = p.bestWindow.map(parseWindow).filter((x) => x.before != null || x.after != null);
       if (evening != null) {
         extra.push(copy.plan.reasons.evening);
       } else {
@@ -762,33 +882,21 @@ export function planDay(input: DayInput): DayPlan {
     if (eve == null || arrive == null || arrive >= eve - EVENING_WAIT_MAX) return [];
     return [{ placeId: d.place.id, name: d.place.name, stage: "validate", term: "best_window", detail: copy.plan.leftOut.eveningOnly(clock(eveningFrom(d.place)!)) }];
   });
-  // A day that leaves an area and comes back to it (a stop within 600 m of
-  // an earlier one, reached by a detour of over 1.5 km in a straight line
-  // through the stops between) loses the stop it came back for, or, when
-  // that is a pin, the chosen stop between them furthest from it. A fuller
-  // day has more stops to wander with: growing puts each where it is
-  // cheapest then, and ordering keeps quiet windows over a shorter route.
-  // Not a return to an evening stop in its evening: the day ends there.
+  // A day that leaves an area and comes back to it (`returnsOf`: not across
+  // a pin, nor to an evening stop in its evening) loses the stop it came
+  // back for, but only when that really takes the return away. Growing
+  // keeps stops on the day's way (`strays`) and ordering refuses a new
+  // return, so this is a last check.
   const comesBack = (): Rejected[] => {
-    const at = (k: number) => timed.items.find((i) => i.placeId === seq[k].place.id)?.startMin ?? 0;
-    const inEvening = (k: number) => {
-      const from = eveningOf(seq[k]) ?? eveningWindow(seq[k].place);
-      return from != null && at(k) >= from;
-    };
-    const km = (a: Draft, b: Draft) => (metresBetween(a.place, b.place) ?? 0) / 1000;
-    for (let k = 2; k < seq.length; k++) {
-      if (inEvening(k)) continue;
-      for (let i = 0; i < k - 1; i++) {
-        const direct = metresBetween(seq[i].place, seq[k].place);
-        if (direct == null || direct > RETURN_NEAR_M) continue;
-        let path = 0;
-        for (let j = i; j < k; j++) path += km(seq[j], seq[j + 1]);
-        if (path - direct / 1000 <= RETURN_DETOUR_KM) continue;
-        const off = !seq[k].locked ? seq[k]
-          : seq.slice(i + 1, k).filter((d) => !d.locked && !d.anchored).sort((a, b) => km(seq[i], b) - km(seq[i], a))[0];
-        if (!off) continue;
-        return [{ placeId: off.place.id, name: off.place.name, stage: "validate", term: "travel", detail: copy.plan.leftOut.comesBack(seq[i].place.name) }];
-      }
+    const now = returnsOf(seq, timed);
+    for (const { i, k } of now) {
+      const off = seq[k];
+      if (off.locked || off.anchored) continue;
+      const saved = seq;
+      seq = seq.filter((d) => d !== off);
+      const fewer = returnsOf(seq, time(true)).length < now.length;
+      seq = saved;
+      if (fewer) return [{ placeId: off.place.id, name: off.place.name, stage: "validate", term: "travel", detail: copy.plan.leftOut.comesBack(seq[i].place.name) }];
     }
     return [];
   };
@@ -811,7 +919,8 @@ export function planDay(input: DayInput): DayPlan {
     considered.push(...drop);
     seq = seq.filter((d) => !drop.some((v) => v.placeId === d.place.id));
     stale = true;
-    if (round === MAX_VALIDATE_ROUNDS - 1) warnings.push(copy.plan.warnings.hoursNotFitted);
+    // Only a drop for opening hours is what this warns of.
+    if (round === MAX_VALIDATE_ROUNDS - 1 && drop.some((v) => v.term === "hours")) warnings.push(copy.plan.warnings.hoursNotFitted);
   }
   // Out of rounds with drops still pending: `timed` was computed before the
   // last drop and still holds the places just rejected — the plan would show

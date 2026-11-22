@@ -5,6 +5,7 @@ import { kyoto as kyotoSeed } from "@/lib/places/seed/kyoto";
 import { hiroshima as hiroshimaSeed } from "@/lib/places/seed/hiroshima";
 import { tokyo as tokyoSeed } from "@/lib/places/seed/tokyo";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
+import { copy } from "@/copy";
 import { parseClock } from "../filter";
 import { planDay } from "../schedule";
 import { planTrip } from "../trip";
@@ -153,7 +154,10 @@ describe("planDay and pins", () => {
     // Before B it makes B late; after B the day would wait over an hour for
     // it to open, and a chosen stop doesn't keep the day waiting (more than
     // 20 min), so that is the reason given.
-    else expect(plan.considered.find((r) => r.placeId === "x")?.detail).toMatch(/^opens at 12:00, and the day would wait \d+ min for it$/);
+    else {
+      const why = plan.considered.find((r) => r.placeId === "x")?.detail ?? "";
+      expect(why).toBe(copy.plan.leftOut.opensLater("12:00", Number(/(\d+) min/.exec(why)?.[1])));
+    }
   });
 
   it("moves a chosen stop past a pin when growing left it on the wrong side of town", () => {

@@ -164,9 +164,15 @@ Explained in `../docs/bento/30-software/engine.md`.
   no pin made late, nothing past closing, no wait of over 20 min for it to
   open (up to two hours when nothing else fits). Evening places follow the
   evening-only rule below. A long stay shares the city's places across its
-  days (`cityDaysLeft`, at least 4 a day). Validation drops the stop a day
-  crosses town to come back for (600 m, a 1.5 km detour; not an evening
-  stop in its evening).
+  days (`cityDaysLeft`, a travel day counted by what its move leaves, at
+  least 4 a day; `replanDay` counts the stay's unplanned days too). A stop
+  goes only on the day's way (`strays`: no 1.5 km detour off the line
+  between its neighbours, no going back to an area the day left, not across
+  town from an opening pin), and a chosen daytime stop ends by 09:00 + the
+  pace + lunch, never after 19:00. Ordering refuses an order that adds a
+  return, a wait over two hours or a stop past the day's end. Validation
+  drops the stop a day crosses town to come back for, never across a pin
+  and only if that removes the return (`returnsOf`).
 - The anchor holds position 0 through growth and ordering. Timed pins are
   slotted where the clock reaches them. Ordering charges 30 min for a busy
   place that would miss its quiet window.

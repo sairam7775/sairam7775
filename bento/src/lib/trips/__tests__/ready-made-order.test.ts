@@ -124,11 +124,13 @@ describe("ready-made days don't go back and forth", () => {
       const byDay = ids.slice(from + 1, to);
       const firstWest = byDay.findIndex((id) => seedById.get(id)!.lon <= 135.772);
       if (firstWest >= 0) for (const id of byDay.slice(firstWest)) expect(seedById.get(id)!.lon, `${tripId}: ${ids.join(" > ")}`).toBeLessThanOrEqual(135.772);
-      // Under 48 min when these days held five stops at most (4 hops, 12 a
-      // hop); a day that grows until its time is spent holds more, so the
-      // bar is per hop: Kyoto Tower and Nijo Castle west of the river and
-      // back for Gion's evening is 78 min over 6 hops.
-      expect(travelMin(day) / (day.items.length - 1), ids.join(" > ")).toBeLessThan(13.5);
+      // Under 48 min when these days held five stops at most. A day that
+      // grows until its time is spent holds seven, all on the east side:
+      // every stop within 2 km of Gion, where it ends, not out to Kyoto
+      // Tower and Nijo Castle and back (78 min). Seven stops a walk apart
+      // take about 65 min of travel (Nishiki Market to Gion by the river).
+      expect(travelMin(day), ids.join(" > ")).toBeLessThan(70);
+      for (const id of ids) expect(km(id, "kyt-gion"), `${tripId}: ${ids.join(" > ")}`).toBeLessThan(2);
     }
   });
 
@@ -149,6 +151,24 @@ describe("ready-made days don't go back and forth", () => {
       expect(returns(day, 3.5), names(day).join(" > ")).toEqual([]);
     }
   });
+
+  it("Tokyo, packed: from Senso-ji south across the city, not back up to Kappabashi beside it", () => {
+    // A packed day of up to 12 stops once went Senso-ji > Tsukiji >
+    // Kabuki-za > Kappabashi (700 m from Senso-ji) > Ueno: across town and
+    // back. A return here is also one back to within a quarter of the way
+    // round, as the planner counts it across a city.
+    for (const crowd of [0.2, 0.6])
+      for (const start of ["2027-05-10", "2027-05-12"]) {
+        const day = plan("tokyo-2", start, "packed", crowd).days[0];
+        expect(returns(day), `${crowd} ${start}: ${names(day).join(" > ")}`).toEqual([]);
+        const ids = names(day);
+        const k = ids.indexOf("tky-kabukiza");
+        if (k >= 0) for (const id of ids.slice(k + 1)) {
+          if (eveningFrom(seedToPlaceInput(seedById.get(id)!)) == null) expect(km(id, "tky-sensoji"), `${crowd} ${start}: ${ids.join(" > ")}`).toBeGreaterThan(1.5);
+        }
+      }
+    // Four packed Tokyo trips over the Kanto network: seconds on a busy runner.
+  }, 30_000);
 
   it("the one-day Arashiyama trip starts in Arashiyama, not in central Kyoto", () => {
     const day = plan("kyoto-arashiyama").days[0];

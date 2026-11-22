@@ -1,5 +1,5 @@
 import { planDay } from "./schedule";
-import { travelMove } from "./travel-day";
+import { dayShare, travelMove } from "./travel-day";
 import type { DayInput, DayPlan, LockedItem, PlaceInput, TravelFn, TravellerInput } from "./types";
 import type { BudgetBand } from "@/lib/types";
 
@@ -51,8 +51,11 @@ export function planTrip(input: TripInput): TripPlan {
   const pinnedOn = new Map<string, string>();
   for (const d of input.days) for (const l of d.locked ?? []) if (!pinnedOn.has(l.placeId)) pinnedOn.set(l.placeId, d.date);
 
+  const moveOf = (d: TripDay) => (d.movingFrom && d.movingFrom !== d.cityId ? travelMove(d.movingFrom, input.trainMinutes?.(d.movingFrom, d.cityId) ?? null) : undefined);
   for (const [i, d] of input.days.entries()) {
-    const cityDaysLeft = input.days.slice(i).filter((x) => x.cityId === d.cityId).length;
+    // The days still to plan in this city, a travel day counted by the
+    // time its move leaves.
+    const cityDaysLeft = input.days.slice(i).filter((x) => x.cityId === d.cityId).reduce((s, x) => s + dayShare(input.traveller.pace, moveOf(x)), 0);
     const pinnedElsewhere = [...pinnedOn].filter(([, date]) => date !== d.date).map(([id]) => id);
     const plan = planDay({
       date: d.date,
@@ -65,7 +68,7 @@ export function planTrip(input: TripInput): TripPlan {
       usedPlaceIds: [...used, ...pinnedElsewhere],
       weights: input.weights,
       cityDaysLeft,
-      move: d.movingFrom && d.movingFrom !== d.cityId ? travelMove(d.movingFrom, input.trainMinutes?.(d.movingFrom, d.cityId) ?? null) : undefined,
+      move: moveOf(d),
     });
     for (const it of plan.items) used.add(it.placeId);
     days.push(plan);

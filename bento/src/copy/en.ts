@@ -1210,6 +1210,8 @@ export const en = {
       eveningOnly: (from: string) => `best after ${from}, and this day ends before then`,
       opensLater: (opens: string, wait: number) => `opens at ${opens}, and the day would wait ${wait} min for it`,
       comesBack: (near: string) => `left out so the day doesn't cross town and come back to ${near}`,
+      outOfWay: "out of the way of the rest of the day",
+      pastDayEnd: (end: string) => `the day would run past ${end}`,
     },
     // Notes under a planned day.
     warnings: {
