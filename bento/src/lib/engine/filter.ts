@@ -84,7 +84,10 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
 }
 
 // The planner reads the same few clock strings many thousand times for a day
-// (every trial order is timed): each is parsed once.
+// (every trial order is timed): each is parsed once. Bounded: the strings
+// come from places' hours and windows, a few hundred at most, but a server
+// runs for weeks, so a full cache starts again rather than growing.
+const MEMO_MAX = 1024;
 const clockMemo = new Map<string, number | null>();
 const windowMemo = new Map<string, Readonly<{ before?: number; after?: number }>>();
 
@@ -95,6 +98,7 @@ export function parseClock(hhmm: string | null | undefined): number | null {
   if (v === undefined) {
     const m = /^(\d{1,2}):(\d{2})/.exec(hhmm);
     v = m ? Number(m[1]) * 60 + Number(m[2]) : null;
+    if (clockMemo.size >= MEMO_MAX) clockMemo.clear();
     clockMemo.set(hhmm, v);
   }
   return v;
@@ -107,6 +111,7 @@ export function parseWindow(win: string): { before?: number; after?: number } {
     const m = /^(before|after)\s+(\d{1,2}:\d{2})/i.exec(win.trim());
     const at = m ? parseClock(m[2])! : 0;
     v = Object.freeze(!m ? {} : m[1].toLowerCase() === "before" ? { before: at } : { after: at });
+    if (windowMemo.size >= MEMO_MAX) windowMemo.clear();
     windowMemo.set(win, v);
   }
   return { ...v };

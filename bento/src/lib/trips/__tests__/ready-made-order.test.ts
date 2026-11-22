@@ -7,7 +7,7 @@ import { hubFor, type CityFacts } from "@/lib/engine/route";
 import { planTrip, type TripPlan } from "@/lib/engine/trip";
 import { travelFromGraph } from "@/lib/engine/travel";
 import { parseClock, parseWindow } from "@/lib/engine/filter";
-import { eveningFrom } from "@/lib/engine/schedule";
+import { eveningFrom, usualDayStart } from "@/lib/engine/schedule";
 import { cityTrainMinutes } from "@/lib/engine/travel-day";
 import type { DayPlan, PlaceInput } from "@/lib/engine/types";
 import type { TravelPace } from "@/lib/types";
@@ -130,6 +130,10 @@ describe("ready-made days don't go back and forth", () => {
       // Tower and Nijo Castle and back (78 min). Seven stops a walk apart
       // take about 65 min of travel (Nishiki Market to Gion by the river).
       expect(travelMin(day), ids.join(" > ")).toBeLessThan(70);
+      // Nor does it open with the day waiting: Nishiki Market, moved first for
+      // its quiet morning, once kept a 09:00 day waiting until 10:00.
+      expect(day.warnings.filter((w) => /the day waits/.test(w)), ids.join(" > ")).toEqual([]);
+      if (tripId === "kyoto-east") expect(day.items[0].startMin - usualDayStart(0.6), ids.join(" > ")).toBeLessThanOrEqual(20);
       for (const id of ids) expect(km(id, "kyt-gion"), `${tripId}: ${ids.join(" > ")}`).toBeLessThan(2);
     }
   });

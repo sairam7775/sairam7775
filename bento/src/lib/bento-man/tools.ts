@@ -650,7 +650,8 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   // in this city not planned yet. A planned day keeps its own places
   // (`used`), so it doesn't count.
   const moveFor = movesFor(state, graph, factsMap(cities));
-  const pace = travellerFor(state.prefs, budget).pace;
+  const traveller = travellerFor(state.prefs, budget);
+  const pace = traveller.pace;
   const later = [...plannedDates(state)].filter(([d, c]) => d > date && c === cityId && !state.days.find((x) => x.date === d)?.items.length);
   const cityDaysLeft = dayShare(pace, move) + later.reduce((s, [d]) => s + dayShare(pace, moveFor(d, cityId)), 0);
   const plan = planDay({
@@ -658,7 +659,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     cityId,
     places: pool,
     cityDaysLeft,
-    traveller: travellerFor(state.prefs, budget),
+    traveller,
     travel: travelFromGraph(graph, { mobility: state.prefs.mobility }),
     locked: [...lockedMap.values()],
     usedPlaceIds: [...used],
@@ -882,11 +883,12 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         const locked: LockedItem[] = (existing?.items ?? []).filter((i) => i.locked).map((i) => ({ placeId: i.placeId, startMin: i.startMin }));
         const budget = state.cities.find((c) => c.cityId === t.cityId)?.budgetBand ?? null;
         const places = placesCache.get(t.cityId)!;
+        const traveller = travellerFor(state.prefs, budget);
         const plan = planDay({
           date: t.date,
           cityId: t.cityId,
           places,
-          traveller: travellerFor(state.prefs, budget),
+          traveller,
           travel,
           locked,
           usedPlaceIds: [...used],
@@ -894,7 +896,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
           move: moveOn(t.date, t.cityId),
           // A long stay shares the city's places across its days, as planTrip does.
-          cityDaysLeft: targets.slice(ti).filter((x) => x.cityId === t.cityId).reduce((s, x) => s + dayShare(travellerFor(state.prefs, null).pace, moveOn(x.date, x.cityId)), 0),
+          cityDaysLeft: targets.slice(ti).filter((x) => x.cityId === t.cityId).reduce((s, x) => s + dayShare(traveller.pace, moveOn(x.date, x.cityId)), 0),
         });
         for (const it of plan.items) used.add(it.placeId);
         tiers.push(f.tier);

@@ -331,9 +331,6 @@ export function planDay(input: DayInput): DayPlan {
     }
     return out;
   };
-  /** The longest wait for a chosen daytime stop to open, in a timing. */
-  const longestWait = (s: Draft[], tm: ReturnType<typeof time>): number =>
-    Math.max(0, ...s.filter((d) => !d.locked && !isEvening(d)).map((d) => tm.waits.get(d.place.id) ?? 0));
 
   // 4 GROW — insert the candidate with the best marginal (score minus the
   // travel it adds) until the budget is spent or nothing is worth adding.
@@ -562,11 +559,23 @@ export function planDay(input: DayInput): DayPlan {
     seq = now;
     if (used > budgetMin && used > usedWas) return true;
     if ([...after].some((id) => !before.has(id))) return true;
-    const waitNow = longestWait(now, tNow);
-    if (waitNow > OPEN_WAIT_LAST_RESORT_MIN && waitNow > longestWait(was, tWas)) return true;
     // Counted across pins too: a reordering never makes a return a pin excuses.
-    const backBefore = new Set(returnsOf(was, tWas, true).map(({ k }) => was[k].place.id));
-    return returnsOf(now, tNow, true).some(({ k }) => !backBefore.has(now[k].place.id));
+    const backWas = returnsOf(was, tWas, true);
+    const backBefore = new Set(backWas.map(({ k }) => was[k].place.id));
+    const backNow = returnsOf(now, tNow, true);
+    if (backNow.some(({ k }) => !backBefore.has(now[k].place.id))) return true;
+    // A chosen daytime stop kept waiting longer than OPEN_WAIT_MAX_MIN for it
+    // to open, and longer than before: a wait growing chose (its two-hour
+    // fallback) stays, but ordering adds none (Nishiki Market moved first
+    // for its quiet morning kept a 09:00 day waiting until 10:00), unless the
+    // order takes a return away (round Yokohama's bay and back to Osanbashi),
+    // and never one over the fallback's two hours.
+    const fewerReturns = backNow.length < backWas.length;
+    return now.some((d) => {
+      if (d.locked || isEvening(d)) return false;
+      const w = tNow.waits.get(d.place.id) ?? 0;
+      return w > (fewerReturns ? OPEN_WAIT_LAST_RESORT_MIN : OPEN_WAIT_MAX_MIN) && w > (tWas.waits.get(d.place.id) ?? 0);
+    });
   };
   const order = () => {
     // Growing splices into `seq` in place: never compare with a stale timing.

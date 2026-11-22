@@ -170,7 +170,8 @@ Explained in `../docs/bento/30-software/engine.md`.
   between its neighbours, no going back to an area the day left, not across
   town from an opening pin), and a chosen daytime stop ends by 09:00 + the
   pace + lunch, never after 19:00. Ordering refuses an order that adds a
-  return, a wait over two hours or a stop past the day's end. Validation
+  return, a new wait over 20 min (over two hours if it takes a return
+  away) or a stop past the day's end. Validation
   drops the stop a day crosses town to come back for, never across a pin
   and only if that removes the return (`returnsOf`).
 - The anchor holds position 0 through growth and ordering. Timed pins are
