@@ -140,13 +140,17 @@ function Particles({ season }: { season: Background }) {
         if (mote) {
           const j = i + (MOTE_SEED[season] ?? 0);
           const size = 4 + noise(j, 6) * 6;
+          const top = (season === "matsuri" ? 20 : 30) + noise(j, 9) * 60;
           return (
             <span
               key={i}
               className="season-mote"
+              // Phones show only these: low enough that, drifting up 140px,
+              // they stay under the text at the top of the page.
+              data-low={top >= 70 ? "" : undefined}
               style={{
                 left: `${moteLeft(noise(j, 1))}%`,
-                top: `${(season === "matsuri" ? 20 : 30) + noise(j, 9) * 60}%`,
+                top: `${top}%`,
                 width: size,
                 height: size,
                 background: mote[0],

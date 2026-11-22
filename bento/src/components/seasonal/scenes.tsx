@@ -284,10 +284,12 @@ function Tsuyu() {
 }
 
 /** Fuji's outline, from the far shore at y 640: wide, with concave slopes. */
-const FUJI = "M-40 640 Q620 560 744 222 Q760 212 776 210 L830 210 Q846 212 860 222 Q986 560 1640 640Z";
-/** Summit at x 640, left of the day card on a wide screen and still in the
- *  middle strip a phone shows. */
-const FUJI_SHIFT = -160;
+/*  Drawn with the summit at x 803; the `season-fuji` class (globals.css)
+ *  moves it, so its white cap is never behind the home page's text: on a
+ *  wide screen to x 1150 and 1.17 times taller from the shore, so the cap
+ *  shows above the day card between its two labels; on a phone to x 1000,
+ *  where the cap shows at the right edge beside the short headline lines. */
+const FUJI = "M-600 640 Q620 560 744 222 Q760 212 776 210 L830 210 Q846 212 860 222 Q986 560 1640 640Z";
 const FUJI_SNOW = "M744 222 Q760 212 776 210 L830 210 Q846 212 860 222 Q880 280 900 322 L880 316 L866 350 L846 320 L826 356 L806 322 L784 352 L764 318 L744 346 L728 314 L706 322 Q726 280 744 222Z";
 
 function Fuji() {
@@ -306,19 +308,23 @@ function Fuji() {
           </linearGradient>
         </defs>
         <rect width="1600" height="900" fill="url(#fj-sky)" />
-        <circle cx="1250" cy="560" r="170" fill="#ffd29a" opacity="0.7" />
-        <circle cx="1250" cy="572" r="62" fill="#fff3dc" />
+        {/* The sun about to clear the mountain's east shoulder, at the
+            right edge, away from the page's text. */}
+        <circle cx="1500" cy="520" r="170" fill="#ffd29a" opacity="0.7" />
+        <circle cx="1500" cy="500" r="62" fill="#fff3dc" />
         <rect y="640" width="1600" height="260" fill="url(#fj-lake)" />
         {/* The reflection, upside down in the still water, softened by the
             blur; the mountain itself is drawn crisp in the near layer. */}
-        <g transform={`translate(${FUJI_SHIFT} 1280) scale(1 -1)`} opacity="0.45">
-          <path d={FUJI} fill="#4f5891" />
-          <path d={FUJI_SNOW} fill="#ffffff" />
+        <g className="season-fuji">
+          <g transform="translate(0 1280) scale(1 -1)" opacity="0.45">
+            <path d={FUJI} fill="#4f5891" />
+            <path d={FUJI_SNOW} fill="#ffffff" />
+          </g>
         </g>
-        <rect x="1210" y="640" width="80" height="200" fill="#fff3dc" opacity="0.45" />
+        <rect x="1460" y="640" width="80" height="200" fill="#fff3dc" opacity="0.45" />
       </Layer>
       <Layer className="season-near">
-        <g transform={`translate(${FUJI_SHIFT} 0)`}>
+        <g className="season-fuji">
           <path d={FUJI} fill="#4f5891" />
           {/* The shadowed east face. */}
           <path d="M803 210 L830 210 Q846 212 860 222 Q986 560 1640 640 L1100 640 Q900 420 803 210Z" fill="#454d84" />
@@ -326,7 +332,7 @@ function Fuji() {
         </g>
         <path d="M0 636 Q200 626 420 634 T900 636 T1600 632 V646 H0Z" fill="#3c4476" />
         {/* Light on the water, under the sun. */}
-        {[[1250, 662, 70, 0], [1220, 690, 50, 0.9], [1276, 716, 64, 1.8], [1238, 748, 40, 0.5], [1260, 782, 56, 2.4], [900, 700, 40, 1.3], [720, 750, 52, 2.9], [840, 800, 46, 0.3]].map(([x, y, w, d], i) => (
+        {[[1500, 662, 70, 0], [1470, 690, 50, 0.9], [1526, 716, 64, 1.8], [1488, 748, 40, 0.5], [1510, 782, 56, 2.4], [900, 700, 40, 1.3], [720, 750, 52, 2.9], [840, 800, 46, 0.3]].map(([x, y, w, d], i) => (
           <rect key={i} className="season-glint" style={{ animationDelay: `${d}s` }} x={x - w / 2} y={y} width={w} height="3" rx="1.5" fill="#fff6e6" />
         ))}
         {/* The near shore, low, with reeds. */}
@@ -453,12 +459,13 @@ function NightCity() {
         <path d="M700 900 L780 740 L820 740 L900 900Z" fill="#ffb87a" opacity="0.18" />
         <Machiya side={-1} />
         <Machiya side={1} />
-        {/* A string of lanterns across the street, low (y 600 and down), so
-            it passes under the page's buttons rather than behind them. */}
-        <path d="M560 600 Q800 670 1040 600" stroke="#1e1418" strokeWidth="2.5" fill="none" />
+        {/* A string of lanterns across the street, low (y 640 and down, like
+            the festival's), so it passes under the page's buttons and their
+            small grey line rather than behind them. */}
+        <path d="M560 640 Q800 710 1040 640" stroke="#1e1418" strokeWidth="2.5" fill="none" />
         {[690, 800, 910].map((x, i) => {
           const f = (x - 560) / 480;
-          const y = 600 + 4 * 35 * f * (1 - f);
+          const y = 640 + 4 * 35 * f * (1 - f);
           const lantern = i % 2 ? WHITE_LANTERN : RED_LANTERN;
           return <Lantern key={x} x={x} y={r1(y)} s={0.85} {...lantern} delay={i * 0.55} />;
         })}

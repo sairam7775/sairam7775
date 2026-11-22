@@ -422,10 +422,16 @@ h1, h2, h3, h4 {
    data-paused from document.visibilityState). */
 .season-backdrop[data-paused], .season-backdrop[data-paused] * { animation-play-state: paused; }
 
-/* Fewer particles on a phone. */
+/* Fuji's summit is moved clear of the home page's text (scenes.tsx): above
+   the day card on a wide screen, at the right edge on a phone. Static. */
+.season-fuji { transform: translateX(347px) scaleY(1.17); transform-origin: 0 640px; }
+
+/* Fewer particles on a phone. Drifting light only in the lower part of the
+   screen there (data-low), where it doesn't cross the text. */
 @media (max-width: 640px) {
   .season-fall:nth-child(n + 7), .season-snow:nth-child(n + 21), .season-firefly:nth-child(n + 7) { display: none; }
-  .season-rain:nth-child(n + 23), .season-mote:nth-child(n + 8) { display: none; }
+  .season-rain:nth-child(n + 23), .season-mote:not([data-low]) { display: none; }
+  .season-fuji { transform: translateX(200px); }  /* no stretch on a phone */
 }
 
 @media (prefers-reduced-motion: reduce) {
