@@ -216,10 +216,12 @@ const HYD_BLUE: [string, string, string] = ["#8aa6dc", "#b3c6ee", "#6a86c2"];
 const HYD_VIOLET: [string, string, string] = ["#a892d4", "#c6b6e8", "#8670b8"];
 const HYD_PINK: [string, string, string] = ["#e2a6c6", "#f2c8dc", "#c886ab"];
 
-/** A bush: leaves, then heads on top. Heads are [cx, cy, r, colours]. */
-function HydrangeaBush({ heads, origin, delay }: { heads: [number, number, number, [string, string, string]][]; origin: string; delay: number }) {
+/** A bush: leaves, then heads on top. Heads are [cx, cy, r, colours].
+ *  Still, not swaying: a bush is ~100 circles, and moving SVG repaints every
+ *  frame (it measured as the dearest scene); the rain carries the motion. */
+function HydrangeaBush({ heads }: { heads: [number, number, number, [string, string, string]][] }) {
   return (
-    <g className="season-canopy" style={{ transformOrigin: origin, animationDelay: `${delay}s` }}>
+    <g>
       {heads.map(([cx, cy, r], i) => (
         <g key={`l${i}`} fill="#4f7d5c">
           <ellipse cx={cx - r * 0.9} cy={cy + r * 0.7} rx={r * 0.75} ry={r * 0.38} transform={`rotate(-25 ${cx - r * 0.9} ${cy + r * 0.7})`} />
@@ -262,24 +264,20 @@ function Tsuyu() {
         {[[760, 850, 0], [880, 846, 1.1], [560, 815, 2], [1060, 830, 0.6], [1110, 832, 2.4], [820, 856, 1.7]].map(([x, y, d], i) => (
           <ellipse key={i} className="season-ripple" style={{ animationDelay: `${d}s` }} cx={x} cy={y} rx="34" ry="6" fill="none" stroke="#f4f7fb" strokeWidth="2" />
         ))}
-        <HydrangeaBush
-          origin="260px 900px"
-          delay={0}
-          heads={[
-            [70, 700, 70, HYD_BLUE], [210, 640, 80, HYD_VIOLET], [360, 700, 72, HYD_BLUE],
-            [130, 800, 66, HYD_PINK], [290, 790, 74, HYD_BLUE], [460, 790, 60, HYD_VIOLET],
+        {/* Kept low: the page's small grey text sits around y 620–640 here,
+            and a flower head behind it costs contrast in the dark theme. */}
+        <HydrangeaBush heads={[
+            [60, 740, 70, HYD_BLUE], [210, 724, 72, HYD_VIOLET], [370, 750, 68, HYD_BLUE],
+            [130, 842, 66, HYD_PINK], [290, 836, 74, HYD_BLUE], [460, 850, 60, HYD_VIOLET],
           ]}
         />
-        <HydrangeaBush
-          origin="1360px 900px"
-          delay={1.4}
-          heads={[
-            [1210, 720, 66, HYD_PINK], [1350, 650, 82, HYD_BLUE], [1500, 690, 76, HYD_VIOLET],
-            [1150, 815, 60, HYD_VIOLET], [1300, 790, 72, HYD_PINK], [1460, 800, 70, HYD_BLUE], [1590, 780, 58, HYD_PINK],
+        <HydrangeaBush heads={[
+            [1210, 760, 66, HYD_PINK], [1350, 700, 80, HYD_BLUE], [1500, 730, 76, HYD_VIOLET],
+            [1150, 850, 60, HYD_VIOLET], [1300, 836, 72, HYD_PINK], [1460, 840, 70, HYD_BLUE], [1590, 820, 58, HYD_PINK],
           ]}
         />
         {/* Two small heads by the path, for a phone's narrow view. */}
-        <HydrangeaBush origin="800px 900px" delay={0.7} heads={[[660, 870, 44, HYD_VIOLET], [950, 875, 46, HYD_BLUE]]} />
+        <HydrangeaBush heads={[[660, 870, 44, HYD_VIOLET], [950, 875, 46, HYD_BLUE]]} />
       </Layer>
     </>
   );
@@ -287,6 +285,9 @@ function Tsuyu() {
 
 /** Fuji's outline, from the far shore at y 640: wide, with concave slopes. */
 const FUJI = "M-40 640 Q620 560 744 222 Q760 212 776 210 L830 210 Q846 212 860 222 Q986 560 1640 640Z";
+/** Summit at x 640, left of the day card on a wide screen and still in the
+ *  middle strip a phone shows. */
+const FUJI_SHIFT = -160;
 const FUJI_SNOW = "M744 222 Q760 212 776 210 L830 210 Q846 212 860 222 Q880 280 900 322 L880 316 L866 350 L846 320 L826 356 L806 322 L784 352 L764 318 L744 346 L728 314 L706 322 Q726 280 744 222Z";
 
 function Fuji() {
@@ -310,17 +311,19 @@ function Fuji() {
         <rect y="640" width="1600" height="260" fill="url(#fj-lake)" />
         {/* The reflection, upside down in the still water, softened by the
             blur; the mountain itself is drawn crisp in the near layer. */}
-        <g transform="translate(0 1280) scale(1 -1)" opacity="0.45">
+        <g transform={`translate(${FUJI_SHIFT} 1280) scale(1 -1)`} opacity="0.45">
           <path d={FUJI} fill="#4f5891" />
           <path d={FUJI_SNOW} fill="#ffffff" />
         </g>
         <rect x="1210" y="640" width="80" height="200" fill="#fff3dc" opacity="0.45" />
       </Layer>
       <Layer className="season-near">
-        <path d={FUJI} fill="#4f5891" />
-        {/* The shadowed east face. */}
-        <path d="M803 210 L830 210 Q846 212 860 222 Q986 560 1640 640 L1100 640 Q900 420 803 210Z" fill="#454d84" />
-        <path d={FUJI_SNOW} fill="#fbf6f8" />
+        <g transform={`translate(${FUJI_SHIFT} 0)`}>
+          <path d={FUJI} fill="#4f5891" />
+          {/* The shadowed east face. */}
+          <path d="M803 210 L830 210 Q846 212 860 222 Q986 560 1640 640 L1100 640 Q900 420 803 210Z" fill="#454d84" />
+          <path d={FUJI_SNOW} fill="#fbf6f8" />
+        </g>
         <path d="M0 636 Q200 626 420 634 T900 636 T1600 632 V646 H0Z" fill="#3c4476" />
         {/* Light on the water, under the sun. */}
         {[[1250, 662, 70, 0], [1220, 690, 50, 0.9], [1276, 716, 64, 1.8], [1238, 748, 40, 0.5], [1260, 782, 56, 2.4], [900, 700, 40, 1.3], [720, 750, 52, 2.9], [840, 800, 46, 0.3]].map(([x, y, w, d], i) => (
@@ -356,10 +359,13 @@ function Pagoda({ x, y, s, fill }: { x: number; y: number; s: number; fill: stri
 }
 
 /** A round paper lantern hanging from (x, y). Plain: no writing on it. */
-function Lantern({ x, y, s, body, glow, delay }: { x: number; y: number; s: number; body: string; glow: string; delay: number }) {
+/** `delay` null: hangs still. Moving SVG repaints every frame, so a scene
+ *  swings only some of its lanterns. */
+function Lantern({ x, y, s, body, glow, delay }: { x: number; y: number; s: number; body: string; glow: string; delay: number | null }) {
   const cy = y + 34 * s;
+  const swing = delay === null ? {} : { className: "season-lantern", style: { transformOrigin: `${x}px ${y}px`, animationDelay: `${delay}s` } };
   return (
-    <g className="season-lantern" style={{ transformOrigin: `${x}px ${y}px`, animationDelay: `${delay}s` }}>
+    <g {...swing}>
       <circle cx={x} cy={cy} r={32 * s} fill={glow} opacity="0.16" />
       <line x1={x} y1={y} x2={x} y2={y + 9 * s} stroke="#1e1418" strokeWidth={2 * s} />
       <rect x={x - 9 * s} y={y + 7 * s} width={18 * s} height={6 * s} fill="#1e1418" />
@@ -403,9 +409,9 @@ function Machiya({ side }: { side: -1 | 1 }) {
       {/* Eaves: a dark tiled roof line above, and a second one lower down. */}
       <path d={`M${pt(0, -0.06)} L${pt(1, -0.06)} L${pt(1, 0.06)} L${pt(0, 0.06)}Z`} fill="#231a20" />
       <path d={`M${pt(0, 0.22)} L${pt(1, 0.22)} L${pt(1, 0.28)} L${pt(0, 0.28)}Z`} fill="#2b2027" />
-      {[0.06, 0.2, 0.34, 0.48, 0.62, 0.76, 0.9].map((t, i) => {
+      {[0.08, 0.28, 0.48, 0.68, 0.88].map((t, i) => {
         const lantern = i % 3 === 2 ? WHITE_LANTERN : RED_LANTERN;
-        return <Lantern key={t} x={xAt(t)} y={top(t) + (bottom(t) - top(t)) * 0.28} s={1.5 - 1.05 * t} {...lantern} delay={i * 0.7} />;
+        return <Lantern key={t} x={xAt(t)} y={top(t) + (bottom(t) - top(t)) * 0.28} s={1.5 - 1.05 * t} {...lantern} delay={i % 2 ? null : i * 0.7} />;
       })}
     </g>
   );
@@ -447,11 +453,12 @@ function NightCity() {
         <path d="M700 900 L780 740 L820 740 L900 900Z" fill="#ffb87a" opacity="0.18" />
         <Machiya side={-1} />
         <Machiya side={1} />
-        {/* A string of lanterns across the street. */}
-        <path d="M560 470 Q800 540 1040 470" stroke="#1e1418" strokeWidth="2.5" fill="none" />
-        {[640, 720, 800, 880, 960].map((x, i) => {
+        {/* A string of lanterns across the street, low (y 600 and down), so
+            it passes under the page's buttons rather than behind them. */}
+        <path d="M560 600 Q800 670 1040 600" stroke="#1e1418" strokeWidth="2.5" fill="none" />
+        {[690, 800, 910].map((x, i) => {
           const f = (x - 560) / 480;
-          const y = 470 + 4 * 35 * f * (1 - f);
+          const y = 600 + 4 * 35 * f * (1 - f);
           const lantern = i % 2 ? WHITE_LANTERN : RED_LANTERN;
           return <Lantern key={x} x={x} y={r1(y)} s={0.85} {...lantern} delay={i * 0.55} />;
         })}
@@ -488,29 +495,33 @@ function Stall({ x, stripe }: { x: number; stripe: string }) {
   // Cloth is a muted cream, not white: the stalls sit behind the page's
   // small grey text, and a bright band there would cost it contrast.
   const cloth = "#e2d2bf";
+  const y = 716; // the awning's top edge
   return (
     <g>
-      <rect x={x + 10} y="680" width="8" height="110" fill="#1c1622" />
-      <rect x={x + 222} y="680" width="8" height="110" fill="#1c1622" />
-      <rect x={x + 18} y="696" width="204" height="54" fill="#f0b26c" opacity="0.75" />
-      <rect x={x + 18} y="750" width="204" height="40" fill="#3a2a34" />
-      <path d={`M${x} 680 L${x + 20} 644 L${x + 220} 644 L${x + 240} 680Z`} fill={cloth} />
+      <rect x={x + 10} y={y + 36} width="8" height="100" fill="#1c1622" />
+      <rect x={x + 222} y={y + 36} width="8" height="100" fill="#1c1622" />
+      <rect x={x + 18} y={y + 52} width="204" height="44" fill="#f0b26c" opacity="0.75" />
+      <rect x={x + 18} y={y + 96} width="204" height="40" fill="#3a2a34" />
+      <path d={`M${x} ${y + 36} L${x + 20} ${y} L${x + 220} ${y} L${x + 240} ${y + 36}Z`} fill={cloth} />
       {[0, 2, 4].map((i) => (
-        <path key={i} d={`M${x + 20 + i * 40} 644 L${x + 60 + i * 40} 644 L${x + 60 + i * 40 + (i - 2) * 4} 680 L${x + 20 + i * 40 + (i - 2) * 4} 680Z`} fill={stripe} />
+        <path key={i} d={`M${x + 20 + i * 40} ${y} L${x + 60 + i * 40} ${y} L${x + 60 + i * 40 + (i - 2) * 4} ${y + 36} L${x + 20 + i * 40 + (i - 2) * 4} ${y + 36}Z`} fill={stripe} />
       ))}
       {Array.from({ length: 8 }, (_, i) => (
-        <circle key={i} cx={x + 15 + i * 30} cy="682" r="15" fill={i % 2 ? stripe : cloth} />
+        <circle key={i} cx={x + 15 + i * 30} cy={y + 38} r="15" fill={i % 2 ? stripe : cloth} />
       ))}
     </g>
   );
 }
 
+/** Wire height for the festival's lantern strings: poles every 400, at
+ *  y 640, below the page's buttons, sagging between them. */
+const WIRE_Y = 640;
+const festivalWire = (x: number) => {
+  const f = (((x % 400) + 400) % 400) / 400;
+  return WIRE_Y + 4 * 36 * f * (1 - f);
+};
+
 function Matsuri() {
-  const wire = (x: number) => {
-    // Sags between poles every 400.
-    const f = (((x % 400) + 400) % 400) / 400;
-    return 500 + 4 * 46 * f * (1 - f);
-  };
   return (
     <>
       <Layer className="season-far">
@@ -526,27 +537,26 @@ function Matsuri() {
         <path d="M0 600 Q260 520 560 570 T1160 540 T1600 560 V900 H0Z" fill="#2a2342" />
       </Layer>
       <Layer className="season-near">
-        <Burst cx={820} cy={190} r={130} colour="#ffd36e" tip="#fff2c4" rays={30} delay={0} duration={5.2} />
-        <Burst cx={640} cy={330} r={85} colour="#ff8a7a" tip="#ffd6cc" rays={24} delay={-1.8} duration={4.6} />
-        <Burst cx={980} cy={320} r={90} colour="#8fd6ff" tip="#e2f5ff" rays={24} delay={-3.1} duration={5.6} />
-        <Burst cx={360} cy={220} r={110} colour="#c8a0ff" tip="#efe2ff" rays={28} delay={-2.4} duration={6.1} />
-        <Burst cx={1260} cy={200} r={120} colour="#ff9cc8" tip="#ffe0ee" rays={28} delay={-4.2} duration={5.4} />
-        <Burst cx={1500} cy={360} r={70} colour="#ffd36e" tip="#fff2c4" rays={20} delay={-0.9} duration={4.9} />
-        <Burst cx={130} cy={380} r={75} colour="#8fd6ff" tip="#e2f5ff" rays={20} delay={-3.6} duration={5.0} />
-        <path d="M0 770 Q400 750 800 765 T1600 760 V900 H0Z" fill="#2b2136" />
+        {/* Fireworks keep to the edges, or high in the middle, so none sits
+            behind the page's text. */}
+        <Burst cx={800} cy={100} r={75} colour="#ffd36e" tip="#fff2c4" rays={18} delay={0} duration={5.2} />
+        <Burst cx={250} cy={210} r={100} colour="#c8a0ff" tip="#efe2ff" rays={20} delay={-2.4} duration={6.1} />
+        <Burst cx={110} cy={420} r={70} colour="#8fd6ff" tip="#e2f5ff" rays={16} delay={-3.6} duration={5.0} />
+        <Burst cx={1490} cy={240} r={90} colour="#ff9cc8" tip="#ffe0ee" rays={20} delay={-4.2} duration={5.4} />
+        <Burst cx={1530} cy={470} r={55} colour="#ffd36e" tip="#fff2c4" rays={14} delay={-0.9} duration={4.9} />
+        <path d="M0 830 Q400 815 800 825 T1600 820 V900 H0Z" fill="#2b2136" />
         {[-60, 220, 500, 780, 1060, 1340].map((x, i) => (
           <Stall key={x} x={x} stripe={i % 2 ? "#3d5f9e" : "#d14a3e"} />
         ))}
-        {/* Lantern strings between poles. */}
+        {/* Lantern strings between poles, three lanterns a span. */}
         {[0, 400, 800, 1200, 1600].map((x) => (
-          <rect key={x} x={x - 4} y="480" width="8" height="300" fill="#1c1622" />
+          <rect key={x} x={x - 4} y={WIRE_Y - 20} width="8" height="210" fill="#1c1622" />
         ))}
-        <path d={`M0 500 ${Array.from({ length: 4 }, (_, k) => `Q${k * 400 + 200} 592 ${k * 400 + 400} 500`).join(" ")}`} stroke="#1c1622" strokeWidth="2.5" fill="none" />
-        {Array.from({ length: 20 }, (_, i) => {
-          const x = 40 + i * 80;
-          if (x % 400 === 0) return null;
+        <path d={`M0 ${WIRE_Y} ${Array.from({ length: 4 }, (_, k) => `Q${k * 400 + 200} ${WIRE_Y + 72} ${k * 400 + 400} ${WIRE_Y}`).join(" ")}`} stroke="#1c1622" strokeWidth="2.5" fill="none" />
+        {Array.from({ length: 12 }, (_, i) => {
+          const x = Math.floor(i / 3) * 400 + 100 * ((i % 3) + 1);
           const lantern = i % 2 ? WHITE_LANTERN : RED_LANTERN;
-          return <Lantern key={x} x={x} y={r1(wire(x))} s={0.95} {...lantern} delay={i * 0.4} />;
+          return <Lantern key={x} x={x} y={r1(festivalWire(x))} s={0.8} {...lantern} delay={i % 2 ? null : i * 0.45} />;
         })}
       </Layer>
     </>
@@ -601,8 +611,10 @@ function Cedar({ x, y, h, delay }: { x: number; y: number; h: number; delay: num
 }
 
 function Shrine() {
-  // Torii receding up the path to the hall: nearest first is drawn last.
-  const gates = [0.2, 0.26, 0.34, 0.44, 0.58, 0.78, 1.04];
+  // Torii receding up the path to the hall, seen from a little above, so
+  // every top beam stays low (y 620 and down), under the page's text; the
+  // nearest gates run off the bottom edge. Farthest first: nearest on top.
+  const gates = [0.1, 0.125, 0.155, 0.19, 0.235, 0.29, 0.36, 0.45, 0.56];
   return (
     <>
       <Layer className="season-far">
@@ -622,7 +634,7 @@ function Shrine() {
         })}
         {/* The main hall, up the steps: a steep cypress roof with crossed
             finials, vermilion posts, white walls. */}
-        <g transform="translate(800 600)">
+        <g transform="translate(800 615) scale(0.5)">
           <rect x="-200" y="-20" width="400" height="20" fill="#cfc4b4" />
           <rect x="-160" y="-120" width="320" height="100" fill="#f4ede2" />
           {[-150, -90, -30, 30, 90, 150].map((x) => (
@@ -634,14 +646,14 @@ function Shrine() {
       </Layer>
       <Layer className="season-near">
         {/* The stone path, narrowing to the hall. */}
-        <path d="M520 900 L770 640 L830 640 L1080 900Z" fill="#d9ccb8" />
-        <path d="M0 900 L0 720 Q300 690 770 640 L520 900Z M1600 900 L1600 720 Q1300 690 830 640 L1080 900Z" fill="#8aa07e" />
+        <path d="M560 900 L790 615 L810 615 L1040 900Z" fill="#d9ccb8" />
+        <path d="M0 900 L0 700 Q300 660 790 615 L560 900Z M1600 900 L1600 700 Q1300 660 810 615 L1040 900Z" fill="#8aa07e" />
         <Cedar x={70} y={900} h={760} delay={0} />
         <Cedar x={230} y={880} h={600} delay={1.6} />
         <Cedar x={1530} y={900} h={760} delay={0.8} />
         <Cedar x={1370} y={880} h={600} delay={2.2} />
         {gates.map((s) => (
-          <Torii key={s} cx={800} base={r1(630 + 270 * Math.min(s, 1))} s={s} />
+          <Torii key={s} cx={800} base={r1(612 + 755 * s)} s={s} />
         ))}
         <Toro x={420} y={890} s={0.95} />
         <Toro x={1180} y={890} s={0.95} />

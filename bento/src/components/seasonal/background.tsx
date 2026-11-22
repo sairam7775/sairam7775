@@ -58,9 +58,18 @@ export function UseSeason({ season }: { season: Season }) {
   return null;
 }
 
+// While the tab is hidden, every animation in the backdrop is paused
+// (`data-paused`, globals.css), so nothing loops for a page nobody sees.
+function onVisibility(change: () => void) {
+  document.addEventListener("visibilitychange", change);
+  return () => document.removeEventListener("visibilitychange", change);
+}
+const tabHidden = () => document.visibilityState === "hidden";
+
 function Backdrop({ season }: { season: Background }) {
+  const hidden = useSyncExternalStore(onVisibility, tabHidden, () => false);
   return (
-    <div aria-hidden className="season-backdrop pointer-events-none fixed inset-0 -z-10 overflow-hidden" data-season={season}>
+    <div aria-hidden className="season-backdrop pointer-events-none fixed inset-0 -z-10 overflow-hidden" data-season={season} data-paused={hidden ? "" : undefined}>
       <Scene season={season} />
       {/* The veil keeps text readable over the scene: densest in the middle,
           where content sits, lighter at the edges where the tree, the onsen
@@ -73,8 +82,16 @@ function Backdrop({ season }: { season: Background }) {
 
 const COUNT: Record<Background, number> = {
   autumn: 18, winter: 50, spring: 24, summer: 18,
-  tsuyu: 70, fuji: 14, night: 14, matsuri: 16, shrine: 14,
+  tsuyu: 44, fuji: 14, night: 14, matsuri: 16, shrine: 14,
 };
+/** Each drifting-light scene places its motes from its own seed, so they
+ *  don't all land in the same spots. */
+const MOTE_SEED: Partial<Record<Background, number>> = { fuji: 101, night: 211, matsuri: 307, shrine: 401 };
+/** A mote's left edge, in %: never in 2.5–50%, the column the home page's
+ *  headline and body text fill on a wide screen (with room for its drift). */
+function moteLeft(u: number): number {
+  return u < 0.06 ? (u / 0.06) * 2.5 : 50 + ((u - 0.06) / 0.94) * 50;
+}
 const LEAF = ["#d8452a", "#e8673a", "#f08c45", "#c7362a", "#f2a24e"];
 const PETAL = ["#f6b6c8", "#f9cbd7", "#f4a9bf"];
 /** Drifting light: dawn haze over Fuji, lantern glow in town, festival
@@ -121,14 +138,15 @@ function Particles({ season }: { season: Background }) {
         }
         const mote = MOTE[season];
         if (mote) {
-          const size = 4 + noise(i, 6) * 6;
+          const j = i + (MOTE_SEED[season] ?? 0);
+          const size = 4 + noise(j, 6) * 6;
           return (
             <span
               key={i}
               className="season-mote"
               style={{
-                left: `${x}%`,
-                top: `${(season === "matsuri" ? 20 : 30) + noise(i, 9) * 60}%`,
+                left: `${moteLeft(noise(j, 1))}%`,
+                top: `${(season === "matsuri" ? 20 : 30) + noise(j, 9) * 60}%`,
                 width: size,
                 height: size,
                 background: mote[0],
