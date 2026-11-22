@@ -35,7 +35,7 @@ last_reviewed: 2026-11-22
 ## Evidence
 
 - `bento/vercel.json` (`"regions": ["hnd1"]`); the move on 12 November 2026 ([region move](../50-operations/supabase-region-move.md)).
-- F7, 22 November 2026, Lighthouse mobile (simulated throttling), local production build, home page signed out, 5 runs each, medians: LCP 5.3 s → 4.5 s, element render delay 1.20 s → 0.85 s, FCP 1.85 s → 1.86 s (no change). The LCP element is still the hero paragraph. CLS went from 0 to about 0.02 on 4 of 5 runs: the hero text is now visible while its web font swaps in, so that shift now counts (still under the 0.1 budget). Sign-in already had LCP equal to FCP, so it showed no measurable change.
+- F7, 22 November 2026, Lighthouse mobile (simulated throttling), local production build, home page signed out, 5 runs each, medians: LCP 5.3 s → 4.5 s, element render delay 1.20 s → 0.85 s, FCP 1.85 s → 1.86 s (no change). The LCP element is still the hero paragraph. CLS went from 0 to about 0.02 on 4 of 5 runs: the hero text is now visible while its web font swaps in, so that shift now counts (still under the 0.1 budget). Sign-in already had LCP equal to FCP, so it showed no measurable change. Measured again after the font change (#113), main `af1e739` against this branch, 5 runs each, medians: LCP 4.19 s → 3.71 s, render delay 0.82 s → 0.61 s, FCP 1.23 s both; CLS 0.017 on 1 of 5 runs, 0 on the rest (one main run timed the loader as LCP and is the 1.23 s outlier).
 
 ## Known gaps
 
