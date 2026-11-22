@@ -1181,7 +1181,7 @@ export const en = {
       // that arrives after it, or a place that opens after it.
       busiestHour: "busy at this hour, and unavoidable today — it's worth the crowd",
       // A quiet window the day could have reached but this stop misses.
-      busyNow: (quiet: string) => `busy at this hour; it's quieter ${quiet}`,
+      busyNow: (quiet: string) => `busy at this hour. It's quieter ${quiet}`,
       afterCrowd: (time: string) => `after ${time}, when it empties out`,
       // A place whose every best window is the evening (Pontocho, Dotonbori).
       evening: "planned for the evening, its best time",
@@ -1215,7 +1215,9 @@ export const en = {
       noStation: (name: string, min: number) => `${name} has no station in Bento's train data yet — legs to it are estimated at ${min} min`,
       noRoute: (from: string, to: string, min: number) => `No route between ${from} and ${to} in Bento's train data yet — estimated at ${min} min`,
       pinnedMissing: (id: string) => `Pinned place ${id} is not in this city's list`,
-      eveningMissed: (name: string, from: string, closes: string) => `${name} is at its best after ${from}, but it closes at ${closes}, too soon to visit then — planned earlier because you pinned it`,
+      eveningMissed: (name: string, from: string, closes: string) => `${name} is at its best after ${from}, but it closes at ${closes}, too soon to visit then — planned by day because you pinned it`,
+      // A pinned evening stop the day waits over two hours for.
+      freeTime: (until: string, name: string) => `Free time until ${until}, when ${name} is at its best`,
       liftedStart: (at: string, from: string) => `This day now starts about ${at}, after you could arrive from ${from}. Say a start time to change it`,
       beforeArrival: (start: string, arrive: string) => `This day starts at ${start}, before you could arrive from your last stay (about ${arrive}, after checking out and the train)`,
       moveUnknown: (min: number) => `This day allows ${Math.floor(min / 60)}h ${min % 60}m for the move: checking out, the train and leaving your bags. Bento doesn't have this train's time yet, so check it`,

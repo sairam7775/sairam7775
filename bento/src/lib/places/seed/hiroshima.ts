@@ -151,14 +151,14 @@ export const hiroshima: PlaceSeed[] = [
 
   draft({ id: "hir-kagura", city: c, name: "Hiroshima Kagura night", nameJa: "広島神楽定期公演", category: "performance", lat: 34.3940, lon: 132.4580,
     station: "kamiyacho-nishi", walk: 3, tags: ["history", "offbeat"], energy: 0.05, crowd: 0.4, discovery: 0.7, signature: 0.6,
-    taste: 60, typical: 75, full: 90, window: ["after 17:30"], opens: "19:00", closes: "20:30", closedWeekdays: [0, 1, 2, 4, 5, 6],
+    taste: 60, typical: 75, full: 90, window: ["after 17:30"], eveningOnly: true, opens: "19:00", closes: "20:30", closedWeekdays: [0, 1, 2, 4, 5, 6],
     crowdNote: "A few hundred seats and rarely full on an ordinary Wednesday.",
     tip: "Every Wednesday evening at the Prefectural Culture Centre: masked, drum-driven mythological dance from the mountain villages — a hero, a serpent, a great deal of smoke. Hiroshima's own tradition and the best-value ticket in the city. English synopsis on the sheet.",
     cost: 1500, booking: "recommended", lead: 7, sources: ["hiroshima-kankou.com"] }),
 
   draft({ id: "hir-nagarekawa", city: c, name: "Nagarekawa", nameJa: "流川", category: "district", lat: 34.3905, lon: 132.4665,
     station: "hatchobori", walk: 5, tags: ["nightlife", "food"], energy: 0.15, crowd: 0.6, discovery: 0.3, signature: 0.5,
-    taste: 30, typical: 90, full: 180, window: ["after 17:30"],
+    taste: 30, typical: 90, full: 180, window: ["after 17:30"], eveningOnly: true,
     crowdNote: "Quiet until eight, then busy until late; Friday and Saturday are the loud nights.",
     tip: "The bar district: several hundred small places across a few blocks, most of them a counter and ten stools. Grilled oysters and local sake are the order. Pick a door with a handwritten menu and go in.",
     cost: 0, pairs: ["hir-okonomimura"], sources: ["wikivoyage"] }),
@@ -172,7 +172,7 @@ export const hiroshima: PlaceSeed[] = [
 
   draft({ id: "hir-ogonzan", city: c, name: "Mount Ogonzan", nameJa: "黄金山", category: "viewpoint", lat: 34.3745, lon: 132.4885,
     station: null, walk: null, tags: ["nature"], energy: 0.5, crowd: 0.1, discovery: 0.9, signature: 0.4, physical: 0.5,
-    taste: 30, typical: 60, full: 90, window: ["after 17:30"],
+    taste: 30, typical: 60, full: 90, window: ["after 17:30"], eveningOnly: true,
     crowdNote: "Couples in parked cars at night; otherwise nobody.",
     tip: "A 220-metre hill south-east of the centre with the city's night view: the whole delta, the port, and the Inland Sea islands. A steep forty-minute walk up from the bottom, or a taxi to the top. Bring the walk down for the lights.",
     cost: 0, skipIf: ["limited_mobility"], sources: ["wikivoyage"] }),

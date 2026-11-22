@@ -5,6 +5,7 @@ import { placeSeeds } from "@/lib/places/seed";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { hubFor, type CityFacts } from "@/lib/engine/route";
 import { planTrip } from "@/lib/engine/trip";
+import { eveningFrom, planDay } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
 import { cityTrainMinutes } from "@/lib/engine/travel-day";
 import type { DayPlan, PlaceInput } from "@/lib/engine/types";
@@ -56,10 +57,13 @@ describe("an evening place is planned in the evening, or left out with a reason"
   });
 
   it("says why when it leaves Pontocho out because the day ends before the evening", () => {
-    // Kyoto in two days, day 1, 09:00 start: Pontocho was at 09:00 before
-    // this fix; the day ends in the afternoon.
-    const [day] = plan("kyoto-2", "standard", 0.6);
-    expect(day.items.map((i) => i.placeId)).not.toContain("kyt-pontocho");
+    // Three places and nothing else to add: the day is done by late
+    // morning. (On a ready-made day, which fills to its cap, Pontocho is
+    // left out like any other place the cap leaves out.)
+    const three = placesByCity["kyoto-city"].filter((p) => ["kyt-kiyomizu", "kyt-ninenzaka", "kyt-pontocho"].includes(p.id));
+    const day = planDay({ date: MON, cityId: "kyoto-city", places: three, travel,
+      traveller: { pace: "standard", interestTags: [], energy: 0.5, crowdTolerance: 0.6, discovery: 0.5, excludes: [], mobility: [], budgetBand: null } });
+    expect(day.items.map((i) => i.placeId).sort()).toEqual(["kyt-kiyomizu", "kyt-ninenzaka"]);
     expect(day.considered.find((r) => r.placeId === "kyt-pontocho")?.detail).toBe(copy.plan.leftOut.eveningOnly("17:30"));
   });
 
@@ -90,7 +94,8 @@ describe("an evening place is planned in the evening, or left out with a reason"
         expect(day.items[day.items.length - 1].placeId === "osk-dotonbori" || day.items.slice(day.items.indexOf(item) + 1).every((i) => i.startMin >= EVENING)).toBe(true);
         // Lunch stays at lunchtime, not after the evening.
         for (const m of day.meals) expect(m.startMin).toBeLessThan(EVENING);
-        expect(day.warnings.filter((w) => /Dotonbori/.test(w))).toEqual([]);
+        // At most the free-time note before it.
+        expect(day.warnings.filter((w) => /Dotonbori/.test(w) && w !== copy.plan.warnings.freeTime("17:30", "Dotonbori"))).toEqual([]);
       }
   });
 });
@@ -100,7 +105,7 @@ describe("'unavoidable' is said only when it is", () => {
     const [day] = plan("kyoto-east", "standard", 0.6);
     const item = day.items.find((i) => i.placeId === "kyt-kiyomizu")!;
     expect(item.reason.toLowerCase()).not.toContain(unavoidable);
-    expect(item.reason.toLowerCase()).toContain(copy.plan.reasons.busyNow("before 08:00"));
+    expect(item.reason.toLowerCase()).toContain(copy.plan.reasons.busyNow("before 08:00").toLowerCase());
   });
 
   it("names both quiet windows for Fushimi Inari, which is also quiet after 17:30", () => {
@@ -108,7 +113,7 @@ describe("'unavoidable' is said only when it is", () => {
     const item = days.flatMap((d) => d.items).find((i) => i.placeId === "kyt-fushimi-inari")!;
     expect(item.startMin).toBeLessThan(EVENING);
     expect(item.reason.toLowerCase()).not.toContain(unavoidable);
-    expect(item.reason.toLowerCase()).toContain(copy.plan.reasons.busyNow(`before 08:00${copy.plan.or}after 17:30`));
+    expect(item.reason.toLowerCase()).toContain(copy.plan.reasons.busyNow(`before 08:00${copy.plan.or}after 17:30`).toLowerCase());
   });
 
   it("says it on a travel day that arrives after the quiet window", () => {
@@ -118,5 +123,57 @@ describe("'unavoidable' is said only when it is", () => {
     const item = days[2].items.find((i) => i.placeId === "kyt-kiyomizu")!;
     expect(days[2].startMin).toBeGreaterThan(8 * 60);
     expect(item.reason.toLowerCase()).toContain(unavoidable);
+  });
+});
+
+describe("evening-only is the place's own flag, or its opening time", () => {
+  const place = (id: string) => Object.values(placesByCity).flat().find((p) => p.id === id)!;
+
+  it("counts a flagged place and one that opens at 17:00 or later, and no other", () => {
+    expect(eveningFrom(place("kyt-pontocho"))).toBe(EVENING); // flagged: "Dead by day"
+    expect(eveningFrom(place("tky-golden-gai"))).toBe(19 * 60); // flagged, opens 19:00
+    expect(eveningFrom(place("tky-tsukishima"))).toBe(EVENING); // opens 17:00, best after 17:30
+    // An evening best window alone is a soft preference: these may be by day.
+    for (const id of ["kyt-gion", "osk-hozenji", "osk-dotonbori", "osk-umeda-sky", "tky-tokyo-tower"]) expect(eveningFrom(place(id)), id).toBeNull();
+  });
+});
+
+describe("timing around an evening stop", () => {
+  const osaka = placesByCity["osaka-city"];
+  const traveller = { pace: "standard" as const, interestTags: [], energy: 0.5, crowdTolerance: 0.6, discovery: 0.5, excludes: [], mobility: [], budgetBand: null };
+
+  it("reaches a pin timed after an evening stop on time", () => {
+    // Dotonbori pinned (untimed, so timed for its evening) and Umeda Sky at
+    // 18:00: the slotting used to count Dotonbori as done by mid-afternoon
+    // and put Umeda Sky after it, reached late.
+    const day = planDay({ date: MON, cityId: "osaka-city", places: osaka, traveller, travel,
+      locked: [{ placeId: "osk-dotonbori" }, { placeId: "osk-umeda-sky", startMin: 18 * 60 }] });
+    expect(day.items.find((i) => i.placeId === "osk-umeda-sky")!.startMin).toBe(18 * 60);
+    expect(day.items.find((i) => i.placeId === "osk-dotonbori")!.startMin).toBeGreaterThanOrEqual(EVENING);
+    expect(day.warnings.filter((w) => /pinned for/.test(w))).toEqual([]);
+  });
+
+  it("notes free time before a pinned evening stop the day waits over two hours for", () => {
+    // Relaxed early riser: the day is done by early afternoon.
+    const [day] = plan("osaka-kyoto-nara-5", "relaxed", 0.2);
+    const item = day.items.find((i) => i.placeId === "osk-dotonbori")!;
+    const prev = day.items[day.items.indexOf(item) - 1];
+    expect(item.startMin - prev.endMin).toBeGreaterThan(120 + 60);
+    expect(day.warnings).toContain(copy.plan.warnings.freeTime("17:30", "Dotonbori"));
+  });
+});
+
+describe("a re-plan's kept start isn't a fixed start", () => {
+  const kyoto = placesByCity["kyoto-city"];
+  const traveller = { pace: "standard" as const, interestTags: [], energy: 0.5, crowdTolerance: 0.6, discovery: 0.5, excludes: [], mobility: [], budgetBand: null };
+  const kiyomizu = (day: DayPlan) => day.items.find((i) => i.placeId === "kyt-kiyomizu")!.reason.toLowerCase();
+
+  it("says 'unavoidable' only for a start the traveller named", () => {
+    const base = { date: MON, cityId: "kyoto-city", places: kyoto, traveller, travel, locked: [{ placeId: "kyt-kiyomizu" }], dayStartMin: 9 * 60 };
+    // A kept start (re-plan): an earlier start would reach before 08:00.
+    expect(kiyomizu(planDay(base))).not.toContain(unavoidable);
+    expect(kiyomizu(planDay(base))).toContain(copy.plan.reasons.busyNow("before 08:00").toLowerCase());
+    // "Start at 09:00": the day can't start earlier.
+    expect(kiyomizu(planDay({ ...base, startNamed: true }))).toContain(unavoidable);
   });
 });

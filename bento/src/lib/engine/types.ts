@@ -33,6 +33,9 @@ export interface PlaceInput {
   /** The hours change with the season and opensAt/closesAt are the shortest
    *  of the year, so travellers are told to check, never promised them. */
   hoursVary?: boolean;
+  /** Only worth visiting in the evening (`places.evening_only`, 0033): never
+   *  planned before its evening window. */
+  eveningOnly?: boolean;
   /** 0 = Sunday */
   closedWeekdays: number[];
   /** "YYYY-MM-DD" */
@@ -134,6 +137,9 @@ export interface DayInput {
   /** Minutes since midnight, the clock time the day starts. Default: 07:00
    *  for a crowd-avoider, else 09:00, plus the move on a travel day. */
   dayStartMin?: number;
+  /** The traveller named `dayStartMin` ("start at 10:00"), so the day can't
+   *  start earlier. A start kept from the day as it was isn't named. */
+  startNamed?: boolean;
   /** A travel day: the move here from the last stay. The day has that much
    *  less time and, unless `dayStartMin` is given, starts that much later. */
   move?: TravelMove;

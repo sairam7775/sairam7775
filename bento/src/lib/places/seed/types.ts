@@ -51,6 +51,12 @@ export interface PlaceSeed {
   closes?: string;
   /** The hours change with the season; travellers are told to check. */
   hoursVary?: boolean;
+  /** Only worth visiting in the evening: set only when the place's own
+   *  notes say it is dead or closed by day (Pontocho, "Dead by day"). The
+   *  planner never plans it before its evening window. A place that opens
+   *  at 17:00 or later is treated so by its hours, flag or not; an evening
+   *  best window alone stays a soft preference. */
+  eveningOnly?: boolean;
   /** 0 = Sunday */
   closedWeekdays?: number[];
   /** Closed on these dates every year, such as the year-end break:

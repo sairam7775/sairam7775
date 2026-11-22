@@ -49,6 +49,8 @@ export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
     opensAt: r.opens_at ? String(r.opens_at).slice(0, 5) : null,
     closesAt: r.closes_at ? String(r.closes_at).slice(0, 5) : null,
     hoursVary: r.hours_vary === true,
+    // Absent before 0033: not evening-only.
+    eveningOnly: r.evening_only === true,
     closedWeekdays: r.closed_weekdays ?? [],
     closedDates: r.closed_dates ?? [],
     // Absent before 0032: no yearly closures, as before.

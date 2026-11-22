@@ -6,7 +6,7 @@ import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { hubFor, type CityFacts } from "@/lib/engine/route";
 import { planTrip, type TripPlan } from "@/lib/engine/trip";
 import { travelFromGraph } from "@/lib/engine/travel";
-import { parseClock } from "@/lib/engine/filter";
+import { parseClock, parseWindow } from "@/lib/engine/filter";
 import { eveningFrom } from "@/lib/engine/schedule";
 import { cityTrainMinutes } from "@/lib/engine/travel-day";
 import type { DayPlan, PlaceInput } from "@/lib/engine/types";
@@ -56,17 +56,25 @@ const km = (a: string, b: string) => {
 /** Every time the day leaves a stop's area and comes back to it: a later
  *  stop within 600 m of an earlier one, reached by a detour of more than
  *  `detourKm` (a kilometre and a half unless said) through stops between.
- *  A return to an evening place doesn't count: it opens at 17:00 or later,
- *  so the day ends there wherever it began, and that is not the ordering's
- *  to fix. */
+ *  A return to an evening stop doesn't count when it is in its evening:
+ *  the day ends there wherever it began, and that is not the ordering's to
+ *  fix. Its evening starts at its opening (17:00 or later), its evening-only
+ *  start (`eveningFrom`), or its evening best window ("after 17:30"). */
 const returns = (day: DayPlan, detourKm = 1.5): string[] => {
   const ids = day.items.map((i) => i.placeId);
   const out: string[] = [];
-  const evening = (id: string) => (parseClock(seedById.get(id)!.opens ?? null) ?? 0) >= 17 * 60 || eveningFrom(seedToPlaceInput(seedById.get(id)!)) != null;
+  const eveningAt = (k: number): number | null => {
+    const seed = seedById.get(ids[k])!;
+    const opens = parseClock(seed.opens ?? null) ?? 0;
+    const wins = (seed.window ?? []).map(parseWindow);
+    const window = wins.length && wins.every((w) => w.after != null && w.after >= 17 * 60) ? Math.min(...wins.map((w) => w.after!)) : null;
+    return eveningFrom(seedToPlaceInput(seed)) ?? window ?? (opens >= 17 * 60 ? opens : null);
+  };
+  const evening = (k: number) => { const at = eveningAt(k); return at != null && day.items[k].startMin >= at; };
   for (let i = 0; i < ids.length; i++)
     for (let k = i + 2; k < ids.length; k++) {
       const direct = km(ids[i], ids[k]);
-      if (direct > 0.6 || evening(ids[k])) continue;
+      if (direct > 0.6 || evening(k)) continue;
       let path = 0;
       for (let j = i; j < k; j++) path += km(ids[j], ids[j + 1]);
       if (path - direct > detourKm) out.push(`${day.date}: ${ids.slice(i, k + 1).join(" > ")}`);
@@ -150,16 +158,12 @@ describe("ready-made days don't go back and forth", () => {
   // a loop, not a trip across town. Before the fix the worst was 10 km
   // (Maruyama Park, south to Fushimi Inari, back to Shoren-in) and a dozen
   // day shapes passed 3.5 km.
-  // Known: on Tokyo day 1 (packed, early riser, 10 May 2027) Ginza comes
-  // after Mori Art Museum, on the Ginza Line back to Kappabashi: 102 min of
-  // trains against 109 with Ginza beside Kabuki-za, so the engine's order
-  // is the shorter one, though in straight lines it loops back over 3.5 km.
-  // The day changed when Tsukishima (best after 17:30) stopped being
-  // planned at 17:00 and Mori Art took its slot. Reported; fix or drop.
-  const KNOWN_LOOPS = new Set([
-    "tokyo-2 packed 0.2 2027-05-10: tky-kabukiza > tky-hamarikyu > tky-mori-art > tky-ginza",
-    "tokyo-kamakura-3 packed 0.2 2027-05-10: tky-kabukiza > tky-hamarikyu > tky-mori-art > tky-ginza",
-  ]);
+  // Days known to loop back, kept for now by the manager rather than
+  // fixed, "<trip> <pace> <crowd> <return>" as reported below. Empty: the
+  // Tokyo day that went Kabuki-za > Hama-rikyu > Mori Art Museum > Ginza
+  // (packed, early riser, 10 May 2027) no longer does since evening-only
+  // places became an explicit flag.
+  const KNOWN_LOOPS = new Set<string>([]);
   it("no ready-made day crosses town and comes back, at any pace or start time", () => {
     const bad: string[] = [];
     const known: string[] = [];

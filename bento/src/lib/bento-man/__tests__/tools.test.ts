@@ -616,22 +616,24 @@ describe("days", () => {
     // to or from hikes or, in place of a train, steep places, and round a
     // castle's moat at 1.8; and move past pins, never past closing), so legs
     // are shorter and the days
-    // hold other stops in other orders, and when evening places stopped
-    // being planned by day (Hozenji 10:08 and Shinsekai 11:26 on the 21st,
-    // Gion 10:46 on the 23rd and Nagarekawa 12:31 on the 29th are left out
-    // with "best after 17:30" and other stops fill their slots; Ogonzan
-    // goes in at 17:30 on the 29th; the re-planned 23rd keeps its stops and
-    // lists Ninenzaka, not Gion, as removed).
+    // hold other stops in other orders, and when evening-only places
+    // (`eveningOnly`, 0033) stopped being planned by day and "unavoidable"
+    // became true only when it is (plan_days only: Nagarekawa, "quiet until
+    // eight", left the 29th's 12:31 and Mount Ogonzan's night view went in
+    // at 17:30, with other stops round them; Fushimi Inari on the travel
+    // day of the 22nd can still be reached after 17:30, so it says "busy at
+    // this hour. It's quieter before 08:00 or after 17:30"; the re-planned
+    // 23rd is byte for byte as before).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("195a583f8a3afce6e4f7f3702c5d4ed5a957399887dca2ed15bafd99c7891b74");
+    expect(sha(plan)).toBe("3dd3c50d0c32b9554c9029f33372bb98dd635d4acca945cffe1eff067ba4e6c5");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("4f544aa1d647b597da3cb8c8be34e26115b9406592467f49817420d85ee28369");
+    expect(sha(replan)).toBe("2f90ac76bef6979269b4a544f58500b8e3243bf9e23f7544c0b24c1f0f174f93");
   });
 
   it("the main-sights line passes the voice lint", () => {

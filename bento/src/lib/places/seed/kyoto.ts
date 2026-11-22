@@ -157,7 +157,7 @@ export const kyoto: PlaceSeed[] = [
 
   draft({ id: "kyt-pontocho", city: c, name: "Pontocho", nameJa: "先斗町", category: "street", lat: 35.0060, lon: 135.7710,
     station: "sanjo", walk: 4, tags: ["food", "nightlife"], energy: 0.15, crowd: 0.7, discovery: 0.3, signature: 0.6,
-    taste: 15, typical: 45, full: 120, window: ["after 17:30"],
+    taste: 15, typical: 45, full: 120, window: ["after 17:30"], eveningOnly: true,
     crowdNote: "Dead by day. From dusk it is the prettiest lane in the city and every restaurant is full by eight.",
     tip: "An alley of restaurants along the river; in summer many have riverside decks. Book anything with a deck. For a drink without a booking, the bars at the north end.",
     cost: 0, pairs: ["kyt-nishiki-market", "kyt-gion"], sources: ["wikivoyage"] }),
