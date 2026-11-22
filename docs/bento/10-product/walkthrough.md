@@ -4,7 +4,7 @@ status: accepted
 implementation: shipped
 code:
   - bento/src/components/tour/
-last_reviewed: 2026-11-13
+last_reviewed: 2026-11-22
 ---
 
 # The walkthrough (tours)
@@ -19,6 +19,7 @@ Each page has a short tour that starts on the first visit and points at the part
 - A step points at an element marked `data-tour="<name>"`, or shows as a centred card if that element isn't on the page.
 - Seen tours are remembered in a cookie (`bento_tour`), read on the server so nothing flashes in.
 - Settings → "Show the tour again" clears it, so each tour starts again. There's no Tour button in the header.
+- The trips tour's second step points at the "Plan a Japan trip" card (`new-trip`) and says the blank trip is a tab on that page.
 - The tour's words follow [Bento Man's voice](../20-design/voice.md).
 
 ## What it doesn't do

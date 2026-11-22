@@ -6,15 +6,18 @@ import { planTabSearch, shownPlanTab, type PlanTab } from "@/lib/trips/plan-tabs
 import { copy } from "@/copy";
 
 const t = copy.trips.guided.tabs;
-const LABELS: Record<PlanTab, string> = { own: t.own, "ready-made": t.readyMade };
+const LABELS: Record<PlanTab, string> = { own: t.own, "ready-made": t.readyMade, blank: t.blank };
+// Three tabs don't fit a 360px phone in full words, so phones show short
+// ones; the tab's name (aria-label) is always the full one.
+const SHORT: Record<PlanTab, string> = { own: t.short.own, "ready-made": t.short.readyMade, blank: t.short.blank };
 
-/** The two ways to start, as WAI-ARIA tabs. The address is the only record
- *  of the open tab (`?tab=ready-made`): it is read with `useSearchParams`,
+/** The ways to start, as WAI-ARIA tabs. The address is the only record
+ *  of the open tab (`?tab=ready-made`, `?tab=blank`): it is read with `useSearchParams`,
  *  so the server renders the right tab and a Back that restores the page
  *  follows the address. Switching replaces the address with
  *  `history.replaceState(null, …)`, which Next syncs into its router, so
  *  nothing reloads and a later navigation keeps it. Both panels stay
- *  mounted and the one not shown is `hidden`, so each keeps what was typed
+ *  mounted and the ones not shown are `hidden`, so each keeps what was typed
  *  in it; a hidden panel's form can't be submitted or validated (each panel
  *  is its own form). */
 export function PlanTabs({ tabs, panels }: { tabs: PlanTab[]; panels: Record<PlanTab, ReactNode> }) {
@@ -43,7 +46,7 @@ export function PlanTabs({ tabs, panels }: { tabs: PlanTab[]; panels: Record<Pla
 
   return (
     <>
-      <div role="tablist" aria-label={t.label} className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-sunk p-1">
+      <div role="tablist" aria-label={t.label} className={`mt-6 grid ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"} gap-0.5 rounded-full sm:gap-1 bg-sunk p-1`}>
         {tabs.map((tab) => {
           const on = tab === selected;
           return (
@@ -58,9 +61,11 @@ export function PlanTabs({ tabs, panels }: { tabs: PlanTab[]; panels: Record<Pla
               tabIndex={on ? 0 : -1}
               onClick={() => select(tab)}
               onKeyDown={onKeyDown}
-              className={`min-h-10 rounded-full border px-2 leading-tight text-[0.875rem] font-medium sm:text-[0.92rem] focus-visible:rounded-full ${on ? "border-accent bg-lacquer text-rice" : "border-transparent text-ink-2 hover:bg-surface hover:text-ink"}`}
+              aria-label={LABELS[tab]}
+              className={`min-h-10 rounded-full border px-1 leading-tight text-[0.8125rem] font-medium sm:px-2 sm:text-[0.92rem] focus-visible:rounded-full ${on ? "border-accent bg-lacquer text-rice" : "border-transparent text-ink-2 hover:bg-surface hover:text-ink"}`}
             >
-              {LABELS[tab]}
+              <span aria-hidden className="min-[360px]:whitespace-nowrap sm:hidden">{SHORT[tab]}</span>
+              <span aria-hidden className="hidden sm:inline">{LABELS[tab]}</span>
             </button>
           );
         })}

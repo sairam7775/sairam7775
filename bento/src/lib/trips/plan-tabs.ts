@@ -1,22 +1,23 @@
-/** "Plan a Japan trip" has two tabs: the traveller's own answers (the form,
- *  first and the default) and the ready-made trips. `?tab=ready-made` opens
- *  the second; anything else opens the form. */
+/** "Plan a Japan trip" has three tabs: the traveller's own answers (the
+ *  form, first and the default), the ready-made trips and a blank trip (a
+ *  name and dates, nothing else). `?tab=ready-made` and `?tab=blank` open
+ *  the other two; anything else opens the form. */
 
-export const PLAN_TABS = ["own", "ready-made"] as const;
+export const PLAN_TABS = ["own", "ready-made", "blank"] as const;
 export type PlanTab = (typeof PLAN_TABS)[number];
 
-/** The tab a `tab` search parameter asks for. Only the exact value
- *  "ready-made" opens the ready-made trips; a repeated parameter is read by
- *  its first value. */
+/** The tab a `tab` search parameter asks for. Only the exact values
+ *  "ready-made" and "blank" open those tabs; a repeated parameter is read
+ *  by its first value. */
 export function parsePlanTab(value: string | string[] | undefined): PlanTab {
   const first = Array.isArray(value) ? value[0] : value;
-  return first === "ready-made" ? "ready-made" : "own";
+  return first === "ready-made" || first === "blank" ? first : "own";
 }
 
-/** The tabs to show. With no ready-made trip to offer there is only the
- *  form, and the page shows no tabs at all. */
+/** The tabs to show. With no ready-made trip to offer, the form and the
+ *  blank trip. */
 export function planTabs(readyMadeCount: number): PlanTab[] {
-  return readyMadeCount > 0 ? [...PLAN_TABS] : ["own"];
+  return readyMadeCount > 0 ? [...PLAN_TABS] : ["own", "blank"];
 }
 
 /** The open tab: the one the address asks for, if it is shown. */

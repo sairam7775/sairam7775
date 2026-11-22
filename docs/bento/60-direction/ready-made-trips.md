@@ -117,6 +117,7 @@ These are the workspace standards (`knowledge/AI-DEVELOPMENT.md`). In short:
 - A start date is required: the engine needs real dates for closing days.
 - **Done when:** a signed-in traveller can start the 7-day trip and the 1-day trip in a real browser, sees full days, and can re-plan one day; nothing calls the model; the trip counts against the same limits as any other trip.
 - **Decided by the owner (20 Nov):** the plan page has two tabs at the top, "Plan your own" (the form, first and the default) and "Ready-made trips" (`?tab=ready-made`). With no ready-made trip to offer, there are no tabs, only the form.
+- **Changed by the owner (22 Nov):** the blank-trip form moved from the trips list to a third tab, "Blank trip" (`?tab=blank`). With no ready-made trip to offer, the page shows the two other tabs, the form and the blank trip.
 
 ### 1D. Bento Man knows the ready-made trips
 
