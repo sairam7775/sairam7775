@@ -30,7 +30,7 @@ export default async function Appearance() {
                   name="theme"
                   value={value}
                   pressed={theme === value}
-                  className={`min-h-10 rounded-full px-4 text-[0.92rem] ${theme === value ? "bg-lacquer text-rice" : "text-ink-2 hover:bg-sunk hover:text-ink"}`}
+                  className={`min-h-10 rounded-full border px-4 text-[0.92rem] ${theme === value ? "border-accent bg-lacquer text-rice" : "border-transparent text-ink-2 hover:bg-sunk hover:text-ink"}`}
                 >
                   {t.theme[value]}
                 </ChoiceButton>
@@ -50,7 +50,7 @@ export default async function Appearance() {
                   name="background"
                   value={value}
                   pressed={background === value}
-                  className={`min-h-10 rounded-full border px-4 text-[0.92rem] ${background === value ? "border-lacquer bg-lacquer text-rice" : "border-rule text-ink-2 hover:bg-sunk hover:text-ink"}`}
+                  className={`min-h-10 rounded-full border px-4 text-[0.92rem] ${background === value ? "border-accent bg-lacquer text-rice" :"border-rule text-ink-2 hover:bg-sunk hover:text-ink"}`}
                 >
                   {t.background[value]}
                 </ChoiceButton>

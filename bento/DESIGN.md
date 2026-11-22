@@ -224,7 +224,7 @@ Text: `{colors.ink}` for headings and body, `{colors.ink-2}` for secondary copy,
 - Headlines use the `.disp` class or `h1–h4`; they get `text-wrap: balance`.
 - Minimum readable size is 12px. Anything a traveller taps or must read to decide is at least 13px.
 - Uppercase mono is for short tags only (`DAY 3 · SUN`, `BLOCKING`). Never for sentences — a proposal summary is a sentence.
-- Fonts are self-hosted with fontsource. Both Zen faces are split by unicode-range, so Japanese place names (伏見稲荷大社, 姫路城) render in the same family and only the glyph ranges used are downloaded.
+- Fonts are self-hosted with fontsource. Both Zen faces are split by unicode-range, so Japanese place names (伏見稲荷大社, 姫路城) render in the same family and only the glyph ranges used are downloaded. Only these weights are loaded: Maru 700/900, Kaku 400/500/700, Mono 400/500. Any other weight shows as the nearest loaded one (font-semibold as 700; font-extrabold as 900 in a headline, 700 in body text). All come from one generated stylesheet, `src/app/fonts.css` (`npm run fonts`). Arrows and check marks (← → ↗ ✓) are drawn by the system font: the Zen fonts keep them only in their Japanese files, and one back arrow cost a page a file of kanji.
 - The **logo wordmark** is outlined from Bricolage Grotesque 800 (`public/logo/`, `scripts/build-wordmark.mjs`) and stays as drawn; it is artwork, not live text.
 
 ## Layout
@@ -257,6 +257,7 @@ One shadow (`{elevation.tile}`) for tiles and floating pills. The lacquer box ha
 ## Motion
 
 - Tiles **rise** into place on load (`.up`, 620ms, staggered with `animation-delay`); bars **grow**; badges **pop**; rings fill.
+- The first screen's text (the header, a page's heading and its first tile) **settles** instead (`.settle`): the same movement with no fade, so it is painted at once. Starting at opacity 0 held back the home page's Largest Contentful Paint; `.up` is for what comes after.
 - **Loading** is the Bento mark with the umeboshi hopping clockwise between compartments (`<BentoLoader>`), with a skeleton of the page's real shape on the trip page so nothing jumps when data arrives. The loader stays the plain mark. In chat, Bento Man's thinking head sits beside what he is doing ("Checking the route…").
 - Everything stops under `prefers-reduced-motion`; the loader falls back to a gentle pulse.
 
@@ -283,11 +284,25 @@ Behind every page sits a blurred Japanese scene for the season (`src/components/
 | Autumn (Sep–Nov) | Maple tree, Kyoto pagoda on the hills | Momiji leaves falling and spinning |
 | Winter (Dec–Feb) | Snowy Alps, cedars, the Jigokudani onsen with a snow monkey (Nagano) | Snowfall, onsen steam, the monkey bobs and blinks |
 
-- Settings → Appearance → Background chooses the season: **Automatic** (the default) or one season everywhere (the `bento_season` cookie). Automatic is today's season, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`). A chosen season wins over both, trip pages included. `?season=winter` previews any season on any page and wins over everything.
+Five more scenes are never picked by date, only chosen (`SCENE_THEMES` in `season.ts`; the cookie and `?season=` value in brackets):
+
+| Scene | Drawing | Motion |
+|---|---|---|
+| Rainy season (`tsuyu`) | Misty hills, a temple roof in the mist, low hydrangea bushes, puddles | Fine slanted rain, rings on the puddles (the bushes stay still) |
+| Mount Fuji (`fuji`) | Fuji at dawn over a still lake, its reflection, the sun behind its east shoulder, reeds. The summit sits right of centre (`.season-fuji`): on a wide screen its cap shows above the day card, on a phone at the right edge |  Light glints on the water, reeds sway, pale haze drifts |
+| Night city (`night`) | A lantern-lit street of wooden townhouses at dusk toward a pagoda, plain noren | Every other lantern swings, warm glow drifts |
+| Summer festival (`matsuri`) | Fireworks at the edges and high in the middle, over a row of stalls with strings of paper lanterns below the buttons | Fireworks open and fade, every other lantern swings, sparks drift |
+| Grand shrine (`shrine`) | A path of vermilion torii, seen from a little above, up to the main hall; stone lanterns, cedars | Cedars sway, sun motes drift |
+
+- Settings → Appearance → Background chooses: **Automatic** (the default), one season, or one scene everywhere (the `bento_season` cookie). Automatic is today's season, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`); it never shows a scene. A chosen season or scene wins over both, trip pages included. `?season=winter` (or `?season=fuji`) previews any of them on any page and wins over everything; an unknown value is ignored.
+- Every drawing is original: no shop names, signs, writing on lanterns, logos or copies of a photo.
+- A scene's sky stays light enough at the top for the logo's dark mark in the dark theme (the night and festival skies are dusk, not black), and nothing bright or busy sits behind the page's text: torii beams, lantern wires and flower heads stay below y ≈ 620 of the 900-high drawing, fireworks keep to the edges, Fuji's white cap stays clear of the headline, and drifting motes keep out of the text column (2.5–50% across; on a phone only those starting in the lowest 30% show).
+- Moving SVG repaints its whole layer every frame, so a scene moves only a few light things: heavy shapes (the hydrangea bushes) stay still and only every other lantern swings.
+- A hidden tab pauses every animation in the backdrop (`data-paused` from `document.visibilityState`).
 - Layers: far scene blurred 10px (static, so it rasterises once), near scene unfiltered (it animates), then a **veil** of paper — densest over the centre column where content sits, lighter at the edges where the tree / onsen / bamboo are — then particles. Tiles are 90% surface, so the scene only tints them and text contrast is unchanged. No `backdrop-filter`: over a moving scene it re-blurs every frame.
 - The scenes use their own illustration palette (hex), the one exception to tokens-only colour.
 - Drawn in SVG and CSS — no image downloads. Particle positions are deterministic (`noise()`), so renders are stable; fewer particles on phones.
-- Decoration only: `aria-hidden`, `pointer-events: none`, rendered after hydration with a fade-in. Under `prefers-reduced-motion` the scene is still and nothing falls.
+- Decoration only: `aria-hidden`, `pointer-events: none`, rendered after hydration with a fade-in. Under `prefers-reduced-motion` the scene is still and nothing falls (fireworks show still, fully open).
 
 ## Voice
 

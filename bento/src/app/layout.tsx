@@ -1,18 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import "@fontsource/zen-maru-gothic/700.css";
-import "@fontsource/zen-maru-gothic/900.css";
-import "@fontsource/zen-kaku-gothic-new/400.css";
-import "@fontsource/zen-kaku-gothic-new/500.css";
-import "@fontsource/zen-kaku-gothic-new/700.css";
-import "@fontsource/dm-mono/400.css";
-import "@fontsource/dm-mono/500.css";
 import { cookies } from "next/headers";
+import "./fonts.css";
 import "./globals.css";
 import { SeasonalBackground } from "@/components/seasonal/background";
 import { BACKGROUND_COOKIE, parseBackground } from "@/components/seasonal/season";
 import { THEME_COOKIE, parseTheme } from "@/lib/theme";
 import { copy } from "@/copy";
-import { Analytics } from "@/components/analytics/analytics";
+import { Analytics, WebVitals } from "@/components/analytics/analytics";
 import { ANALYTICS_COOKIE, parseConsent } from "@/lib/analytics/consent";
 
 /* Fonts are self-hosted (fontsource) rather than fetched at build time, so
@@ -21,7 +15,9 @@ import { ANALYTICS_COOKIE, parseConsent } from "@/lib/analytics/consent";
    data. Both Zen faces are Japanese typefaces with Latin designed to match,
    so place names in Japanese set in the same voice as the English around
    them; each weight is split by unicode-range and only the ranges a page
-   uses are downloaded. */
+   uses are downloaded. fonts.css is generated from the fontsource packages
+   (`npm run fonts`, src/lib/fonts/font-css.ts): one stylesheet instead of
+   one per weight, about a fifth of the bytes. */
 
 export const metadata: Metadata = {
   title: copy.meta.title,
@@ -55,6 +51,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         <SeasonalBackground chosen={background === "auto" ? null : background}>{children}</SeasonalBackground>
         <Analytics consent={consent} />
+        {/* Page speed is measured only for visitors who allowed analytics. */}
+        {consent === "yes" && <WebVitals />}
       </body>
     </html>
   );

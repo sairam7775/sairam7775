@@ -52,6 +52,10 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// Static files skip the proxy: each match is a getUser() call to Supabase.
+// That covers images, the mascot animations (.json), the manifest, robots
+// and sitemaps. No app route ends in one of these extensions; a new one
+// that did would run without the session refresh (proxy.test.ts).
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|ingest/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)"],
+  matcher: ["/((?!_next/static|_next/image|ingest/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest|txt|xml)$).*)"],
 };

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppHeader } from "@/components/app-header";
-import { loadBookings, loadGaps, type VaultBooking } from "@/lib/vault/store";
+import { bookingRowOfVault, GAP_CITY_COLUMNS, gapCityOf, gapsFrom, loadBookings, type VaultBooking } from "@/lib/vault/store";
 import { canEncrypt } from "@/lib/vault/crypto";
 import { vaultTotal, type VaultTotal } from "@/lib/vault/money";
 import { ErrorNote, Notice } from "@/app/(auth)/ui";
@@ -59,25 +59,40 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
   const { data: { user } } = await db.auth.getUser();
   if (!user) redirect("/sign-in");
 
-  const { data: trip } = await db.from("trips").select("id, title").eq("id", id).maybeSingle();
-  if (!trip) notFound();
-
   const reveal = typeof sp.reveal === "string" ? sp.reveal : undefined;
   const today = new Date().toISOString().slice(0, 10);
-  const [bookings, report, cityRows, fxRows] = await Promise.all([
-    loadBookings(db, id, reveal),
-    loadGaps(db, id, today),
-    db.from("trip_cities").select("city_id, sort_order, cities(name)").eq("trip_id", id).order("sort_order"),
+  // Every read needs only the trip's id, so they go at once; RLS answers
+  // nothing for a trip that isn't theirs. The route and the bookings serve
+  // both the page and the gap check. A missing trip is a 404 before any
+  // other read's failure counts, as when the trip was read first.
+  const cityRead = Promise.resolve(db.from("trip_cities").select(GAP_CITY_COLUMNS).eq("trip_id", id).order("sort_order"));
+  const settled = <T,>(p: PromiseLike<T>) => Promise.resolve(p).then((value) => ({ value }), (error: unknown) => ({ error }));
+  const [{ data: trip }, bookingsRead, cityRows, dayRows, dismissals, fxRows, chatRead] = await Promise.all([
+    db.from("trips").select("id, start_date, end_date").eq("id", id).maybeSingle(),
+    settled(loadBookings(db, id, reveal)),
+    cityRead,
+    db.from("itinerary_days").select("date, itinerary_items(place_id)").eq("trip_id", id),
+    db.from("gap_dismissals").select("gap_key").eq("trip_id", id),
     db.from("fx_rates").select("currency, jpy_per_unit, fetched_at"),
+    settled(loadChat(db, id, cityRead.then((r) => (r.data ?? []).map((c) => { const g = gapCityOf(c); return { id: g.cityId, name: g.name }; })))),
   ]);
+  if (!trip) notFound();
+  if ("error" in bookingsRead) throw bookingsRead.error;
+  if (cityRows.error) throw cityRows.error;
+  const bookings = bookingsRead.value;
 
-  const cities = (cityRows.data ?? []).map((c) => ({
-    id: c.city_id,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    name: (c.cities as any)?.name ?? c.city_id,
-  }));
-
-  const chat = await loadChat(db, id, cities);
+  const route = (cityRows.data ?? []).map(gapCityOf);
+  const cities = route.map((c) => ({ id: c.cityId, name: c.name }));
+  const report = await gapsFrom(db, {
+    startDate: trip.start_date,
+    endDate: trip.end_date,
+    cities: route,
+    days: (dayRows.data ?? []).map((d) => ({ date: d.date, placeIds: (d.itinerary_items ?? []).map((i) => i.place_id) })),
+    bookings: bookings.map(bookingRowOfVault),
+    dismissed: (dismissals.data ?? []).map((d) => d.gap_key),
+  }, today);
+  if ("error" in chatRead) throw chatRead.error;
+  const chat = chatRead.value;
   // A gap's "Ask Bento Man" (or a question on his card) puts its question
   // in the chat box; the key comes in the address, the words from the gap.
   const askKey = typeof sp.ask === "string" ? sp.ask : null;
@@ -119,7 +134,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
         <div className="min-w-0">
           <BentoManCard tripId={id} tip={tip} />
 
-          <header className="up mt-7" style={{ animationDelay: ".05s" }}>
+          <header className="settle mt-7" style={{ animationDelay: ".05s" }}>
             <h1 className="text-[2.2rem] font-extrabold leading-none sm:text-[2.8rem]">{t.title}</h1>
             <p className="mt-2.5 max-w-[62ch] text-[0.98rem] leading-relaxed text-ink-2">
               {t.intro}

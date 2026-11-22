@@ -6,7 +6,8 @@
  *  anything that talks to a model. */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { BookingKind } from "@/lib/types";
-import { detectGaps, type BookingRow, type GapPlace, type GapReport } from "./gaps";
+import type { TripState } from "@/lib/bento-man/store";
+import { detectGaps, type BookingRow, type GapCity, type GapPlace, type GapReport } from "./gaps";
 import { BookingRefError, decryptRef, maskRef } from "./crypto";
 
 export interface VaultBooking {
@@ -82,21 +83,23 @@ export async function loadBookings(db: SupabaseClient, tripId: string, revealId?
   });
 }
 
-/** The gap report for a trip: nights from the route, tickets from the
- *  planned days, bookings from the vault. Pure detection, database reads. */
-export async function loadGaps(db: SupabaseClient, tripId: string, today: string): Promise<GapReport> {
-  const [trip, cityRows, dayRows, bookings, dismissals] = await Promise.all([
-    db.from("trips").select("start_date, end_date").eq("id", tripId).maybeSingle(),
-    db.from("trip_cities").select("city_id, nights, sort_order, arrive_date, depart_date, cities(name)").eq("trip_id", tripId).order("sort_order"),
-    db.from("itinerary_days").select("date, itinerary_items(place_id)").eq("trip_id", tripId),
-    db.from("bookings").select("id, type, title, starts_at, ends_at, city_id, to_city_id, place_id").eq("trip_id", tripId),
-    db.from("gap_dismissals").select("gap_key").eq("trip_id", tripId),
-  ]);
-  if (trip.error) throw trip.error;
-  if (cityRows.error) throw cityRows.error;
+/** What the gap detector needs that a page has usually read already: the
+ *  trip's dates, its route, the place ids planned on each day, its bookings
+ *  and the gaps the traveller dismissed. */
+export interface GapSource {
+  startDate: string | null;
+  endDate: string | null;
+  cities: GapCity[];
+  days: { date: string; placeIds: (string | null)[] }[];
+  bookings: BookingRow[];
+  dismissed: Iterable<string>;
+}
 
-  // Booking requirements come from the gate, so a draft cannot raise a gap.
-  const placeIds = [...new Set((dayRows.data ?? []).flatMap((d) => (d.itinerary_items ?? []).map((i) => i.place_id)).filter(Boolean))] as string[];
+/** The gap report from what the page already holds. Reads only the
+ *  planned places' booking needs, from the gate, so a draft cannot raise a
+ *  gap; a failed read leaves the ticket checks out, as before. */
+export async function gapsFrom(db: SupabaseClient, src: GapSource, today: string): Promise<GapReport> {
+  const placeIds = [...new Set(src.days.flatMap((d) => d.placeIds).filter(Boolean))] as string[];
   const reqs = new Map<string, { name: string; req: GapPlace["bookingReq"]; lead: number | null }>();
   if (placeIds.length) {
     const { data } = await db.from("places_public").select("id, name, booking_req, booking_lead_days").in("id", placeIds);
@@ -104,39 +107,52 @@ export async function loadGaps(db: SupabaseClient, tripId: string, today: string
   }
 
   const places: GapPlace[] = [];
-  for (const d of dayRows.data ?? []) {
-    for (const i of d.itinerary_items ?? []) {
-      const r = i.place_id ? reqs.get(i.place_id) : null;
-      if (r) places.push({ placeId: i.place_id, name: r.name, date: d.date, bookingReq: r.req, bookingLeadDays: r.lead });
+  for (const d of src.days) {
+    for (const id of d.placeIds) {
+      const r = id ? reqs.get(id) : null;
+      if (r) places.push({ placeId: id!, name: r.name, date: d.date, bookingReq: r.req, bookingLeadDays: r.lead });
     }
   }
 
-  const rows: BookingRow[] = (bookings.data ?? []).map((b) => ({
-    id: b.id,
-    type: b.type,
-    title: b.title,
-    startsOn: dayOf(b.starts_at),
-    endsOn: dayOf(b.ends_at),
-    cityId: b.city_id,
-    toCityId: b.to_city_id,
-    placeId: b.place_id,
-  }));
-
   return detectGaps({
-    startDate: trip.data?.start_date ?? null,
-    endDate: trip.data?.end_date ?? null,
-    cities: (cityRows.data ?? []).map((c) => ({
-      cityId: c.city_id,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      name: (c.cities as any)?.name ?? c.city_id,
-      nights: c.nights,
-      sortOrder: c.sort_order,
-      arriveDate: c.arrive_date,
-      departDate: c.depart_date,
-    })),
-    bookings: rows,
+    startDate: src.startDate,
+    endDate: src.endDate,
+    cities: src.cities.map((c) => ({ cityId: c.cityId, name: c.name, nights: c.nights, sortOrder: c.sortOrder, arriveDate: c.arriveDate, departDate: c.departDate })),
+    bookings: src.bookings,
     places,
     today,
-    dismissed: new Set((dismissals.data ?? []).map((d) => d.gap_key)),
+    dismissed: new Set(src.dismissed),
   });
+}
+
+/** The trip page's source: the trip store's state (dates, route, days) and
+ *  the page's own bookings and dismissals reads. */
+export function gapSourceOf(state: TripState, bookings: BookingRow[], dismissed: Iterable<string>): GapSource {
+  return {
+    startDate: state.trip.startDate,
+    endDate: state.trip.endDate,
+    cities: state.cities,
+    days: state.days.map((d) => ({ date: d.date, placeIds: d.items.map((i) => i.placeId) })),
+    bookings,
+    dismissed,
+  };
+}
+
+/** Columns of `trip_cities` (with the city's name) the gap detector reads. */
+export const GAP_CITY_COLUMNS = "city_id, nights, sort_order, arrive_date, depart_date, cities(name)";
+
+/** A `trip_cities` row read with `GAP_CITY_COLUMNS`, as the detector takes it. */
+export function gapCityOf(c: { city_id: string; nights: number; sort_order: number; arrive_date: string | null; depart_date: string | null; cities: unknown }): GapCity {
+  const city = (Array.isArray(c.cities) ? c.cities[0] : c.cities) as { name?: string } | null | undefined;
+  return { cityId: c.city_id, name: city?.name ?? c.city_id, nights: c.nights, sortOrder: c.sort_order, arriveDate: c.arrive_date, departDate: c.depart_date };
+}
+
+/** A bookings row (as the database gives it) as the detector takes it. */
+export function bookingRowOf(b: { id: string; type: BookingKind; title: string; starts_at: string | null; ends_at: string | null; city_id: string | null; to_city_id: string | null; place_id: string | null }): BookingRow {
+  return { id: b.id, type: b.type, title: b.title, startsOn: dayOf(b.starts_at), endsOn: dayOf(b.ends_at), cityId: b.city_id, toCityId: b.to_city_id, placeId: b.place_id };
+}
+
+/** A vault booking (already read for the list) as the detector takes it. */
+export function bookingRowOfVault(b: VaultBooking): BookingRow {
+  return { id: b.id, type: b.type, title: b.title, startsOn: dayOf(b.startsAt), endsOn: dayOf(b.endsAt), cityId: b.cityId, toCityId: b.toCityId, placeId: b.placeId };
 }

@@ -49,7 +49,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <Notice>{doneNote}</Notice>
         </div>
       )}
-      <header className="up flex items-center justify-between gap-3">
+      <header className="settle flex items-center justify-between gap-3">
         <Link href="/" aria-label={copy.common.homeLabel} className="inline-flex"><BentoLogo /></Link>
         <nav className="flex items-center gap-1">
           <a href="#how" className="hidden min-h-10 items-center rounded-full px-3 text-[0.9rem] text-ink-2 hover:bg-sunk hover:text-ink sm:inline-flex">{t.howItWorksLink}</a>
@@ -63,7 +63,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
 
       {/* Hero */}
       <section className="mt-12 grid items-center gap-10 lg:mt-20 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-        <div className="up" style={{ animationDelay: ".05s" }}>
+        <div className="settle" style={{ animationDelay: ".05s" }}>
           <p className="flex items-center gap-3 text-[0.9rem] font-medium text-ink-2">
             <span aria-hidden className="h-[2px] w-7 bg-accent" />
             {t.hero.kicker}

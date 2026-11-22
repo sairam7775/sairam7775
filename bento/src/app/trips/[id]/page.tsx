@@ -9,11 +9,11 @@ import { AppHeader } from "@/components/app-header";
 import { ConfirmButton, DateRangeInputs, SubmitButton } from "@/components/form-controls";
 import { fieldInput, fieldLabel } from "@/components/form-styles";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { nightsBetween, type TripState } from "@/lib/bento-man/store";
+import { nightsBetween } from "@/lib/bento-man/store";
 import { buildTripView, dayCoverage, startLiftedLine, travelMoveLine, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { fillPercent } from "@/lib/engine/day-stats";
 import { journeyMapUrl } from "@/lib/maps/links";
-import { loadGaps } from "@/lib/vault/store";
+import { bookingRowOf, gapSourceOf, gapsFrom } from "@/lib/vault/store";
 import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
@@ -27,7 +27,7 @@ import { TripChat } from "./trip-chat";
 import { UseSeason } from "@/components/seasonal/background";
 import { seasonOf } from "@/components/seasonal/season";
 import { Chat } from "./chat";
-import { loadChat } from "./load-chat";
+import { readTrip } from "./load-trip";
 import { DayBox } from "./day-box";
 import type { PlanBooking } from "./bookings-column";
 import { copy } from "@/copy";
@@ -51,19 +51,32 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   if (!user) redirect("/sign-in");
 
   const store = new SupabaseStore(db, id, user.id);
-  let state: TripState;
-  try {
-    state = await store.state();
-  } catch {
-    notFound();
-  }
-
-  const { messages, cityNames, cityTiers } = await loadChat(db, id, state.cities.map((c) => ({ id: c.cityId, name: c.name })));
-
   const requested = typeof sp.day === "string" ? sp.day : null;
-  // Each travel day's move, as the planner allowed it. A failure leaves every
-  // day measured as a whole day, as before.
-  const moves = await tripMoves(store, state).catch(() => null);
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Everything that needs only the trip's id is read at once (`readTrip`); a
+  // trip that can't be read is a 404, whatever the other reads did.
+  const read = await readTrip(db, store, id);
+  if (!read) notFound();
+  const { state, chat, bookingRows, reviewRow, share, dismissals } = read;
+  const { messages, cityNames, cityTiers } = chat;
+
+  // The selected day doesn't depend on the moves (only its measure does),
+  // so its stops are known now.
+  const selectedItems = buildTripView(state, requested).dayItems ?? [];
+  // Then what needs the trip: each travel day's move as the planner allowed
+  // it (a failure leaves every day measured as a whole day), each travel
+  // day's trains (a failure only leaves them off the page), the day's checked
+  // backgrounds (0027; none shown if they can't be read), and the gaps (a
+  // failure leaves the bookings bar off). The two travel reads share the
+  // store's city and graph reads.
+  const [moves, travel, backgrounds, gaps] = await Promise.all([
+    tripMoves(store, state).catch(() => null),
+    tripTravelDays(store, state).catch(() => null),
+    loadBackgrounds(db, selectedItems.map((i) => i.placeId)),
+    gapsFrom(db, gapSourceOf(state, (bookingRows ?? []).map(bookingRowOf), (dismissals ?? []).map((d) => d.gap_key)), today).catch(() => null),
+  ]);
+
   const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested, moves);
   const move = selected ? moves?.get(selected) ?? null : null;
   const fromName = move ? state.cities.find((c) => c.cityId === move.fromCityId)?.name ?? move.fromCityId : "";
@@ -72,18 +85,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   // How well Bento knows the selected day's own city, for its heading and box.
   const cover = selectedMeta ? dayCoverage(selectedMeta, selectedDay?.items.length ?? 0) : null;
 
-  // Each travel day's trains. A failure only leaves them off the page.
-  const travel = await tripTravelDays(store, state).catch(() => null);
-  // The day's checked backgrounds (0027); none shown if they can't be read.
-  const backgrounds = await loadBackgrounds(db, (dayItems ?? []).map((i) => i.placeId));
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
-  const today = new Date().toISOString().slice(0, 10);
-  const gaps = await loadGaps(db, id, today).catch(() => null);
-  // "How did the plan hold up?" once the trip has ended (0019). An answer
-  // already given stays on the page, and changeable, whatever the trip does
-  // after: it is about the plan saved with it.
-  const { data: reviewRow } = await db.from("trip_reviews").select("outcome, challenges, hard_days, note, plan").eq("trip_id", id).maybeSingle();
+  // An answer already given stays on the page, and changeable, whatever the
+  // trip does after: it is about the plan saved with it.
   const review = reviewFromRow(reviewRow);
   const reviewing = Boolean(review) || reviewOpen(state.trip, state.cities.length > 0, today);
   // An answered trip's hard days are chosen from the plan saved with the
@@ -97,18 +102,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         return { date, label: city ? copy.review.hardDay(i + 1, dayWord(date), city) : copy.review.hardDayNoCity(i + 1, dayWord(date)) };
       })
     : dayList.map(([date, meta], i) => ({ date, label: copy.review.hardDay(i + 1, dayWord(date), meta.cityName) }));
-  // For the Bookings column. Never the reference: it is decrypted only on
-  // the vault page.
-  const { data: bookingRows } = await db
-    .from("bookings")
-    .select("id, type, title, starts_at, ends_at, starts_time_known, ends_time_known, planned_on")
-    .eq("trip_id", id);
   const bookings: PlanBooking[] = (bookingRows ?? []).map((b) => ({
     id: b.id, type: b.type, title: b.title, startsAt: b.starts_at, endsAt: b.ends_at, plannedOn: b.planned_on,
     startTimeKnown: b.starts_time_known !== false, endTimeKnown: b.ends_time_known !== false,
   }));
-  // The companions' link, if the trip is shared (0020/0024).
-  const { data: share } = await db.from("trip_shares").select("token, expires_at, until_trip_end").eq("trip_id", id).maybeSingle();
   const shareUrl = share ? `${siteOrigin(await headers())}/shared/${share.token}` : null;
   const shareActive = shareIsActive(share, state.trip.endDate, new Date());
   const shareDay = (at: string) => new Intl.DateTimeFormat(copy.locale, { weekday: "short", day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(at));
@@ -181,7 +178,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
       <div className="mt-6 grid lg:items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,34%)]">
         <section aria-label={t.planLabel} className="min-w-0">
-          <header className="up" style={{ animationDelay: ".05s" }}>
+          <header className="settle" style={{ animationDelay: ".05s" }}>
             <h1 className="text-[2.4rem] font-extrabold leading-none sm:text-[3rem]">{state.trip.title ?? copy.trips.untitled}</h1>
             {/* On a phone the dates leave the header, which has no room for them. */}
             {state.trip.startDate && state.trip.endDate && (

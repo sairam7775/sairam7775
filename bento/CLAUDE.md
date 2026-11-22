@@ -476,10 +476,17 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   from the database as hex EWKB (`readPoint` in `transit/load.ts`).
 - Palette and motion live in `globals.css`: `paper`/`surface`/`sunk`/
   `lacquer`/`rice`, ink levels, `accent` (salmon), `ume`, `edamame`,
-  `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.pop`, `.grow`,
-  `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
-- Fonts are fontsource packages imported in `layout.tsx` — no build-time
-  fetch. Zen Maru Gothic display, Zen Kaku Gothic New body, DM Mono data.
+  `tamago`, `lavender-soft`; `.tile`, `.box`, `.up`, `.settle`, `.pop`,
+  `.grow`, `.ring`, `.lift`, all off under reduced motion. Use tokens, not hex.
+  The first screen's text (header, heading, first tile) uses `.settle`, which
+  moves without fading: text at opacity 0 isn't painted, so `.up` there
+  delays the page's LCP (`first-paint.test.ts`).
+- Fonts are fontsource packages, read into one generated stylesheet,
+  `src/app/fonts.css` (`npm run fonts`, `lib/fonts/font-css.ts`), imported
+  in `layout.tsx` — no build-time fetch. Never import fontsource's own CSS:
+  it is one render-blocking file per weight. A new weight goes in `FONTS`;
+  `font-css.test.ts` fails while the file is stale. Zen Maru Gothic
+  display, Zen Kaku Gothic New body, DM Mono data.
   The logo wordmark stays outlined Bricolage Grotesque (it is artwork).
 - The seasonal scenes and particles (`components/seasonal/`) are the one
   exception to "tokens, not hex": they are illustration with their own
@@ -487,7 +494,9 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   out of anything a traveller reads.
 - Which season shows: `?season=` preview, then Settings → Appearance → Background (the
   `bento_season` cookie, passed from the root layout as `chosen`), then a
-  trip page's `<UseSeason>`, then today's date in the browser.
+  trip page's `<UseSeason>`, then today's date in the browser. The five
+  scenes that aren't seasons (`SCENE_THEMES`: tsuyu, fuji, night, matsuri,
+  shrine) come only from the first two; Automatic never shows one.
 - No `backdrop-filter` or `filter` on anything that animates or sits over
   animation — it re-rasterises every frame. Blur only static layers.
 - `DESIGN.md` is the design system in prose and tokens: read it before UI

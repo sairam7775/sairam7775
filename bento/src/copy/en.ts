@@ -1496,12 +1496,17 @@ export const en = {
     },
     background: {
       heading: "Background",
-      body: "The scene behind every page. Automatic follows today’s date, and a trip’s own dates on its page. Kept on this device.",
+      body: "The scene behind every page. Automatic shows the season of today’s date, and of a trip’s own dates on its page; any other choice shows everywhere. Kept on this device.",
       auto: "Automatic",
       spring: "Spring",
       summer: "Summer",
       autumn: "Autumn",
       winter: "Winter",
+      tsuyu: "Rainy season",
+      fuji: "Mount Fuji",
+      night: "Night city",
+      matsuri: "Summer festival",
+      shrine: "Grand shrine",
     },
     tour: {
       heading: "Tour",
@@ -1511,7 +1516,7 @@ export const en = {
     },
     analytics: {
       heading: "Usage analytics",
-      body: "Records which features you use and when something breaks, so we can fix it. Never what you type, your bookings or your email.",
+      body: "Records which features you use, how quickly Bento loads and responds, and when something breaks, so we can fix it. Never what you type, your bookings or your email.",
       on: "On",
       off: "Off",
       more: "How Bento uses data",
@@ -1565,7 +1570,7 @@ export const en = {
   // The consent banner. Shown once, until you choose.
   consent: {
     label: "Analytics choice",
-    body: "Can Bento record how you use it — which buttons, which pages, and when something breaks? Never what you type, your bookings or your email. It helps us fix problems.",
+    body: "Can Bento record how you use it — which buttons, which pages, how fast they load, and when something breaks? Never what you type, your bookings or your email. It helps us fix problems.",
     accept: "Allow",
     decline: "No thanks",
     more: "Details",
@@ -1616,7 +1621,7 @@ export const en = {
       },
       analytics: {
         heading: "Usage analytics (only if you say yes)",
-        body: "If you allow it, Bento records which pages you open (the page, not what's in its address), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, and errors. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. PostHog receives your device's IP address, as any website does, and Bento tells it not to work out your location from it. Screen recordings used to find problems blank out all text and every field, so what you type and your bookings are never recorded.\n\nYou can turn it off any time in Settings or on the cookies page. Saying no changes nothing else about Bento.",
+        body: "If you allow it, Bento records which pages you open (the page, not what's in its address), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, how quickly Bento loads and responds (three speed scores, nothing from the page itself), and errors. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. PostHog receives your device's IP address, as any website does, and Bento tells it not to work out your location from it. Screen recordings used to find problems blank out all text and every field, so what you type and your bookings are never recorded.\n\nYou can turn it off any time in Settings or on the cookies page. Saying no changes nothing else about Bento.",
       },
       purposes: {
         heading: "Why Bento uses it",

@@ -10,7 +10,8 @@
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "mascot": "tsx scripts/build-mascot.ts"
+    "mascot": "tsx scripts/build-mascot.ts",
+    "fonts": "tsx scripts/build-fonts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
