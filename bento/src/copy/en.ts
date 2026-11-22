@@ -334,7 +334,7 @@ export const en = {
     // message written from the answers, beside ready-made trips and a blank one.
     guided: {
       cardTitle: "Plan a Japan trip",
-      cardBody: "Not sure of dates or places yet? Answer a few questions — roughly when, who, your pace and what you like — and Bento Man suggests a route. Nothing is fixed until you accept it.",
+      cardBody: "Not sure of dates or places yet? Answer a few questions — roughly when, who, your pace and what you like — and Bento Man suggests a route. Nothing is fixed until you accept it. You can also pick a ready-made trip, or start a blank one with just a name and dates.",
       cardCta: "Plan a Japan trip →",
       title: "Plan a Japan trip",
       intro: "Answer what you can. All of it is optional and can change later.",
