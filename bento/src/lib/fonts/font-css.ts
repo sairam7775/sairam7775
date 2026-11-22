@@ -16,8 +16,9 @@ import { join } from "node:path";
    unicode-range reads woff2). Each weight keeps every face and the order
    fontsource gives it, so the same character comes from the same file. */
 
-/** The weights the app uses (DESIGN.md → Typography). Tailwind's
- *  font-semibold (600) resolves to 700 and font-extrabold (800) to 900. */
+/** The weights the app uses (DESIGN.md → Typography). Any other weight
+ *  shows as the nearest loaded one: font-semibold (600) as 700, and
+ *  font-extrabold (800) as 900 in Maru but 700 in Kaku. */
 export const FONTS = [
   { pkg: "zen-maru-gothic", weights: [700, 900] }, // headlines
   { pkg: "zen-kaku-gothic-new", weights: [400, 500, 700] }, // body

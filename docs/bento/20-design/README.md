@@ -16,7 +16,7 @@ last_reviewed: 2026-11-13
 
 - **The design system** is [bento/DESIGN.md](../../../bento/DESIGN.md), kept next to the code: tokens, colours, typography, layout, elevation, components and motion. Read it before any interface work.
 - **The source of truth for tokens** is `bento/src/app/globals.css`. If it and DESIGN.md disagree, `globals.css` wins; then fix DESIGN.md.
-- **Type:** Zen Maru Gothic for headlines, Zen Kaku Gothic New for body text, DM Mono for data, all self-hosted (no fetch at build time) from one generated stylesheet (`bento/src/app/fonts.css`, `npm run fonts`), so a page waits on one small font stylesheet, not five large ones. Japanese-made fonts, so a place name in kanji sits in the same voice as the English around it. The logo's wordmark is outlined Bricolage Grotesque (it's artwork).
+- **Type:** Zen Maru Gothic for headlines, Zen Kaku Gothic New for body text, DM Mono for data, all self-hosted (no fetch at build time) from one generated stylesheet (`bento/src/app/fonts.css`, `npm run fonts`), so a page waits on one font stylesheet, not seven (five of them large). Japanese-made fonts, so a place name in kanji sits in the same voice as the English around it. The logo's wordmark is outlined Bricolage Grotesque (it's artwork).
 - **Themes:** System, Light and Dark (Settings → Appearance). The dark values live twice in `globals.css`, under the media query and under `[data-theme="dark"]`: change one, change both.
 - A Figma file mirrors the tokens (Foundations and Screens); `globals.css` wins if they disagree.
 
