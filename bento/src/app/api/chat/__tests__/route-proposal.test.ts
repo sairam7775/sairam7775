@@ -15,7 +15,7 @@ vi.mock("@/lib/guards/rate-limit", () => ({ rateLimit: async () => ({ allowed: t
 vi.mock("@/lib/guards/spend", () => ({ reserveSpend: vi.fn(async () => ({ settle: vi.fn() })), SpendCapExceeded: class extends Error {} }));
 vi.mock("@/lib/bento-man/store.supabase", () => ({ SupabaseStore: class {} }));
 vi.mock("@/lib/bento-man/chat", () => ({
-  TURN_DEADLINE_MS: 90_000,
+  TURN_DEADLINE_MS: 75_000,
   firstHoldThen: () => ({ hold: vi.fn() }),
   runBentoMan: vi.fn(async () => ({ assistantMessageId: "m1", text: "Here", proposal: structuredClone(proposal) })),
 }));
@@ -41,7 +41,7 @@ describe("chat API done event", () => {
     const request = new Request("http://localhost/api/chat", { method: "POST", body: JSON.stringify({ tripId: "b8ca68c7-0e71-41b6-9e4c-3c244dc2e135", message: "plan" }) }) as NextRequest;
     await (await POST(request)).text();
     const { deadline } = vi.mocked(runBentoMan).mock.calls.at(-1)![0];
-    expect(deadline).toBeGreaterThanOrEqual(before + 90_000);
-    expect(deadline).toBeLessThanOrEqual(Date.now() + 90_000);
+    expect(deadline).toBeGreaterThanOrEqual(before + 75_000);
+    expect(deadline).toBeLessThanOrEqual(Date.now() + 75_000);
   });
 });

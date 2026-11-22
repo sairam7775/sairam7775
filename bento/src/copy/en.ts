@@ -1307,6 +1307,8 @@ export const en = {
       routeLonger: (route: number, trip: number) => `the route is ${route} nights and the trip is now ${trip}`,
       changedWhileOpen: "the trip dates changed while this was open. Ask again.",
       changedMeanwhile: "the trip dates changed in the meantime. Check them and try again.",
+      /** A date change whose save couldn't be confirmed (the database didn't answer in time). */
+      outcomeUnknown: "We couldn't confirm whether the change was saved. Check the trip's dates before changing them again.",
     },
     // Trains and walks.
     transit: {

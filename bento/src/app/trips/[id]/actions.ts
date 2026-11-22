@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { copy } from "@/copy";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { isSupabaseTimeout } from "@/lib/supabase/timeout";
 import { parseProposal } from "@/lib/bento-man/diff";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { parseReview, reviewOpen, snapshotFromRow } from "@/lib/trips/review";
@@ -48,7 +49,9 @@ export async function acceptProposal(formData: FormData) {
   try {
     await store.applyProposal(proposal, messageId);
   } catch (e) {
-    const why = e instanceof Error ? e.message : copy.trip.proposals.notAppliedUnknown;
+    // A read that timed out says nothing a traveller can use (a timed-out
+    // write comes back as the outcome-unknown sentence).
+    const why = e instanceof Error && !isSupabaseTimeout(e) ? e.message : copy.trip.proposals.notAppliedUnknown;
     if (why === copy.trip.proposals.staleDay || why === copy.trip.proposals.outcomeUnknown) {
       // The RPC committed something (the rejection, or an outcome we
       // couldn't read), so refresh both pages that show the card and the

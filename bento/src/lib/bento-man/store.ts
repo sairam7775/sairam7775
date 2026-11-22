@@ -13,6 +13,16 @@ import type { TicketLike } from "@/lib/vault/match";
 import type { PlaceBackground } from "@/lib/places/backgrounds";
 import { copy } from "@/copy";
 
+/** A write whose outcome isn't known: the call to the database didn't
+ *  answer in time, and it may have committed. Its message is the
+ *  traveller's ("check the plan"); claim neither success nor failure. */
+export class OutcomeUnknownError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OutcomeUnknownError";
+  }
+}
+
 export interface Prefs {
   pace: TravelPace;
   interestTags: InterestTag[];

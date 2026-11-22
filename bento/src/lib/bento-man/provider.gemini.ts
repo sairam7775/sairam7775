@@ -101,6 +101,16 @@ const RETRY_DELAYS_MS = [1_000, 3_000];
 // deadline does (`request.signal`), whichever comes first.
 const CALL_TIMEOUT_MS = 60_000;
 
+/** A retry's wait, cut short by the turn's signal (it rejects with its reason). */
+function abortableWait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", stop); resolve(); }, ms);
+    const stop = () => { clearTimeout(timer); reject(signal!.reason); };
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+}
+
 export class GeminiProvider implements ChatProvider {
   private readonly assistantParts = new WeakMap<ToolCall[], Part[]>();
   private sequence = 0;
@@ -117,7 +127,7 @@ export class GeminiProvider implements ChatProvider {
     private readonly apiKey = process.env.GEMINI_API_KEY ?? "",
     model = process.env.BENTO_MAN_MODEL?.trim() || DEFAULT_GEMINI_MODEL,
     private readonly fetcher: typeof fetch = fetch,
-    private readonly wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    private readonly wait: (ms: number, signal?: AbortSignal) => Promise<void> = abortableWait,
     fallbacks?: string[],
   ) {
     this.model = model.replace(/^models\//, "");
@@ -197,7 +207,8 @@ export class GeminiProvider implements ChatProvider {
           status = response.status;
           // Overload is common and short: retry the same model first.
           if (attempt < RETRY_DELAYS_MS.length && RETRYABLE.has(status)) {
-            await this.wait(RETRY_DELAYS_MS[attempt]);
+            // Ends early, as an abort, when the turn's time is up.
+            await this.wait(RETRY_DELAYS_MS[attempt], request.signal);
             continue;
           }
           // Out of quota, or still overloaded: the next model has its own.

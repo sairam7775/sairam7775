@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { copy } from "@/copy";
 import { buildGraph } from "@/lib/transit/graph";
 import { SupabaseStore } from "../store.supabase";
+import { OutcomeUnknownError } from "../store";
 import { buildTripView, dayCoverage } from "../trip-view";
 import { planDocument } from "@/lib/trips/plan-document";
 import { computeDayDiff } from "../diff";
@@ -227,6 +228,43 @@ describe("date proposals (#6)", () => {
       p_shift: 1,
       p_expect: { start_date: "2026-11-20", end_date: "2026-11-23" },
     }));
+  });
+
+  describe("a write that timed out may have committed", () => {
+    const timedOut = () => Object.assign(new Error("AbortError: Supabase request timed out after 15000 ms"), { code: "" });
+
+    it("accepting a proposal claims neither success nor failure", async () => {
+      const { store, rpcErrors } = fixture();
+      rpcErrors.apply_proposal = timedOut();
+      const err = await store.applyProposal({ summary: "Plan", days: [] }, "message").catch((e) => e);
+      expect(err).toBeInstanceOf(OutcomeUnknownError);
+      expect(err.message).toBe(copy.trip.proposals.outcomeUnknown);
+    });
+
+    it("accepting a date proposal claims neither", async () => {
+      const { store, rpcErrors } = fixture();
+      rpcErrors.apply_proposal_with_dates = timedOut();
+      const err = await store.applyProposal({ summary: "Dates", dates: dates({ startDate: "2026-11-21", endDate: "2026-11-24" }), days: [] }, "message").catch((e) => e);
+      expect(err).toBeInstanceOf(OutcomeUnknownError);
+      expect(err.message).toBe(copy.trip.proposals.outcomeUnknown);
+    });
+
+    it("changing the dates claims neither, in words for the trip's edit form", async () => {
+      const { store, rpcErrors } = fixture();
+      rpcErrors.update_trip_dates = timedOut();
+      const err = await store.setTripDates({ startDate: "2026-11-21", endDate: "2026-11-24" }).catch((e) => e);
+      expect(err).toBeInstanceOf(OutcomeUnknownError);
+      expect(err.message).toBe(copy.plan.dates.outcomeUnknown);
+      expect(err.message).not.toContain("AbortError");
+    });
+
+    it("leaves other write errors as they were", async () => {
+      const { store, rpcErrors } = fixture();
+      rpcErrors.apply_proposal = new Error("write failed");
+      const err = await store.applyProposal({ summary: "Plan", days: [] }, "message").catch((e) => e);
+      expect(err).not.toBeInstanceOf(OutcomeUnknownError);
+      expect(err.message).toBe("write failed");
+    });
   });
 
   it("says the dates changed meanwhile when the database refuses a stale change", async () => {

@@ -94,3 +94,15 @@ describe("acceptProposal: where the traveller lands", () => {
     });
   }
 });
+
+describe("accepting when the database didn't answer in time", () => {
+  it("never shows the raw timeout text", async () => {
+    mocks.getUser.mockResolvedValue({ data: { user: { id: "user-id" } } });
+    mocks.parseProposal.mockReturnValue({ summary: "", days: [] });
+    // A read inside applyProposal timed out: PostgREST's error object.
+    mocks.applyProposal.mockRejectedValue(Object.assign(new Error("AbortError: Supabase request timed out after 10000 ms"), { code: "" }));
+    const thrown = await acceptProposal(form()).then(() => null, (e: Error) => e.message);
+    expect(thrown).toBe(`redirect:/trips/${TRIP}?error=${encodeURIComponent(copy.trip.proposals.notApplied(copy.trip.proposals.notAppliedUnknown))}`);
+    expect(decodeURIComponent(thrown!)).not.toContain("AbortError");
+  });
+});

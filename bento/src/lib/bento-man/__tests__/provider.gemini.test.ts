@@ -109,7 +109,7 @@ describe("GeminiProvider", () => {
     const result = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, wait).call(request);
     expect(result.text).toBe("Hi.");
     expect(fetcher).toHaveBeenCalledTimes(3);
-    expect(wait.mock.calls).toEqual([[1_000], [3_000]]);
+    expect(wait.mock.calls.map(([ms]) => ms)).toEqual([1_000, 3_000]);
   });
 
   it("moves to the next model when one is out of quota, and skips it on the next call", async () => {
@@ -188,6 +188,28 @@ describe("GeminiProvider", () => {
     expect(error).toBeInstanceOf(ProviderCallError);
     expect(error.timedOut).toBe(true);
     expect(error.usage).toMatchObject({ inputTokens: 50, outputTokens: 1 });
+  });
+
+  it("reports a call cut off before the response headers as timed out with no usage", async () => {
+    const fetcher = vi.fn<typeof fetch>((_url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+    }));
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call({ ...request, signal: AbortSignal.timeout(20) }).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    expect(error.model).toBe("gemini-3.8-flash");
+    expect(error.usage).toBeUndefined();
+  });
+
+  it("stops waiting to retry as soon as the turn's time is up", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => new Response("{}", { status: 503 }));
+    const started = Date.now();
+    // The default wait: the first retry would be a second away.
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, undefined, []).call({ ...request, signal: AbortSignal.timeout(50) }).catch((e) => e);
+    expect(Date.now() - started).toBeLessThan(800);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
   });
 
   it("tries no retry or fallback model once the turn's time is up", async () => {

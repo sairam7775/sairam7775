@@ -64,6 +64,24 @@ describe("AnthropicProvider compatibility", () => {
     expect(error.usage).toEqual({ inputTokens: 900, outputTokens: 7, cacheWriteTokens: 0, cacheReadTokens: 100 });
   });
 
+  it("reports a call cut off before the message started as timed out with no usage (the chat charges it conservatively)", async () => {
+    const turn = new AbortController();
+    const stream = vi.fn((_params: unknown, options?: { signal?: AbortSignal }) => ({
+      on: () => {},
+      currentMessage: undefined,
+      finalMessage: () => new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => reject(new Error("Request was aborted.")));
+        turn.abort(new DOMException("The operation timed out.", "TimeoutError"));
+      }),
+    }));
+    const provider = new AnthropicProvider({ beta: { messages: { stream } } } as unknown as Anthropic, "claude-opus-5", "medium");
+    const error = await provider.call({ system: "", tools: [], maxOutputTokens: 100, messages: [{ role: "user", content: "Hi" }], signal: turn.signal }).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    expect(error.model).toBe("claude-opus-5");
+    expect(error.usage).toBeUndefined();
+  });
+
   it("leaves other failures as they were", async () => {
     const boom = new Error("overloaded");
     const stream = vi.fn(() => ({ on: () => {}, finalMessage: async () => { throw boom; } }));

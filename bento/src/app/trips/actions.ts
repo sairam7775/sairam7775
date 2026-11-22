@@ -9,7 +9,8 @@ import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { guidedTitle, parseGuidedStart, starterMessage } from "@/lib/trips/guided-start";
 import { parseReadyMadeStart, startReadyMade, TRIP_CAP } from "@/lib/trips/ready-made/start";
 import { SupabaseCatalogue } from "@/lib/trips/ready-made/catalogue";
-import type { PrefsPatch } from "@/lib/bento-man/store";
+import { OutcomeUnknownError, type PrefsPatch } from "@/lib/bento-man/store";
+import { isSupabaseTimeout } from "@/lib/supabase/timeout";
 import { copy } from "@/copy";
 
 const e = copy.trips.errors;
@@ -212,7 +213,13 @@ export async function updateTrip(formData: FormData) {
   try {
     await store.setTripDates({ title: title ?? null, startDate: startDate ?? null, endDate: endDate ?? null, partySize });
   } catch (err) {
-    redirect(`${back}?error=${encodeURIComponent(err instanceof Error ? err.message : e.saveFailed)}`);
+    // The save may have landed: show the trip as stored, with the words for that.
+    if (err instanceof OutcomeUnknownError) {
+      revalidatePath(back);
+      revalidatePath("/trips");
+    }
+    // A read that timed out says nothing a traveller can use.
+    redirect(`${back}?error=${encodeURIComponent(err instanceof Error && !isSupabaseTimeout(err) ? err.message : e.saveFailed)}`);
   }
 
   revalidatePath(back);

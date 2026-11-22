@@ -21,7 +21,7 @@ import { closedMustSees } from "@/lib/trips/ready-made/closed";
 import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
-import { nightsBetween, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
+import { nightsBetween, OutcomeUnknownError, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import { bookedPlaceIds } from "@/lib/vault/match";
 import { copy } from "@/copy";
 import { coverageWords } from "./context";
@@ -730,6 +730,12 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         try {
           trip = await ctx.store.setTripDates({ startDate: i.start_date, endDate: i.end_date, partySize: i.party_size, title: i.title });
         } catch (e) {
+          // The database didn't answer in time: the change may have landed.
+          // Not an error, so the honesty net doesn't contradict a change
+          // that happened; the model is told to claim neither.
+          if (e instanceof OutcomeUnknownError) {
+            return { result: j({ saved: "unknown", note: "Could not confirm whether this was saved: the database did not answer in time. Tell the traveller to check the trip's dates before asking again. Never say the dates changed, and never say they did not." }) };
+          }
           return fail(e instanceof Error ? e.message : "could not change the dates");
         }
         return { result: j({ saved: true, trip, nights: nightsBetween(trip.startDate, trip.endDate) }) };

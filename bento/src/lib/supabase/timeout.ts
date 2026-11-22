@@ -18,26 +18,37 @@
 export const READ_TIMEOUT_MS = 10_000;
 export const WRITE_TIMEOUT_MS = 15_000;
 
+const TIMED_OUT = "Supabase request timed out";
+
 export function timedFetch(
   fetcher?: typeof fetch,
   limits: { readMs: number; writeMs: number } = { readMs: READ_TIMEOUT_MS, writeMs: WRITE_TIMEOUT_MS },
 ): typeof fetch {
-  return async (input, init) => {
+  return (input, init) => {
     const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
     const ms = method === "GET" || method === "HEAD" ? limits.readMs : limits.writeMs;
-    const limit = AbortSignal.timeout(ms);
-    const signal = init?.signal ? AbortSignal.any([init.signal, limit]) : limit;
-    try {
-      // Resolved per call, so the platform's own fetch (Next patches it) is used.
-      return await (fetcher ?? globalThis.fetch)(input, { ...init, signal });
-    } catch (e) {
-      // Named as an abort: postgrest-js retries a failed read three more
-      // times (after 1, 2 and 4 s) but never an aborted one, and a request
-      // that stalled once would otherwise cost four limits and the waits.
-      if (limit.aborted && !init?.signal?.aborted) throw new DOMException(`Supabase request timed out after ${ms} ms`, "AbortError");
-      throw e;
-    }
+    // The limit aborts with an AbortError of its own, whether the request is
+    // waiting for its headers or reading its body: postgrest-js retries a
+    // failed read three more times (after 1, 2 and 4 s) but never an aborted
+    // one, which would otherwise make one stall cost four limits and the
+    // waits; and callers can tell a timeout (`isSupabaseTimeout`) from a
+    // refusal. The timer is unref'd and a late abort does nothing.
+    const limit = new AbortController();
+    const timer = setTimeout(() => limit.abort(new DOMException(`${TIMED_OUT} after ${ms} ms`, "AbortError")), ms);
+    (timer as { unref?: () => void }).unref?.();
+    const signal = init?.signal ? AbortSignal.any([init.signal, limit.signal]) : limit.signal;
+    // Resolved per call, so the platform's own fetch (Next patches it) is used.
+    return (fetcher ?? globalThis.fetch)(input, { ...init, signal });
   };
+}
+
+/** A request this module cut off, as thrown or as PostgREST's `{ error }`
+ *  ("AbortError: Supabase request timed out after … ms"). For a write, the
+ *  database may have committed it: say the outcome is unknown, never that
+ *  it failed. Its text is never for a traveller. */
+export function isSupabaseTimeout(error: unknown): boolean {
+  const message = (error as { message?: unknown } | null)?.message;
+  return typeof message === "string" && message.includes(TIMED_OUT);
 }
 
 /** The fetch every server-side Supabase client is built with. */

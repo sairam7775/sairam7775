@@ -355,7 +355,9 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   rejected, applies nothing and returns normally so the close commits;
   every other failure raises. The store reads no value (null or "") as applied (the
   pre-0031 void function, so either deploy order is safe), and any other
-  value as an unknown outcome (`outcomeUnknown`: claim neither).
+  value as an unknown outcome (`outcomeUnknown`: claim neither), and so is
+  a write RPC that hit the Supabase time limit (`OutcomeUnknownError`,
+  `lib/supabase/timeout.ts`): it may have committed after the app gave up.
   `dayBase` (diff.ts) and 0031's `order by` share one total order: change
   both together. `base` never goes to the browser (`proposalForClient`).
   Proposals without a base and date proposals with days are unchecked

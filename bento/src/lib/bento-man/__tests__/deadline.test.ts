@@ -5,8 +5,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { copy } from "@/copy";
 import { nextContent, type ChatStreamEvent } from "@/app/trips/[id]/chat-stream";
-import { MIN_CALL_MS, runBentoMan, TURN_DEADLINE_MS, type CallHold } from "../chat";
-import { ZERO_USAGE } from "../cost";
+import { MIN_CALL_MS, MIN_TOOL_MS, runBentoMan, TURN_DEADLINE_MS, type CallHold } from "../chat";
+import { CHAT_MAX_OUTPUT_TOKENS, ZERO_USAGE } from "../cost";
+import { WRITE_TIMEOUT_MS } from "@/lib/supabase/timeout";
 import { ProviderCallError, type ChatProvider, type ModelRequest, type ModelResult, type ToolCall } from "../provider";
 import { MemoryStore } from "../store.memory";
 
@@ -25,22 +26,24 @@ function clock() {
   return { now: () => t, advance: (ms: number) => { t += ms; } };
 }
 
-/** Holds that record how each was settled. */
-function holds() {
+/** Holds that record how each was settled; the i-th hold may take `holdMs[i]` of the turn's time. */
+function holds(time: ReturnType<typeof clock>, holdMs: number[] = []) {
   const settled: unknown[] = [];
   let taken = 0;
-  const spend = { hold: async (): Promise<CallHold> => { taken++; return { settle: async (u) => { settled.push(u); } }; } };
+  const spend = { hold: async (): Promise<CallHold> => { time.advance(holdMs[taken] ?? 0); taken++; return { settle: async (u) => { settled.push(u); } }; } };
   return { spend, settled, taken: () => taken };
 }
 
+type Settled = { model: string; inputTokens: number; outputTokens: number; costUsd: number };
+
 /** One turn as the browser folds it, with the order of replace and save. */
-async function turn(steps: ((request: ModelRequest) => Promise<ModelResult>)[], opts: { deadlineIn?: number; time?: ReturnType<typeof clock> } = {}) {
+async function turn(steps: ((request: ModelRequest) => Promise<ModelResult>)[], opts: { deadlineIn?: number; time?: ReturnType<typeof clock>; holdMs?: number[]; onTool?: (name: string, phase: "start" | "end") => void } = {}) {
   const store = routed();
   const time = opts.time ?? clock();
   const call = vi.fn<ChatProvider["call"]>();
   for (const s of steps) call.mockImplementationOnce(s);
   call.mockImplementation(steps.at(-1)!);
-  const spend = holds();
+  const spend = holds(time, opts.holdMs);
   let content = "";
   const order: string[] = [];
   const apply = (ev: ChatStreamEvent) => { content = nextContent(content, ev); };
@@ -51,7 +54,7 @@ async function turn(steps: ((request: ModelRequest) => Promise<ModelResult>)[], 
     spend: spend.spend, deadline: time.now() + (opts.deadlineIn ?? TURN_DEADLINE_MS), now: time.now,
     events: {
       onText: (delta) => apply({ type: "text", delta }),
-      onTool: (name, phase, ok) => apply({ type: "tool", name, phase, ok }),
+      onTool: (name, phase, ok) => { opts.onTool?.(name, phase); apply({ type: "tool", name, phase, ok }); },
       onReplace: (text) => { order.push("replace"); apply({ type: "replace", text }); },
     },
   });
@@ -70,7 +73,10 @@ describe("a chat turn's deadline", () => {
     const { maxDuration } = await import("@/app/api/chat/route");
     // After the deadline: the last call's settle, the reply's save and the
     // route's own settle, each bounded by the Supabase fetch timeout.
-    expect(TURN_DEADLINE_MS + 30_000).toBeLessThanOrEqual(maxDuration * 1000);
+    // Two writes at their full limit and still 10 s to spare.
+    expect(TURN_DEADLINE_MS + 2 * WRITE_TIMEOUT_MS + 10_000).toBeLessThanOrEqual(maxDuration * 1000);
+    expect(TURN_DEADLINE_MS).toBe(75_000);
+    expect(MIN_TOOL_MS).toBeGreaterThan(0);
     expect(MIN_CALL_MS).toBeGreaterThan(0);
   }, 30_000); // importing the route loads the app's server modules: slow on a busy machine
 
@@ -114,7 +120,7 @@ describe("a chat turn's deadline", () => {
     expect(timeouts.mock.calls.map(([ms]) => ms)).toEqual([TURN_DEADLINE_MS, TURN_DEADLINE_MS - 30_000]);
   });
 
-  it("ends politely when a later call is cut off by time: its text dropped, its hold settled with what it used, the proposal saved", async () => {
+  it("ends politely when a later call is cut off by time: its text dropped, its hold settled conservatively, the proposal saved", async () => {
     const time = clock();
     const cut = async (request: ModelRequest): Promise<ModelResult> => {
       time.advance(20_000);
@@ -129,16 +135,71 @@ describe("a chat turn's deadline", () => {
     expect(t.content()).toBe(r.text);
     expect(t.order).toEqual(["replace", "saved"]);
     expect(t.spend.settled).toHaveLength(2);
-    expect(t.spend.settled[1]).toMatchObject({ model: "gemini-3.8-flash", inputTokens: 500, outputTokens: 3 });
-    expect(r.usageByModel["gemini-3.8-flash"]).toMatchObject({ inputTokens: 500, outputTokens: 3 });
+    // Output is only reported at the end of a stream, so a cut-off call is
+    // charged as if it wrote its whole allowance, and its input at least as
+    // the request's estimate.
+    const cutOff = t.spend.settled[1] as Settled;
+    expect(cutOff).toMatchObject({ model: "gemini-3.8-flash", outputTokens: CHAT_MAX_OUTPUT_TOKENS });
+    expect(cutOff.inputTokens).toBeGreaterThan(500);
+    expect(cutOff.costUsd).toBeGreaterThan(0);
+    expect(r.usageByModel["gemini-3.8-flash"]).toMatchObject({ inputTokens: cutOff.inputTokens, outputTokens: CHAT_MAX_OUTPUT_TOKENS });
   });
 
-  it("still fails a turn whose first call times out (the route says it took too long), settling its hold", async () => {
+  it("charges a call cut off before it reported any usage, since it reached the model", async () => {
+    const time = clock();
+    const cut = async (): Promise<ModelResult> => { time.advance(20_000); throw new ProviderCallError("Anthropic call timed out", "claude-opus-5", undefined, undefined, true); };
+    const t = await turn([step(time, 1_000, uses(PLAN_MIYAJIMA)), cut], { time });
+    const r = await t.run;
+    expect(r.text).toBe(copy.chat.cappedSuggestion);
+    const cutOff = t.spend.settled[1] as Settled;
+    expect(cutOff).toMatchObject({ model: "claude-opus-5", outputTokens: CHAT_MAX_OUTPUT_TOKENS });
+    expect(cutOff.inputTokens).toBeGreaterThan(1_000);
+    expect(cutOff.costUsd).toBeGreaterThan(0);
+  });
+
+  it("still fails a turn whose first call times out (the route says it took too long), charging its hold conservatively", async () => {
     const t = await turn([async () => { throw new ProviderCallError("Gemini call timed out", "gemini-3.8-flash", undefined, undefined, true); }]);
     const err = await t.run.catch((e) => e);
     expect(err).toBeInstanceOf(ProviderCallError);
     expect(err.timedOut).toBe(true);
+    expect(t.spend.settled).toHaveLength(1);
+    expect(t.spend.settled[0]).toMatchObject({ model: "gemini-3.8-flash", outputTokens: CHAT_MAX_OUTPUT_TOKENS });
+  });
+
+  it("gives back a hold that took the time a call needed, starting no call, and ends politely", async () => {
+    const time = clock();
+    const t = await turn([step(time, 1_000, uses(PLAN_MIYAJIMA)), step(time, 0, result({ text: "never" }))], { time, holdMs: [0, TURN_DEADLINE_MS - MIN_CALL_MS - 1_000 + 1] });
+    const r = await t.run;
+    expect(t.call).toHaveBeenCalledTimes(1);
+    expect(t.spend.taken()).toBe(2);
+    expect(t.spend.settled).toHaveLength(2);
+    expect(t.spend.settled[1]).toBeNull();
+    expect(r.proposal?.days[0].cityId).toBe("miyajima");
+    expect(r.text).toBe(copy.chat.cappedSuggestion);
+  });
+
+  it("fails as too slow when the first hold took the time, giving the hold back", async () => {
+    const time = clock();
+    const t = await turn([step(time, 0, result({ text: "never" }))], { time, holdMs: [TURN_DEADLINE_MS - MIN_CALL_MS + 1] });
+    const err = await t.run.catch((e) => e);
+    expect(err).toBeInstanceOf(ProviderCallError);
+    expect(err.timedOut).toBe(true);
+    expect(t.call).not.toHaveBeenCalled();
     expect(t.spend.settled).toEqual([null]);
+  });
+
+  it("starts no tool with too little time left, ending like a capped turn with what earlier tools proposed", async () => {
+    const time = clock();
+    const both = result({ toolCalls: [{ id: "t1", ...PLAN_MIYAJIMA }, { id: "t2", ...ADD_MIYAJIMA }], stopReason: "tool_use" });
+    // The first tool is slow: when it ends, too little time is left for the second.
+    const onTool = (name: string, phase: "start" | "end") => { if (name === "plan_days" && phase === "end") time.advance(TURN_DEADLINE_MS - MIN_TOOL_MS - 1_000 + 1); };
+    const t = await turn([step(time, 1_000, both), step(time, 0, result({ text: "never" }))], { time, onTool });
+    const r = await t.run;
+    expect(r.toolCalls.map((c) => c.name)).toEqual(["plan_days"]);
+    expect(t.call).toHaveBeenCalledTimes(1);
+    expect(r.proposal?.days[0].cityId).toBe("miyajima");
+    expect(r.text).toBe(copy.chat.cappedSuggestion);
+    expect((await t.store.history(5)).at(-1)!.content).toBe(r.text);
   });
 
   it("doesn't start a first call it has no time for: no hold, no model call, a timed-out error", async () => {
