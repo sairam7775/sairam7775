@@ -72,7 +72,7 @@ describe("a chat turn's deadline", () => {
     // route's own settle, each bounded by the Supabase fetch timeout.
     expect(TURN_DEADLINE_MS + 30_000).toBeLessThanOrEqual(maxDuration * 1000);
     expect(MIN_CALL_MS).toBeGreaterThan(0);
-  });
+  }, 30_000); // importing the route loads the app's server modules: slow on a busy machine
 
   it("starts no new round when too little time is left, and ends like a capped turn with the proposal saved", async () => {
     const time = clock();
