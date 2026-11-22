@@ -31,6 +31,10 @@ export interface ModelRequest {
   tools: ModelTool[];
   maxOutputTokens: number;
   onText?: (delta: string) => void;
+  /** Aborts when the turn's time is up (chat.ts). A call it stops throws a
+   *  `ProviderCallError` with `timedOut` and any usage reported so far, and
+   *  tries no retry or fallback model after it. */
+  signal?: AbortSignal;
 }
 
 export interface ModelResult {

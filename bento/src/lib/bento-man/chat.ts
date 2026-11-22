@@ -42,7 +42,22 @@ export interface RunOptions {
    *  the returned hold is settled with what the call really cost. Absent in
    *  the eval and the tests. */
   spend?: { hold(inputTokens: number): Promise<CallHold> };
+  /** Epoch ms by which every model call must be over (the route sets it
+   *  from the request's start, `TURN_DEADLINE_MS`). No round starts with
+   *  less than `MIN_CALL_MS` left, and each call is cut off at it. Absent
+   *  in the eval, which has no platform limit. */
+  deadline?: number;
+  /** The clock the deadline is read against (tests). */
+  now?: () => number;
 }
+
+/** The last moment of a turn's model calls, from the request's start. The
+ *  route's maxDuration is 120 s; the rest is for what follows the last call
+ *  (its settle, the reply's save, the route's own settle), each bounded by
+ *  the Supabase fetch timeout. */
+export const TURN_DEADLINE_MS = 90_000;
+/** A call given less than this would mostly be paid for and cut off. */
+export const MIN_CALL_MS = 10_000;
 
 export interface CallHold {
   settle(usage: { model: string; inputTokens: number; outputTokens: number; cachedTokens?: number; costUsd: number } | null): Promise<void>;
@@ -123,7 +138,8 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   const usageByModel: UsageByModel = {};
   let stopReason: string | null = null;
   let servedBy = provider.model;
-  /** The last tool round ran with no model call left to close the turn. */
+  /** The last tool round ran with no model call left to close the turn:
+   *  out of rounds, or out of time. */
   let ranOut = false;
 
   // A turn that dies after a model call still cost money. The partial
@@ -142,8 +158,21 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     );
   };
 
+  const now = opts.now ?? Date.now;
+  const deadline = opts.deadline;
+
   try {
   for (let i = 0; i < maxIterations; i++) {
+    // Out of time: no new round, so the platform never cuts the turn off
+    // with nothing saved. A later round ends like a turn out of tool rounds
+    // (the closing below); a first call has nothing to save and fails as a
+    // call that took too long, before any hold is taken.
+    const left = deadline === undefined ? Infinity : deadline - now();
+    if (left < MIN_CALL_MS) {
+      if (i === 0) throw new ProviderCallError("No time left for a model call", provider.model, undefined, undefined, true);
+      ranOut = true;
+      break;
+    }
     let hold: CallHold | undefined;
     if (opts.spend) {
       try {
@@ -160,10 +189,21 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     }
     let msg;
     try {
-      msg = await provider.call({ system: SYSTEM_PROMPT, messages, tools: TOOLS, maxOutputTokens: MAX_TOKENS, onText: events?.onText });
+      // Each call gets only the turn's time left (the provider's own limit
+      // per request still applies when it is shorter).
+      const signal = deadline === undefined ? undefined : AbortSignal.timeout(left);
+      msg = await provider.call({ system: SYSTEM_PROMPT, messages, tools: TOOLS, maxOutputTokens: MAX_TOKENS, onText: events?.onText, signal });
     } catch (e) {
       if (e instanceof ProviderCallError && e.usage) await account(e.model, e.usage, hold);
       else await hold?.settle(null);
+      // A later call that ran out of time ends the turn as one out of tool
+      // rounds, so what earlier rounds proposed is saved, not lost to an
+      // error. Its streamed text is dropped (replaced on screen below).
+      if (i > 0 && e instanceof ProviderCallError && e.timedOut) {
+        stream.stop();
+        ranOut = true;
+        break;
+      }
       throw e;
     }
 
@@ -218,7 +258,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     throw fail(e);
   }
 
-  // Out of tool rounds with no closing words: whatever was proposed may be a
+  // Out of tool rounds (or time) with no closing words: whatever was proposed may be a
   // step towards the request, not all of it, so it isn't called "what I'd
   // suggest"; with nothing proposed, there was no reply.
   let corrected = false;

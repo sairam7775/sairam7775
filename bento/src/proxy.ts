@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { authCookieOptions } from "@/lib/supabase/cookie-options";
+import { supabaseFetch } from "@/lib/supabase/timeout";
 
 const PROTECTED = ["/trips", "/settings", "/admin"];
 
@@ -14,6 +15,8 @@ export async function proxy(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: authCookieOptions(),
+      // A stalled session check must not hang every page.
+      global: { fetch: supabaseFetch },
       cookies: {
         getAll() {
           return request.cookies.getAll();

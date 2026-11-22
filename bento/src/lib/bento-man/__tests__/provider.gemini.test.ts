@@ -174,6 +174,32 @@ describe("GeminiProvider", () => {
     expect(error.timedOut).toBe(true);
   });
 
+  it("stops a streaming call when the turn's time is up, keeping the usage it reported", async () => {
+    const turn = new AbortController();
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: "Half" }] } }], usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 1 } })}\r\n\r\n`));
+        init?.signal?.addEventListener("abort", () => controller.error(init.signal!.reason));
+      },
+    })));
+    const onText = vi.fn(() => turn.abort(new DOMException("The operation timed out.", "TimeoutError")));
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call({ ...request, onText, signal: turn.signal }).catch((e) => e);
+    expect(onText).toHaveBeenCalledWith("Half");
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    expect(error.usage).toMatchObject({ inputTokens: 50, outputTokens: 1 });
+  });
+
+  it("tries no retry or fallback model once the turn's time is up", async () => {
+    const turn = new AbortController();
+    const fetcher = vi.fn<typeof fetch>(async () => new Response("{}", { status: 503 }));
+    const wait = vi.fn(async () => { turn.abort(new DOMException("The operation timed out.", "TimeoutError")); });
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, wait, ["gemini-3.6-flash"]).call({ ...request, signal: turn.signal }).catch((e) => e);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+  });
+
   it("does not retry a request error", async () => {
     const fetcher = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 400 }));
     const wait = vi.fn(async () => {});

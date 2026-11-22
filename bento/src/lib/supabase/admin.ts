@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { supabaseFetch } from "./timeout";
 
 /** Service-role client. Bypasses every RLS policy, so it must never be
  *  constructed in code that can reach the browser.
@@ -12,5 +13,6 @@ export function createAdminClient() {
 
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: supabaseFetch },
   });
 }

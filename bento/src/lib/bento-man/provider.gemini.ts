@@ -97,7 +97,8 @@ export const SAFETY_SETTINGS = ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_
 const RETRYABLE = new Set([500, 503, 504]);
 const RETRY_DELAYS_MS = [1_000, 3_000];
 // A turn can make several calls inside the route's 120 s; one stalled call
-// must not use all of it.
+// must not use all of it. Each request also stops when the turn's own
+// deadline does (`request.signal`), whichever comes first.
 const CALL_TIMEOUT_MS = 60_000;
 
 export class GeminiProvider implements ChatProvider {
@@ -177,12 +178,16 @@ export class GeminiProvider implements ChatProvider {
         if (this.exhausted.has(candidate)) continue;
         model = candidate;
         for (let attempt = 0; ; attempt++) {
+          // The turn's time ran out during a retry wait: no further request.
+          request.signal?.throwIfAborted();
+          const ownLimit = AbortSignal.timeout(CALL_TIMEOUT_MS);
           response = await this.fetcher(
             `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:streamGenerateContent?alt=sse`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
-              signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+              // Also covers reading the stream: the body aborts with the request.
+              signal: request.signal ? AbortSignal.any([ownLimit, request.signal]) : ownLimit,
               body,
             },
           );
