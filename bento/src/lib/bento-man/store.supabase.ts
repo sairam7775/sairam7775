@@ -312,9 +312,7 @@ export class SupabaseStore implements TripStore {
     const { data, error } = await sel;
     if (error) throw error;
     const out: PlaceInput[] = [];
-    // A column list built from parts types as a plain string, which the
-    // client can't parse into a row type: rowToPlace reads it untyped anyway.
-    for (const r of (data ?? []) as unknown as { city_id: string }[]) out.push(rowToPlace(r, await this.tierOf(r.city_id)));
+    for (const r of data ?? []) out.push(rowToPlace(r, await this.tierOf(r.city_id)));
     return out.sort((a, b) => (a.id === q ? -1 : b.id === q ? 1 : b.signature - a.signature));
   }
 

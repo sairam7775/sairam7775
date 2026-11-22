@@ -9,6 +9,10 @@ const code = readFileSync(join(process.cwd(), "supabase/migrations/0034_query_in
   .replace(/--[^\n]*/g, "");
 const flat = code.replace(/\s+/g, " ").trim();
 
+it("gives up on a lock after five seconds, before anything else", () => {
+  expect(flat.startsWith("set lock_timeout = '5s';")).toBe(true);
+});
+
 it("indexes bookings.covers_day_id, which deleting a day sets to null", () => {
   expect(flat).toContain("create index if not exists bookings_covers_day_idx on bookings (covers_day_id) where covers_day_id is not null;");
 });

@@ -2,7 +2,7 @@
  *  select("*"): PLACE_COLUMNS is exactly what rowToPlace reads, so the two
  *  can't drift, and every name is a column places_public has (an unknown
  *  name would fail the whole request). The same for the preferences row. */
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { PLACE_COLUMNS, rowToPlace } from "@/lib/engine/load";
@@ -31,7 +31,13 @@ describe("places_public column list", () => {
   });
 
   it("names only columns of the latest places_public", () => {
-    const sql = strip(readFileSync(join(migrations, "0033_evening_only.sql"), "utf8"));
+    // The view as the latest migration that (re)defines it leaves it.
+    const latest = readdirSync(migrations)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .filter((f) => /create (or replace )?view places_public/.test(strip(readFileSync(join(migrations, f), "utf8"))))
+      .at(-1)!;
+    const sql = strip(readFileSync(join(migrations, latest), "utf8"));
     const view = sql.slice(sql.indexOf("create or replace view places_public"), sql.indexOf("from places p;"));
     const select = view.slice(view.indexOf("select") + "select".length);
     const viewColumns = select.split(",").map((c) => {

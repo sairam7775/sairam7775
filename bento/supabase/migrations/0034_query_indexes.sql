@@ -34,7 +34,12 @@
 -- trigger inserts with named columns, sums by (user_id, at) and purges by
 -- ctid - so this changes no behaviour; it is for tools that need a key
 -- (replication, the table editor). The table holds a day of charges, so
--- the rewrite is small.
+-- the rewrite is small. It takes an exclusive lock, and every signed-in
+-- write's trigger inserts into this table, so the migration gives up after
+-- five seconds rather than queue every traveller's writes behind a long
+-- transaction; run it again if it does.
+
+set lock_timeout = '5s';
 
 create index if not exists bookings_covers_day_idx on bookings (covers_day_id) where covers_day_id is not null;
 
