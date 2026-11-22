@@ -3,7 +3,7 @@
  *  `places_public`, and the train graph. The same reads as SupabaseStore's
  *  `cities()` and `places()`, without a trip id; change them together. */
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { rowToPlace } from "@/lib/engine/load";
+import { PLACE_COLUMNS, rowToPlace } from "@/lib/engine/load";
 import { hubFor, type CityFacts } from "@/lib/engine/route";
 import type { PlaceInput } from "@/lib/engine/types";
 import { loadGraph } from "@/lib/transit/load";
@@ -50,7 +50,7 @@ export class SupabaseCatalogue implements Catalogue {
   async places(cityId: string): Promise<PlaceInput[]> {
     const [cities, data] = await Promise.all([
       this.cities(),
-      selectAll((from, to) => this.db.from("places_public").select("*", { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
+      selectAll((from, to) => this.db.from("places_public").select(PLACE_COLUMNS, { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
     ]);
     const tier = cities.find((c) => c.id === cityId)?.tier ?? "stub";
     return data.map((r) => rowToPlace(r, tier));

@@ -153,4 +153,62 @@ describe("loadGraph", () => {
 
     expect(from.mock.calls.length).toBe(calls);
   });
+
+  // The trip page works out its travel days and its moves at once; with no
+  // graph cached yet, both used to read the whole network.
+  it("shares one read between loads that start before it finishes", async () => {
+    const { from } = fakeDb(network(3, 3));
+
+    const [a, b] = await Promise.all([loadGraph(), loadGraph()]);
+
+    expect(a).toBe(b);
+    expect(from.mock.calls.map(([t]) => t).sort()).toEqual(["station_edges", "stations"]);
+  });
+
+  it("keeps a read started before the cache was cleared out of the cache", async () => {
+    const old = fakeDb(network(3, 3));
+    let release!: () => void;
+    const gate = new Promise<void>((r) => { release = r; });
+    vi.mocked(createClient).mockImplementationOnce(async () => { await gate; return { from: old.from } as never; });
+    const before = loadGraph();
+    invalidateGraphCache();
+    fakeDb(network(5, 5));
+    const after = loadGraph();
+
+    expect((await after).stations.size).toBe(5);
+    release();
+    expect((await before).stations.size).toBe(3);
+    // The newer read's graph stays cached; the older one didn't overwrite it.
+    expect((await loadGraph()).stations.size).toBe(5);
+  });
+
+  it("doesn't let an older read's end drop a newer read under way", async () => {
+    let releaseOld!: () => void;
+    let releaseNew!: () => void;
+    const oldGate = new Promise<void>((r) => { releaseOld = r; });
+    const newGate = new Promise<void>((r) => { releaseNew = r; });
+    const { from } = fakeDb(network(3, 3));
+    vi.mocked(createClient)
+      .mockImplementationOnce(async () => { await oldGate; return { from } as never; })
+      .mockImplementationOnce(async () => { await newGate; return { from } as never; });
+    const first = loadGraph();
+    invalidateGraphCache();
+    const second = loadGraph();
+    releaseOld();
+    await first;
+    // Still under way: a third load joins the second read.
+    const third = loadGraph();
+    releaseNew();
+    expect(await third).toBe(await second);
+    expect(vi.mocked(createClient)).toHaveBeenCalledTimes(2);
+  });
+
+  it("lets a load after a shared failure read again", async () => {
+    fakeDb(network(40, 1008), { fail: { table: "station_edges", page: 1 } });
+    const both = await Promise.allSettled([loadGraph(), loadGraph()]);
+    expect(both.map((r) => r.status)).toEqual(["rejected", "rejected"]);
+
+    fakeDb(network(40, 1008));
+    expect(edgeCount(await loadGraph())).toBe(1008);
+  });
 });

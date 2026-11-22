@@ -26,4 +26,17 @@ describe("loadChat", () => {
     expect(messages[0].proposal!.days[0]).toMatchObject({ date: "2026-11-21", cityId: "kyoto-city" });
     expect(messages[0].proposal!.days[0]).not.toHaveProperty("base");
   });
+
+  it("takes the route's cities while it reads, and they still win", async () => {
+    // The trip page starts the chat before its own trip read has finished.
+    let give!: (cities: { id: string; name: string }[]) => void;
+    const route = new Promise<{ id: string; name: string }[]>((r) => { give = r; });
+    const loading = loadChat(fakeDb([
+      { id: "m1", role: "assistant", content: "Plan", proposed_diff: { summary: "Plan", days: [diff] }, diff_status: "proposed", created_at: "2026-11-01" },
+    ]), "trip", route);
+    give([{ id: "kyoto-city", name: "Kyoto (route)" }]);
+    const { cityNames, cityTiers } = await loading;
+    expect(cityNames).toEqual({ "kyoto-city": "Kyoto (route)" });
+    expect(cityTiers).toEqual({ "kyoto-city": "stub" });
+  });
 });

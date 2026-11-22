@@ -40,7 +40,7 @@ bento/
       supabase/           server and service-role clients, cookie options
       analytics/          consent-gated analytics and address scrubbing
       account/            names and account deletion
-    proxy.ts              session refresh and route protection
+    proxy.ts              session refresh and route protection (static files skip it)
   scripts/                command-line tools ([commands](commands.md))
   supabase/
     migrations/           the schema, in order (the source of truth for tables)
