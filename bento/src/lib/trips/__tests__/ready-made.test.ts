@@ -5,9 +5,10 @@ import { placeSeeds } from "@/lib/places/seed";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import { assessRoute, hubFor, type CityFacts } from "@/lib/engine/route";
 import { planTrip } from "@/lib/engine/trip";
+import { eveningFrom } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
 import { cityTrainMinutes } from "@/lib/engine/travel-day";
-import { parseClock } from "@/lib/engine/filter";
+import { parseClock, parseWindow } from "@/lib/engine/filter";
 import { closedYearlyOn } from "@/lib/engine/closures";
 import { closedMustSees } from "../ready-made/closed";
 import type { PlaceInput } from "@/lib/engine/types";
@@ -31,6 +32,7 @@ const facts = new Map<string, CityFacts>(
   READY_MADE_CITIES.map((id) => [id, { id, name: id, tier: "deep", verifiedPlaces: placesByCity[id]?.length ?? 0, transitNote: null, hubStation: hubFor(id, graph) }]),
 );
 const trainMinutes = cityTrainMinutes(graph, facts);
+const inputById = new Map(Object.values(placesByCity).flat().map((p) => [p.id, p]));
 
 // Each day of the week (Monday 10 to Sunday 16 May 2027), then one start
 // in each season, then two over the year-end break (30 Dec and 1 Jan), when
@@ -220,6 +222,29 @@ describe("ready-made trips", () => {
                   const closes = parseClock(seed.closes);
                   if (closes != null && item.endMin > closes) bad.push(`${at}: ${id} runs past closing`);
                 }
+                // The right time of day (time-of-day.test.ts): an evening-only
+                // place (flagged, or opening at 17:00 or later) never by day,
+                // nor a must-see whose best windows are all evening; one the
+                // planner chose waits an hour at most for its evening; and
+                // "unavoidable" only on a travel day that starts after every
+                // quiet window.
+                day.items.forEach((x, k) => {
+                  const wins = (placeById.get(x.placeId)!.window ?? []).map(parseWindow);
+                  const only = eveningFrom(inputById.get(x.placeId)!);
+                  const pinWindow = x.locked && wins.length && wins.every((w) => w.after != null && w.after >= 17 * 60) ? Math.min(...wins.map((w) => w.after!)) : null;
+                  const floor = only ?? pinWindow;
+                  if (floor != null && x.startMin < floor) bad.push(`${at}: ${x.placeId} by day`);
+                  if (only != null && !x.locked && k > 0) {
+                    const arrive = day.items[k - 1].endMin + (x.arriveBy?.minutes ?? 0);
+                    const meals = day.meals.filter((m) => m.startMin >= arrive && m.startMin < x.startMin).reduce((n, m) => n + m.endMin - m.startMin, 0);
+                    const wait = x.startMin - arrive - meals;
+                    if (wait > 60) bad.push(`${at}: ${x.placeId} waits ${wait} min for its evening`);
+                  }
+                  if (x.reason.includes(copy.plan.reasons.busiestHour)) {
+                    const reachable = wins.some((w) => (w.before != null && day.startMin <= w.before) || w.after != null);
+                    if (input.days[i].movingFrom == null || reachable) bad.push(`${at}: ${x.placeId} called unavoidable`);
+                  }
+                });
                 // The whole day, pins included, holds no conflicting pair.
                 for (const x of day.items)
                   for (const y of day.items)

@@ -188,7 +188,7 @@ export const tokyo: PlaceSeed[] = [
 
   draft({ id: "tky-golden-gai", city: c, name: "Shinjuku Golden Gai", nameJa: "新宿ゴールデン街", category: "street", lat: 35.6940, lon: 139.7046,
     station: "shinjuku", walk: 8, tags: ["nightlife", "offbeat"], energy: 0.1, crowd: 0.6, discovery: 0.3, signature: 0.5,
-    taste: 30, typical: 90, full: 180, window: ["after 17:30"], opens: "19:00", closes: "23:59",
+    taste: 30, typical: 90, full: 180, window: ["after 17:30"], eveningOnly: true, opens: "19:00", closes: "23:59",
     crowdNote: "Quiet before nine; the six alleys fill late and stay full past midnight.",
     tip: "Around 280 bars the size of a lift, each with its own crowd. Many charge a cover of ¥500–1,500 and say on the door whether visitors are welcome. Bars stay open into the small hours. Don't photograph in the alleys.",
     cost: 0, pairs: ["tky-omoide-yokocho"], sources: ["goldengai.jp"] }),

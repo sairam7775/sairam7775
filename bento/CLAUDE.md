@@ -180,7 +180,16 @@ Explained in `../docs/bento/30-software/engine.md`.
   and back.
 - Scores shown on items are recomputed against the final order, so "your
   third temple today" is the third one shown.
-- Known gaps: windows are soft except for the anchor; a place with no
+- An evening-only place (`eveningOnly`, 0033, set from the place's own
+  notes, or opening at 17:00 or later; `eveningFrom`) is never planned
+  before its evening: it goes after the day's other stops, only where the
+  day reaches it within an hour, else it is left out. An evening best
+  window alone is soft, except that an untimed pin with only evening
+  windows is timed into them (`eveningWindow`). "Unavoidable" (busy) is
+  said only when no start on that day reaches a window (a travel day or a
+  `startNamed` start is fixed; a re-plan's kept start isn't); otherwise
+  `busyNow` names the quiet windows.
+- Known gaps: other windows are soft except for the anchor; a place with no
   station costs a flat 45 min and a warning (only for a leg the returned
   day travels, never a candidate it left out; a short walk from its
   neighbour is the walk instead); season tags are optional and
@@ -216,6 +225,8 @@ Explained in `../docs/bento/50-operations/curation.md` and `../docs/bento/30-sof
   the exporter fails otherwise.
 - Hours are same-day: `closes` must be after `opens`. An overnight venue
   gets `closes: "23:59"` and the real time in the tip.
+- Evening-only (0033, `eveningOnly`) only where the place's own notes say
+  it is dead or closed by day; set by id in a migration for verified rows.
 - Seasonal hours are never promised (0026): a place whose hours change
   with the season stores the SHORTEST hours of its year with
   `hoursVary: true` (`places.hours_vary`), so the planner never arrives

@@ -19,6 +19,14 @@ describe("placesSeedSql", () => {
     expect(sql).toContain("where places.verification_status = 'draft';");
   });
 
+  it("writes evening_only, false unless the seed sets it", () => {
+    const sql = placesSeedSql([castle, { ...castle, id: "osk-test-night", eveningOnly: true }]);
+    expect(sql).toMatch(/insert into places \([^)]*\bclosed_yearly, evening_only\b/);
+    expect(sql).toMatch(/\('osk-osaka-castle', [^\n]*array\['12-28\.\.01-01'\]::text\[\], false,/);
+    expect(sql).toMatch(/\('osk-test-night', [^\n]*::text\[\], true,/);
+    expect(sql).toContain("evening_only = excluded.evening_only");
+  });
+
   it("refuses a closure that isn't MM-DD or MM-DD..MM-DD", () => {
     expect(() => placesSeedSql([{ ...castle, closedYearly: ["28 Dec - 1 Jan"] }])).toThrow(/osk-osaka-castle closed_yearly/);
     expect(() => placesSeedSql([{ ...castle, closedYearly: ["2026-12-28..2027-01-01"] }])).toThrow(/closed_yearly/);

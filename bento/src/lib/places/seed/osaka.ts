@@ -198,7 +198,7 @@ export const osaka: PlaceSeed[] = [
 
   draft({ id: "osk-teamlab-botanical", city: c, name: "teamLab Botanical Garden", nameJa: "チームラボ ボタニカルガーデン", category: "garden", lat: 34.6100, lon: 135.5190,
     station: null, walk: null, tags: ["art", "nature", "popculture"], energy: 0.3, crowd: 0.7, discovery: 0.3, signature: 0.6,
-    taste: 60, typical: 90, full: 120, booking: "required", lead: 14, window: ["after 17:30"], opens: "19:45", closes: "21:30", hoursVary: true,
+    taste: 60, typical: 90, full: 120, booking: "required", lead: 14, window: ["after 17:30"], eveningOnly: true, opens: "19:45", closes: "21:30", hoursVary: true,
     crowdNote: "Timed entry keeps it moving, but weekend slots sell out a week or two ahead.",
     tip: "Light art across a real botanical garden in Nagai Park, after dark. Book a slot online; it is not a walk-up. Thirty minutes south of Namba on the Midosuji line.",
     cost: 1800, sources: ["teamlab.art"] }),

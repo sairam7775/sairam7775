@@ -608,6 +608,9 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   // A kept start lifted to the arrival: the traveller may have named an
   // early start for an early train. Say so; a named start_at overrides it.
   let lifted = move != null && kept != null && dayStartMin != null && dayStartMin > kept;
+  // Only a start the traveller names here is fixed: a kept one is the day's
+  // old start, and an earlier start could reach a quiet window.
+  let startNamed = false;
   for (const op of ops) {
     if (["pin", "unpin", "remove", "add"].includes(op.op)) {
       if (!op.place_id) return { error: `${op.op} needs place_id`, reason: "bad-op" };
@@ -634,6 +637,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
         const m = parseHHMM(op.time);
         if (m == null) return { error: "start_at needs time HH:MM", reason: "bad-op" };
         dayStartMin = m;
+        startNamed = true;
         lifted = false;
         break;
       }
@@ -651,6 +655,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     locked: [...lockedMap.values()],
     usedPlaceIds: [...used],
     dayStartMin,
+    startNamed,
     bookedPlaceIds: bookedPlaceIds(bookings, pool, date),
     // A travel day keeps its move: the kept or named start is a clock time,
     // and the move still comes out of the day, as when it was planned.

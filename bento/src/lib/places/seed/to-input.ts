@@ -33,6 +33,7 @@ export function seedToPlaceInput(
     opensAt: s.opens ?? null,
     closesAt: s.closes ?? null,
     hoursVary: s.hoursVary ?? false,
+    eveningOnly: s.eveningOnly ?? false,
     closedWeekdays: s.closedWeekdays ?? [],
     closedDates: [],
     closedYearly: s.closedYearly ?? [],
