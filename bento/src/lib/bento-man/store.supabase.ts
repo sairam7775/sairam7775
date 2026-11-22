@@ -3,12 +3,13 @@
  *  is as invisible to Bento Man as it is to the traveller. */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlaceInput } from "@/lib/engine/types";
-import { rowToPlace } from "@/lib/engine/load";
+import { PLACE_COLUMNS, rowToPlace } from "@/lib/engine/load";
 import { allocateDates, hubFor, type CityFacts } from "@/lib/engine/route";
 import { loadGraph } from "@/lib/transit/load";
 import { selectAll } from "@/lib/supabase/select-all";
 import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
+import { PREF_COLUMNS, prefsFromRow } from "./prefs-row";
 import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
 import { shiftConflicts, shiftRefusal } from "./shift";
 import { DEFAULT_PREFS, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
@@ -89,7 +90,7 @@ export class SupabaseStore implements TripStore {
   private async loadState(): Promise<TripState> {
     const [trip, prefs, cities, days, pending] = await Promise.all([
       this.db.from("trips").select("id, title, start_date, end_date, party_size, status").eq("id", this.tripId).maybeSingle(),
-      this.db.from("user_preferences").select("*").eq("user_id", this.userId).maybeSingle(),
+      this.db.from("user_preferences").select(PREF_COLUMNS).eq("user_id", this.userId).maybeSingle(),
       this.db.from("trip_cities").select("city_id, nights, sort_order, budget_band, reason, arrive_date, depart_date, cities(name, coverage_tier)").eq("trip_id", this.tripId).order("sort_order"),
       this.db.from("itinerary_days").select("id, date, city_id, cities(name, coverage_tier), itinerary_items(id, place_id, sort_order, start_time, duration_min, locked, reason, reason_terms, arrive_mode, arrive_minutes, arrive_detail)").eq("trip_id", this.tripId).order("date"),
       this.db.from("chat_messages").select("id, proposed_diff").eq("trip_id", this.tripId).eq("diff_status", "proposed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -136,21 +137,7 @@ export class SupabaseStore implements TripStore {
 
     return {
       trip: { id: trip.data.id, title: trip.data.title, startDate: trip.data.start_date, endDate: trip.data.end_date, partySize: trip.data.party_size, status: trip.data.status },
-      prefs: p
-        ? {
-            pace: p.pace,
-            interestTags: p.interest_tags ?? [],
-            energy: Number(p.energy),
-            crowdTolerance: Number(p.crowd_tolerance),
-            discovery: Number(p.discovery),
-            excludes: p.excludes ?? [],
-            mobility: p.mobility ?? [],
-            dietary: p.dietary ?? [],
-            displayCurrency: p.display_currency ?? "JPY",
-            set: Boolean(p.onboarded),
-            autoApplyDates: Boolean(p.apply_dates_without_asking),
-          }
-        : { ...DEFAULT_PREFS },
+      prefs: p ? prefsFromRow(p) : { ...DEFAULT_PREFS },
       cities: (cities.data ?? []).map((c) => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const city = c.cities as any;
@@ -313,14 +300,14 @@ export class SupabaseStore implements TripStore {
   async places(cityId: string): Promise<PlaceInput[]> {
     const [tier, data] = await Promise.all([
       this.tierOf(cityId),
-      selectAll((from, to) => this.db.from("places_public").select("*", { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
+      selectAll((from, to) => this.db.from("places_public").select(PLACE_COLUMNS, { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
     ]);
     return data.map((r) => rowToPlace(r, tier));
   }
 
   async searchPlaces(query: string, cityId?: string | null): Promise<PlaceInput[]> {
     const q = query.trim();
-    let sel = this.db.from("places_public").select("*").or(`id.eq.${q.toLowerCase().replace(/[^a-z0-9-]/g, "")},name.ilike.%${q.replace(/[%,()]/g, "")}%`).limit(8);
+    let sel = this.db.from("places_public").select(PLACE_COLUMNS).or(`id.eq.${q.toLowerCase().replace(/[^a-z0-9-]/g, "")},name.ilike.%${q.replace(/[%,()]/g, "")}%`).limit(8);
     if (cityId) sel = sel.eq("city_id", cityId);
     const { data, error } = await sel;
     if (error) throw error;
