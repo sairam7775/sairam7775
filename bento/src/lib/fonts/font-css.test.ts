@@ -3,7 +3,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildFontCss, FONTS, parseFaces, readFontsource, SYSTEM_SYMBOLS, type Face } from "./font-css";
 
-const committed = readFileSync(fileURLToPath(new URL("../../app/fonts.css", import.meta.url)), "utf8");
+// A Windows checkout may turn the file's line endings into CRLF.
+const committed = readFileSync(fileURLToPath(new URL("../../app/fonts.css", import.meta.url)), "utf8").replace(/\r\n/g, "\n");
 const built = parseFaces(committed);
 const covers = (face: Face, cp: number) => face.ranges.some(([a, b]) => cp >= a && cp <= b);
 const isJapanese = (face: Face) => /-\d+-\d+-normal\.woff2$/.test(face.file);
