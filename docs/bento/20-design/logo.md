@@ -23,7 +23,7 @@ A bento box with four compartments and one umeboshi: a Hinomaru bento. The maste
 | `public/logo/bento-lockup.svg`, `-light.svg` | Mark and wordmark, dark and light |
 | `public/logo/bento-loader.svg`, `-light.svg` | The loader: the umeboshi hops between compartments |
 | `src/components/logo.tsx` | `<BentoMark>` and `<BentoLogo>` in the app |
-| `src/components/loading.tsx` | `<BentoLoader>` and `<PageLoader>`, used for route transitions |
+| `src/components/loading.tsx` | `<BentoLoader>` and `<PageLoader>`, used for route transitions (every section's `loading.tsx`; the home page has none, see [performance](../40-non-functional/performance.md) F10) |
 
 The paths are relative to `bento/`.
 
