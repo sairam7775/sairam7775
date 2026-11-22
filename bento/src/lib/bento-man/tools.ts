@@ -9,7 +9,7 @@ import type { ModelTool } from "./provider";
 import { z } from "zod";
 import { planDay, usualDayStart } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
-import { cityTrainMinutes, toFive, travelDayMoves, travelDayStart } from "@/lib/engine/travel-day";
+import { cityTrainMinutes, dayShare, toFive, travelDayMoves, travelDayStart } from "@/lib/engine/travel-day";
 import { costBandWords } from "@/lib/engine/cost-band";
 import { yearlyRangeWords } from "@/lib/engine/closures";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
@@ -646,11 +646,20 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   const pool = all.filter((x) => !excluded.has(x.id) && !(avoidCategories.has(x.category.toLowerCase()) && !lockedMap.has(x.id)));
   const used = new Set(state.days.filter((d) => d.date !== date).flatMap((d) => d.items.map((i) => i.placeId)));
   const budget = state.cities.find((c) => c.cityId === cityId)?.budgetBand ?? null;
+  // A long stay's share, as plan_days gives it: this day and the later days
+  // in this city not planned yet. A planned day keeps its own places
+  // (`used`), so it doesn't count.
+  const moveFor = movesFor(state, graph, factsMap(cities));
+  const traveller = travellerFor(state.prefs, budget);
+  const pace = traveller.pace;
+  const later = [...plannedDates(state)].filter(([d, c]) => d > date && c === cityId && !state.days.find((x) => x.date === d)?.items.length);
+  const cityDaysLeft = dayShare(pace, move) + later.reduce((s, [d]) => s + dayShare(pace, moveFor(d, cityId)), 0);
   const plan = planDay({
     date,
     cityId,
     places: pool,
-    traveller: travellerFor(state.prefs, budget),
+    cityDaysLeft,
+    traveller,
     travel: travelFromGraph(graph, { mobility: state.prefs.mobility }),
     locked: [...lockedMap.values()],
     usedPlaceIds: [...used],
@@ -863,7 +872,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const days = [];
       const tiers: CoverageTier[] = [];
       const skipped: string[] = [];
-      for (const t of targets) {
+      for (const [ti, t] of targets.entries()) {
         const f = facts.get(t.cityId)!;
         if (f.tier === "stub") {
           skipped.push(`${t.date}: ${copy.plan.route.notCovered(f.name)}`);
@@ -874,17 +883,20 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         const locked: LockedItem[] = (existing?.items ?? []).filter((i) => i.locked).map((i) => ({ placeId: i.placeId, startMin: i.startMin }));
         const budget = state.cities.find((c) => c.cityId === t.cityId)?.budgetBand ?? null;
         const places = placesCache.get(t.cityId)!;
+        const traveller = travellerFor(state.prefs, budget);
         const plan = planDay({
           date: t.date,
           cityId: t.cityId,
           places,
-          traveller: travellerFor(state.prefs, budget),
+          traveller,
           travel,
           locked,
           usedPlaceIds: [...used],
           // A ticket the traveller holds lets a booking-required place in.
           bookedPlaceIds: bookedPlaceIds(bookings, places, t.date),
           move: moveOn(t.date, t.cityId),
+          // A long stay shares the city's places across its days, as planTrip does.
+          cityDaysLeft: targets.slice(ti).filter((x) => x.cityId === t.cityId).reduce((s, x) => s + dayShare(traveller.pace, moveOn(x.date, x.cityId)), 0),
         });
         for (const it of plan.items) used.add(it.placeId);
         tiers.push(f.tier);

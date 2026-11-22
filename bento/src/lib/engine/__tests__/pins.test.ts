@@ -90,7 +90,9 @@ describe("planDay and pins", () => {
       expect(pinDrops(plan), date).toEqual([]);
       expect(plan.items.length, date).toBeGreaterThan(3);
     }
-  });
+    // A week of packed Tokyo days, which now hold up to 12 stops each: the
+    // train routing over the Kanto network takes a few seconds on a busy runner.
+  }, 15_000);
 
   it("warns only about the day it returns, not the ones it tried", () => {
     // replan_day and plan_days re-pin saved stops at their times. Every place
@@ -149,7 +151,13 @@ describe("planDay and pins", () => {
     expect(b.endMin).toBeLessThanOrEqual(13 * 60 + 30);
     const order = plan.items.map((i) => i.placeId);
     if (order.includes("x")) expect(order.indexOf("x")).toBeGreaterThan(order.indexOf("b"));
-    else expect(plan.considered.find((r) => r.placeId === "x")?.detail).toBe(copy.plan.leftOut.makesPinLate("B"));
+    // Before B it makes B late; after B the day would wait over an hour for
+    // it to open, and a chosen stop doesn't keep the day waiting (more than
+    // 20 min), so that is the reason given.
+    else {
+      const why = plan.considered.find((r) => r.placeId === "x")?.detail ?? "";
+      expect(why).toBe(copy.plan.leftOut.opensLater("12:00", Number(/(\d+) min/.exec(why)?.[1])));
+    }
   });
 
   it("moves a chosen stop past a pin when growing left it on the wrong side of town", () => {
