@@ -49,6 +49,14 @@ Explained in `../docs/bento/40-non-functional/` (security, privacy, costs) and `
   passed by `proxy.ts` and `supabase/server.ts`), so a page script can't
   read a session. A browser-side Supabase client would need them readable:
   don't add one.
+- **A session cookie is never proof of anything.** Only `getUser()` says who
+  is signed in. Its absence may skip the check (`mayHaveSession`,
+  `lib/supabase/session-cookie.ts`: no Supabase cookie, or only one the
+  proxy emptied, so `getUser()` would answer "nobody" without a request;
+  a test ties it to `createClient`'s cookie name), which is how the home page draws its
+  signed-out version at once; its presence only means "ask". The home page
+  has no `loading.tsx` above it, so its first screen never waits behind a
+  loader (performance F10).
 - **Every password, reset and two-factor attempt passes `authGate`**
   (`lib/guards/auth-limit.ts` → `take_auth_token`, 0029) before Supabase is
   asked: per visitor address, per email (resets: email and address

@@ -1,6 +1,9 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import { Suspense, type ReactNode } from "react";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { mayHaveSession } from "@/lib/supabase/session-cookie";
 import { BentoLogo, BentoMark } from "@/components/logo";
 import { copy } from "@/copy";
 import { AnalyticsSignedOut } from "@/components/analytics/analytics";
@@ -13,6 +16,43 @@ const t = copy.home;
 
 const primary = "inline-flex min-h-11 items-center rounded-full bg-accent px-6 text-[0.95rem] font-medium text-on-accent hover:bg-accent-deep";
 const secondary = "inline-flex min-h-11 items-center rounded-full border border-rule bg-surface px-6 text-[0.95rem] font-medium text-ink hover:bg-sunk";
+const navLink = "inline-flex min-h-10 items-center rounded-full px-3 text-[0.9rem] font-medium text-ink hover:bg-sunk";
+
+async function currentUser(): Promise<User | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+/** Draws what depends on who is signed in. `null` is a visitor known to be
+ *  signed out, drawn at once; a promise waits for getUser() behind
+ *  `fallback`, which holds the final size so nothing moves. */
+function ForUser({ user, fallback, children }: {
+  user: Promise<User | null> | null;
+  fallback: ReactNode;
+  children: (user: User | null) => ReactNode;
+}) {
+  if (!user) return children(null);
+  return <Suspense fallback={fallback}><Resolved user={user}>{children}</Resolved></Suspense>;
+}
+
+async function Resolved({ user, children }: { user: Promise<User | null>; children: (user: User | null) => ReactNode }) {
+  return children(await user);
+}
+
+/** Keeps a link's place while the sign-in check runs: the same box, not
+ *  shown and not read out. Sized as the signed-in version, the likely one
+ *  when there is a session cookie. */
+function Placeholder({ className, children }: { className: string; children: ReactNode }) {
+  return <span aria-hidden className={`${className} invisible`}>{children}</span>;
+}
+
+function greeting(user: User) {
+  const name = displayName(user);
+  return name ? t.greeting.named(name) : t.greeting.plain;
+}
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const sp = await searchParams;
@@ -23,41 +63,40 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     : sp.analytics === "retrying" ? copy.settings.deleteAccount.doneAnalyticsRetrying
     : sp.analytics === "by-hand" ? copy.settings.deleteAccount.doneAnalyticsPending
     : copy.settings.deleteAccount.done;
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const name = displayName(user);
-  const cta = user ? (
-    <>
-      <Link href="/trips" className={primary}>{t.yourTripsCta}</Link>
-      <span className="text-[0.98rem] text-ink-2">{name ? t.greeting.named(name) : t.greeting.plain}</span>
-    </>
-  ) : (
-    <>
-      <Link href="/sign-up" className={primary}>{t.startPlanning}</Link>
-      <Link href="/sign-in" className={secondary}>{copy.common.signIn}</Link>
-    </>
-  );
+  // The first screen never waits on the sign-in check. A visitor with no
+  // session cookie is signed out (getUser() would say so without asking
+  // Supabase), so their page is drawn whole at once. Anyone else gets the
+  // same page with only the bits that differ (sign-in link, buttons, the
+  // signed-out notice) streamed in when getUser() answers. The cookie only
+  // ever picks the signed-out version; being signed in is still getUser()'s
+  // word alone.
+  const user = mayHaveSession((await cookies()).getAll()) ? currentUser() : null;
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-6 sm:px-8">
-      {!user && <AnalyticsSignedOut />}
-      {deleted && !user && (
-        <div className="mt-4">
-          <Notice>{doneNote}</Notice>
-        </div>
-      )}
+      <ForUser user={user} fallback={null}>
+        {(u) => !u && (
+          <>
+            <AnalyticsSignedOut />
+            {deleted && (
+              <div className="mt-4">
+                <Notice>{doneNote}</Notice>
+              </div>
+            )}
+          </>
+        )}
+      </ForUser>
       <header className="settle flex items-center justify-between gap-3">
         <Link href="/" aria-label={copy.common.homeLabel} className="inline-flex"><BentoLogo /></Link>
         <nav className="flex items-center gap-1">
           <a href="#how" className="hidden min-h-10 items-center rounded-full px-3 text-[0.9rem] text-ink-2 hover:bg-sunk hover:text-ink sm:inline-flex">{t.howItWorksLink}</a>
-          {user ? (
-            <Link href="/trips" className="inline-flex min-h-10 items-center rounded-full px-3 text-[0.9rem] font-medium text-ink hover:bg-sunk">{copy.common.yourTrips}</Link>
-          ) : (
-            <Link href="/sign-in" className="inline-flex min-h-10 items-center rounded-full px-3 text-[0.9rem] font-medium text-ink hover:bg-sunk">{copy.common.signIn}</Link>
-          )}
+          <ForUser user={user} fallback={<Placeholder className={navLink}>{copy.common.yourTrips}</Placeholder>}>
+            {(u) => u ? (
+              <Link href="/trips" className={navLink}>{copy.common.yourTrips}</Link>
+            ) : (
+              <Link href="/sign-in" className={navLink}>{copy.common.signIn}</Link>
+            )}
+          </ForUser>
         </nav>
       </header>
 
@@ -75,7 +114,21 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <p className="mt-5 max-w-[34rem] text-[1.08rem] leading-relaxed text-ink-2">
             {t.hero.body}
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">{cta}</div>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <ForUser user={user} fallback={<Placeholder className={primary}>{t.yourTripsCta}</Placeholder>}>
+              {(u) => u ? (
+                <>
+                  <Link href="/trips" className={primary}>{t.yourTripsCta}</Link>
+                  <span className="text-[0.98rem] text-ink-2">{greeting(u)}</span>
+                </>
+              ) : (
+                <>
+                  <Link href="/sign-up" className={primary}>{t.startPlanning}</Link>
+                  <Link href="/sign-in" className={secondary}>{copy.common.signIn}</Link>
+                </>
+              )}
+            </ForUser>
+          </div>
           <p className="mt-4 text-[0.85rem] text-ink-3">{t.hero.note}</p>
         </div>
         <DayPreview />
@@ -128,11 +181,13 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             <p className="mt-2 max-w-[36rem] text-[0.98rem] text-rice/75">{t.closing.body}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {user ? (
-              <Link href="/trips" className={primary}>{t.yourTripsCta}</Link>
-            ) : (
-              <Link href="/sign-up" className={primary}>{t.startPlanning}</Link>
-            )}
+            <ForUser user={user} fallback={<Placeholder className={primary}>{t.yourTripsCta}</Placeholder>}>
+              {(u) => u ? (
+                <Link href="/trips" className={primary}>{t.yourTripsCta}</Link>
+              ) : (
+                <Link href="/sign-up" className={primary}>{t.startPlanning}</Link>
+              )}
+            </ForUser>
           </div>
         </div>
       </section>
