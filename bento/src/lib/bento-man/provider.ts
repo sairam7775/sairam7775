@@ -58,8 +58,10 @@ export interface ChatProvider {
 
 /** A failed stream may already have reported billable usage. */
 export class ProviderCallError extends Error {
-  /** `timedOut`: the call hit its time limit, so the turn can say "took too long". */
-  constructor(message: string, readonly model: string, readonly usage?: Usage, readonly status?: number, readonly timedOut = false) {
+  /** `timedOut`: the call hit its time limit, so the turn can say "took too long".
+   *  `reachedModel`: false only when no request was out when it stopped (cut
+   *  off before sending, or while waiting to retry), so it costs nothing. */
+  constructor(message: string, readonly model: string, readonly usage?: Usage, readonly status?: number, readonly timedOut = false, readonly reachedModel = true) {
     super(message);
     this.name = "ProviderCallError";
   }

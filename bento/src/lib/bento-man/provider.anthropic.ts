@@ -48,6 +48,10 @@ export class AnthropicProvider implements ChatProvider {
       ? this.client.beta.messages.stream(params, { signal: request.signal })
       : this.client.beta.messages.stream(params);
     stream.on("text", (delta) => request.onText?.(delta));
+    // The response has started: the request reached the model. Before it,
+    // the SDK is connecting or waiting to retry, which costs nothing.
+    let connected = false;
+    stream.on("connect", () => { connected = true; });
     let msg: Anthropic.Beta.BetaMessage;
     try {
       msg = await stream.finalMessage();
@@ -61,7 +65,7 @@ export class AnthropicProvider implements ChatProvider {
         outputTokens: partial.usage.output_tokens,
         cacheWriteTokens: partial.usage.cache_creation_input_tokens ?? 0,
         cacheReadTokens: partial.usage.cache_read_input_tokens ?? 0,
-      }, undefined, true);
+      }, undefined, true, connected || partial !== undefined);
     }
     const toolCalls = msg.content.flatMap((block) => block.type === "tool_use"
       ? [{ id: block.id, name: block.name, input: block.input }] : []);

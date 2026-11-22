@@ -24,7 +24,7 @@ export function timedFetch(
   fetcher?: typeof fetch,
   limits: { readMs: number; writeMs: number } = { readMs: READ_TIMEOUT_MS, writeMs: WRITE_TIMEOUT_MS },
 ): typeof fetch {
-  return (input, init) => {
+  return async (input, init) => {
     const method = (init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase();
     const ms = method === "GET" || method === "HEAD" ? limits.readMs : limits.writeMs;
     // The limit aborts with an AbortError of its own, whether the request is
@@ -32,13 +32,27 @@ export function timedFetch(
     // failed read three more times (after 1, 2 and 4 s) but never an aborted
     // one, which would otherwise make one stall cost four limits and the
     // waits; and callers can tell a timeout (`isSupabaseTimeout`) from a
-    // refusal. The timer is unref'd and a late abort does nothing.
+    // refusal. The timer stops when the request fails or its body has been
+    // read; it is unref'd, and a late abort (a body never read) does nothing.
     const limit = new AbortController();
     const timer = setTimeout(() => limit.abort(new DOMException(`${TIMED_OUT} after ${ms} ms`, "AbortError")), ms);
     (timer as { unref?: () => void }).unref?.();
     const signal = init?.signal ? AbortSignal.any([init.signal, limit.signal]) : limit.signal;
-    // Resolved per call, so the platform's own fetch (Next patches it) is used.
-    return (fetcher ?? globalThis.fetch)(input, { ...init, signal });
+    let response: Response;
+    try {
+      // Resolved per call, so the platform's own fetch (Next patches it) is used.
+      response = await (fetcher ?? globalThis.fetch)(input, { ...init, signal });
+    } catch (e) {
+      clearTimeout(timer);
+      throw e;
+    }
+    if (!response.body) {
+      clearTimeout(timer);
+      return response;
+    }
+    // The limit covers the body too; once it has all been read, stop the timer.
+    const body = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({ flush: () => clearTimeout(timer) }));
+    return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
   };
 }
 

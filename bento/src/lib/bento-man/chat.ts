@@ -209,7 +209,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       const signal = deadline === undefined ? undefined : AbortSignal.timeout(callLeft);
       msg = await provider.call({ system: SYSTEM_PROMPT, messages, tools: TOOLS, maxOutputTokens: MAX_TOKENS, onText: events?.onText, signal });
     } catch (e) {
-      if (e instanceof ProviderCallError && e.timedOut) {
+      if (e instanceof ProviderCallError && e.timedOut && e.reachedModel) {
         // Cut off after the request went out: the model was working, and
         // output is only reported when a stream ends (Anthropic), or not at
         // all before the first chunk. Charge it as the hold assumed: the

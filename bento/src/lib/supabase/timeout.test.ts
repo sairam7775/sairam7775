@@ -40,6 +40,24 @@ describe("timedFetch", () => {
     expect(isSupabaseTimeout(error)).toBe(true);
   });
 
+  it("stops the timer once the body has been read, or the request failed", async () => {
+    const cleared = vi.spyOn(globalThis, "clearTimeout");
+    const ok = vi.fn<typeof fetch>(async () => new Response("[1]", { status: 200, headers: { "x-test": "kept" } }));
+    const response = await timedFetch(ok, { readMs: 60_000, writeMs: 60_000 })("https://db.example/rest/v1/trips");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-test")).toBe("kept");
+    expect(cleared).not.toHaveBeenCalled();
+    expect(await response.text()).toBe("[1]");
+    expect(cleared).toHaveBeenCalledTimes(1);
+    const refused = vi.fn<typeof fetch>(async () => { throw new TypeError("fetch failed"); });
+    await timedFetch(refused, { readMs: 60_000, writeMs: 60_000 })("https://db.example/rest/v1/trips").catch(() => {});
+    expect(cleared).toHaveBeenCalledTimes(2);
+    const empty = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    expect((await timedFetch(empty, { readMs: 60_000, writeMs: 60_000 })("https://db.example/rest/v1/trips", { method: "DELETE" })).status).toBe(204);
+    expect(cleared).toHaveBeenCalledTimes(3);
+    cleared.mockRestore();
+  });
+
   it("tells a timeout from other errors, as an Error or as PostgREST's error object", () => {
     expect(isSupabaseTimeout({ message: "AbortError: Supabase request timed out after 15000 ms", code: "" })).toBe(true);
     expect(isSupabaseTimeout(new DOMException("Supabase request timed out after 10000 ms", "AbortError"))).toBe(true);

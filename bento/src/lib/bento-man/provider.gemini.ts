@@ -168,6 +168,10 @@ export class GeminiProvider implements ChatProvider {
     const texts: string[] = [];
     const toolCalls: ToolCall[] = [];
     let finish: string | undefined;
+    // A request is out (sent, or answered and streaming). Cut off between
+    // requests (before the first, or waiting to retry after a 5xx, which
+    // isn't billed), the call never reached the model.
+    let out = false;
     try {
       const body = JSON.stringify({
         systemInstruction: { parts: [{ text: request.system }] },
@@ -191,6 +195,7 @@ export class GeminiProvider implements ChatProvider {
           // The turn's time ran out during a retry wait: no further request.
           request.signal?.throwIfAborted();
           const ownLimit = AbortSignal.timeout(CALL_TIMEOUT_MS);
+          out = true;
           response = await this.fetcher(
             `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:streamGenerateContent?alt=sse`,
             {
@@ -204,6 +209,7 @@ export class GeminiProvider implements ChatProvider {
           if (response.ok) break models;
           // Don't include upstream bodies in errors: they may echo prompts or keys.
           await response.body?.cancel();
+          out = false;
           status = response.status;
           // Overload is common and short: retry the same model first.
           if (attempt < RETRY_DELAYS_MS.length && RETRYABLE.has(status)) {
@@ -255,7 +261,7 @@ export class GeminiProvider implements ChatProvider {
       if (e instanceof ProviderCallError) throw e;
       // Stream/callback errors retain any usage reported before the failure.
       const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
-      throw new ProviderCallError(timedOut ? "Gemini call timed out" : "Gemini stream failed", model, usage, undefined, timedOut);
+      throw new ProviderCallError(timedOut ? "Gemini call timed out" : "Gemini stream failed", model, usage, undefined, timedOut, out);
     }
   }
 }

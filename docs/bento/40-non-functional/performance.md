@@ -37,5 +37,6 @@ last_reviewed: 2026-11-13
 
 - No measured targets for page load or chat response.
 - Admin pages still show a database error's own text, a timeout's included ("AbortError: Supabase request timed out …"), and the service role has no statement timeout of its own, so an admin write or a spend hold that times out may still commit. A spend hold that commits late stays on the books until it ages out: the safe direction.
+- A chat tool that makes several database reads can still take a turn past 120 s if two of them stall: each read is bounded, the tool is not.
 - The time limits bound one slow dependency, not several at once. If the session refresh, the spend holds and the save all stall in one turn, the limits add up and can pass 120 s. supabase-auth may also retry a stalled token refresh once more, within its own 30 s window. The 15 s write limit assumes Supabase's default 8 s statement timeout for signed-in requests, which was not checked on the live project. Without it, a slow RPC could commit after the client gave up, and the page would show a failure until it is reloaded.
 - The Gemini free tier allows about 20 requests a day per model; heavy use moves down the fallback list ([Bento Man (software)](../30-software/bento-man.md)).

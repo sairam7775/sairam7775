@@ -157,6 +157,24 @@ describe("a chat turn's deadline", () => {
     expect(cutOff.costUsd).toBeGreaterThan(0);
   });
 
+  it("gives back the hold of a cut-off call that never reached the model, and ends politely", async () => {
+    const time = clock();
+    const neverSent = async (): Promise<ModelResult> => { time.advance(20_000); throw new ProviderCallError("Gemini call timed out", "gemini-3.8-flash", undefined, undefined, true, false); };
+    const t = await turn([step(time, 1_000, uses(PLAN_MIYAJIMA)), neverSent], { time });
+    const r = await t.run;
+    expect(r.text).toBe(copy.chat.cappedSuggestion);
+    expect(t.spend.settled).toHaveLength(2);
+    expect(t.spend.settled[1]).toBeNull();
+    expect(r.usageByModel["gemini-3.8-flash"]).toBeUndefined();
+  });
+
+  it("gives back the hold of a first call that never reached the model, then fails as too slow", async () => {
+    const t = await turn([async () => { throw new ProviderCallError("Gemini call timed out", "gemini-3.8-flash", undefined, undefined, true, false); }]);
+    const err = await t.run.catch((e) => e);
+    expect(err.timedOut).toBe(true);
+    expect(t.spend.settled).toEqual([null]);
+  });
+
   it("still fails a turn whose first call times out (the route says it took too long), charging its hold conservatively", async () => {
     const t = await turn([async () => { throw new ProviderCallError("Gemini call timed out", "gemini-3.8-flash", undefined, undefined, true); }]);
     const err = await t.run.catch((e) => e);
