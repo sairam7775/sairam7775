@@ -48,6 +48,7 @@ The mock-ups are in `design/`, at the repo root.
 - Use tokens (`text-ink-2`, `bg-surface`, `border-rule`), not raw colours. The exceptions are illustrations with their own palette: the logo, the seasonal scenes and Bento Man's figure.
 - No `backdrop-filter` or `filter` on anything that animates, or sits over animation; it re-rasterises every frame. Blur only static layers.
 - Never nest `@theme` inside `@media`: Tailwind v4 hoists it, and the dark values would apply in light mode too.
+- The first screen's text never fades in: it settles by movement only (`.settle`), so the browser paints it at once ([performance](../40-non-functional/performance.md), F7). Later tiles may rise and fade (`.up`).
 - All motion stops under reduced motion ([accessibility](../40-non-functional/accessibility.md)).
 
 ## Open questions

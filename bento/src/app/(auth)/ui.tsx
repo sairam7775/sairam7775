@@ -20,7 +20,7 @@ export function AuthShell({
 }) {
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-5 py-8 sm:px-8">
-      <header className="up flex items-center justify-between">
+      <header className="settle flex items-center justify-between">
         <Link href="/" className="inline-flex" aria-label={copy.common.homeLabel}>
           <BentoLogo />
         </Link>
@@ -30,7 +30,7 @@ export function AuthShell({
       </header>
 
       <div className="mt-8 grid items-start gap-6 md:mt-12 md:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)] md:items-stretch">
-        <section className="tile up p-6 sm:p-8" style={{ animationDelay: ".05s" }}>
+        <section className="tile settle p-6 sm:p-8" style={{ animationDelay: ".05s" }}>
           <h1 className="text-[2rem] font-bold leading-tight">{title}</h1>
           <p className="mt-2 text-[0.98rem] leading-relaxed text-ink-2">{subtitle}</p>
           <div className="mt-7">{children}</div>

@@ -11,7 +11,7 @@ export function StatusPage({ kicker, title, figure, children }: { kicker: string
       <Link href="/" className="inline-flex self-start" aria-label={copy.common.homeLabel}>
         <BentoLogo />
       </Link>
-      <section className="tile up mt-10 p-6 sm:p-8">
+      <section className="tile settle mt-10 p-6 sm:p-8">
         {figure && <div className="mb-4">{figure}</div>}
         <p className="mono text-[0.7rem] uppercase tracking-[0.12em] text-ink-3">{kicker}</p>
         <h1 className="mt-2 text-[1.8rem] font-bold leading-tight">{title}</h1>

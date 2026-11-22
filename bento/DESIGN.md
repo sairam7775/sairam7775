@@ -257,6 +257,7 @@ One shadow (`{elevation.tile}`) for tiles and floating pills. The lacquer box ha
 ## Motion
 
 - Tiles **rise** into place on load (`.up`, 620ms, staggered with `animation-delay`); bars **grow**; badges **pop**; rings fill.
+- The first screen's text (the header, a page's heading and its first tile) **settles** instead (`.settle`): the same movement with no fade, so it is painted at once. Starting at opacity 0 held back the home page's Largest Contentful Paint; `.up` is for what comes after.
 - **Loading** is the Bento mark with the umeboshi hopping clockwise between compartments (`<BentoLoader>`), with a skeleton of the page's real shape on the trip page so nothing jumps when data arrives. The loader stays the plain mark. In chat, Bento Man's thinking head sits beside what he is doing ("Checking the route…").
 - Everything stops under `prefers-reduced-motion`; the loader falls back to a gentle pulse.
 

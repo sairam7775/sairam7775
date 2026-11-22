@@ -134,7 +134,7 @@ export default async function VaultPage({ params, searchParams }: PageProps<"/tr
         <div className="min-w-0">
           <BentoManCard tripId={id} tip={tip} />
 
-          <header className="up mt-7" style={{ animationDelay: ".05s" }}>
+          <header className="settle mt-7" style={{ animationDelay: ".05s" }}>
             <h1 className="text-[2.2rem] font-extrabold leading-none sm:text-[2.8rem]">{t.title}</h1>
             <p className="mt-2.5 max-w-[62ch] text-[0.98rem] leading-relaxed text-ink-2">
               {t.intro}

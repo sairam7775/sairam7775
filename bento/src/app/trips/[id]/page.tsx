@@ -178,7 +178,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
       <div className="mt-6 grid lg:items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(380px,34%)]">
         <section aria-label={t.planLabel} className="min-w-0">
-          <header className="up" style={{ animationDelay: ".05s" }}>
+          <header className="settle" style={{ animationDelay: ".05s" }}>
             <h1 className="text-[2.4rem] font-extrabold leading-none sm:text-[3rem]">{state.trip.title ?? copy.trips.untitled}</h1>
             {/* On a phone the dates leave the header, which has no room for them. */}
             {state.trip.startDate && state.trip.endDate && (
