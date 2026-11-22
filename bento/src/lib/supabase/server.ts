@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { authCookieOptions } from "./cookie-options";
+import { supabaseFetch } from "./timeout";
 
 /** Supabase client for server components, route handlers and actions.
  *  Acts as the signed-in user, so RLS applies. */
@@ -12,6 +13,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookieOptions: authCookieOptions(),
+      global: { fetch: supabaseFetch },
       cookies: {
         getAll() {
           return cookieStore.getAll();

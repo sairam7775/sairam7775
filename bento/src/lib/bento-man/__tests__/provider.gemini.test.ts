@@ -105,11 +105,11 @@ describe("GeminiProvider", () => {
       .mockResolvedValueOnce(new Response("{}", { status: 503 }))
       .mockResolvedValueOnce(new Response("{}", { status: 500 }))
       .mockResolvedValueOnce(sse([{ candidates: [{ content: { parts: [{ text: "Hi." }] }, finishReason: "STOP" }] }]));
-    const wait = vi.fn(async () => {});
+    const wait = vi.fn<(ms: number, signal?: AbortSignal) => Promise<void>>(async () => {});
     const result = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, wait).call(request);
     expect(result.text).toBe("Hi.");
     expect(fetcher).toHaveBeenCalledTimes(3);
-    expect(wait.mock.calls).toEqual([[1_000], [3_000]]);
+    expect(wait.mock.calls.map(([ms]) => ms)).toEqual([1_000, 3_000]);
   });
 
   it("moves to the next model when one is out of quota, and skips it on the next call", async () => {
@@ -170,6 +170,69 @@ describe("GeminiProvider", () => {
   it("marks a call that hit its time limit as timed out", async () => {
     const fetcher = vi.fn<typeof fetch>().mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
     const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call(request).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+  });
+
+  it("stops a streaming call when the turn's time is up, keeping the usage it reported", async () => {
+    const turn = new AbortController();
+    const fetcher = vi.fn<typeof fetch>(async (_url, init) => new Response(new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify({ candidates: [{ content: { parts: [{ text: "Half" }] } }], usageMetadata: { promptTokenCount: 50, candidatesTokenCount: 1 } })}\r\n\r\n`));
+        init?.signal?.addEventListener("abort", () => controller.error(init.signal!.reason));
+      },
+    })));
+    const onText = vi.fn(() => turn.abort(new DOMException("The operation timed out.", "TimeoutError")));
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call({ ...request, onText, signal: turn.signal }).catch((e) => e);
+    expect(onText).toHaveBeenCalledWith("Half");
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    expect(error.usage).toMatchObject({ inputTokens: 50, outputTokens: 1 });
+    expect(error.reachedModel).toBe(true);
+  });
+
+  it("reports a call cut off before the response headers as timed out with no usage", async () => {
+    const fetcher = vi.fn<typeof fetch>((_url, init) => new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener("abort", () => reject(init.signal!.reason));
+    }));
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call({ ...request, signal: AbortSignal.timeout(20) }).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    expect(error.model).toBe("gemini-3.8-flash");
+    expect(error.usage).toBeUndefined();
+    // The request was out: the model may have been working on it.
+    expect(error.reachedModel).toBe(true);
+  });
+
+  it("says a call stopped before any request went out never reached the model", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    const turn = new AbortController();
+    turn.abort(new DOMException("The operation timed out.", "TimeoutError"));
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, vi.fn(async () => {}), []).call({ ...request, signal: turn.signal }).catch((e) => e);
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(error.timedOut).toBe(true);
+    expect(error.reachedModel).toBe(false);
+  });
+
+  it("stops waiting to retry as soon as the turn's time is up", async () => {
+    const fetcher = vi.fn<typeof fetch>(async () => new Response("{}", { status: 503 }));
+    const started = Date.now();
+    // The default wait: the first retry would be a second away.
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, undefined, []).call({ ...request, signal: AbortSignal.timeout(50) }).catch((e) => e);
+    expect(Date.now() - started).toBeLessThan(800);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    // Cut off in the wait after a 503: no request was out.
+    expect(error.reachedModel).toBe(false);
+  });
+
+  it("tries no retry or fallback model once the turn's time is up", async () => {
+    const turn = new AbortController();
+    const fetcher = vi.fn<typeof fetch>(async () => new Response("{}", { status: 503 }));
+    const wait = vi.fn(async () => { turn.abort(new DOMException("The operation timed out.", "TimeoutError")); });
+    const error = await new GeminiProvider("fake-key", "gemini-3.8-flash", fetcher, wait, ["gemini-3.6-flash"]).call({ ...request, signal: turn.signal }).catch((e) => e);
+    expect(fetcher).toHaveBeenCalledTimes(1);
     expect(error).toBeInstanceOf(ProviderCallError);
     expect(error.timedOut).toBe(true);
   });

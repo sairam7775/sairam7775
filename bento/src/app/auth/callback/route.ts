@@ -2,6 +2,7 @@ import { createClient as createSupabaseClient, type EmailOtpType } from "@supaba
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { safeNext } from "@/lib/safe-next";
+import { supabaseFetch } from "@/lib/supabase/timeout";
 import { holdForConfirmation, isWrongBrowser, landSignedIn, linkFailed } from "@/lib/auth-landing";
 import { copy } from "@/copy";
 
@@ -12,6 +13,7 @@ const EMAIL_TYPES: readonly EmailOtpType[] = ["recovery", "email", "signup", "ma
 function linkChecker() {
   return createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    global: { fetch: supabaseFetch },
   });
 }
 

@@ -97,8 +97,19 @@ export const SAFETY_SETTINGS = ["HARM_CATEGORY_HARASSMENT", "HARM_CATEGORY_HATE_
 const RETRYABLE = new Set([500, 503, 504]);
 const RETRY_DELAYS_MS = [1_000, 3_000];
 // A turn can make several calls inside the route's 120 s; one stalled call
-// must not use all of it.
+// must not use all of it. Each request also stops when the turn's own
+// deadline does (`request.signal`), whichever comes first.
 const CALL_TIMEOUT_MS = 60_000;
+
+/** A retry's wait, cut short by the turn's signal (it rejects with its reason). */
+function abortableWait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const timer = setTimeout(() => { signal?.removeEventListener("abort", stop); resolve(); }, ms);
+    const stop = () => { clearTimeout(timer); reject(signal!.reason); };
+    signal?.addEventListener("abort", stop, { once: true });
+  });
+}
 
 export class GeminiProvider implements ChatProvider {
   private readonly assistantParts = new WeakMap<ToolCall[], Part[]>();
@@ -116,7 +127,7 @@ export class GeminiProvider implements ChatProvider {
     private readonly apiKey = process.env.GEMINI_API_KEY ?? "",
     model = process.env.BENTO_MAN_MODEL?.trim() || DEFAULT_GEMINI_MODEL,
     private readonly fetcher: typeof fetch = fetch,
-    private readonly wait: (ms: number) => Promise<void> = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    private readonly wait: (ms: number, signal?: AbortSignal) => Promise<void> = abortableWait,
     fallbacks?: string[],
   ) {
     this.model = model.replace(/^models\//, "");
@@ -157,6 +168,10 @@ export class GeminiProvider implements ChatProvider {
     const texts: string[] = [];
     const toolCalls: ToolCall[] = [];
     let finish: string | undefined;
+    // A request is out (sent, or answered and streaming). Cut off between
+    // requests (before the first, or waiting to retry after a 5xx, which
+    // isn't billed), the call never reached the model.
+    let out = false;
     try {
       const body = JSON.stringify({
         systemInstruction: { parts: [{ text: request.system }] },
@@ -177,22 +192,29 @@ export class GeminiProvider implements ChatProvider {
         if (this.exhausted.has(candidate)) continue;
         model = candidate;
         for (let attempt = 0; ; attempt++) {
+          // The turn's time ran out during a retry wait: no further request.
+          request.signal?.throwIfAborted();
+          const ownLimit = AbortSignal.timeout(CALL_TIMEOUT_MS);
+          out = true;
           response = await this.fetcher(
             `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidate)}:streamGenerateContent?alt=sse`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
-              signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
+              // Also covers reading the stream: the body aborts with the request.
+              signal: request.signal ? AbortSignal.any([ownLimit, request.signal]) : ownLimit,
               body,
             },
           );
           if (response.ok) break models;
           // Don't include upstream bodies in errors: they may echo prompts or keys.
           await response.body?.cancel();
+          out = false;
           status = response.status;
           // Overload is common and short: retry the same model first.
           if (attempt < RETRY_DELAYS_MS.length && RETRYABLE.has(status)) {
-            await this.wait(RETRY_DELAYS_MS[attempt]);
+            // Ends early, as an abort, when the turn's time is up.
+            await this.wait(RETRY_DELAYS_MS[attempt], request.signal);
             continue;
           }
           // Out of quota, or still overloaded: the next model has its own.
@@ -239,7 +261,7 @@ export class GeminiProvider implements ChatProvider {
       if (e instanceof ProviderCallError) throw e;
       // Stream/callback errors retain any usage reported before the failure.
       const timedOut = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
-      throw new ProviderCallError(timedOut ? "Gemini call timed out" : "Gemini stream failed", model, usage, undefined, timedOut);
+      throw new ProviderCallError(timedOut ? "Gemini call timed out" : "Gemini stream failed", model, usage, undefined, timedOut, out);
     }
   }
 }

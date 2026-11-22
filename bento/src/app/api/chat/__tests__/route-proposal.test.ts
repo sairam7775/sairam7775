@@ -15,10 +15,12 @@ vi.mock("@/lib/guards/rate-limit", () => ({ rateLimit: async () => ({ allowed: t
 vi.mock("@/lib/guards/spend", () => ({ reserveSpend: vi.fn(async () => ({ settle: vi.fn() })), SpendCapExceeded: class extends Error {} }));
 vi.mock("@/lib/bento-man/store.supabase", () => ({ SupabaseStore: class {} }));
 vi.mock("@/lib/bento-man/chat", () => ({
+  TURN_DEADLINE_MS: 75_000,
   firstHoldThen: () => ({ hold: vi.fn() }),
   runBentoMan: vi.fn(async () => ({ assistantMessageId: "m1", text: "Here", proposal: structuredClone(proposal) })),
 }));
 import { POST } from "../route";
+import { runBentoMan } from "@/lib/bento-man/chat";
 
 afterEach(() => { vi.unstubAllEnvs(); });
 
@@ -31,5 +33,15 @@ describe("chat API done event", () => {
     const done = events.find((e) => e.type === "done");
     expect(done.proposal.days[0]).toMatchObject({ date: "2026-11-21", cityId: "kyoto-city" });
     expect(done.proposal.days[0]).not.toHaveProperty("base");
+  });
+
+  it("gives the turn a deadline counted from the request's start", async () => {
+    vi.stubEnv("BENTO_MAN_MOCK", "1");
+    const before = Date.now();
+    const request = new Request("http://localhost/api/chat", { method: "POST", body: JSON.stringify({ tripId: "b8ca68c7-0e71-41b6-9e4c-3c244dc2e135", message: "plan" }) }) as NextRequest;
+    await (await POST(request)).text();
+    const { deadline } = vi.mocked(runBentoMan).mock.calls.at(-1)![0];
+    expect(deadline).toBeGreaterThanOrEqual(before + 75_000);
+    expect(deadline).toBeLessThanOrEqual(Date.now() + 75_000);
   });
 });

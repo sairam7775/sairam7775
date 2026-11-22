@@ -42,7 +42,27 @@ export interface RunOptions {
    *  the returned hold is settled with what the call really cost. Absent in
    *  the eval and the tests. */
   spend?: { hold(inputTokens: number): Promise<CallHold> };
+  /** Epoch ms by which every model call must be over (the route sets it
+   *  from the request's start, `TURN_DEADLINE_MS`). No call starts with
+   *  less than `MIN_CALL_MS` left (counted again after its spend hold), no
+   *  tool with less than `MIN_TOOL_MS`, and each call is cut off at it.
+   *  Absent in the eval, which has no platform limit. */
+  deadline?: number;
+  /** The clock the deadline is read against (tests). */
+  now?: () => number;
 }
+
+/** The last moment of a turn's model calls, from the request's start. The
+ *  route's maxDuration is 120 s; the rest is for what follows the last call
+ *  (its settle and the reply's save, each a write bounded at 15 s by the
+ *  Supabase fetch timeout), with 15 s to spare. */
+export const TURN_DEADLINE_MS = 75_000;
+/** A call given less than this would mostly be paid for and cut off. */
+export const MIN_CALL_MS = 10_000;
+/** No tool starts with less than this left: what it proposes still shows
+ *  (a capped ending), but a stalled database can't carry it far past the
+ *  deadline (each of its reads stops at 10 s). */
+export const MIN_TOOL_MS = 5_000;
 
 export interface CallHold {
   settle(usage: { model: string; inputTokens: number; outputTokens: number; cachedTokens?: number; costUsd: number } | null): Promise<void>;
@@ -123,7 +143,8 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
   const usageByModel: UsageByModel = {};
   let stopReason: string | null = null;
   let servedBy = provider.model;
-  /** The last tool round ran with no model call left to close the turn. */
+  /** The last tool round ran with no model call left to close the turn:
+   *  out of rounds, or out of time. */
   let ranOut = false;
 
   // A turn that dies after a model call still cost money. The partial
@@ -142,14 +163,28 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     );
   };
 
+  const now = opts.now ?? Date.now;
+  const deadline = opts.deadline;
+
   try {
   for (let i = 0; i < maxIterations; i++) {
+    // Out of time: no new round, so the platform never cuts the turn off
+    // with nothing saved. A later round ends like a turn out of tool rounds
+    // (the closing below); a first call has nothing to save and fails as a
+    // call that took too long, before any hold is taken.
+    const left = deadline === undefined ? Infinity : deadline - now();
+    if (left < MIN_CALL_MS) {
+      if (i === 0) throw new ProviderCallError("No time left for a model call", provider.model, undefined, undefined, true);
+      ranOut = true;
+      break;
+    }
+    // As the provider will send it: it may add back retained thinking.
+    const sizing = { system: SYSTEM_PROMPT, tools: TOOLS, messages };
+    const inputEstimate = provider.inputTokens?.(sizing) ?? estimateInputTokens(sizing);
     let hold: CallHold | undefined;
     if (opts.spend) {
       try {
-        // As the provider will send it: it may add back retained thinking.
-        const request = { system: SYSTEM_PROMPT, tools: TOOLS, messages };
-        hold = await opts.spend.hold(provider.inputTokens?.(request) ?? estimateInputTokens(request));
+        hold = await opts.spend.hold(inputEstimate);
       } catch (e) {
         // Out of budget before the first call is the caller's to report;
         // out of budget between tool rounds just ends the turn here.
@@ -158,12 +193,45 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
         break;
       }
     }
+    // Taking the hold is a database call too: count the time again. A call
+    // that can't start gives its hold back, like a call that never ran.
+    const callLeft = deadline === undefined ? Infinity : deadline - now();
+    if (callLeft < MIN_CALL_MS) {
+      await hold?.settle(null);
+      if (i === 0) throw new ProviderCallError("No time left for a model call", provider.model, undefined, undefined, true);
+      ranOut = true;
+      break;
+    }
     let msg;
     try {
-      msg = await provider.call({ system: SYSTEM_PROMPT, messages, tools: TOOLS, maxOutputTokens: MAX_TOKENS, onText: events?.onText });
+      // Each call gets only the turn's time left (the provider's own limit
+      // per request still applies when it is shorter).
+      const signal = deadline === undefined ? undefined : AbortSignal.timeout(callLeft);
+      msg = await provider.call({ system: SYSTEM_PROMPT, messages, tools: TOOLS, maxOutputTokens: MAX_TOKENS, onText: events?.onText, signal });
     } catch (e) {
-      if (e instanceof ProviderCallError && e.usage) await account(e.model, e.usage, hold);
+      if (e instanceof ProviderCallError && e.timedOut && e.reachedModel) {
+        // Cut off after the request went out: the model was working, and
+        // output is only reported when a stream ends (Anthropic), or not at
+        // all before the first chunk. Charge it as the hold assumed: the
+        // request's whole input at the full rate and the whole output
+        // allowance, or what it reported if that is more.
+        const r = e.usage;
+        await account(e.model, {
+          inputTokens: Math.max(inputEstimate, (r?.inputTokens ?? 0) + (r?.cacheReadTokens ?? 0) + (r?.cacheWriteTokens ?? 0)),
+          outputTokens: Math.max(r?.outputTokens ?? 0, MAX_TOKENS),
+          cacheWriteTokens: 0,
+          cacheReadTokens: 0,
+        }, hold);
+      } else if (e instanceof ProviderCallError && e.usage) await account(e.model, e.usage, hold);
       else await hold?.settle(null);
+      // A later call that ran out of time ends the turn as one out of tool
+      // rounds, so what earlier rounds proposed is saved, not lost to an
+      // error. Its streamed text is dropped (replaced on screen below).
+      if (i > 0 && e instanceof ProviderCallError && e.timedOut) {
+        stream.stop();
+        ranOut = true;
+        break;
+      }
       throw e;
     }
 
@@ -196,7 +264,14 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     messages.push({ role: "assistant", content: msg.text, toolCalls: uses });
 
     const results: ToolResult[] = [];
+    let outOfTime = false;
     for (const use of uses) {
+      // Too close to the deadline: no more tools. What earlier ones proposed
+      // stays, and the turn ends like one out of rounds.
+      if (deadline !== undefined && deadline - now() < MIN_TOOL_MS) {
+        outOfTime = true;
+        break;
+      }
       events?.onTool?.(use.name, "start", true);
       let outcome;
       try {
@@ -210,6 +285,10 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
       // cleaned at the boundary, byte-identical when nothing needs it.
       results.push({ id: use.id, name: use.name, content: cleanToolResult(outcome.result), isError: outcome.isError || undefined });
     }
+    if (outOfTime) {
+      ranOut = true;
+      break;
+    }
     messages.push({ role: "user", content: results });
     if (i === maxIterations - 1) ranOut = true;
   }
@@ -218,7 +297,7 @@ export async function runBentoMan(opts: RunOptions): Promise<RunResult> {
     throw fail(e);
   }
 
-  // Out of tool rounds with no closing words: whatever was proposed may be a
+  // Out of tool rounds (or time) with no closing words: whatever was proposed may be a
   // step towards the request, not all of it, so it isn't called "what I'd
   // suggest"; with nothing proposed, there was no reply.
   let corrected = false;

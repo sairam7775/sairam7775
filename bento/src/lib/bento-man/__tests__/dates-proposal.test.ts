@@ -6,6 +6,11 @@ import { MemoryStore, type MemorySetup } from "../store.memory";
 import { runTool, type ToolContext } from "../tools";
 import { datesDiff, describeDates, mergeProposals, parseProposal } from "../diff";
 import { buildContext } from "../context";
+import { copy } from "@/copy";
+import { runBentoMan } from "../chat";
+import { ZERO_USAGE } from "../cost";
+import type { ModelResult } from "../provider";
+import { OutcomeUnknownError } from "../store";
 
 const nov = { title: "Kansai", startDate: "2026-11-20", endDate: "2026-11-29", partySize: 2 };
 const routed: MemorySetup = {
@@ -173,5 +178,34 @@ describe("the proposal and the trip state", () => {
     const prefs = (await store.state()).prefs;
     expect(prefs.pace).toBe("relaxed");
     expect(prefs.autoApplyDates).toBe(false);
+  });
+});
+
+describe("set_trip_dates when the save can't be confirmed", () => {
+  /** The database didn't answer in time: the change may or may not have landed. */
+  const unconfirmed = () => {
+    const store = new MemoryStore({ cities: [] });
+    store.setTripDates = async () => { throw new OutcomeUnknownError(copy.plan.dates.outcomeUnknown); };
+    return store;
+  };
+
+  it("says so to the model instead of an error, and claims neither", async () => {
+    const r = await runTool("set_trip_dates", { start_date: "2026-11-20", end_date: "2026-11-29" }, ctxFor(unconfirmed()));
+    expect(r.isError).toBeFalsy();
+    const out = JSON.parse(r.result);
+    expect(out).toMatchObject({ saved: "unknown" });
+    expect(out.trip).toBeUndefined();
+    expect(out.note).toMatch(/could not confirm/i);
+  });
+
+  it("gets no not-changed line on a reply about a change that may have landed", async () => {
+    const said = "I've updated your trip dates to 20–29 November.";
+    let n = 0;
+    const call = async (): Promise<ModelResult> => n++ === 0
+      ? { text: "", toolCalls: [{ id: "t1", name: "set_trip_dates", input: { start_date: "2026-11-20", end_date: "2026-11-29" } }], stopReason: "tool_use", usage: { ...ZERO_USAGE }, model: "claude-opus-5" }
+      : { text: said, toolCalls: [], stopReason: "end", usage: { ...ZERO_USAGE }, model: "claude-opus-5" };
+    const r = await runBentoMan({ store: unconfirmed(), provider: { model: "claude-opus-5", call }, today: "2026-09-15", message: "We go 20 to 29 November." });
+    expect(r.text).toBe(said);
+    expect(r.text).not.toContain(copy.chat.notChanged);
   });
 });

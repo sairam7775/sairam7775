@@ -7,12 +7,13 @@ import { PLACE_COLUMNS, rowToPlace } from "@/lib/engine/load";
 import { allocateDates, hubFor, type CityFacts } from "@/lib/engine/route";
 import { loadGraph } from "@/lib/transit/load";
 import { selectAll } from "@/lib/supabase/select-all";
+import { isSupabaseTimeout } from "@/lib/supabase/timeout";
 import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { PREF_COLUMNS, prefsFromRow } from "./prefs-row";
 import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
 import { shiftConflicts, shiftRefusal } from "./shift";
-import { DEFAULT_PREFS, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
+import { DEFAULT_PREFS, OutcomeUnknownError, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
 import { loadBackgrounds, type PlaceBackground } from "@/lib/places/backgrounds";
 import { copy } from "@/copy";
@@ -199,7 +200,11 @@ export class SupabaseStore implements TripStore {
       p_reject: prepared.reject,
       p_expect: { start_date: before.trip.startDate, end_date: before.trip.endDate },
     });
-    if (error) throw /trip dates changed meanwhile/.test(error.message) ? new Error(copy.plan.dates.changedMeanwhile) : error;
+    if (error) {
+      // It may have committed after the client stopped waiting.
+      if (isSupabaseTimeout(error)) throw this.unknownOutcome(copy.plan.dates.outcomeUnknown);
+      throw /trip dates changed meanwhile/.test(error.message) ? new Error(copy.plan.dates.changedMeanwhile) : error;
+    }
     this.stateCache = null;
     return (await this.state()).trip;
   }
@@ -382,7 +387,8 @@ export class SupabaseStore implements TripStore {
       p_expect_start: meta.startDate,
       p_expect_end: meta.endDate,
     });
-    if (error) throw error;
+    // Timed out: it may have committed after the client stopped waiting.
+    if (error) throw isSupabaseTimeout(error) ? this.unknownOutcome(copy.trip.proposals.outcomeUnknown) : error;
     this.stateCache = null;
     // No value, with no error: the database doesn't have 0031 yet. That
     // function returns void and either raises or has applied and
@@ -395,7 +401,7 @@ export class SupabaseStore implements TripStore {
     if (outcome === "stale_day") throw new Error(copy.trip.proposals.staleDay);
     // Anything else: the call finished but we can't say what it did, so
     // claim neither success nor failure.
-    throw new Error(copy.trip.proposals.outcomeUnknown);
+    throw new OutcomeUnknownError(copy.trip.proposals.outcomeUnknown);
   }
 
   /** A proposal that moves the dates: the date change (as setTripDates
@@ -431,8 +437,14 @@ export class SupabaseStore implements TripStore {
       p_route: routeRows(p, d.after),
       p_days: dayRows(p),
     });
-    if (error) throw error;
+    if (error) throw isSupabaseTimeout(error) ? this.unknownOutcome(copy.trip.proposals.outcomeUnknown) : error;
     this.stateCache = null;
+  }
+
+  /** A write timed out: it may have landed, so nothing read before it stands. */
+  private unknownOutcome(message: string): OutcomeUnknownError {
+    this.stateCache = null;
+    return new OutcomeUnknownError(message);
   }
 
   async saveDay(day: DayRow): Promise<void> {

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/guards/rate-limit";
 import { readJsonLimited } from "@/lib/guards/read-json";
 import { reserveSpend, SpendCapExceeded } from "@/lib/guards/spend";
-import { firstHoldThen, runBentoMan } from "@/lib/bento-man/chat";
+import { firstHoldThen, runBentoMan, TURN_DEADLINE_MS } from "@/lib/bento-man/chat";
 import { chainBoundUsd, configuredEffort, configuredFallbacks, configuredModel } from "@/lib/bento-man/cost";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
 import { proposalForClient } from "@/lib/bento-man/diff";
@@ -30,6 +30,9 @@ const MAX_BODY_BYTES = 16 * 1024;
 export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
+  // The turn's model calls end by TURN_DEADLINE_MS from here, so the
+  // platform never stops a turn before its reply is saved.
+  const deadline = Date.now() + TURN_DEADLINE_MS;
   const db = await createClient();
   const { data: { user } } = await db.auth.getUser();
   if (!user) return NextResponse.json({ error: copy.server.signInFirst }, { status: 401 });
@@ -96,7 +99,7 @@ export async function POST(req: NextRequest) {
 
       try {
         const result = await runBentoMan({
-          store, provider, today, message, spend,
+          store, provider, today, message, spend, deadline,
           events: {
             onText: (delta) => send({ type: "text", delta }),
             onTool: (name, phase, ok) => send({ type: "tool", name, phase, ok }),

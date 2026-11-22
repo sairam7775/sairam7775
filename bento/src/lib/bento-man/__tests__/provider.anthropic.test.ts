@@ -2,6 +2,7 @@ import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
 import { estimateInputTokens } from "../cost";
 import { AnthropicProvider } from "../provider.anthropic";
+import { ProviderCallError } from "../provider";
 import { TOOLS } from "../tools";
 import { SYSTEM_PROMPT } from "../prompt";
 
@@ -42,6 +43,71 @@ describe("AnthropicProvider compatibility", () => {
       { role: "assistant", content: blocks },
       { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: "bad input", is_error: true }] },
     ] }));
+  });
+
+  it("passes the turn's signal to the SDK and reports a call it cut off as timed out, with the usage so far", async () => {
+    const turn = new AbortController();
+    const stream = vi.fn((_params: unknown, options?: { signal?: AbortSignal }) => ({
+      // The response had started: the SDK emits "connect" with its headers.
+      on: (event: string, listener: () => void) => { if (event === "connect") listener(); },
+      currentMessage: { model: "claude-opus-5", usage: { input_tokens: 900, output_tokens: 7, cache_creation_input_tokens: 0, cache_read_input_tokens: 100 } },
+      finalMessage: () => new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => reject(new Error("Request was aborted.")));
+        turn.abort(new DOMException("The operation timed out.", "TimeoutError"));
+      }),
+    }));
+    const provider = new AnthropicProvider({ beta: { messages: { stream } } } as unknown as Anthropic, "claude-opus-5", "medium");
+    const error = await provider.call({ system: "", tools: [], maxOutputTokens: 100, messages: [{ role: "user", content: "Hi" }], signal: turn.signal }).catch((e) => e);
+    expect(stream.mock.calls[0][1]).toEqual({ signal: turn.signal });
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    expect(error.model).toBe("claude-opus-5");
+    expect(error.usage).toEqual({ inputTokens: 900, outputTokens: 7, cacheWriteTokens: 0, cacheReadTokens: 100 });
+    expect(error.reachedModel).toBe(true);
+  });
+
+  it("reports a call cut off before the message started as timed out with no usage (the chat charges it conservatively)", async () => {
+    const turn = new AbortController();
+    const stream = vi.fn((_params: unknown, options?: { signal?: AbortSignal }) => ({
+      on: () => {},
+      currentMessage: undefined,
+      finalMessage: () => new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => reject(new Error("Request was aborted.")));
+        turn.abort(new DOMException("The operation timed out.", "TimeoutError"));
+      }),
+    }));
+    const provider = new AnthropicProvider({ beta: { messages: { stream } } } as unknown as Anthropic, "claude-opus-5", "medium");
+    const error = await provider.call({ system: "", tools: [], maxOutputTokens: 100, messages: [{ role: "user", content: "Hi" }], signal: turn.signal }).catch((e) => e);
+    expect(error).toBeInstanceOf(ProviderCallError);
+    expect(error.timedOut).toBe(true);
+    expect(error.model).toBe("claude-opus-5");
+    expect(error.usage).toBeUndefined();
+    // No response had started (connecting, or the SDK's wait between retries).
+    expect(error.reachedModel).toBe(false);
+  });
+
+  it("counts a call whose response had started as having reached the model, usage or not", async () => {
+    const turn = new AbortController();
+    const stream = vi.fn((_params: unknown, options?: { signal?: AbortSignal }) => ({
+      on: (event: string, listener: () => void) => { if (event === "connect") listener(); },
+      currentMessage: undefined,
+      finalMessage: () => new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener("abort", () => reject(new Error("Request was aborted.")));
+        turn.abort(new DOMException("The operation timed out.", "TimeoutError"));
+      }),
+    }));
+    const provider = new AnthropicProvider({ beta: { messages: { stream } } } as unknown as Anthropic, "claude-opus-5", "medium");
+    const error = await provider.call({ system: "", tools: [], maxOutputTokens: 100, messages: [{ role: "user", content: "Hi" }], signal: turn.signal }).catch((e) => e);
+    expect(error.timedOut).toBe(true);
+    expect(error.reachedModel).toBe(true);
+  });
+
+  it("leaves other failures as they were", async () => {
+    const boom = new Error("overloaded");
+    const stream = vi.fn(() => ({ on: () => {}, finalMessage: async () => { throw boom; } }));
+    const provider = new AnthropicProvider({ beta: { messages: { stream } } } as unknown as Anthropic, "claude-opus-5", "medium");
+    const error = await provider.call({ system: "", tools: [], maxOutputTokens: 100, messages: [{ role: "user", content: "Hi" }], signal: new AbortController().signal }).catch((e) => e);
+    expect(error).toBe(boom);
   });
 
   it("measures the request it will really send, retained thinking included (Codex review on #54)", async () => {
