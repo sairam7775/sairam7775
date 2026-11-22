@@ -12,13 +12,26 @@ export async function loadPlacesForCity(cityId: string): Promise<PlaceInput[]> {
   const [{ data: city, error: e1 }, rows] = await Promise.all([
     db.from("cities").select("coverage_tier").eq("id", cityId).maybeSingle(),
     // Paged so the API's row limit can't silently drop places.
-    selectAll((from, to) => db.from("places_public").select("*", { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
+    selectAll((from, to) => db.from("places_public").select(PLACE_COLUMNS, { count: "exact" }).eq("city_id", cityId).order("id").range(from, to)),
   ]);
   if (e1) throw e1;
   const tier = (city?.coverage_tier ?? "stub") as CoverageTier;
 
   return rows.map((r) => rowToPlace(r, tier));
 }
+
+/** The places_public columns rowToPlace reads, and nothing else: every
+ *  traveller-facing loader selects these rather than "*" (the view's
+ *  last_verified and sources are never read). place-columns.test.ts keeps
+ *  this list equal to what rowToPlace reads; a column added to the view and
+ *  to rowToPlace goes here too. Every name must exist in the view, or the
+ *  request fails. */
+export const PLACE_COLUMNS =
+  "id, city_id, name, name_ja, category, coords, nearest_station, station_walk_min, " +
+  "interest_tags, energy, crowd_level, discovery, signature, physical_demand, " +
+  "duration_taste_min, duration_typical_min, duration_full_min, best_window, crowd_note, worth_it_if, skip_if, local_tip, " +
+  "cost_jpy, booking_req, booking_lead_days, opens_at, closes_at, closed_weekdays, closed_dates, " +
+  "conflicts_with, pairs_with, verification_status, seasons, hours_vary, closed_yearly, evening_only";
 
 /** A places_public row as the engine reads it. Shared with Bento Man's
  *  store so both paths read the same gate the same way. */
