@@ -470,7 +470,9 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   out of anything a traveller reads.
 - Which season shows: `?season=` preview, then Settings → Appearance → Background (the
   `bento_season` cookie, passed from the root layout as `chosen`), then a
-  trip page's `<UseSeason>`, then today's date in the browser.
+  trip page's `<UseSeason>`, then today's date in the browser. The five
+  scenes that aren't seasons (`SCENE_THEMES`: tsuyu, fuji, night, matsuri,
+  shrine) come only from the first two; Automatic never shows one.
 - No `backdrop-filter` or `filter` on anything that animates or sits over
   animation — it re-rasterises every frame. Blur only static layers.
 - `DESIGN.md` is the design system in prose and tokens: read it before UI

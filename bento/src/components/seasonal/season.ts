@@ -16,15 +16,33 @@ export function isSeason(x: unknown): x is Season {
   return typeof x === "string" && (SEASONS as string[]).includes(x);
 }
 
+/** Scenes that aren't a season: only ever shown when chosen (Settings or a
+ *  `?season=` preview), never by date. */
+export const SCENE_THEMES = ["tsuyu", "fuji", "night", "matsuri", "shrine"] as const;
+export type SceneTheme = (typeof SCENE_THEMES)[number];
+
+/** Anything the backdrop can draw: a season or a scene. */
+export type Background = Season | SceneTheme;
+
+export function isBackground(x: unknown): x is Background {
+  return isSeason(x) || (typeof x === "string" && (SCENE_THEMES as readonly string[]).includes(x));
+}
+
 /** Settings → Background: "auto" follows the date (or a trip's own season
- *  on its page); a season shows that one everywhere. A cookie, per device,
- *  read by the root layout. */
-export const BACKGROUNDS = ["auto", ...SEASONS] as const;
+ *  on its page); a season or a scene shows that one everywhere. A cookie,
+ *  per device, read by the root layout. */
+export const BACKGROUNDS = ["auto", "spring", "summer", "autumn", "winter", ...SCENE_THEMES] as const;
 export type BackgroundChoice = (typeof BACKGROUNDS)[number];
 export const BACKGROUND_COOKIE = "bento_season";
 
 export function parseBackground(value: string | undefined): BackgroundChoice {
-  return isSeason(value) ? value : "auto";
+  return isBackground(value) ? value : "auto";
+}
+
+/** `?season=fuji` in the address previews any season or scene. */
+export function previewOf(search: string): Background | null {
+  const q = new URLSearchParams(search).get("season");
+  return isBackground(q) ? q : null;
 }
 
 /** Deterministic 0–1 noise, so particle layouts are stable across renders. */

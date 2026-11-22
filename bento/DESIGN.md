@@ -283,11 +283,23 @@ Behind every page sits a blurred Japanese scene for the season (`src/components/
 | Autumn (Sep–Nov) | Maple tree, Kyoto pagoda on the hills | Momiji leaves falling and spinning |
 | Winter (Dec–Feb) | Snowy Alps, cedars, the Jigokudani onsen with a snow monkey (Nagano) | Snowfall, onsen steam, the monkey bobs and blinks |
 
-- Settings → Appearance → Background chooses the season: **Automatic** (the default) or one season everywhere (the `bento_season` cookie). Automatic is today's season, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`). A chosen season wins over both, trip pages included. `?season=winter` previews any season on any page and wins over everything.
+Five more scenes are never picked by date, only chosen (`SCENE_THEMES` in `season.ts`; the cookie and `?season=` value in brackets):
+
+| Scene | Drawing | Motion |
+|---|---|---|
+| Rainy season (`tsuyu`) | Misty hills, a temple roof in the mist, hydrangea bushes, puddles | Fine slanted rain, rings on the puddles, the bushes sway |
+| Mount Fuji (`fuji`) | Fuji at dawn over a still lake, its reflection, the sun beside it, reeds | Light glints on the water, reeds sway, pale haze drifts |
+| Night city (`night`) | A lantern-lit street of wooden townhouses at dusk toward a pagoda, plain noren | Lanterns swing, warm glow drifts |
+| Summer festival (`matsuri`) | Fireworks over a row of stalls and strings of paper lanterns | Fireworks open and fade, lanterns swing, sparks drift |
+| Grand shrine (`shrine`) | A path of vermilion torii up to the main hall, stone lanterns, cedars | Cedars sway, sun motes drift |
+
+- Settings → Appearance → Background chooses: **Automatic** (the default), one season, or one scene everywhere (the `bento_season` cookie). Automatic is today's season, except on a trip page, which shows the season of the trip's start date (`<UseSeason>`); it never shows a scene. A chosen season or scene wins over both, trip pages included. `?season=winter` (or `?season=fuji`) previews any of them on any page and wins over everything; an unknown value is ignored.
+- Every drawing is original: no shop names, signs, writing on lanterns, logos or copies of a photo.
+- A scene's sky stays light enough at the top for the logo's dark mark in the dark theme (the night and festival skies are dusk, not black), and nothing bright sits in the centre band behind the page's small grey text.
 - Layers: far scene blurred 10px (static, so it rasterises once), near scene unfiltered (it animates), then a **veil** of paper — densest over the centre column where content sits, lighter at the edges where the tree / onsen / bamboo are — then particles. Tiles are 90% surface, so the scene only tints them and text contrast is unchanged. No `backdrop-filter`: over a moving scene it re-blurs every frame.
 - The scenes use their own illustration palette (hex), the one exception to tokens-only colour.
 - Drawn in SVG and CSS — no image downloads. Particle positions are deterministic (`noise()`), so renders are stable; fewer particles on phones.
-- Decoration only: `aria-hidden`, `pointer-events: none`, rendered after hydration with a fade-in. Under `prefers-reduced-motion` the scene is still and nothing falls.
+- Decoration only: `aria-hidden`, `pointer-events: none`, rendered after hydration with a fade-in. Under `prefers-reduced-motion` the scene is still and nothing falls (fireworks show still, fully open).
 
 ## Voice
 

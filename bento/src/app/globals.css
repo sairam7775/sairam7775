@@ -359,15 +359,75 @@ h1, h2, h3, h4 {
   50% { transform: translateY(4px); }
 }
 
+/* The chosen scenes (rainy season, Fuji, night city, festival, shrine). */
+/* Rain: thin slanted streaks, quick and steady. */
+.season-rain {
+  position: absolute;
+  top: 0;
+  width: 1.5px;
+  border-radius: 1px;
+  background: linear-gradient(to bottom, rgba(150, 170, 205, 0), rgba(150, 170, 205, 0.9));
+  animation: season-rain linear infinite;
+  will-change: transform;
+}
+@keyframes season-rain {
+  from { transform: translate3d(0, -15vh, 0) rotate(8deg); }
+  to { transform: translate3d(-18vh, 112vh, 0) rotate(8deg); }
+}
+/* Rings spreading on the puddles. */
+.season-ripple { animation: season-ripple 3.2s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes season-ripple {
+  0% { transform: scale(0.2); opacity: 0; }
+  20% { opacity: 0.7; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+/* Light on the lake comes and goes. */
+.season-glint { animation: season-glint 3.6s ease-in-out infinite; }
+@keyframes season-glint {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.9; }
+}
+/* Paper lanterns swing a little from where they hang. */
+.season-lantern { animation: season-lantern 4.5s ease-in-out infinite alternate; }
+@keyframes season-lantern {
+  from { transform: rotate(-3deg); }
+  to { transform: rotate(3deg); }
+}
+/* Fireworks open, hang, and fade; each on its own clock. */
+.season-burst { animation: season-burst ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes season-burst {
+  0% { transform: scale(0.15); opacity: 0; }
+  8% { opacity: 1; }
+  45% { transform: scale(1); opacity: 0.95; }
+  70%, 100% { transform: scale(1.08) translateY(6px); opacity: 0; }
+}
+/* Drifting light: haze, lantern glow, sparks, sun motes. */
+.season-mote {
+  position: absolute;
+  border-radius: 9999px;
+  animation-name: season-drift, season-glow;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  animation-direction: alternate, alternate;
+}
+@keyframes season-drift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(60px, -70px); }
+  66% { transform: translate(-30px, -140px); }
+  100% { transform: translate(40px, -90px); }
+}
+
 /* Fewer particles on a phone. */
 @media (max-width: 640px) {
   .season-fall:nth-child(n + 7), .season-snow:nth-child(n + 21), .season-firefly:nth-child(n + 7) { display: none; }
+  .season-rain:nth-child(n + 31), .season-mote:nth-child(n + 8) { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .up, .grow, .pop, .ring { animation: none; }
   .season-backdrop, .season-canopy, .season-steam, .season-blink, .season-monkey { animation: none; }
-  .season-fall, .season-snow, .season-firefly { display: none; }
+  .season-ripple, .season-glint, .season-lantern, .season-burst { animation: none; }
+  .season-fall, .season-snow, .season-firefly, .season-rain, .season-mote { display: none; }
   .lift, .lift:hover { transform: none; transition: none; }
   .bento-hop { animation: none; transform: translate(18px, 18px); }
   .bento-squish { animation: bento-pulse 1.6s ease-in-out infinite; }

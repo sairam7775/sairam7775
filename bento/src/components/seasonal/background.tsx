@@ -3,19 +3,20 @@
 /** The seasonal backdrop: a blurred Japanese scene behind every page, with
  *  something falling in front of it — maple leaves in autumn, snow over the
  *  Jigokudani monkeys in winter, cherry petals in spring, fireflies in
- *  summer.
+ *  summer. Five more scenes (rain over hydrangeas, Fuji at dawn, a lantern-lit
+ *  street, a summer festival, a shrine's torii path) show only when chosen.
  *
  *  The season follows today's date, unless a page says otherwise: a trip
  *  page sets its trip's season with <UseSeason>, so a November trip looks
- *  like November whenever you plan it. A season picked in Settings →
- *  Background (`chosen`, from a cookie) wins over both, everywhere.
- *  `?season=winter` previews any of them.
+ *  like November whenever you plan it. A season or scene picked in
+ *  Settings → Background (`chosen`, from a cookie) wins over both,
+ *  everywhere. `?season=winter` (or `?season=fuji`) previews any of them.
  *
  *  It is decoration only: fixed behind the content, aria-hidden, never
  *  interactive, and still under prefers-reduced-motion (globals.css). */
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { Scene } from "./scenes";
-import { isSeason, noise, seasonOf, type Season } from "./season";
+import { noise, previewOf, seasonOf, type Background, type Season } from "./season";
 
 const SetSeason = createContext<(s: Season | null) => void>(() => {});
 
@@ -25,15 +26,14 @@ const SetSeason = createContext<(s: Season | null) => void>(() => {});
 // So on the server (and during hydration) there is no backdrop; it renders
 // after hydration and fades in, even when the season is already `chosen`.
 const noSubscribe = () => () => {};
-function browserSeason(): Season {
-  const q = new URLSearchParams(window.location.search).get("season");
-  return isSeason(q) ? q : seasonOf(new Date());
+function browserSeason(): Background {
+  return previewOf(window.location.search) ?? seasonOf(new Date());
 }
 function hasPreview(): boolean {
-  return isSeason(new URLSearchParams(window.location.search).get("season"));
+  return previewOf(window.location.search) !== null;
 }
 
-export function SeasonalBackground({ chosen = null, children }: { chosen?: Season | null; children: ReactNode }) {
+export function SeasonalBackground({ chosen = null, children }: { chosen?: Background | null; children: ReactNode }) {
   const [override, setOverride] = useState<Season | null>(null);
   const today = useSyncExternalStore(noSubscribe, browserSeason, () => null);
   const preview = useSyncExternalStore(noSubscribe, hasPreview, () => false);
@@ -58,7 +58,7 @@ export function UseSeason({ season }: { season: Season }) {
   return null;
 }
 
-function Backdrop({ season }: { season: Season }) {
+function Backdrop({ season }: { season: Background }) {
   return (
     <div aria-hidden className="season-backdrop pointer-events-none fixed inset-0 -z-10 overflow-hidden" data-season={season}>
       <Scene season={season} />
@@ -71,11 +71,22 @@ function Backdrop({ season }: { season: Season }) {
   );
 }
 
-const COUNT: Record<Season, number> = { autumn: 18, winter: 50, spring: 24, summer: 18 };
+const COUNT: Record<Background, number> = {
+  autumn: 18, winter: 50, spring: 24, summer: 18,
+  tsuyu: 70, fuji: 14, night: 14, matsuri: 16, shrine: 14,
+};
 const LEAF = ["#d8452a", "#e8673a", "#f08c45", "#c7362a", "#f2a24e"];
 const PETAL = ["#f6b6c8", "#f9cbd7", "#f4a9bf"];
+/** Drifting light: dawn haze over Fuji, lantern glow in town, festival
+ *  sparks, sun motes in the shrine's cedars. [core, glow]. */
+const MOTE: Partial<Record<Background, [string, string]>> = {
+  fuji: ["#fff4e6", "rgba(255, 214, 170, 0.7)"],
+  night: ["#ffe2a8", "rgba(255, 170, 80, 0.75)"],
+  matsuri: ["#fff0c0", "rgba(255, 150, 90, 0.8)"],
+  shrine: ["#fff3c4", "rgba(255, 210, 120, 0.7)"],
+};
 
-function Particles({ season }: { season: Season }) {
+function Particles({ season }: { season: Background }) {
   return (
     <div className="absolute inset-0">
       {Array.from({ length: COUNT[season] }, (_, i) => {
@@ -95,6 +106,36 @@ function Particles({ season }: { season: Season }) {
               key={i}
               className="season-snow"
               style={{ ...style, width: size, height: size, animationDuration: `${9 + noise(i, 7) * 10}s`, opacity: 0.6 + noise(i, 8) * 0.4 }}
+            />
+          );
+        }
+        if (season === "tsuyu") {
+          // Fine rain, slanting a little, quick and steady.
+          return (
+            <span
+              key={i}
+              className="season-rain"
+              style={{ left: `${x}%`, height: `${40 + noise(i, 6) * 50}px`, animationDelay: `${-noise(i, 2) * 3}s`, animationDuration: `${1.1 + noise(i, 7) * 0.9}s`, opacity: 0.35 + noise(i, 8) * 0.4 }}
+            />
+          );
+        }
+        const mote = MOTE[season];
+        if (mote) {
+          const size = 4 + noise(i, 6) * 6;
+          return (
+            <span
+              key={i}
+              className="season-mote"
+              style={{
+                left: `${x}%`,
+                top: `${(season === "matsuri" ? 20 : 30) + noise(i, 9) * 60}%`,
+                width: size,
+                height: size,
+                background: mote[0],
+                boxShadow: `0 0 ${size * 2}px ${size * 0.6}px ${mote[1]}`,
+                animationDelay: `${delay}s, ${-noise(i, 10) * 4}s`,
+                animationDuration: `${14 + noise(i, 11) * 10}s, ${3 + noise(i, 12) * 3}s`,
+              }}
             />
           );
         }

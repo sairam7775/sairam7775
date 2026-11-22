@@ -10,6 +10,8 @@ describe("Settings row summaries", () => {
   it("names the theme and background in use", () => {
     expect(appearanceSummary("system", "auto")).toBe("System theme · Automatic background");
     expect(appearanceSummary("dark", "winter")).toBe("Dark theme · Winter background");
+    expect(appearanceSummary("light", "fuji")).toBe("Light theme · Mount Fuji background");
+    expect(appearanceSummary("system", "night")).toBe("System theme · Night city background");
   });
 
   it("mentions analytics only where it can run", () => {
