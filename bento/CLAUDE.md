@@ -51,8 +51,9 @@ Explained in `../docs/bento/40-non-functional/` (security, privacy, costs) and `
   don't add one.
 - **A session cookie is never proof of anything.** Only `getUser()` says who
   is signed in. Its absence may skip the check (`mayHaveSession`,
-  `lib/supabase/session-cookie.ts`: no Supabase cookie, so `getUser()` would
-  answer "nobody" without a request), which is how the home page draws its
+  `lib/supabase/session-cookie.ts`: no Supabase cookie, or only one the
+  proxy emptied, so `getUser()` would answer "nobody" without a request;
+  a test ties it to `createClient`'s cookie name), which is how the home page draws its
   signed-out version at once; its presence only means "ask". The home page
   has no `loading.tsx` above it, so its first screen never waits behind a
   loader (performance F10).

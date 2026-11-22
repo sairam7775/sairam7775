@@ -114,7 +114,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <p className="mt-5 max-w-[34rem] text-[1.08rem] leading-relaxed text-ink-2">
             {t.hero.body}
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-3">
             <ForUser user={user} fallback={<Placeholder className={primary}>{t.yourTripsCta}</Placeholder>}>
               {(u) => u ? (
                 <>

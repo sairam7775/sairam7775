@@ -22,6 +22,36 @@ describe("mayHaveSession", () => {
   it("ignores a cookie that only looks alike", () => {
     expect(mayHaveSession(named("xsb-abcdefgh-auth-token", "sb-auth-token", "my-auth-token"))).toBe(false);
   });
+
+  // The proxy clears a dead session by setting its cookie to "" on the
+  // request the page then reads: that is no session.
+  it("ignores an emptied session cookie", () => {
+    expect(mayHaveSession([{ name: "sb-abcdefgh-auth-token", value: "" }])).toBe(false);
+    expect(mayHaveSession([{ name: "sb-abcdefgh-auth-token.0", value: "" }, { name: "sb-abcdefgh-auth-token.1", value: "" }])).toBe(false);
+  });
+});
+
+// The name it looks for must be the one Bento's own client writes. If the
+// client's cookie name ever changed (a custom storage key in
+// cookie-options.ts), every visitor would be drawn signed out on the home
+// page: this fails first.
+describe("mayHaveSession knows the cookie name Bento's client uses", () => {
+  it("matches createClient's storage key, whole and in chunks", async () => {
+    vi.resetModules();
+    vi.doMock("next/headers", () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://abcdefghijklmnopqrst.supabase.co");
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
+    try {
+      const { createClient } = await import("./server");
+      const key = ((await createClient()).auth as unknown as { storageKey: string }).storageKey;
+      expect(key).toBe("sb-abcdefghijklmnopqrst-auth-token");
+      expect(mayHaveSession([{ name: key, value: "base64-x" }])).toBe(true);
+      expect(mayHaveSession([{ name: `${key}.0`, value: "base64-x" }])).toBe(true);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.doUnmock("next/headers");
+    }
+  });
 });
 
 // The check is only a shortcut if Supabase itself agrees: with none of these
@@ -64,5 +94,30 @@ describe("mayHaveSession agrees with the Supabase client", () => {
     const { supabase, fetch } = client(cookies);
     await supabase.auth.getUser();
     expect(fetch).toHaveBeenCalled();
+  });
+
+  // An expired session whose refresh Supabase refuses (signed out elsewhere,
+  // account deleted): the proxy's client clears the cookie on the request the
+  // page reads, so the page draws the signed-out version at once.
+  it("a dead session, after the proxy: no session", async () => {
+    const expired = { ...session, expires_at: Math.floor(Date.now() / 1000) - 60 };
+    const cookie = `sb-abcdefgh-auth-token=base64-${Buffer.from(JSON.stringify(expired)).toString("base64url")}`;
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", URL);
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "anon-key");
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ error: "invalid_grant", error_description: "Refresh Token Not Found" }), { status: 400, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", fetch);
+    try {
+      const { NextRequest } = await import("next/server");
+      const { proxy } = await import("../../proxy");
+      const request = new NextRequest("http://localhost/", { headers: { cookie } });
+      expect(mayHaveSession(request.cookies.getAll())).toBe(true);
+      await proxy(request);
+      expect(fetch).toHaveBeenCalled();
+      expect(request.cookies.getAll().map((c) => c.name)).toContain("sb-abcdefgh-auth-token");
+      expect(mayHaveSession(request.cookies.getAll())).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
   });
 });
