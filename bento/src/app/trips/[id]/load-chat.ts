@@ -3,12 +3,15 @@ import { parseProposal, proposalForClient } from "@/lib/bento-man/diff";
 import type { ChatMessage } from "./chat";
 
 type Db = Awaited<ReturnType<typeof createClient>>;
+type RouteCity = { id: string; name: string };
 
 /** Bento Man's conversation for a trip, as the plan page and Bookings both
  *  show it: the last 60 messages, oldest first, and a name for every city
  *  they mention, so an old day proposal keeps its city after the route
- *  changes. `routeCities` are the trip's own, which always win. */
-export async function loadChat(db: Db, tripId: string, routeCities: { id: string; name: string }[]) {
+ *  changes. `routeCities` are the trip's own, which always win; a page may
+ *  pass them while it is still reading them, so the chat's own reads don't
+ *  wait for the trip's. */
+export async function loadChat(db: Db, tripId: string, routeCities: RouteCity[] | PromiseLike<RouteCity[]>) {
   const { data: rows } = await db
     .from("chat_messages")
     .select("id, role, content, proposed_diff, diff_status, created_at")
@@ -33,7 +36,7 @@ export async function loadChat(db: Db, tripId: string, routeCities: { id: string
     : { data: [] as { id: string; name: string; coverage_tier: string | null }[] };
   const cityNames: Record<string, string> = Object.fromEntries([
     ...(cityRows ?? []).map((c) => [c.id, c.name] as const),
-    ...routeCities.map((c) => [c.id, c.name] as const),
+    ...(await routeCities).map((c) => [c.id, c.name] as const),
   ]);
   // How well Bento knows each city a day proposal is in, read now rather
   // than stored with the proposal, so the card says what the page says.
