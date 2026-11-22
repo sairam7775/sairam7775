@@ -29,8 +29,8 @@ last_reviewed: 2026-11-22
 - F1: the `x-vercel-id` response header includes `hnd1` (checked 13 November 2026).
 - F2: engine tests run in milliseconds in `npm test`.
 - F5: `npm run build` (no network fetch for fonts).
-- F6: real visits report `web_vital` events (metric LCP, INP or CLS, its value and the browser's rating) to PostHog, only for visitors who allowed analytics (`lib/analytics/web-vitals.ts`, mounted in the root layout when the answer is yes) and never on a shared plan. In the lab: Lighthouse, mobile, against a local production build (`next build` and `next start`).
-- F7: `bento/src/app/first-paint.test.ts` checks that `.settle` has no opacity, is off under reduced motion, and is what each page's first text uses.
+- F6: real visits report `web_vital` events (metric LCP, INP or CLS, its value and the browser's rating) to PostHog, only for visitors who allowed analytics (`lib/analytics/web-vitals.ts`, mounted in the root layout when the answer is yes). Nothing is sent from a document loaded as a shared plan (`/shared/…`), decided by the address the document loaded, so moving on to another page doesn't send them either (`loadedOnSharedPlan`). In the lab: Lighthouse, mobile, against a local production build (`next build` and `next start`).
+- F7: `bento/src/app/first-paint.test.ts` checks that `.settle` has no opacity, is off under reduced motion, and is what each page's first text uses (home, app header, trips, plan, a trip and its vault, sign-in and sign-up, settings, legal and status pages).
 
 ## Evidence
 
@@ -39,7 +39,9 @@ last_reviewed: 2026-11-22
 
 ## Known gaps
 
-- **The home page doesn't meet the LCP budget in the lab yet.** The fade was a small part of it. The rest is the hero arriving late: the root `loading.tsx` streams a loader first and the page follows after `getUser()`, and the hero paragraph becomes the LCP again when its web font arrives (18 font files on the home page).
-- No real-visit numbers yet: `web_vital` events start with this change, and only from visitors who allowed analytics.
+- **The home page doesn't meet the LCP budget in the lab yet.** The fade was a small part of it. The rest is the hero arriving late: the root `loading.tsx` streams a loader first and the page follows after `getUser()`, and the hero paragraph becomes the LCP again when its web font arrives (measured before the font change in #113).
+- **The hero's font swap now counts as layout shift** (CLS about 0.02 in the lab): the text is visible in the fallback font and moves when Zen Kaku Gothic New arrives. Under budget; a fallback `@font-face` with `size-adjust` (and ascent/descent overrides) matched to Zen Kaku would remove most of it.
+- **Real-visit numbers are per hard load:** one LCP, INP and CLS for each document Bento loads, not for each page reached by moving inside the app. None yet: `web_vital` events start with this change, and only from visitors who allowed analytics.
+- A trip and its vault (signed-in pages) use `.settle` on their headers but were not measured in Lighthouse.
 - No chat-response target.
 - The Gemini free tier allows about 20 requests a day per model; heavy use moves down the fallback list ([Bento Man (software)](../30-software/bento-man.md)).

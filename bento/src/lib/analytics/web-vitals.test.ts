@@ -1,5 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { webVitalProps } from "./web-vitals";
+import { loadedOnSharedPlan, webVitalProps } from "./web-vitals";
+
+describe("loadedOnSharedPlan", () => {
+  // A document's vitals describe its hard load, and are reported later (on
+  // leaving or hiding the page), possibly after moving to another page in
+  // the app. So the address that counts is the one the document loaded.
+  it("is decided by the address the document loaded, not the current one", () => {
+    expect(loadedOnSharedPlan("https://bento.example/shared/0123456789abcdef0123456789abcdef", "/trips")).toBe(true);
+    expect(loadedOnSharedPlan("https://bento.example/trips", "/shared/0123456789abcdef0123456789abcdef")).toBe(false);
+  });
+
+  it("falls back to the current path when the load's address is unknown", () => {
+    expect(loadedOnSharedPlan(undefined, "/shared/abc")).toBe(true);
+    expect(loadedOnSharedPlan(undefined, "/")).toBe(false);
+    expect(loadedOnSharedPlan("not a url", "/shared/abc")).toBe(true);
+  });
+});
 
 describe("webVitalProps", () => {
   it("keeps only the metric's name, value and rating", () => {

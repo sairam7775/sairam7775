@@ -9,7 +9,7 @@ import { ChoiceButton } from "@/components/form-controls";
 import { analyticsConfigured, forgetUser, identify, start, stop, track } from "@/lib/analytics/client";
 import type { Consent } from "@/lib/analytics/consent";
 import { isSharedPath } from "@/lib/analytics/url";
-import { webVitalProps } from "@/lib/analytics/web-vitals";
+import { loadedOnSharedPlan, webVitalProps } from "@/lib/analytics/web-vitals";
 import { copy } from "@/copy";
 
 const choice = "min-h-10 min-w-28 rounded-full border border-ink/25 bg-surface px-5 text-[0.9rem] font-medium text-ink hover:bg-sunk";
@@ -59,19 +59,29 @@ export function Analytics({ consent }: { consent: Consent | null }) {
   );
 }
 
+// Whether this document was loaded as a shared plan, decided once and kept
+// for the document's life: its vitals are reported later, often after a
+// move to another page, and must still be dropped.
+let sharedDocument: boolean | null = null;
+const loadedShared = () =>
+  (sharedDocument ??= loadedOnSharedPlan(performance.getEntriesByType("navigation")[0]?.name, window.location.pathname));
+
 // Stable for the page's life, as useReportWebVitals asks (a new function
 // would be handed the metrics again).
 const reportVital = (metric: { name: string; value: number; rating?: string }) => {
-  if (!analyticsConfigured() || isSharedPath(window.location.pathname)) return;
+  if (!analyticsConfigured() || loadedShared()) return;
   const props = webVitalProps(metric);
   if (props) track("web_vital", props);
 };
 
-/** Real visitors' LCP, INP and CLS (`lib/analytics/web-vitals.ts`). Through
- *  `track`, so nothing is sent unless analytics are allowed: before an
- *  answer they wait, and a "no" drops them. Not on a shared plan, where
- *  analytics never start. */
+/** Real visitors' LCP, INP and CLS (`lib/analytics/web-vitals.ts`), one
+ *  set per document load. The root layout mounts this only when the
+ *  analytics answer is "yes", and it sends through `track`. Nothing from a
+ *  document loaded as a shared plan (/shared/…), even after moving on. */
 export function WebVitals() {
+  useEffect(() => {
+    loadedShared();
+  }, []);
   useReportWebVitals(reportVital);
   return null;
 }
