@@ -43,6 +43,25 @@ describe("BentoManSays", () => {
     expect(read(file)).toMatch(/<BentoManSays\b/);
   });
 
+  it("carries both the chat's first hello and every reply", () => {
+    const chat = read("../../app/trips/[id]/chat.tsx");
+    expect(chat).toMatch(/<BentoManSays figure="full-hello"[^>]*tone="panel"/);
+    expect(chat).toMatch(/<BentoManSays figure=\{[^}]*"head-rest"[^}]*\}[^>]*tone="panel"/);
+  });
+
+  it("shows one head while he works: the bubble's own, thinking", () => {
+    const chat = read("../../app/trips/[id]/chat.tsx");
+    const reply = chat.match(/<BentoManSays figure=\{[^}]*\}[\s\S]*?<\/BentoManSays>/)?.[0] ?? "";
+    expect(reply).toMatch(/figure=\{[^}]*"head-think"[^}]*"head-rest"/);
+    const workings = reply.match(/<Working\b[^>]*>/g) ?? [];
+    expect(workings.length).toBeGreaterThan(0);
+    for (const w of workings) expect(w).toMatch(/\bbare\b/);
+  });
+
+  it("wraps a long name in the trips greeting inside the bubble", () => {
+    expect(read("../../app/trips/page.tsx")).toMatch(/<span className="[^"]*\bmin-w-0\b[^"]*\bbreak-words\b[^"]*">\{name \?/);
+  });
+
   it("no longer sets the home note or the Bookings tip beside a bare figure", () => {
     expect(read("../../app/page.tsx")).not.toMatch(/<BentoManFigure\b/);
     expect(read("../../app/trips/[id]/vault/bento-man-card.tsx")).not.toMatch(/<BentoManFigure\b/);

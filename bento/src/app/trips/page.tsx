@@ -68,7 +68,7 @@ export default async function Trips() {
         <BentoManSays figure="full-hello" size={72}>
           <p className="flex flex-wrap items-baseline gap-x-2.5 text-[1.05rem]">
             <span lang="ja" className="disp font-bold text-accent-ink">{hello.ja}</span>
-            <span className="text-ink-2">{name ? hello.named(name) : hello.plain}</span>
+            <span className="min-w-0 break-words text-ink-2">{name ? hello.named(name) : hello.plain}</span>
           </p>
         </BentoManSays>
         <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>

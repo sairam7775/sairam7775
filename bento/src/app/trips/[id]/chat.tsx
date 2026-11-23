@@ -265,13 +265,14 @@ export function Chat({ tripId, cityNames, cityTiers, initial, ask }: { tripId: s
             </div>
           ) : (
             <div key={m.id}>
-              <BentoManSays figure="head-rest" size={24} tone="panel" bubbleClassName="px-4 py-2.5">
+              {/* One head: his own beside the bubble, thinking while he works. */}
+              <BentoManSays figure={!m.content || (activity && busy && m.id.startsWith("a-")) ? "head-think" : "head-rest"} size={24} tone="panel" bubbleClassName="px-4 py-2.5">
                 {m.content ? (
                   <p className="whitespace-pre-wrap break-words text-[0.95rem] leading-relaxed">{m.content}</p>
                 ) : (
-                  <Working label={activity ?? t.thinking} />
+                  <Working bare label={activity ?? t.thinking} />
                 )}
-                {m.content && activity && busy && m.id.startsWith("a-") && <Working label={activity} className="mt-2" />}
+                {m.content && activity && busy && m.id.startsWith("a-") && <Working bare label={activity} className="mt-2" />}
               </BentoManSays>
               {/* Under the bubble, lined up with it (24px head + 12px gap). */}
               {m.proposal && m.status && (
@@ -320,11 +321,12 @@ export function Chat({ tripId, cityNames, cityTiers, initial, ask }: { tripId: s
 }
 
 /** What Bento Man is doing right now, in words, with him thinking beside it.
- *  The words are the live region; the figure is decoration. */
-function Working({ label, className = "" }: { label: string; className?: string }) {
+ *  The words are the live region; the figure is decoration. `bare` inside
+ *  his reply's bubble, whose own head is thinking then. */
+function Working({ label, className = "", bare = false }: { label: string; className?: string; bare?: boolean }) {
   return (
     <p role="status" aria-live="polite" className={`flex items-center gap-2 text-[0.85rem] text-ink-3 ${className}`}>
-      <BentoManFigure figure="head-think" size={20} />
+      {!bare && <BentoManFigure figure="head-think" size={20} />}
       {label}…
     </p>
   );

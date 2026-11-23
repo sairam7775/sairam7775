@@ -29,7 +29,7 @@ export function BentoManSays({
 }) {
   return (
     <div className={`flex items-start gap-3 ${className}`} style={style}>
-      <span className="shrink-0"><BentoManFigure figure={figure} size={size} /></span>
+      <span className="shrink-0"><BentoManFigure key={figure} figure={figure} size={size} /></span>
       <div className={`says ${tone === "panel" ? "bg-sunk" : "tile"} min-w-0 flex-1 ${bubbleClassName}`}>
         {children}
       </div>

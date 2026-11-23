@@ -18,7 +18,7 @@ Bento Man appears as an animated figure: a lacquer bento box for a head, with ey
 - **The art is data.** `parts.ts` and `moods.ts` (shapes, colour roles, pivots, keyframes) are the only source; `still.ts` draws a pose as SVG, and `lottie.ts` turns a figure into Lottie animation JSON.
 - After changing the art, run `npm run mascot`. A test fails while `public/mascot/*.json` is stale; never edit those files by hand.
 - Use `<BentoManFigure figure="…" size={…} />`. It shows the still first, then loads the light Lottie player only when he's on screen and motion is allowed.
-- **When he says something**, use `<BentoManSays figure="…" size={…}>` (`says.tsx`): him on the left, his words in a speech bubble with a tail pointing at him (`.says` in `globals.css`). The row spans the full width, so the figure lines up with what's above it and the bubble's right edge with its right edge. It's the one look for the home page's sample note, the Bookings tip, the trips greeting and his chat replies (`tone="panel"`, a sunk bubble, inside the chat). A test keeps those four on it.
+- **When he says something**, use `<BentoManSays figure="…" size={…}>` (`says.tsx`): him on the left, his words in a speech bubble with a tail pointing at him (`.says` in `globals.css`). The row spans the full width, so the figure lines up with what's above it and the bubble's right edge with its right edge. It's the one look for the home page's sample note, the Bookings tip, the trips greeting and his chat replies (`tone="panel"`, a sunk bubble, inside the chat). A test keeps those places on it, the empty chat's hello and the replies each checked.
 
 ## Rules
 
