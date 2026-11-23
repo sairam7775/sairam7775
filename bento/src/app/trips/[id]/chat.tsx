@@ -5,6 +5,7 @@ import { onAsk } from "./ask-event";
 import { nextContent, type ChatStreamEvent } from "./chat-stream";
 import { useRouter } from "next/navigation";
 import { BentoManFigure } from "@/components/mascot/figure";
+import { BentoManSays } from "@/components/mascot/says";
 import type { Proposal } from "@/lib/bento-man/diff";
 import { ProposalCard, type ProposalStatus } from "./proposal-card";
 import { copy } from "@/copy";
@@ -234,11 +235,10 @@ export function Chat({ tripId, cityNames, cityTiers, initial, ask }: { tripId: s
         aria-busy={busy}
       >
         {messages.length === 0 && (
-          <div className="up rounded-tile bg-sunk px-5 py-5 text-[0.95rem] leading-relaxed text-ink-2">
-            <div className="flex items-start gap-4">
-              <BentoManFigure figure="full-hello" size={88} />
+          <div className="up">
+            <BentoManSays figure="full-hello" size={88} tone="panel" bubbleClassName="px-5 py-4 text-[0.95rem] leading-relaxed text-ink-2">
               <p>{t.intro}</p>
-            </div>
+            </BentoManSays>
             <p className="mt-4 text-[0.8rem] font-medium text-ink-3">{t.tryThese}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {examples.map((x) => (
@@ -264,17 +264,22 @@ export function Chat({ tripId, cityNames, cityTiers, initial, ask }: { tripId: s
               <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-tile rounded-br-md bg-lacquer px-4 py-2.5 text-[0.95rem] leading-relaxed text-rice">{m.content}</p>
             </div>
           ) : (
-            <div key={m.id} className="flex gap-3">
-              <span className="mt-0.5 shrink-0"><BentoManFigure figure="head-rest" size={24} /></span>
-              <div className="min-w-0 flex-1">
+            <div key={m.id}>
+              {/* One head: his own beside the bubble, thinking while he works. */}
+              <BentoManSays figure={!m.content || (activity && busy && m.id.startsWith("a-")) ? "head-think" : "head-rest"} size={24} tone="panel" bubbleClassName="px-4 py-2.5">
                 {m.content ? (
                   <p className="whitespace-pre-wrap break-words text-[0.95rem] leading-relaxed">{m.content}</p>
                 ) : (
-                  <Working label={activity ?? t.thinking} />
+                  <Working bare label={activity ?? t.thinking} />
                 )}
-                {m.content && activity && busy && m.id.startsWith("a-") && <Working label={activity} className="mt-2" />}
-                {m.proposal && m.status && <ProposalCard tripId={tripId} messageId={m.id} proposal={m.proposal} status={m.status} cityNames={cityNames} cityTiers={cityTiers} />}
-              </div>
+                {m.content && activity && busy && m.id.startsWith("a-") && <Working bare label={activity} className="mt-2" />}
+              </BentoManSays>
+              {/* Under the bubble, lined up with it (24px head + 12px gap). */}
+              {m.proposal && m.status && (
+                <div className="pl-9">
+                  <ProposalCard tripId={tripId} messageId={m.id} proposal={m.proposal} status={m.status} cityNames={cityNames} cityTiers={cityTiers} />
+                </div>
+              )}
             </div>
           ),
         )}
@@ -316,11 +321,12 @@ export function Chat({ tripId, cityNames, cityTiers, initial, ask }: { tripId: s
 }
 
 /** What Bento Man is doing right now, in words, with him thinking beside it.
- *  The words are the live region; the figure is decoration. */
-function Working({ label, className = "" }: { label: string; className?: string }) {
+ *  The words are the live region; the figure is decoration. `bare` inside
+ *  his reply's bubble, whose own head is thinking then. */
+function Working({ label, className = "", bare = false }: { label: string; className?: string; bare?: boolean }) {
   return (
     <p role="status" aria-live="polite" className={`flex items-center gap-2 text-[0.85rem] text-ink-3 ${className}`}>
-      <BentoManFigure figure="head-think" size={20} />
+      {!bare && <BentoManFigure figure="head-think" size={20} />}
       {label}…
     </p>
   );
