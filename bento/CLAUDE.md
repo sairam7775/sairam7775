@@ -827,6 +827,10 @@ Explained in `../docs/bento/20-design/bento-man-figure.md`.
   the still first, then lazy-loads `lottie-web/build/player/lottie_light`
   (pinned 5.13.0) only when he is on screen and motion is allowed. Never
   import lottie-web anywhere else, or statically.
+- Words he says to the traveller go in `<BentoManSays>` (`says.tsx`, `.says`
+  in globals.css): the speech bubble with its tail pointing at him, never a
+  tile with a figure inside or text beside a bare figure. `tone="panel"`
+  inside a surface (the chat). `says.test.ts` lists where it is used.
 - After its intro a figure rests still on the first idle frame (WCAG 2.2.2:
   under five seconds of motion that starts on its own; `playback.test.ts`
   checks every intro's length). Only the thinking head loops, while he works.
