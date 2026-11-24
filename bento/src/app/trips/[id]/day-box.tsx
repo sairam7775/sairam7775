@@ -48,6 +48,9 @@ export interface DayBoxProps {
   overBy: number;
   overFromIndex: number | null;
   lunch: { startMin: number; endMin: number } | null;
+  /** Gaps of over two hours the day waits through (`dayStats`), said in
+   *  the box: a day saved at once never shows the planner's note. */
+  freeTime?: { startMin: number; endMin: number; beforeIndex: number }[];
   editable: boolean;
   /** A city Bento can't plan days in yet: the box says so, rather than
    *  inviting the traveller to ask for stops that can't come. */
@@ -251,6 +254,18 @@ export function DayBox(p: DayBoxProps) {
                     </div>
                   </div>
                 )}
+                {(p.freeTime ?? []).filter((f) => f.beforeIndex === i && it.startMin != null).map((f) => (
+                  <div key={`free-${f.startMin}`} className="tile up flex gap-4 bg-sunk px-4 py-3" style={{ animationDelay: `${0.06 * i}s` }}>
+                    <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{clock(f.startMin)}</span>
+                    <div className="flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="disp text-[1.05rem] font-bold">{t.freeTime}</span>
+                        <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(f.endMin - f.startMin)}</span>
+                      </div>
+                      <p className="mt-0.5 text-[0.85rem] text-ink-2">{t.freeTimeNote(it.name, clock(it.startMin!))}</p>
+                    </div>
+                  </div>
+                ))}
                 {p.overFromIndex === i && (
                   <div className="flex items-center gap-3 px-2" role="separator" aria-label={t.budgetEndsLabel}>
                     <span className="h-[2px] flex-1 bg-accent/80" style={{ backgroundImage: "repeating-linear-gradient(90deg, transparent 0 6px, var(--color-lacquer) 6px 12px)" }} />

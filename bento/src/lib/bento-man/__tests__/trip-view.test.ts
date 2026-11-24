@@ -183,7 +183,7 @@ describe("buildTripView", () => {
     expect(view.selectedMeta).toEqual({ cityId: "nara-city", cityName: "Nara", tier: "deep" });
     expect(view.selectedDay).toBe(state.days[0]);
     expect(view.dayItems?.[0]).toMatchObject({ mapName: "Stop", nameJa: "停止" });
-    expect(view.stats).toEqual({ budgetMin: 360, activeMin: 405, overBy: 45, overFromIndex: 1, lunch: { startMin: 690, endMin: 750 } });
+    expect(view.stats).toEqual({ budgetMin: 360, activeMin: 405, overBy: 45, overFromIndex: 1, lunch: { startMin: 690, endMin: 750 }, freeTime: [] });
     expect(view.stats).toBe(view.statsByDate.get("2026-11-21"));
   });
 

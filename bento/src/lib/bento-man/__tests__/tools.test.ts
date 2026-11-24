@@ -524,7 +524,9 @@ describe("days", () => {
     const pinned = diff.after.find((i) => i.placeId === "kyt-sanjusangendo")!;
     expect(pinned.locked).toBe(true);
     expect(pinned.startMin).toBe(600);
-    expect(diff.after.filter((i) => i.change === "kept").length).toBeGreaterThan(0);
+    // The day's other stops stay, in an order round the 10:00 pin (so "moved"
+    // counts as staying: the pin can reorder every one of them).
+    expect(diff.after.filter((i) => i.change === "kept" || i.change === "moved").length).toBeGreaterThan(0);
   });
 
   it("replan_day keeps a category out for the day", async () => {
@@ -637,18 +639,20 @@ describe("days", () => {
     // and when the read-through of 23 Nov 2026 (0035) gave Fudoin its station
     // (Hiroshima days now reach it by the Astram Line, other stops round it) and
     // a stop whose booking is recommended began to say "book about N days
-    // ahead" (plan_days
-    // only; the re-planned 23rd is byte for byte as before).
+    // ahead" (plan_days only),
+    // and when a chosen stop more than 3.5 km off the line between its
+    // neighbours was dropped and refilled (Fushimi Inari between Toji and
+    // the Kamo river leaves that day).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("c685f15427795f8e5246198decfe58b9c4f31758de27d11ffb5b3cd23c56569c");
+    expect(sha(plan)).toBe("23eec2c953e915d28d0f078730fba3101b7e59f19693fb13cac592e60db45bff");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
-    expect(sha(replan)).toBe("30a969c1ead1f9fa65aa412aae58ba4c58c23987d1cef43b813139e8e48a8426");
+    expect(sha(replan)).toBe("1c5c5dd1396e120e0f2fd6752d415a8bc76f9271ba211b6fd99be2168b858ba3");
   });
 
   it("the main-sights line passes the voice lint", () => {

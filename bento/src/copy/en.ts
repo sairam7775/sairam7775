@@ -541,6 +541,9 @@ export const en = {
   day: {
     lunch: "Lunch",
     lunchNote: "Nothing booked, and nothing needs to be. Bring cash.",
+    freeTime: "Free time",
+    // A gap of over two hours the day waits through (dayStats.freeTime).
+    freeTimeNote: (name: string, at: string) => `Nothing planned until ${name} at ${at}.`,
     map: "Map",
     openMap: (name: string) => `Open ${name} in Google Maps`,
     about: "About this place",
