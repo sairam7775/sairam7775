@@ -136,6 +136,18 @@ describe("tripTravelDays", () => {
     for (const date of ["2026-11-22", "2026-11-24"]) expect(days.get(date)![0].minutes).toBe(moves.get(date)?.trainMin);
   });
 
+  // Review R3 (Codex, 24 Nov 2026).
+  it("shows no train on a travel date saved for another stay, as the planner allows no move there", async () => {
+    const store = new MemoryStore({
+      trip: { startDate: "2026-11-20", endDate: "2026-11-26" },
+      cities: [{ cityId: "kyoto-city", nights: 2 }, { cityId: "himeji", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }, { cityId: "osaka-city", nights: 2 }],
+      days: [{ date: "2026-11-22", cityId: "osaka-city", items: [item({ startMin: 600, durationMin: 120 })] }],
+    });
+    const state = await store.state();
+    expect((await tripTravelDays(store, state)).has("2026-11-22")).toBe(false);
+    expect((await tripMoves(store, state)).has("2026-11-22")).toBe(false);
+  });
+
   it("has no travel days with one stop", async () => {
     const store = new MemoryStore({ trip, cities: [{ cityId: "kyoto-city", nights: 3 }] });
     expect((await tripTravelDays(store, await store.state())).size).toBe(0);

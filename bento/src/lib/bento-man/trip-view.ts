@@ -34,8 +34,10 @@ export async function tripTravelDays(store: Pick<TripStore, "cities" | "graph">,
     if (!stay) continue;
     const day = savedCity.get(date) ?? stay;
     // A day saved for another stay of the route (planned before the route
-    // changed) has no move in the planner; the card still shows the move.
-    const via = day !== stay && day !== from && !stays.has(day) ? day : null;
+    // changed) has no move in the planner, so no train either. A day kept
+    // in the city slept in has the move after it (`travelDayParts`).
+    if (day !== stay && day !== from && stays.has(day)) continue;
+    const via = day !== stay && day !== from ? day : null;
     out.set(date, via ? [cityLeg(from, via, stay, graph, facts), cityLeg(via, stay, stay, graph, facts)] : [cityLeg(from, stay, stay, graph, facts)]);
   }
   return out;
