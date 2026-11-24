@@ -267,15 +267,10 @@ describe("startReadyMade", () => {
     // Day 2 of the five days is 31 Dec.
     expect(await startReadyMade(d, { tripId: "osaka-kyoto-nara-5", startDate: "2026-12-30", people: 2 }, NOW))
       .toEqual({ ok: false, error: `${e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Thu 31 Dec")} ${nearest("Fri 1 Jan")}` });
-    // Two closed must-sees: both named.
-    expect(await startReadyMade(d, { tripId: "kansai-hiroshima-7", startDate: "2026-12-25", people: 2 }, NOW)).toEqual({
-      ok: false,
-      error: [
-        e.closedYearly("Peace Memorial Museum", "30 Dec – 31 Dec", "Wed 30 Dec"),
-        e.closedYearly("Shukkeien Garden", "29 Dec – 31 Dec", "Thu 31 Dec"),
-        nearest("Sun 27 Dec"),
-      ].join(" "),
-    });
+    // The last day of the seven, in Osaka, is 31 Dec. (Two closed must-sees
+    // are both named: ready-made-closed.test.ts.)
+    expect(await startReadyMade(d, { tripId: "kansai-hiroshima-7", startDate: "2026-12-25", people: 2 }, NOW))
+      .toEqual({ ok: false, error: `${e.closedYearly("Osaka Castle", "28 Dec – 1 Jan", "Thu 31 Dec")} ${nearest("Mon 21 Dec")}` });
     expect(created).toHaveLength(0);
     // A day later the castle is open again on its day.
     expect((await startReadyMade(d, { tripId: "osaka-day", startDate: "2027-01-02", people: 1 }, NOW)).ok).toBe(true);

@@ -4,7 +4,7 @@
  *  must-see places pinned on their dates. Pure: no database, no model.
  *  Starting a trip from one (package 1C) saves the route and plans these
  *  days through the same paths a chat-built trip uses. */
-import { allocateDates, type RouteCityInput } from "@/lib/engine/route";
+import { allocateDates, stopKinds, type RouteCityInput } from "@/lib/engine/route";
 import type { TripDay } from "@/lib/engine/trip";
 import { travelDayOrigins } from "@/lib/engine/travel-day";
 import { copy } from "@/copy";
@@ -54,4 +54,11 @@ export function readyMadeToPlan(trip: ReadyMadeTrip, startDate: string): ReadyMa
     days.push({ date, cityId, locked: (trip.mustSee[i] ?? []).map((placeId) => ({ placeId })), ...(movingFrom ? { movingFrom } : {}) });
   }
   return { startDate, endDate, route, days, dayTrips };
+}
+
+/** Which of a trip's zero-night cities are stops on the way and which are
+ *  day trips, from the day `dayTrips` gives each (`stopKinds`), so a route
+ *  card shows the trains the planner allows for. */
+export function readyMadeStops(trip: ReadyMadeTrip) {
+  return stopKinds(trip.route, trip.dayTrips.map((t) => ({ day: t.day - 1, cityId: t.cityId })));
 }

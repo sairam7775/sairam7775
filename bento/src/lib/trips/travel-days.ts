@@ -16,3 +16,10 @@ export function travelDays<L extends Pick<RouteLegAssessment, "movingTo">>(
   }
   return out;
 }
+
+/** A travel day's trains in the order of the day: the ride to the day's
+ *  city before its stops, and a ride on out of it (Himeji, then on to
+ *  Hiroshima that evening) after them, never beside the morning's. */
+export function travelDayParts<L extends Pick<RouteLegAssessment, "fromCityId">>(legs: L[], dayCityId: string): { there: L[]; onward: L[] } {
+  return { there: legs.filter((l) => l.fromCityId !== dayCityId), onward: legs.filter((l) => l.fromCityId === dayCityId) };
+}

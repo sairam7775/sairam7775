@@ -711,10 +711,13 @@ Explained in `../docs/bento/30-software/transit.md`.
   (`tripTravelDays` in `trip-view.ts`, which keeps the engine out of the
   page), so they always match it. A leg's
   `movingTo` is the stay it ends at; day trips there and back have none
-  and no travel day.
+  and no travel day. A zero-night city is on the way only when its day
+  (saved, or a ready-made trip's `dayTrips`) is the move day (`stopKinds`),
+  as the planner's move reads it; with no day known it is guessed from the trains.
 - `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.
   Search state is (station, line, mode); a line change pays `transferPenaltyMin`
-  (default 5). Walks never pay it — the walk is the transfer. Between
+  (default 5; 10 between the Shinkansen and another line at Shin-Osaka,
+  `SLOW_SHINKANSEN_CHANGES`). Walks never pay it — the walk is the transfer. Between
   stations not in the same city (no city counts as another), the answer
   is the route with the fewest window changes among those at most
   `FEWER_CHANGES_SLACK_MIN` (20, `graph.ts`; the owner's figure) slower

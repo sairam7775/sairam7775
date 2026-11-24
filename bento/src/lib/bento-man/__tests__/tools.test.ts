@@ -269,7 +269,7 @@ describe("suggest_route and the ready-made trips", () => {
     const r = JSON.parse(await suggest(new MemoryStore({ trip: week, prefs: owner })));
     // classic-7 goes through Tokyo, which this store doesn't plan.
     expect(r.ready_made.map((t: { id: string }) => t.id)).toEqual(["kansai-hiroshima-7"]);
-    expect(r.ready_made[0].day_trips).toEqual([{ day: 2, city: "Nara" }, { day: 5, city: "Himeji" }]);
+    expect(r.ready_made[0].day_trips).toEqual([{ day: 3, city: "Himeji" }, { day: 6, city: "Nara" }]);
     // Tokyo planned but none of its places on hand (this store holds the
     // corridor's places only): classic-7 still isn't offered.
     const tokyo = await suggest(new MemoryStore({ trip: week, prefs: owner, tiers: { "tokyo-city": "outline" } }));
@@ -385,10 +385,14 @@ describe("suggest_route and the ready-made trips", () => {
     // Kyoto leg (Special Rapid, 29 min, ¥580, not the 13-minute Nozomi from
     // Shin-Osaka) and the train hours in the arithmetic (3h 09m → 3h 25m)
     // changed; with the old hub put back, all three hash to the previous values.
+    // Refreshed again (23 Nov 2026) for the through Shinkansen from Kyoto to
+    // Himeji: only the Kyoto → Himeji leg (one Hikari, 50 min, ¥4,740, not
+    // the Nozomi to Shin-Osaka and a change, 48 min, ¥4,730) and the train
+    // hours in the arithmetic (3h 25m → 3h 27m) changed.
     const store = () => new MemoryStore({ trip: nov, prefs: owner });
-    expect(sha(await suggest(store()))).toBe("3910d0703f8be3c68a82cfd13a64f845912b98ba65f49aa0ca104654541d32b5");
-    expect(sha(await suggest(store(), { nights: 8 }))).toBe("70d8970c0ca6b862a2db29f828f8821eec4b94df43002cb1adc43617a0fb508e");
-    expect(sha(await suggest(store(), { nights: 13 }))).toBe("285616f4928d7d77b9fcb3ec45cddc9e1cf2f9e11cbaa846a452e25c8dc69055");
+    expect(sha(await suggest(store()))).toBe("85ff27806882b6f1111757143575c113dfaa8ddf3bec1a3a6c5e74810d1b8f47");
+    expect(sha(await suggest(store(), { nights: 8 }))).toBe("6a6da3338d3224d8aa65229f30a05b3c7c1f62a8676660e4008cb164e878b90a");
+    expect(sha(await suggest(store(), { nights: 13 }))).toBe("a9cc40d84fe1ca5ff2ae6d91ccbe7ed56766ef1bc5a7c43917b7d554ff02007f");
   });
 });
 

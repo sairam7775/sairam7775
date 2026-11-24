@@ -43,7 +43,7 @@ export const stations: Station[] = [
   // Osaka
   { id: "shin-osaka", name: "Shin-Osaka", nameJa: "新大阪", cityId: "osaka-city", lat: 34.7335, lon: 135.5000,
     lines: ["Tokaido Shinkansen", "Sanyo Shinkansen", "JR Kyoto Line", "Osaka Metro Midosuji"] },
-  { id: "osaka", name: "Osaka", nameJa: "大阪", cityId: "osaka-city", lat: 34.7025, lon: 135.4959, lines: ["JR Kyoto Line", "JR Osaka Loop Line"] },
+  { id: "osaka", name: "Osaka", nameJa: "大阪", cityId: "osaka-city", lat: 34.7025, lon: 135.4959, lines: ["JR Kyoto Line", "JR Kobe Line", "JR Osaka Loop Line"] },
   { id: "namba", name: "Namba", nameJa: "難波", cityId: "osaka-city", lat: 34.6659, lon: 135.5012, lines: ["Osaka Metro Midosuji", "Kintetsu Nara Line", "Nankai Main Line"] },
   { id: "tennoji", name: "Tennoji", nameJa: "天王寺", cityId: "osaka-city", lat: 34.6470, lon: 135.5140, lines: ["JR Osaka Loop Line", "JR Kansai Airport Rapid", "Osaka Metro Midosuji"] },
   { id: "kansai-airport", name: "Kansai Airport", nameJa: "関西空港", cityId: "osaka-city", lat: 34.4320, lon: 135.2440, lines: ["JR Kansai Airport Rapid", "JR Haruka", "Nankai Main Line"] },
@@ -62,7 +62,7 @@ export const stations: Station[] = [
   { id: "shin-omiya", name: "Shin-Omiya", nameJa: "新大宮", cityId: "nara-city", lat: 34.6855, lon: 135.8115, lines: ["Kintetsu Nara Line"] },
   { id: "horyuji", name: "Horyuji", nameJa: "法隆寺", cityId: "nara-city", lat: 34.6050, lon: 135.7420, lines: ["JR Yamatoji Line"] },
   // Himeji
-  { id: "himeji", name: "Himeji", nameJa: "姫路", cityId: "himeji", lat: 34.8270, lon: 134.6900, lines: ["Sanyo Shinkansen", "JR Kobe Line", "Shinki Bus"] },
+  { id: "himeji", name: "Himeji", nameJa: "姫路", cityId: "himeji", lat: 34.8270, lon: 134.6900, lines: ["Sanyo Shinkansen", "Tokaido–Sanyo Shinkansen", "JR Kobe Line", "Shinki Bus"] },
   { id: "shosha-ropeway", name: "Shosha Ropeway (bus)", nameJa: "書写山ロープウェイ", cityId: "himeji", lat: 34.8640, lon: 134.6480, lines: ["Shinki Bus"] },
   // Hiroshima & Miyajima
   { id: "hiroshima", name: "Hiroshima", nameJa: "広島", cityId: "hiroshima-city", lat: 34.3978, lon: 132.4750, lines: ["Sanyo Shinkansen", "JR Sanyo Line", "Hiroden"] },
@@ -187,6 +187,22 @@ export const edges: Edge[] = [
 
   // ---- Sanyo corridor
   ...bothWays(e({ from: "shin-osaka", to: "himeji", line: "Sanyo Shinkansen · Nozomi", operator: "jr-west", km: 91.7, minutes: 30, stops: 2, fareJpy: 3280 })),
+  // Osaka ⇄ Himeji direct: the JR Special Rapid (新快速), JR West's
+  // timetable (timetable.jr-odekake.net, train 3457M, read 23 Nov 2026):
+  // Osaka 13:00 → Himeji 14:02, stopping at Amagasaki, Ashiya, Sannomiya,
+  // Kobe, Akashi, Nishi-Akashi and Kakogawa. Km from ja.wikipedia (Osaka–
+  // Kobe 33.1 on the Tokaido Line, Kobe–Himeji 54.8 on the Sanyo Line); no
+  // exact fare read, so the JR West band (an estimate).
+  ...bothWays(e({ from: "osaka", to: "himeji", line: "JR Kobe Line · Special Rapid", operator: "jr-west", km: 87.9, minutes: 62, stops: 8,
+    note: "IC card, no reservation." })),
+  // Kyoto ⇄ Himeji: Shinkansen trains run through Shin-Osaka, one ticket.
+  // Hikari 703 on JR West's timetable (timetable.jr-odekake.net, read 23 Nov
+  // 2026): Kyoto 10:43 → Himeji 11:33, stopping at Shin-Osaka, Shin-Kobe and
+  // Nishi-Akashi. Fare: ¥4,740 unreserved (¥2,210 fare + ¥2,530 limited
+  // express charge), ekitan.com and jr-shinkansen.net, read 23 Nov 2026;
+  // JR West's own fare search could not be read.
+  ...bothWays(e({ from: "kyoto", to: "himeji", line: "Tokaido–Sanyo Shinkansen · Hikari", operator: "jr-west", km: 130.7, minutes: 50, stops: 4, fareJpy: 4740,
+    note: "Unreserved, one ticket, no change. Some Nozomi stop at Himeji too." })),
   ...bothWays(e({ from: "himeji", to: "hiroshima", line: "Sanyo Shinkansen · Nozomi", operator: "jr-west", km: 210.3, minutes: 58, stops: 2, fareJpy: 7500 })),
   ...bothWays(e({ from: "shin-osaka", to: "hiroshima", line: "Sanyo Shinkansen · Nozomi", operator: "jr-west", km: 302.0, minutes: 85, stops: 3, fareJpy: 10420 })),
   ...bothWays(e({ from: "kyoto", to: "hiroshima", line: "Tokaido–Sanyo Shinkansen · Nozomi", operator: "jr-west", km: 341.0, minutes: 100, stops: 4, fareJpy: 10890,

@@ -62,6 +62,16 @@ const key = (s: State) => `${baseKey(s)} @ ${s.windowChanges}`;
  *  figure. */
 export const FEWER_CHANGES_SLACK_MIN = 20;
 
+/** Stations where a change between the Shinkansen and another line takes
+ *  longer than the usual penalty: minutes for that change. At Shin-Osaka
+ *  the Shinkansen platforms are behind their own transfer gates, about ten
+ *  minutes from the JR platforms (MATCHA, citing JR West's own site; JR
+ *  West's page not read, 23 Nov 2026). With five, Osaka → Himeji went by
+ *  Shin-Osaka and a change rather than the direct Special Rapid. Code, not
+ *  data: the database has no column for it, like `CITY_HUBS`. */
+export const SLOW_SHINKANSEN_CHANGES: Record<string, number> = { "shin-osaka": 10 };
+const isShinkansen = (line: string) => line.includes("Shinkansen");
+
 /** The order the search explores routes in: minutes as the traveller sees
  *  them (rides, walks and the change penalty: exactly `Route.minutes`), then
  *  changes of train (`Route.transfers`), then legs. `route` then trades up
@@ -144,6 +154,10 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
   }
 
   const penalty = opts.transferPenaltyMin ?? 5;
+  const changeCost = (station: string, from: string, to: string) => {
+    const slow = SLOW_SHINKANSEN_CHANGES[station];
+    return slow != null && isShinkansen(from) !== isShinkansen(to) ? Math.max(penalty, slow) : penalty;
+  };
   // Only between cities. Inside one city the hops are short, and 20 minutes
   // more can double one (Shibuya → Tochomae: 11 minutes with a change, 23
   // without), which would make a day's timings silly.
@@ -200,7 +214,7 @@ export function route(g: Graph, fromId: string, toId: string, opts: RouteOptions
       const newLeg = s.line !== e.line || s.mode !== e.mode;
       const newTrain = newLeg && e.mode !== "walk";
       const nc: Cost = {
-        min: c.min + e.minutes + (isTransfer ? penalty : 0),
+        min: c.min + e.minutes + (isTransfer ? changeCost(s.station, s.line, e.line) : 0),
         changes: c.changes + (newTrain && s.rode ? 1 : 0),
         legs: c.legs + (newLeg ? 1 : 0),
         sig: c.sig === "" ? edgeToken(e) : c.sig + SEP + edgeToken(e),

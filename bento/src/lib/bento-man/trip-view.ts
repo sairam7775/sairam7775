@@ -1,6 +1,6 @@
 /** Prepare the accepted itinerary for the trip page, keeping engine calls
  *  outside components. Stored days override the route's date allocation. */
-import { allocateDates, assessRoute } from "@/lib/engine/route";
+import { allocateDates, assessRoute, stopKinds } from "@/lib/engine/route";
 import { dayStats } from "@/lib/engine/day-stats";
 import { cityTrainMinutes, toFive, travelDayMoves } from "@/lib/engine/travel-day";
 import { clock } from "./diff";
@@ -12,13 +12,28 @@ import type { CoverageTier } from "@/lib/types";
 import type { TripState, TripStore } from "./store";
 
 /** Each travel day's trains, from Bento's own train data, worked out again
- *  from the accepted route so they always match it. */
+ *  from the accepted route so they always match it. A zero-night city's
+ *  saved day says whether it is on the way or a day trip (`stopKinds`), the
+ *  way the planner's move reads it, so the card never routes a move through
+ *  a city visited on another day. */
 export async function tripTravelDays(store: Pick<TripStore, "cities" | "graph">, state: TripState) {
   const sorted = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
   if (sorted.length < 2) return new Map<string, never>();
   const [facts, graph] = await Promise.all([store.cities(), store.graph()]);
-  const a = assessRoute(sorted.map((c) => ({ cityId: c.cityId, nights: c.nights })), new Map(facts.map((f) => [f.id, f])), graph);
+  const route = sorted.map((c) => ({ cityId: c.cityId, nights: c.nights }));
+  const a = assessRoute(route, new Map(facts.map((f) => [f.id, f])), graph, null, stopKinds(route, savedStopDays(state, route)));
   return travelDays(sorted, a.legs);
+}
+
+/** The saved days spent in the route's zero-night cities, as days from the
+ *  trip's start. */
+function savedStopDays(state: TripState, route: { cityId: string; nights: number }[]) {
+  const start = state.trip.startDate;
+  if (!start) return [];
+  const zero = new Set(route.filter((c) => c.nights === 0).map((c) => c.cityId));
+  return state.days
+    .filter((d) => d.cityId && zero.has(d.cityId))
+    .map((d) => ({ day: Math.round((Date.parse(`${d.date}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000), cityId: d.cityId! }));
 }
 
 /** Each travel day's move, worked out from the accepted route the way the

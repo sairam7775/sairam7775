@@ -84,6 +84,26 @@ describe("tripTravelDays", () => {
     expect(startLiftedLine(move, [{ startMin: null }], "Osaka")).toBeNull();
   });
 
+  it("takes a zero-night city's saved day to tell a day trip from a stop on the way, so the card and the planner's move agree", async () => {
+    // Himeji lies on the line from Kyoto to Hiroshima, but planned on the
+    // 21st it is a day trip from Kyoto: the move on the 22nd goes straight
+    // to Hiroshima, as the planner allows for it.
+    const at = (date: string) => new MemoryStore({
+      trip: { startDate: "2026-11-20", endDate: "2026-11-24" },
+      cities: [{ cityId: "kyoto-city", nights: 2 }, { cityId: "himeji", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }],
+      days: [{ date, cityId: "himeji", items: [item({ startMin: 660, durationMin: 120 })] }],
+    });
+    const dayTrip = at("2026-11-21");
+    const state = await dayTrip.state();
+    const legs = (await tripTravelDays(dayTrip, state)).get("2026-11-22")!;
+    expect(legs.map((l) => `${l.fromCityId}>${l.toCityId}`)).toEqual(["kyoto-city>hiroshima-city"]);
+    expect(legs[0].minutes).toBe((await tripMoves(dayTrip, state)).get("2026-11-22")?.trainMin);
+    // Planned on the 22nd, the day of the move, it is on the way.
+    const onTheWay = at("2026-11-22");
+    const both = (await tripTravelDays(onTheWay, await onTheWay.state())).get("2026-11-22")!;
+    expect(both.map((l) => `${l.fromCityId}>${l.toCityId}`)).toEqual(["kyoto-city>himeji", "himeji>hiroshima-city"]);
+  });
+
   it("has no travel days with one stop", async () => {
     const store = new MemoryStore({ trip, cities: [{ cityId: "kyoto-city", nights: 3 }] });
     expect((await tripTravelDays(store, await store.state())).size).toBe(0);

@@ -3,7 +3,8 @@ import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed";
 import { placeSeeds } from "@/lib/places/seed";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
-import { assessRoute, hubFor, type CityFacts } from "@/lib/engine/route";
+import { allocateDates, assessRoute, hubFor, type CityFacts } from "@/lib/engine/route";
+import { travelDayParts, travelDays } from "../travel-days";
 import { planTrip } from "@/lib/engine/trip";
 import { eveningFrom } from "@/lib/engine/schedule";
 import { travelFromGraph } from "@/lib/engine/travel";
@@ -16,7 +17,7 @@ import type { TravelPace } from "@/lib/types";
 import { copy } from "@/copy";
 import { readyMadeTrips } from "../ready-made";
 import { READY_MADE_CITIES } from "../ready-made/types";
-import { readyMadeToPlan } from "../ready-made/to-plan";
+import { readyMadeStops, readyMadeToPlan } from "../ready-made/to-plan";
 
 /** Every ready-made trip, checked against the seeds as the live database
  *  will hold them once the owner has signed them off (every place treated
@@ -58,37 +59,38 @@ const WINDOW = Array.from({ length: 26 }, (_, i) => addDay("2026-12-11", i));
 // anything is planned (`closedMustSees`: the picker, and suggest_route for a
 // trip with dates; the owner's call, 21 Nov 2026). Over the year-end window
 // these are every refused start, with the must-sees that refuse it: Osaka
-// Castle (28 Dec – 1 Jan), the Peace Memorial Museum (30–31 Dec) and
-// Shukkeien Garden (29–31 Dec). Every other start must plan with every
-// must-see open.
+// Castle (28 Dec – 1 Jan) and the Peace Memorial Museum (30–31 Dec).
+// Every other start must plan with every must-see open.
 const REFUSED: Record<string, Record<string, string[]>> = {
   "osaka-day": Object.fromEntries(["2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31", "2027-01-01"].map((d) => [d, ["Osaka Castle"]])),
   "osaka-kyoto-nara-5": Object.fromEntries(["2026-12-27", "2026-12-28", "2026-12-29", "2026-12-30", "2026-12-31"].map((d) => [d, ["Osaka Castle"]])),
   "classic-7": Object.fromEntries(["2026-12-23", "2026-12-24", "2026-12-25", "2026-12-26", "2026-12-27"].map((d) => [d, ["Osaka Castle"]])),
   "kansai-hiroshima-7": {
-    "2026-12-23": ["Shukkeien Garden"],
-    "2026-12-24": ["Shukkeien Garden"],
-    "2026-12-25": ["Peace Memorial Museum", "Shukkeien Garden"],
-    "2026-12-26": ["Peace Memorial Museum"],
-  },
-  "tokyo-to-miyajima-10": {
-    "2026-12-20": ["Shukkeien Garden"],
-    "2026-12-21": ["Shukkeien Garden"],
-    "2026-12-22": ["Osaka Castle", "Shukkeien Garden"],
-    "2026-12-23": ["Osaka Castle", "Peace Memorial Museum"],
-    "2026-12-24": ["Osaka Castle", "Peace Memorial Museum"],
+    "2026-12-22": ["Osaka Castle"],
+    "2026-12-23": ["Osaka Castle"],
+    "2026-12-24": ["Osaka Castle"],
     "2026-12-25": ["Osaka Castle"],
     "2026-12-26": ["Osaka Castle"],
+    "2026-12-27": ["Peace Memorial Museum"],
+    "2026-12-28": ["Peace Memorial Museum"],
   },
-  "all-nine-14": {
-    "2026-12-16": ["Shukkeien Garden"],
-    "2026-12-17": ["Shukkeien Garden"],
-    "2026-12-18": ["Shukkeien Garden"],
-    "2026-12-19": ["Osaka Castle", "Peace Memorial Museum"],
-    "2026-12-20": ["Osaka Castle", "Peace Memorial Museum"],
+  "tokyo-to-miyajima-10": {
+    "2026-12-19": ["Osaka Castle"],
+    "2026-12-20": ["Osaka Castle"],
     "2026-12-21": ["Osaka Castle"],
     "2026-12-22": ["Osaka Castle"],
     "2026-12-23": ["Osaka Castle"],
+    "2026-12-24": ["Peace Memorial Museum"],
+    "2026-12-25": ["Peace Memorial Museum"],
+  },
+  "all-nine-14": {
+    "2026-12-16": ["Osaka Castle"],
+    "2026-12-17": ["Osaka Castle"],
+    "2026-12-18": ["Osaka Castle"],
+    "2026-12-19": ["Osaka Castle"],
+    "2026-12-20": ["Osaka Castle"],
+    "2026-12-21": ["Peace Memorial Museum"],
+    "2026-12-22": ["Peace Memorial Museum"],
   },
 };
 const PACES: TravelPace[] = ["relaxed", "standard", "packed"];
@@ -102,6 +104,19 @@ describe("ready-made trips", () => {
     expect(new Set(ids).size).toBe(ids.length);
     const byLength = (n: number) => readyMadeTrips.filter((t) => t.days === n).length;
     expect([1, 2, 3, 5, 7, 10, 14].map(byLength)).toEqual([8, 2, 2, 2, 2, 1, 1]);
+  });
+
+  it("ends the trips through Hiroshima back in Osaka, for a flight home from Kansai Airport", () => {
+    // 23 Nov 2026 (the owner's call): these three ended in Hiroshima, far
+    // from where they arrive. The direction note means the long trips to
+    // end in Osaka for Kansai.
+    for (const id of ["kansai-hiroshima-7", "tokyo-to-miyajima-10", "all-nine-14"]) {
+      const trip = readyMadeTrips.find((t) => t.id === id)!;
+      const stays = trip.route.filter((c) => c.nights > 0);
+      expect(stays.at(-1)?.cityId, id).toBe("osaka-city");
+      expect(readyMadeToPlan(trip, WEEK[0]).days.at(-1)?.cityId, id).toBe("osaka-city");
+      expect(copy.readyMade.trips[trip.id].summary, id).toMatch(/Kansai Airport/);
+    }
   });
 
   it("has a title, a summary and a reason for every city, with no times, fares or durations", () => {
@@ -163,10 +178,29 @@ describe("ready-made trips", () => {
       });
 
       it("is not overpacked and has a known train between every pair of cities", () => {
-        const a = assessRoute(trip.route, facts, graph, trip.days - 1);
+        const a = assessRoute(trip.route, facts, graph, trip.days - 1, readyMadeStops(trip));
         expect(a.verdict, a.arithmetic).not.toBe("overpacked");
         expect(a.nightsMismatch).toBeNull();
         expect(a.legs.filter((l) => l.minutes == null).map((l) => `${l.fromCityId} → ${l.toCityId}`)).toEqual([]);
+      });
+
+      it("shows on each travel day's card the train the planner allows for, from where the traveller slept to the day's city", () => {
+        // all-nine-14, 23 Nov 2026: day 6's card went Tokyo → Yokohama →
+        // Kyoto (Yokohama was the day before) while the plan allowed for
+        // Tokyo → Kyoto.
+        const plan = readyMadeToPlan(trip, WEEK[0]);
+        const a = assessRoute(plan.route, facts, graph, trip.days - 1, readyMadeStops(trip));
+        const cards = travelDays(allocateDates(plan.startDate, plan.route, plan.endDate), a.legs);
+        for (const d of plan.days) {
+          const legs = cards.get(d.date) ?? [];
+          if (!d.movingFrom) {
+            expect(legs, d.date).toEqual([]);
+            continue;
+          }
+          const { there } = travelDayParts(legs, d.cityId);
+          expect(there.map((l) => `${l.fromCityId}>${l.toCityId}`), d.date).toEqual([`${d.movingFrom}>${d.cityId}`]);
+          expect(there[0].minutes, d.date).toBe(trainMinutes(d.movingFrom, d.cityId));
+        }
       });
 
       it("is refused on exactly the starts that put a must-see on a closed day", () => {
@@ -304,13 +338,13 @@ describe("readyMadeToPlan", () => {
     // Himeji on the way to Hiroshima: the day there starts after the ride from Kyoto.
     const seven = readyMadeToPlan(readyMadeTrips.find((t) => t.id === "kansai-hiroshima-7")!, "2026-11-24");
     expect(seven.days.map((d) => [d.cityId, d.movingFrom])).toEqual([
-      ["osaka-city", undefined],
-      ["nara-city", undefined],
-      ["kyoto-city", "osaka-city"],
+      ["kyoto-city", undefined],
       ["kyoto-city", undefined],
       ["himeji", "kyoto-city"],
       ["hiroshima-city", undefined],
-      ["hiroshima-city", undefined],
+      ["osaka-city", "hiroshima-city"],
+      ["nara-city", undefined],
+      ["osaka-city", undefined],
     ]);
   });
 

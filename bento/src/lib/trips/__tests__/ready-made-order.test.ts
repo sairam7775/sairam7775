@@ -150,7 +150,7 @@ describe("ready-made days don't go back and forth", () => {
     // cost the flat 45-minute guess from anywhere, and the day went castle
     // > Engyoji > back to Otokoyama, a detour of over 10 km.
     for (const start of ["2027-05-10", "2027-05-12", "2026-11-24"]) {
-      const day = plan("kansai-hiroshima-7", start, "packed", 0.6).days[4];
+      const day = plan("kansai-hiroshima-7", start, "packed", 0.6).days[2];
       expect(day.cityId).toBe("himeji");
       expect(returns(day, 3.5), names(day).join(" > ")).toEqual([]);
     }

@@ -22,7 +22,7 @@ import type { CoverageTier } from "@/lib/types";
 import { copy } from "@/copy";
 import { readyMadeTrips } from "./index";
 import { closedMustSees, closedMustSeeWords, nearestOpenStart } from "./closed";
-import { readyMadeToPlan } from "./to-plan";
+import { readyMadeStops, readyMadeToPlan } from "./to-plan";
 import type { ReadyMadeTrip, ReadyMadeTripId } from "./types";
 
 const e = copy.readyMade.picker.errors;
@@ -167,7 +167,7 @@ export async function startReadyMade(deps: ReadyMadeStartDeps, input: ReadyMadeS
       }
     });
 
-    const assessment = assessRoute(plan.route, facts, graph, trip.days - 1);
+    const assessment = assessRoute(plan.route, facts, graph, trip.days - 1, readyMadeStops(trip));
     const dated = allocateDates(plan.startDate, plan.route, plan.endDate);
     const after: RouteCity[] = plan.route.map((c, i) => ({
       cityId: c.cityId,
