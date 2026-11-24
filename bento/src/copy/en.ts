@@ -1586,7 +1586,7 @@ export const en = {
   // The consent banner. Shown once, until you choose.
   consent: {
     label: "Analytics choice",
-    body: "Can Bento record how you use it — which buttons and pages, how fast they load, when something breaks, and your browser and device — with screen recordings and heatmaps of where you click and scroll, all text and fields blanked? It helps us fix problems.",
+    body: "Bento would like to record how you use it, to help us fix problems: which buttons and pages, how fast they load, when something breaks, and your browser and device. This includes screen recordings and heatmaps of where you click and scroll, with all text and fields blanked.",
     accept: "Allow",
     decline: "No thanks",
     more: "Details",
