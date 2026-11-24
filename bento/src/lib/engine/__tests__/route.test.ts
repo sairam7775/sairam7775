@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed/kansai-sanyo";
-import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts } from "../route";
+import { allocateDates, assessRoute, hubFor, stopKinds, suggestRoute, type CityFacts } from "../route";
 import * as tokyoSeed from "@/lib/transit/seed/tokyo";
 import * as allSeeds from "@/lib/transit/seed";
 import { cityTrainMinutes } from "../travel-day";
@@ -126,6 +126,49 @@ describe("assessRoute — 0-night cities", () => {
     const a = assessRoute([{ cityId: "nara-city", nights: 0 }, { cityId: "kyoto-city", nights: 3 }], facts, graph, 3);
     expect(pairs(a)).toEqual(["kyoto-city>nara-city", "nara-city>kyoto-city"]);
   });
+
+  // all-nine-14, 23 Nov 2026: Yokohama was a day trip from Tokyo on day 5,
+  // but Tokyo → Yokohama plus Yokohama → Kyoto came within the "on the way"
+  // allowance, so day 6's card went Tokyo → Yokohama → Shinagawa → Kyoto
+  // while the planner allowed for Tokyo → Kyoto. When the day each
+  // zero-night city is spent is known, that decides it.
+  const kanto = buildGraph(allSeeds.stations, allSeeds.edges);
+  const tokyoKyoto = [{ cityId: "tokyo-city", nights: 5 }, { cityId: "kamakura", nights: 0 }, { cityId: "yokohama", nights: 0 }, { cityId: "kyoto-city", nights: 4 }];
+
+  it("goes straight to the next stay when a zero-night city's day is not the day of the move", () => {
+    const stops = stopKinds(tokyoKyoto, [{ day: 2, cityId: "kamakura" }, { day: 4, cityId: "yokohama" }]);
+    expect([...stops]).toEqual([["kamakura", "day-trip"], ["yokohama", "day-trip"]]);
+    const a = assessRoute(tokyoKyoto, facts, kanto, 9, stops);
+    expect(a.legs.map((l) => `${l.fromCityId}>${l.toCityId}:${l.movingTo}`)).toEqual([
+      "tokyo-city>kamakura:null", "kamakura>tokyo-city:null",
+      "tokyo-city>yokohama:null", "yokohama>tokyo-city:null",
+      "tokyo-city>kyoto-city:kyoto-city",
+    ]);
+    // The card's train is the one the planner allows for that day.
+    expect(a.legs[4].minutes).toBe(cityTrainMinutes(kanto)("tokyo-city", "kyoto-city"));
+  });
+
+  it("keeps a zero-night city on the way when its day is the day of the move", () => {
+    const himeji = [{ cityId: "kyoto-city", nights: 2 }, { cityId: "himeji", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }];
+    const onTheWay = stopKinds(himeji, [{ day: 2, cityId: "himeji" }]);
+    expect(onTheWay.get("himeji")).toBe("on-the-way");
+    expect(pairs(assessRoute(himeji, facts, graph, 4, onTheWay))).toEqual(["kyoto-city>himeji", "himeji>hiroshima-city"]);
+    // The same city a day earlier is a day trip from Kyoto, though it lies
+    // on the line to Hiroshima.
+    const dayTrip = stopKinds(himeji, [{ day: 1, cityId: "himeji" }]);
+    expect(dayTrip.get("himeji")).toBe("day-trip");
+    expect(pairs(assessRoute(himeji, facts, graph, 4, dayTrip))).toEqual(["kyoto-city>himeji", "himeji>kyoto-city", "kyoto-city>hiroshima-city"]);
+  });
+
+  it("is never on the way with no stay before it or none after it", () => {
+    expect(stopKinds([{ cityId: "nara-city", nights: 0 }, { cityId: "kyoto-city", nights: 3 }], [{ day: 0, cityId: "nara-city" }]).get("nara-city")).toBe("day-trip");
+    expect(stopKinds([{ cityId: "hiroshima-city", nights: 2 }, { cityId: "miyajima", nights: 0 }], [{ day: 2, cityId: "miyajima" }]).get("miyajima")).toBe("day-trip");
+  });
+
+  it("still guesses from the trains when no day is known (a route proposed in the chat)", () => {
+    expect(stopKinds(tokyoKyoto, []).size).toBe(0);
+    expect(pairs(assessRoute(tokyoKyoto, facts, kanto, 9))).toContain("yokohama>kyoto-city");
+  });
 });
 
 describe("hubFor", () => {
@@ -180,20 +223,33 @@ describe("city-to-city legs start where the traveller is", () => {
     expect(leg("kyoto-city", "hiroshima-city")).toMatchObject({ minutes: 100, fareJpy: 10890, lines: [expect.stringMatching(/^Tokaido–Sanyo Shinkansen · Nozomi · Kyoto → Hiroshima/)] });
   });
 
+  // A change between the Shinkansen and the other JR lines at Shin-Osaka
+  // costs 10 minutes, not the usual 5 (SLOW_CHANGES in transit/graph.ts).
   it("goes from Osaka to Hiroshima by the Shinkansen from Shin-Osaka", () => {
     const l = leg("osaka-city", "hiroshima-city");
     expect(l.lines.map((s) => s.split(" · ").slice(0, 2).join(" · "))).toEqual(["JR Kyoto Line · Osaka → Shin-Osaka", "Sanyo Shinkansen · Nozomi"]);
-    expect(l.minutes).toBe(4 + 5 + 85);
+    expect(l.minutes).toBe(4 + 10 + 85);
   });
 
-  it("goes from Osaka to Tokyo and to Himeji by the Shinkansen from Shin-Osaka", () => {
+  it("goes from Osaka to Tokyo by the Shinkansen from Shin-Osaka", () => {
     const head = (l: { lines: string[] }) => l.lines.map((s) => s.split(" · ").slice(0, 2).join(" · "));
     const tokyo = leg("osaka-city", "tokyo-city");
     expect(head(tokyo)).toEqual(["JR Kyoto Line · Osaka → Shin-Osaka", "Tokaido Shinkansen · Nozomi"]);
-    expect(tokyo.minutes).toBe(4 + 5 + 147);
-    const himeji = leg("osaka-city", "himeji");
-    expect(head(himeji)).toEqual(["JR Kyoto Line · Osaka → Shin-Osaka", "Sanyo Shinkansen · Nozomi"]);
-    expect(himeji.minutes).toBe(4 + 5 + 30);
+    expect(tokyo.minutes).toBe(4 + 10 + 147);
+  });
+
+  it("goes between Osaka and Himeji on the direct Special Rapid, both ways, not by a change at Shin-Osaka", () => {
+    for (const [a, b, from, to] of [["osaka-city", "himeji", "Osaka", "Himeji"], ["himeji", "osaka-city", "Himeji", "Osaka"]]) {
+      expect(leg(a, b)).toEqual({ minutes: 62, fareJpy: 1520, lines: [expect.stringMatching(new RegExp(`^JR Kobe Line · Special Rapid · ${from} → ${to} · `))] });
+    }
+  });
+
+  it("goes from Kyoto to Himeji on one through Shinkansen, one fare, without the Kyoto–Shin-Osaka note", () => {
+    const l = assessRoute([{ cityId: "kyoto-city", nights: 2 }, { cityId: "himeji", nights: 2 }], facts, all, 4).legs[0];
+    expect(l).toMatchObject({ minutes: 50, fareJpy: 4740, fareKind: "exact" });
+    expect(l.lines).toEqual([expect.stringMatching(/^Tokaido–Sanyo Shinkansen · Hikari · Kyoto → Himeji/)]);
+    expect(l.summary).toMatch(/no changes/);
+    expect(l.lines.join(" ")).not.toMatch(/Not worth it/);
   });
 
   it("leaves Kyoto ⇄ Nara on the Kintetsu limited express", () => {

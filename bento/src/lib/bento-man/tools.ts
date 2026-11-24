@@ -15,7 +15,7 @@ import { yearlyRangeWords } from "@/lib/engine/closures";
 import { allocateDates, assessRoute, hubFor, suggestRoute, type CityFacts, type RouteAssessment } from "@/lib/engine/route";
 import type { LockedItem, PlaceInput, TravellerInput } from "@/lib/engine/types";
 import { placeRoute, route, type Graph } from "@/lib/transit/graph";
-import { readyMadeToPlan } from "@/lib/trips/ready-made/to-plan";
+import { readyMadeStops, readyMadeToPlan } from "@/lib/trips/ready-made/to-plan";
 import { readyMadeForNights, shorterNote } from "@/lib/trips/ready-made/suggest";
 import { closedMustSees } from "@/lib/trips/ready-made/closed";
 import { describeRoute } from "@/lib/transit/describe";
@@ -436,7 +436,7 @@ async function readyMadeResult(store: TripStore, nights: number, allowShorter: b
       cities: trip.route.map((c) => ({ city_id: c.cityId, name: name(c.cityId), nights: c.nights, reason: reasons[c.cityId], coverage: coverageWords(facts.get(c.cityId)?.tier ?? "stub") })),
       day_trips: trip.dayTrips.map((t) => ({ day: t.day, city: name(t.cityId) })),
       must_see: mustSee,
-      assessment: compactAssessment(assessRoute(route, facts, graph, trip.days - 1)),
+      assessment: compactAssessment(assessRoute(route, facts, graph, trip.days - 1, readyMadeStops(trip))),
     });
   }
   if (!offered.length) return null;

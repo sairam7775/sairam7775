@@ -119,11 +119,64 @@ export function routeBetweenCities(a: string, b: string, graph: Graph, facts?: M
 
 const PLANNING: Record<CoverageTier, string> = copy.plan.route.canPlan;
 
+/** A zero-night city is a stop on the way to the next stay, or a day trip
+ *  there and back from where the traveller sleeps. */
+export type StopKind = "on-the-way" | "day-trip";
+
+/** What each zero-night city is, from the day it is spent (`day`: 0 is the
+ *  trip's first day). On the way only when that day is the day the next
+ *  stay begins, after a stay: the day of the move, which the planner plans
+ *  in that city after the ride from the last stay (`travelDayMoves`). Any
+ *  other day is a day trip. A city with no day given is left out, and
+ *  `assessRoute` guesses it from the trains. */
+export function stopKinds(cities: RouteCityInput[], dayTrips: { day: number; cityId: string }[]): Map<string, StopKind> {
+  const out = new Map<string, StopKind>();
+  cities.forEach((c, i) => {
+    if (c.nights > 0) return;
+    const days = dayTrips.filter((t) => t.cityId === c.cityId).map((t) => t.day);
+    if (!days.length) return;
+    const stayedBefore = cities.slice(0, i).some((x) => x.nights > 0);
+    const j = cities.findIndex((x, k) => k > i && x.nights > 0);
+    const nextArrives = j < 0 ? null : cities.slice(0, j).reduce((n, x) => n + x.nights, 0);
+    out.set(c.cityId, stayedBefore && nextArrives != null && days.includes(nextArrives) ? "on-the-way" : "day-trip");
+  });
+  return out;
+}
+
+/** One journey between two cities' hubs, as a route card shows it. With no
+ *  train in Bento's data, the leg says so and carries no figures. */
+export function cityLeg(a: string, b: string, movingTo: string | null, graph: Graph, facts: Map<string, CityFacts>): RouteLegAssessment {
+  const r = routeBetweenCities(a, b, graph, facts);
+  if (!r) {
+    const nameOf = (id: string) => facts.get(id)?.name ?? id;
+    return {
+      fromCityId: a, toCityId: b, movingTo, minutes: null, fareJpy: null, fareKind: "estimate",
+      summary: copy.plan.route.noLeg(nameOf(a), nameOf(b)), lines: [],
+    };
+  }
+  const d = describeRoute(r);
+  return {
+    fromCityId: a,
+    toCityId: b,
+    movingTo,
+    minutes: r.minutes,
+    // Part of a fare is not the fare: a leg with any ride Bento can't
+    // price has no fare figure (its summary says what is missing).
+    fareJpy: (r.unpricedRides ?? 0) > 0 ? null : r.fareJpy,
+    fareKind: r.fareKind,
+    summary: d.summary,
+    lines: d.lines,
+    fromStation: { name: r.from.name, lat: r.from.lat, lon: r.from.lon },
+    toStation: { name: r.to.name, lat: r.to.lat, lon: r.to.lon },
+  };
+}
+
 export function assessRoute(
   input: RouteCityInput[],
   facts: Map<string, CityFacts>,
   graph: Graph,
   tripNights: number | null = null,
+  stops?: Map<string, StopKind>,
 ): RouteAssessment {
   const cities = input.map((c) => {
     const f = facts.get(c.cityId);
@@ -138,40 +191,20 @@ export function assessRoute(
     };
   });
 
-  const nameOf = (id: string) => cities.find((c) => c.cityId === id)?.name ?? id;
   const between = (a: string, b: string) => routeBetweenCities(a, b, graph, facts);
   const legs: RouteLegAssessment[] = [];
-  const leg = (a: string, b: string, movingTo: string | null) => {
-    const r = between(a, b);
-    if (r) {
-      const d = describeRoute(r);
-      legs.push({
-        fromCityId: a,
-        toCityId: b,
-        movingTo,
-        minutes: r.minutes,
-        // Part of a fare is not the fare: a leg with any ride Bento can't
-        // price has no fare figure (its summary says what is missing).
-        fareJpy: (r.unpricedRides ?? 0) > 0 ? null : r.fareJpy,
-        fareKind: r.fareKind,
-        summary: d.summary,
-        lines: d.lines,
-        fromStation: { name: r.from.name, lat: r.from.lat, lon: r.from.lon },
-        toStation: { name: r.to.name, lat: r.to.lat, lon: r.to.lon },
-      });
-    } else {
-      legs.push({
-        fromCityId: a, toCityId: b, movingTo, minutes: null, fareJpy: null, fareKind: "estimate",
-        summary: copy.plan.route.noLeg(nameOf(a), nameOf(b)), lines: [],
-      });
-    }
-  };
+  const leg = (a: string, b: string, movingTo: string | null) => legs.push(cityLeg(a, b, movingTo, graph, facts));
   // A 0-night city is either a stop on the way between two stays (Himeji
   // between Kyoto and Hiroshima: get off, see the castle, get back on) or a
   // day trip from where you sleep (Nara from Kyoto: there and back). Costing
   // every city as a leg from the one before charged Kyoto → Nara → Hiroshima
   // for a trip that goes Kyoto ⇄ Nara, then Kyoto → Hiroshima.
+  // When the day each one is spent is known (`stops`, from `stopKinds`),
+  // that decides it, as the planner's move does (`travelDayMoves`); only a
+  // route with no days yet is guessed from the trains.
   const onTheWay = (from: string, stop: string, to: string) => {
+    const kind = stops?.get(stop);
+    if (kind) return kind === "on-the-way";
     const a = between(from, stop);
     const b = between(stop, to);
     const direct = between(from, to);

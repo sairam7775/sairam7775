@@ -13,6 +13,8 @@ import { nightsBetween } from "@/lib/bento-man/store";
 import { buildTripView, dayCoverage, startLiftedLine, travelMoveLine, tripMoves, tripTravelDays } from "@/lib/bento-man/trip-view";
 import { fillPercent } from "@/lib/engine/day-stats";
 import { journeyMapUrl } from "@/lib/maps/links";
+import { travelDayParts } from "@/lib/trips/travel-days";
+import type { RouteLegAssessment } from "@/lib/engine/route";
 import { bookingRowOf, gapSourceOf, gapsFrom } from "@/lib/vault/store";
 import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
 import { ErrorNote } from "@/app/(auth)/ui";
@@ -84,6 +86,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   const lifted = sp.note === "start-lifted" ? startLiftedLine(move, selectedDay?.items ?? [], fromName) : null;
   // How well Bento knows the selected day's own city, for its heading and box.
   const cover = selectedMeta ? dayCoverage(selectedMeta, selectedDay?.items.length ?? 0) : null;
+  // The day's trains in the day's order: the ride there above the stops, a
+  // ride on out of the day's city (Himeji, then Hiroshima) below them.
+  const trains = selected && travel?.get(selected) ? travelDayParts(travel.get(selected)!, selectedMeta?.cityId ?? "") : null;
+  const cityName = (cityId: string) => state.cities.find((c) => c.cityId === cityId)?.name ?? cityId;
 
   const nights = nightsBetween(state.trip.startDate, state.trip.endDate);
   const error = typeof sp.error === "string" ? sp.error : null;
@@ -318,7 +324,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                   <span className="mono text-[0.72rem] text-ink-3">{t.dayStats(selectedDay.items.length, dur(stats.activeMin))}</span>
                 )}
               </div>
-              {travel?.get(selected) && (
+              {trains && trains.there.length > 0 && (
                 <section aria-label={t.travelDay.label} className="tile up mb-3 px-5 py-4">
                   <p className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.travelDay.label}</p>
                   {move && (
@@ -327,28 +333,10 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                     </p>
                   )}
                   {lifted && <p role="status" className="mt-1 text-[0.86rem] font-medium leading-snug text-ink">{lifted}</p>}
-                  <ul className="mt-2 flex flex-col gap-3">
-                    {travel.get(selected)!.map((l) => (
-                      <li key={`${l.fromCityId}-${l.toCityId}`}>
-                        <p className="text-[0.95rem] font-medium leading-snug">{l.summary}</p>
-                        {l.lines.map((line) => <p key={line} className="mono mt-1 text-[0.76rem] leading-snug text-ink-2">{line}</p>)}
-                        {l.fromStation && l.toStation && (
-                          <a
-                            href={journeyMapUrl({ from: l.fromStation, to: l.toStation })}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={t.travelDay.openDirections(l.fromStation.name, l.toStation.name)}
-                            className="mt-0.5 inline-flex min-h-6 items-center text-[0.82rem] font-medium text-accent-ink hover:underline"
-                          >
-                            {t.travelDay.directions}
-                          </a>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
+                  <TrainList legs={trains!.there} />
                   <div className="mt-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <Link href={`/trips/${id}/vault`} className="text-[0.86rem] font-medium text-accent-ink hover:underline">{t.travelDay.tickets}</Link>
-                    {travel.get(selected)!.some((l) => l.fareJpy != null && l.fareKind === "estimate") && (
+                    {trains.there.some((l) => l.fareJpy != null && l.fareKind === "estimate") && (
                       <p className="text-[0.78rem] text-ink-3">{t.travelDay.estimate}</p>
                     )}
                   </div>
@@ -374,6 +362,15 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 bookings={bookings}
                 tripDays={dayList.map(([d]) => d)}
               />
+              {trains && trains.onward.length > 0 && (
+                <section aria-label={t.travelDay.onward(cityName(trains.onward[0].toCityId))} className="tile up mt-3 px-5 py-4">
+                  <p className="mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-3">{t.travelDay.onward(cityName(trains.onward[0].toCityId))}</p>
+                  <TrainList legs={trains.onward} />
+                  {trains.onward.some((l) => l.fareJpy != null && l.fareKind === "estimate") && (
+                    <p className="mt-3 text-[0.78rem] text-ink-3">{t.travelDay.estimate}</p>
+                  )}
+                </section>
+              )}
             </div>
           ) : (
             <div className="box up mt-4 p-3">
@@ -392,5 +389,32 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
         </TripChat>
       </div>
     </main>
+  );
+}
+
+type TrainLeg = Pick<RouteLegAssessment, "fromCityId" | "toCityId" | "summary" | "lines" | "fromStation" | "toStation">;
+
+/** A travel day's trains: each leg's summary, its lines and a directions link. */
+function TrainList({ legs }: { legs: TrainLeg[] }) {
+  return (
+    <ul className="mt-2 flex flex-col gap-3">
+      {legs.map((l) => (
+        <li key={`${l.fromCityId}-${l.toCityId}`}>
+          <p className="text-[0.95rem] font-medium leading-snug">{l.summary}</p>
+          {l.lines.map((line) => <p key={line} className="mono mt-1 text-[0.76rem] leading-snug text-ink-2">{line}</p>)}
+          {l.fromStation && l.toStation && (
+            <a
+              href={journeyMapUrl({ from: l.fromStation, to: l.toStation })}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={t.travelDay.openDirections(l.fromStation.name, l.toStation.name)}
+              className="mt-0.5 inline-flex min-h-6 items-center text-[0.82rem] font-medium text-accent-ink hover:underline"
+            >
+              {t.travelDay.directions}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }

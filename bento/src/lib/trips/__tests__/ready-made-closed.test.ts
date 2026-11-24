@@ -3,10 +3,20 @@ import { placeSeeds } from "@/lib/places/seed";
 import { copy } from "@/copy";
 import { readyMadeTrips } from "../ready-made";
 import { closedMustSees, closedMustSeeWords, nearestOpenStart, type ClosingFacts } from "../ready-made/closed";
+import type { ReadyMadeTrip } from "../ready-made/types";
 
 const seeds = new Map<string, ClosingFacts>(placeSeeds.flatMap((s) => s.places).map((p) => [p.id, p]));
 const trip = (id: string) => readyMadeTrips.find((t) => t.id === id)!;
 const e = copy.readyMade.picker.errors;
+// The seven-day trip as it was before it ended in Osaka (23 Nov 2026): the
+// Peace Memorial Museum on day 6 and Shukkeien on day 7, so one start puts
+// two must-sees on closed days. No published trip does that now.
+const twoClosed: ReadyMadeTrip = {
+  ...trip("kansai-hiroshima-7"),
+  route: [{ cityId: "osaka-city", nights: 2 }, { cityId: "nara-city", nights: 0 }, { cityId: "kyoto-city", nights: 2 }, { cityId: "himeji", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }],
+  dayTrips: [{ day: 2, cityId: "nara-city" }, { day: 5, cityId: "himeji" }],
+  mustSee: [["osk-dotonbori"], ["nra-todaiji", "nra-kasuga-taisha"], ["kyt-kiyomizu", "kyt-gion"], ["kyt-arashiyama-bamboo", "kyt-kinkakuji"], ["hmj-castle", "hmj-kokoen"], ["hir-peace-park", "hir-peace-museum"], ["hir-shukkeien"]],
+};
 
 describe("closedMustSees", () => {
   it("finds Osaka Castle closed over the year-end break on the day each start puts it", () => {
@@ -48,7 +58,7 @@ describe("nearestOpenStart", () => {
     expect(nearestOpenStart(trip("osaka-day"), "2026-12-30", seeds, "2026-11-18")).toBe("2026-12-27");
     expect(nearestOpenStart(trip("osaka-day"), "2027-01-01", seeds, "2026-11-18")).toBe("2027-01-02");
     expect(nearestOpenStart(trip("osaka-kyoto-nara-5"), "2026-12-30", seeds, "2026-11-18")).toBe("2027-01-01");
-    expect(nearestOpenStart(trip("kansai-hiroshima-7"), "2026-12-25", seeds, "2026-11-18")).toBe("2026-12-27");
+    expect(nearestOpenStart(twoClosed, "2026-12-25", seeds, "2026-11-18")).toBe("2026-12-27");
   });
 
   it("never suggests a day before the earliest allowed one", () => {
@@ -67,7 +77,7 @@ describe("closedMustSeeWords", () => {
     const one = closedMustSees(trip("osaka-kyoto-nara-5"), "2026-12-30", seeds);
     expect(closedMustSeeWords(one, "2027-01-01"))
       .toBe("Osaka Castle is closed 28 Dec – 1 Jan every year, and this start puts it on Thu 31 Dec. The nearest first day that works is Fri 1 Jan.");
-    const two = closedMustSees(trip("kansai-hiroshima-7"), "2026-12-25", seeds);
+    const two = closedMustSees(twoClosed, "2026-12-25", seeds);
     expect(closedMustSeeWords(two, "2026-12-27")).toBe(
       "Peace Memorial Museum is closed 30 Dec – 31 Dec every year, and this start puts it on Wed 30 Dec. " +
         "Shukkeien Garden is closed 29 Dec – 31 Dec every year, and this start puts it on Thu 31 Dec. " +

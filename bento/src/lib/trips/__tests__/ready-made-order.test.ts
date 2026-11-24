@@ -150,7 +150,7 @@ describe("ready-made days don't go back and forth", () => {
     // cost the flat 45-minute guess from anywhere, and the day went castle
     // > Engyoji > back to Otokoyama, a detour of over 10 km.
     for (const start of ["2027-05-10", "2027-05-12", "2026-11-24"]) {
-      const day = plan("kansai-hiroshima-7", start, "packed", 0.6).days[4];
+      const day = plan("kansai-hiroshima-7", start, "packed", 0.6).days[2];
       expect(day.cityId).toBe("himeji");
       expect(returns(day, 3.5), names(day).join(" > ")).toEqual([]);
     }
@@ -191,13 +191,11 @@ describe("ready-made days don't go back and forth", () => {
   // Tokyo day that went Kabuki-za > Hama-rikyu > Mori Art Museum > Ginza
   // (packed, early riser, 10 May 2027) no longer does since evening-only
   // places became an explicit flag.
-  // One since 0035 (23 Nov 2026), for the manager to keep or hand to the
-  // day-order work: Fudoin got a station, so a packed early-riser Hiroshima
-  // day now ends there, and its order goes Hondori and then back west to the
-  // Orizuru Tower by the Dome. The data is right; the order is the planner's.
-  const KNOWN_LOOPS = new Set<string>([
-    "kansai-hiroshima-7 packed 0.2 2027-05-17: hir-gokoku-shrine > hir-atomic-dome > hir-peace-park > hir-peace-museum > hir-hondori > hir-orizuru-tower > hir-okonomimura > hir-castle",
-  ]);
+  // 0035 (23 Nov 2026) briefly added a packed early-riser Hiroshima day of
+  // kansai-hiroshima-7 that went Hondori and back west to the Orizuru Tower;
+  // the trip's new ending (back to Osaka) changed that day, and it no longer
+  // loops.
+  const KNOWN_LOOPS = new Set<string>([]);
   it("no ready-made day crosses town and comes back, at any pace or start time", () => {
     const bad: string[] = [];
     const known: string[] = [];

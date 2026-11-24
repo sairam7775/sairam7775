@@ -66,17 +66,27 @@ describe("sunset", () => {
   });
 });
 
-describe("Osaka Castle on a travel day", () => {
+describe("Osaka Castle when pinned", () => {
   // Official hours 09:00–18:00, last entry 17:30 (osakacastle.net/guide/,
   // since 1 Apr 2025). A visit ends by closing, so it starts before last entry.
-  it("is pinned on all-nine-14's move day and ends by closing, entering before 17:30", () => {
-    for (const start of ["2026-12-01", "2027-05-10"]) {
-      const day = plan("all-nine-14", start)[9];
-      const castle = day.items.find((x) => x.placeId === "osk-osaka-castle")!;
-      expect(castle.endMin).toBeLessThanOrEqual(18 * 60);
-      expect(castle.startMin).toBeLessThanOrEqual(17 * 60 + 30);
+  // The read-through saw it at 16:09 on all-nine-14's move day; the trips now
+  // pin it on a full Osaka day, so every trip that pins it is checked.
+  it("ends by closing and enters before 17:30 in every ready-made trip that pins it", () => {
+    const pinning = readyMadeTrips.filter((t) =>
+      readyMadeToPlan(t, "2026-12-01").days.some((d) => d.locked?.some((l) => l.placeId === "osk-osaka-castle")),
+    );
+    expect(pinning.length).toBeGreaterThan(0);
+    for (const trip of pinning) {
+      for (const start of ["2026-12-01", "2027-05-10"]) {
+        const castle = plan(trip.id, start)
+          .flatMap((d) => d.items)
+          .find((x) => x.placeId === "osk-osaka-castle");
+        expect(castle, `${trip.id} ${start}`).toBeDefined();
+        expect(castle!.endMin, `${trip.id} ${start}`).toBeLessThanOrEqual(18 * 60);
+        expect(castle!.startMin, `${trip.id} ${start}`).toBeLessThanOrEqual(17 * 60 + 30);
+      }
     }
-  }, 60_000);
+  }, 120_000);
 });
 
 describe("a hike ends in daylight", () => {
