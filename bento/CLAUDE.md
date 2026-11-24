@@ -77,9 +77,13 @@ Explained in `../docs/bento/40-non-functional/` (security, privacy, costs) and `
   send names, counts, durations, ids, booleans and copy keys (`reasonOf`),
   never chat text, booking titles or references, emails, names or birth
   dates. Autocapture keeps no element text; replays mask all text and
-  inputs; an error leaves with its type and stack but not its message, and
-  addresses keep only their path at any depth (`scrubEvent`,
-  `lib/analytics/scrub.ts`, run in `before_send`). Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
+  inputs; an error leaves with a known type and its stack's frames but
+  never its message (`trackError` sends `safeError`,
+  `lib/analytics/safe-error.ts`; PostHog's own `capture_exceptions` is off
+  and window listeners send uncaught errors the same way), and
+  `scrubEvent` (`lib/analytics/scrub.ts`, in `before_send`) checks again
+  and keeps only the path of addresses at any depth. Pass `trackError`
+  and `track` only Bento's own values, never text from a traveller. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
 - **CSP is enforced.** The policy lives in `src/lib/security/csp.ts`; a
   third-party origin it doesn't list is blocked in production, so add one
