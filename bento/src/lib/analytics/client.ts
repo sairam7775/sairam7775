@@ -1,7 +1,7 @@
 "use client";
 
 import type { PostHog } from "posthog-js";
-import { pathOnly } from "./url";
+import { scrubEvent } from "./scrub";
 
 /** The one door to PostHog. Nothing here runs until the traveller has said
  *  yes (`start`), and every call is a no-op before that, so feature code can
@@ -10,8 +10,9 @@ import { pathOnly } from "./url";
  *
  *  What may be sent: event names, counts, durations, ids, booleans, and
  *  enum-like labels. Never chat text, a booking's title or reference, an
- *  email, a name or a birth date. Autocapture keeps no element text, and
- *  session replays blank out every piece of text, attribute and field. */
+ *  email, a name or a birth date. Autocapture keeps no element text,
+ *  session replays blank out every piece of text, attribute and field, and
+ *  an error leaves without its message (`scrubEvent`). */
 
 type Prop = string | number | boolean | null | string[];
 
@@ -31,12 +32,6 @@ let pendingUser: string | null = null;
 let forgetPending = false;
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-
-type Bag = Record<string, unknown> | undefined;
-const scrub = (bag: Bag) => {
-  if (!bag) return;
-  for (const [k, v] of Object.entries(bag)) if (typeof v === "string") bag[k] = pathOnly(v);
-};
 
 export const analyticsConfigured = () => Boolean(KEY);
 
@@ -75,10 +70,8 @@ function init(posthog: PostHog, key: string) {
         // No location from the IP address: Bento has no use for it (the
         // privacy page says so).
         event.properties = { ...event.properties, $geoip_disable: true };
-        scrub(event.properties);
-        scrub(event.$set as Bag);
-        scrub(event.$set_once as Bag);
-        return event;
+        // Error messages removed, addresses cut to their path, at any depth.
+        return scrubEvent(event);
       },
     });
 }

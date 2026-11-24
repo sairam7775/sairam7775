@@ -77,7 +77,9 @@ Explained in `../docs/bento/40-non-functional/` (security, privacy, costs) and `
   send names, counts, durations, ids, booleans and copy keys (`reasonOf`),
   never chat text, booking titles or references, emails, names or birth
   dates. Autocapture keeps no element text; replays mask all text and
-  inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
+  inputs; an error leaves with its type and stack but not its message, and
+  addresses keep only their path at any depth (`scrubEvent`,
+  `lib/analytics/scrub.ts`, run in `before_send`). Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
 - **CSP is enforced.** The policy lives in `src/lib/security/csp.ts`; a
   third-party origin it doesn't list is blocked in production, so add one
