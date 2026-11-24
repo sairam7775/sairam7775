@@ -99,6 +99,31 @@ describe("scrubEvent", () => {
     expect(JSON.stringify(input)).toBe(before);
   });
 
+  it("cuts heatmap address keys to their path, merging points on the same page", () => {
+    const e = scrubEvent({
+      event: "$$heatmap",
+      properties: {
+        $heatmap_data: {
+          "https://bento.test/trips?error=Kyoto#ABC123": [{ x: 1, y: 2 }],
+          "https://bento.test/trips": [{ x: 3, y: 4 }],
+        },
+      },
+    });
+    expect(JSON.stringify(e)).not.toMatch(/Kyoto|ABC123/);
+    expect((e.properties as Record<string, unknown>).$heatmap_data).toEqual({ "https://bento.test/trips": [{ x: 1, y: 2 }, { x: 3, y: 4 }] });
+  });
+
+  it("drops the page title and values lifted out of an address, first-seen copies too", () => {
+    const e = scrubEvent({
+      event: "$pageview",
+      properties: { title: "Kyoto with Mum", utm_content: "Kyoto", gclid: "x", $search_engine: "google", ph_keyword: "Kyoto", $pathname: "/trips" },
+      $set: { $initial_utm_source: "Kyoto" },
+      $set_once: { $session_entry_utm_term: "Kyoto", $initial_title: "Kyoto" },
+    });
+    expect(JSON.stringify(e)).not.toMatch(/Kyoto|google/);
+    expect((e.properties as Record<string, unknown>).$pathname).toBe("/trips");
+  });
+
   it("also scrubs $set and $set_once", () => {
     const e = scrubEvent({ event: "$pageview", properties: {}, $set: { $current_url: "https://b.example/x?y=1" }, $set_once: { $initial_current_url: "https://b.example/z#k" } });
     expect(e.$set).toEqual({ $current_url: "https://b.example/x" });

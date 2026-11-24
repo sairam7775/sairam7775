@@ -90,13 +90,37 @@ function exceptionProps(props: Record<string, unknown>): Record<string, unknown>
 
 /** The event as it may leave: error messages removed, addresses cut to
  *  their path. Returns a new object; the input is untouched. */
+// Text PostHog takes from the page rather than from Bento: the page title,
+// and values it lifts out of an address (marketing and search parameters,
+// also kept as first-seen and session-start copies). An address is cut to
+// its path, so what came after it must not survive under another name.
+const LIFTED = /^(?:\$initial_|\$session_entry_)?(?:title|utm_\w+|\w*clid|gad_source|gclsrc|gbraid|wbraid|li_fat_id|igshid|mc_cid|_kx|epik|irclid|\$search_engine|ph_keyword)$/;
+
+const unlifted = (bag: Record<string, unknown>) => Object.fromEntries(Object.entries(bag).filter(([k]) => !LIFTED.test(k)));
+
+// Heatmaps are keyed by the page's full address; the keys are cut to their
+// path too, merging what lands on the same one.
+function heatmapKeys(data: unknown): unknown {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return data;
+  const out: Record<string, unknown[]> = {};
+  for (const [url, points] of Object.entries(data)) {
+    const key = pathOnly(url);
+    out[key] = [...(out[key] ?? []), ...(Array.isArray(points) ? points : [points])];
+  }
+  return out;
+}
+
 export function scrubEvent<E extends OutgoingEvent>(event: E): E {
-  const props = event.properties && event.event === "$exception" ? exceptionProps(event.properties) : event.properties;
+  let props = event.properties && event.event === "$exception" ? exceptionProps(event.properties) : event.properties;
+  if (props) {
+    props = unlifted(props);
+    if ("$heatmap_data" in props) props.$heatmap_data = heatmapKeys(props.$heatmap_data);
+  }
   const walk = event.event === "$snapshot" ? (bag: Record<string, unknown>) => top(bag) : (bag: Record<string, unknown>) => deep(bag);
   return {
     ...event,
     ...(props && { properties: walk(props) }),
-    ...(event.$set && { $set: deep(event.$set) }),
-    ...(event.$set_once && { $set_once: deep(event.$set_once) }),
+    ...(event.$set && { $set: deep(unlifted(event.$set)) }),
+    ...(event.$set_once && { $set_once: deep(unlifted(event.$set_once)) }),
   };
 }

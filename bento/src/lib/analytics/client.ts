@@ -63,7 +63,24 @@ function init(posthog: PostHog, key: string) {
         maskTextSelector: "*",
         // Names also sit in attributes (aria-label="Delete Kyoto trip").
         maskAllElementAttributes: true,
+        // No network requests in recordings, whatever the project settings.
+        recordHeaders: false,
+        recordBody: false,
       },
+      // Each of these is off here so PostHog's project settings can't turn
+      // it on: console output (could hold anything; recordings and the logs
+      // pipeline, which skips before_send), its own page-speed capture (Bento
+      // sends three numbers itself, without the element), dead clicks,
+      // marketing parameters taken from the address, and features Bento
+      // doesn't use.
+      enable_recording_console_log: false,
+      logs: { captureConsoleLogs: false, beforeSend: () => null },
+      capture_performance: false,
+      capture_dead_clicks: false,
+      save_campaign_params: false,
+      disable_product_tours: true,
+      disable_conversations: true,
+      disable_web_experiments: true,
       // Opted out unless told otherwise, so reset() (sign-out, withdrawal) or
       // cleared storage can only ever fall back to not capturing.
       opt_out_capturing_by_default: true,
@@ -198,15 +215,35 @@ export function track(event: string, props?: Record<string, Prop>) {
 
 /** An error, sent without its message: a known type, the stack's frames
  *  and Bento's own properties (`safeError`; `scrubEvent` checks again). */
+// A page that keeps failing sends the first few, not a flood.
+const MAX_ERRORS = 20;
+let errorsSent = 0;
+const reported = new WeakSet<object>();
+
 export function trackError(error: unknown, props?: Record<string, Prop>) {
+  // The same thrown object reported twice (a boundary and the window) is one.
+  if (error && typeof error === "object") {
+    if (reported.has(error)) return;
+    reported.add(error);
+  }
+  if (errorsSent >= MAX_ERRORS) return;
+  errorsSent++;
   const safe = safeError(error);
   if (started) ph?.captureException(safe, props);
   else if (!refused && queue.length < MAX_QUEUE) queue.push(["error", safe, props]);
 }
 
-// Errors nothing caught, in place of PostHog's capture_exceptions. Held
-// like any event until the answer is known, and dropped on a no.
+// Errors nothing caught, in place of PostHog's capture_exceptions (marked
+// unhandled in `source`). Held like any event until the answer is known,
+// and dropped on a no. Never throws: a broken error object is skipped.
 if (typeof window !== "undefined") {
-  window.addEventListener("error", (e) => trackError(e.error, { source: "onerror" }));
-  window.addEventListener("unhandledrejection", (e) => trackError(e.reason, { source: "unhandledrejection" }));
+  const send = (thrown: unknown, source: string) => {
+    try {
+      trackError(thrown, { source, unhandled: true });
+    } catch {
+      // Nothing to report with.
+    }
+  };
+  window.addEventListener("error", (e) => send(e.error, "onerror"));
+  window.addEventListener("unhandledrejection", (e) => send(e.reason, "unhandledrejection"));
 }

@@ -1532,7 +1532,7 @@ export const en = {
     },
     analytics: {
       heading: "Usage analytics",
-      body: "Records which features you use, how quickly Bento loads and responds, when something breaks, and your browser and device, with screen recordings and heatmaps of where you click and scroll (all text and fields blanked), so we can fix it. Never what you type, your bookings or your email.",
+      body: "Records which features you use, how quickly Bento loads and responds, when something breaks, and your browser and device, with screen recordings and heatmaps of where you click and scroll (all text and fields blanked), so we can fix it.",
       on: "On",
       off: "Off",
       more: "How Bento uses data",
@@ -1586,7 +1586,7 @@ export const en = {
   // The consent banner. Shown once, until you choose.
   consent: {
     label: "Analytics choice",
-    body: "Bento would like to record how you use it, to help us fix problems: which buttons and pages, how fast they load, when something breaks, and your browser and device. This includes screen recordings and heatmaps of where you click and scroll, with all text and fields blanked. Never what you type, your bookings or your email.",
+    body: "Bento would like to record how you use it, to help us fix problems: which buttons and pages, how fast they load, when something breaks, and your browser and device. This includes screen recordings and heatmaps of where you click and scroll, with all text and fields blanked.",
     accept: "Allow",
     decline: "No thanks",
     more: "Details",
@@ -1637,7 +1637,7 @@ export const en = {
       },
       analytics: {
         heading: "Usage analytics (only if you say yes)",
-        body: "If you allow it, Bento records which pages you open (the page's address without anything after a ? or #), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, how quickly Bento loads and responds (three speed scores, nothing from the page itself), and errors (their kind and where in Bento's code they happened, never their message). PostHog also notes your browser, operating system, device type and screen size. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. PostHog receives your device's IP address, as any website does, and Bento tells it not to work out your location from it. Screen recordings show how a visit went: the page's layout, mouse movements, clicks and scrolling. They blank out all text and every field, so what you type and your bookings don't appear in them. Heatmaps show where on a page people click and how far they scroll, from the same clicks and scrolling.\n\nNone of it ever includes what you type, your bookings or your email.\n\nYou can turn it off any time in Settings or on the cookies page. Saying no changes nothing else about Bento.",
+        body: "If you allow it, Bento records which pages you open (the page's address without anything after a ? or #), which buttons you press, how long Bento Man takes to answer, whether you accept its plans, how quickly Bento loads and responds (three speed scores, nothing from the page itself), and errors (their kind and where in Bento's code they happened, without their message). PostHog also notes your browser, operating system, device type and screen size. This uses PostHog, with data stored in the EU.\n\nIt is linked to an internal account number, never your email or name. PostHog receives your device's IP address, as any website does, and Bento tells it not to work out your location from it. Screen recordings show how a visit went: the page's layout, mouse movements, clicks and scrolling. They blank out all text and every field, so what you type and your bookings don't appear in them. Heatmaps show where on a page people click and how far they scroll, from the same clicks and scrolling.\n\nYou can turn it off any time in Settings or on the cookies page. Saying no changes nothing else about Bento.",
       },
       purposes: {
         heading: "Why Bento uses it",
@@ -1780,7 +1780,7 @@ export const en = {
     },
     choice: {
       heading: "Your analytics answer",
-      body: "Allowing usage analytics lets Bento record which buttons and pages you use, how fast they load, when something breaks, and your browser and device, with screen recordings and heatmaps of where you click and scroll (all text and fields blanked), so we can fix problems. Never what you type, your bookings or your email. Change it here at any time, signed in or not. Saying no changes nothing else about Bento.",
+      body: "Allowing usage analytics lets Bento record which buttons and pages you use, how fast they load, when something breaks, and your browser and device, with screen recordings and heatmaps of where you click and scroll (all text and fields blanked), so we can fix problems. Change it here at any time, signed in or not. Saying no changes nothing else about Bento.",
       none: "You haven't answered yet, so nothing is recorded.",
       yes: "You've allowed usage analytics.",
       no: "You've said no to usage analytics.",

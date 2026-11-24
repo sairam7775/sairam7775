@@ -36,6 +36,7 @@ const outgoing = (thrown: unknown) =>
     scrubEvent({ event: "$exception", properties: { ...builder.buildFromUnknown(safeError(thrown), { mechanism: { handled: true, type: "generic" } }) } }),
   );
 const SECRET = /Kyoto|Mum|secret|ABC123|example\.com/;
+const APP = "https://bento.example/_next/static/chunks";
 
 describe("an error on its way to PostHog", () => {
   it("loses a message that pretends to be stack frames (V8)", () => {
@@ -45,18 +46,69 @@ describe("an error on its way to PostHog", () => {
     expect(outgoing(e)).not.toMatch(SECRET);
   });
 
-  it("keeps the real frames, so the error can still be found in the code", () => {
-    const json = outgoing(new Error("Kyoto with Mum"));
-    expect(json).toMatch(/safe-error\.test\.ts/);
+  it("keeps a frame's place in Bento's built code, without its function name", () => {
+    const e = new Error("Kyoto with Mum");
+    e.stack = [
+      "Error: Kyoto with Mum",
+      `    at Object.Kyoto (${APP}/app-1a2b.js?v=3:10:4)`,
+      `    at ${APP}/main.js:1:1`,
+    ].join("\n");
+    const json = outgoing(e);
+    expect(json).not.toMatch(SECRET);
+    expect(json).toContain("chunks/app-1a2b.js");
+    expect(json).toContain("chunks/main.js");
     expect(json).toContain(MESSAGE_REMOVED);
   });
 
-  it("loses a Firefox or Safari stack's lines that aren't frames", () => {
-    const e = new Error("x");
-    e.stack = "render@https://bento.example/_next/static/chunks/app.js:10:4\nKyoto with Mum secret\n@https://bento.example/_next/static/chunks/main.js:1:1";
-    const json = outgoing(e);
+  it("keeps a Firefox or Safari stack only when every line is a frame", () => {
+    const clean = new Error("x");
+    clean.stack = [`render@${APP}/app.js:10:4`, `@${APP}/main.js:1:1`, ""].join("\n");
+    expect(outgoing(clean)).toContain("chunks/app.js");
+    const mixed = new Error("x");
+    mixed.stack = [`render@${APP}/app.js:10:4`, "Kyoto with Mum secret", `@${APP}/main.js:1:1`].join("\n");
+    const json = outgoing(mixed);
     expect(json).not.toMatch(SECRET);
-    expect(json).toMatch(/chunks\/app\.js/);
+    expect(json).not.toContain("chunks/app.js");
+  });
+
+  // Codex's reproductions, 25 Nov 2026.
+  it("keeps no frames when the message changed after the stack was made", () => {
+    const e = new Error("private\n    at Kyoto (/secret.js:1:2)");
+    void e.stack;
+    e.message = "x";
+    expect(outgoing(e)).not.toMatch(SECRET);
+  });
+
+  it("keeps no frames from a headerless stack whose lines are the message", () => {
+    const e = new Error("private\nKyoto@https://bento.test/secret.js:1:2");
+    e.stack = "Error: " + e.message;
+    expect(outgoing(e)).not.toMatch(SECRET);
+  });
+
+  it("drops a real frame's function name, which code can set to anything", () => {
+    const obj = {
+      ["Kyoto"]() {
+        return new Error("x");
+      },
+    };
+    expect(outgoing(obj.Kyoto())).not.toMatch(SECRET);
+  });
+
+  it("keeps no file outside Bento's built code, not even a forged one under it", () => {
+    const e = new Error("x");
+    e.stack = ["Error: x", "    at f (https://bento.example/secret-Kyoto.js:1:1)", "    at g (/_next/static/Kyoto with Mum.js:1:1)"].join("\n");
+    expect(outgoing(e)).not.toMatch(SECRET);
+  });
+
+  it("survives an error whose properties throw when read", () => {
+    const e = new Error("x");
+    Object.defineProperty(e, "stack", {
+      get() {
+        throw new Error("Kyoto");
+      },
+    });
+    expect(() => safeError(e)).not.toThrow();
+    expect(outgoing(e)).not.toMatch(SECRET);
   });
 
   it("names the type only from a known list, never from the error or object itself", () => {
