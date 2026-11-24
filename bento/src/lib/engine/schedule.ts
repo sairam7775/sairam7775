@@ -5,6 +5,7 @@ import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rej
 import { copy } from "@/copy";
 import { toFive } from "./travel-day";
 import { metresBetween } from "./travel";
+import { daylightEndMin } from "./daylight";
 
 /** When the graph cannot say, assume this and warn. Never silently zero. */
 const FALLBACK_TRAVEL_MIN = 45;
@@ -86,7 +87,18 @@ export function usualDayStart(crowdTolerance: number): number {
  *  explainable: every item carries the terms that put it there, and every
  *  place left out carries the rule or term that removed it. */
 export function planDay(input: DayInput): DayPlan {
-  const { date, cityId, places, traveller: t, travel } = input;
+  const { date, cityId, traveller: t, travel } = input;
+  // A hike closes at dusk (`daylightEndMin`): from here on its closing time
+  // is the earlier of its own and that, so every hours check (growth,
+  // ordering, timing, validation) keeps it in daylight.
+  const daylight = new Map<string, number>();
+  const places = input.places.map((p) => {
+    const end = daylightEndMin(p, date);
+    const own = parseClock(p.closesAt);
+    if (end == null || (own != null && own <= end)) return p;
+    daylight.set(p.id, end);
+    return { ...p, closesAt: clock(end) };
+  });
   const w: Weights = { ...DEFAULT_WEIGHTS, ...input.weights };
   const day = new Date(`${date}T00:00:00Z`);
   const weekday = day.getUTCDay();
@@ -134,7 +146,10 @@ export function planDay(input: DayInput): DayPlan {
       considered.push(r);
       continue;
     }
-    if (r && lockedIds.has(p.id)) warnings.push(copy.plan.warnings.pinnedAnyway(p.name, r.detail));
+    if (r && lockedIds.has(p.id))
+      warnings.push(r.term === "many_closed"
+        ? copy.plan.warnings.manyClosed(p.name, (copy.plan.weekdays as Record<number, string>)[weekday])
+        : copy.plan.warnings.pinnedAnyway(p.name, r.detail));
     pool.push(p);
   }
   // A long stay's share: this day's part of the days left (a travel day
@@ -788,7 +803,7 @@ export function planDay(input: DayInput): DayPlan {
 
       if (endMin > closes) {
         violations.push({ placeId: p.id, name: p.name, stage: "validate", term: "hours",
-          detail: copy.plan.leftOut.closesBefore(clock(closes), clock(startMin), d.durationMin) });
+          detail: daylight.has(p.id) ? copy.plan.leftOut.afterDark(clock(closes)) : copy.plan.leftOut.closesBefore(clock(closes), clock(startMin), d.durationMin) });
       } else if (!d.locked && evening == null && endMin > dayEndMin) {
         // A chosen daytime stop ends by the day's end; an evening place, or
         // one with an evening window it is in, may run later.
@@ -828,6 +843,11 @@ export function planDay(input: DayInput): DayPlan {
         }
       }
 
+      // The ticket, said on the stop itself: the vault raises a recommended
+      // booking only inside its lead time, so a day planned weeks ahead
+      // would otherwise never say it. A performance starts when it starts.
+      if (p.bookingReq === "recommended") extra.push(copy.plan.reasons.bookAhead(p.bookingLeadDays));
+      if (p.category === "performance") extra.push(copy.plan.reasons.setTimes);
       const { reason, terms } = buildReason(d.score, extra);
       items.push({
         placeId: p.id, name: p.name, category: p.category,
@@ -949,6 +969,9 @@ export function planDay(input: DayInput): DayPlan {
 
   // What the returned day's timing found (never a trial's).
   warnings.push(...timed.warnings);
+  // A pinned hike stays even when the day reaches it too late for daylight.
+  for (const v of timed.violations)
+    if (v.term === "hours" && daylight.has(v.placeId) && isLocked(v.placeId)) warnings.push(copy.plan.warnings.afterDark(v.name, clock(daylight.get(v.placeId)!)));
   if (timed.unpriced) {
     warnings.push(copy.plan.warnings.unpriced(timed.unpriced));
   }

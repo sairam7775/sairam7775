@@ -179,11 +179,16 @@ export const tokyo: PlaceSeed[] = [
     tip: "French, English and Japanese gardens in one, and alcohol is banned — the calm hanami spot. Closing time moves with the season and last entry is half an hour before it. Closed on Mondays except in the cherry-blossom and autumn-colour weeks, when it opens every day.",
     cost: 500, seasons: ["sakura", "koyo"], sources: ["env.go.jp"] }),
 
+  // Evening-only (0035): an alley of yakitori and drinking counters that wakes up
+  // after work; by day only a few lunch counters and chain shops are open. Time
+  // Out Tokyo ("When to go? 8pm–early morning", timeout.com/tokyo/restaurants/
+  // tokyo-alleyway-guide), read 23 Nov 2026. The association's own site
+  // (shinjuku-omoide.com) lists about 60 eateries but no hours.
   draft({ id: "tky-omoide-yokocho", city: c, name: "Omoide Yokocho", nameJa: "思い出横丁", category: "street", lat: 35.6929, lon: 139.6996,
     station: "shinjuku", walk: 2, tags: ["food", "nightlife"], energy: 0.1, crowd: 0.8, discovery: 0.2, signature: 0.5,
-    taste: 20, typical: 60, full: 90, window: ["after 17:30"],
+    taste: 20, typical: 60, full: 90, window: ["after 17:30"], eveningOnly: true,
     crowdNote: "Tour groups shuffle through from seven to nine; seats free up fast.",
-    tip: "Yakitori smoke in a narrow lane by the tracks at Shinjuku's west exit. Most counters seat under ten, some charge a small seat fee, and some ask you not to photograph.",
+    tip: "Yakitori smoke in a narrow lane by the tracks at Shinjuku's west exit. It comes alive in the evening; by day only a few counters are open. Most counters seat under ten, some charge a small seat fee, and some ask you not to photograph.",
     cost: 0, pairs: ["tky-golden-gai", "tky-tocho"], sources: ["shinjuku-omoide.com"] }),
 
   draft({ id: "tky-golden-gai", city: c, name: "Shinjuku Golden Gai", nameJa: "新宿ゴールデン街", category: "street", lat: 35.6940, lon: 139.7046,
@@ -236,9 +241,15 @@ export const tokyo: PlaceSeed[] = [
     tip: "Single-act tickets on the fourth floor let you see one act for a fraction of a full programme — the right way to try kabuki. They go on sale online at noon the day before, priced by act. English captions come on a device you rent at the theatre. Times follow the month's programme, with a few dark days between runs.",
     cost: 1500, pairs: ["tky-ginza"], sources: ["kabuki-za.co.jp"] }),
 
+  // Many shops close on Sundays and Wednesdays (manyClosedWeekdays, 0035): "The
+  // market is closed on Wednesdays, Sundays, and national holidays, so many shops
+  // are closed on those days as well" (GO TOKYO, gotokyo.org/en/story/guide/
+  // tsukijioutermarket), read 23 Nov 2026. The market's own calendar
+  // (tsukiji.or.jp/english/calendar) follows the Tokyo Central Wholesale Market's
+  // and says each shop keeps its own days. Holidays aren't in Bento's data.
   draft({ id: "tky-tsukiji-outer", city: c, name: "Tsukiji Outer Market", nameJa: "築地場外市場", category: "market", lat: 35.6654, lon: 139.7707,
     station: "tsukiji", walk: 2, tags: ["food"], energy: 0.2, crowd: 0.85, discovery: 0.1, signature: 0.7,
-    taste: 30, typical: 75, full: 120, window: ["before 10:00"], opens: "09:00", closes: "14:00",
+    taste: 30, typical: 75, full: 120, window: ["before 10:00"], opens: "09:00", closes: "14:00", manyClosedWeekdays: [0, 3],
     crowdNote: "Shoulder to shoulder from ten; by two most stalls have shut.",
     tip: "The wholesale fish market moved to Toyosu in 2018; this is the retail fringe that stayed — tamagoyaki, grilled scallops, sushi breakfasts. Eat at the stall rather than walking. Earlier hours are for trade buyers. Each shop has its own days off: many close on Sundays, holidays and Wednesdays, though about a third open on Sundays.",
     cost: 0, pairs: ["tky-tsukiji-honganji", "tky-hamarikyu"], sources: ["tsukiji.or.jp"] }),

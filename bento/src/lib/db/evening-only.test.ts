@@ -28,11 +28,13 @@ it("adds evening_only to places_public after every column 0032 had, and locks th
 });
 
 it("sets the flag by id on exactly the seed places that carry it, verified rows included", () => {
-  const updates = [...code.matchAll(/update places set evening_only = true where id = '([^']+)';/g)].map(([, id]) => id).sort();
+  // 0033 set the first six; 0035 added Omoide Yokocho (read-through, 23 Nov 2026).
+  const later = read("0035_place_data_1123.sql").replace(/--[^\n]*/g, "");
+  const updates = [...`${code}\n${later}`.matchAll(/update places set evening_only = true where id = '([^']+)';/g)].map(([, id]) => id).sort();
   const seeded = allPlaces.filter((p) => p.eveningOnly).map((p) => p.id).sort();
   expect(updates).toEqual(seeded);
   // Only places whose own notes say they are dead or closed by day.
-  expect(seeded).toEqual(["hir-kagura", "hir-nagarekawa", "hir-ogonzan", "kyt-pontocho", "osk-teamlab-botanical", "tky-golden-gai"]);
+  expect(seeded).toEqual(["hir-kagura", "hir-nagarekawa", "hir-ogonzan", "kyt-pontocho", "osk-teamlab-botanical", "tky-golden-gai", "tky-omoide-yokocho"]);
   expect(code).not.toMatch(/update places set evening_only[^;]*verification_status/);
 });
 

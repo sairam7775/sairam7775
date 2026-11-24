@@ -59,6 +59,11 @@ export interface PlaceSeed {
   eveningOnly?: boolean;
   /** 0 = Sunday */
   closedWeekdays?: number[];
+  /** Weekdays when the place is open but many of its shops close (a market
+   *  whose stalls keep their own days off). Not a closing day: the planner
+   *  won't choose it then, a pin stays with a warning, and a ready-made
+   *  start isn't refused. 0 = Sunday. Set by id in a migration too (0035). */
+  manyClosedWeekdays?: number[];
   /** Closed on these dates every year, such as the year-end break:
    *  "MM-DD..MM-DD" (an end before the start wraps the year: "12-28..01-01")
    *  or one "MM-DD". Only from the place's own published closing days. */

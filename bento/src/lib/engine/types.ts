@@ -38,6 +38,10 @@ export interface PlaceInput {
   eveningOnly?: boolean;
   /** 0 = Sunday */
   closedWeekdays: number[];
+  /** Weekdays when many of its shops close but the place itself is open
+   *  (`places.many_closed_weekdays`, 0035; 0 = Sunday): the planner doesn't
+   *  choose it then, and a pin stays with a warning. */
+  manyClosedWeekdays?: number[];
   /** "YYYY-MM-DD" */
   closedDates: string[];
   /** Closed on these dates every year: "MM-DD..MM-DD" (wrapping the year,
