@@ -143,6 +143,34 @@ export function stopKinds(cities: RouteCityInput[], dayTrips: { day: number; cit
   return out;
 }
 
+/** One journey between two cities' hubs, as a route card shows it. With no
+ *  train in Bento's data, the leg says so and carries no figures. */
+export function cityLeg(a: string, b: string, movingTo: string | null, graph: Graph, facts: Map<string, CityFacts>): RouteLegAssessment {
+  const r = routeBetweenCities(a, b, graph, facts);
+  if (!r) {
+    const nameOf = (id: string) => facts.get(id)?.name ?? id;
+    return {
+      fromCityId: a, toCityId: b, movingTo, minutes: null, fareJpy: null, fareKind: "estimate",
+      summary: copy.plan.route.noLeg(nameOf(a), nameOf(b)), lines: [],
+    };
+  }
+  const d = describeRoute(r);
+  return {
+    fromCityId: a,
+    toCityId: b,
+    movingTo,
+    minutes: r.minutes,
+    // Part of a fare is not the fare: a leg with any ride Bento can't
+    // price has no fare figure (its summary says what is missing).
+    fareJpy: (r.unpricedRides ?? 0) > 0 ? null : r.fareJpy,
+    fareKind: r.fareKind,
+    summary: d.summary,
+    lines: d.lines,
+    fromStation: { name: r.from.name, lat: r.from.lat, lon: r.from.lon },
+    toStation: { name: r.to.name, lat: r.to.lat, lon: r.to.lon },
+  };
+}
+
 export function assessRoute(
   input: RouteCityInput[],
   facts: Map<string, CityFacts>,
@@ -163,34 +191,9 @@ export function assessRoute(
     };
   });
 
-  const nameOf = (id: string) => cities.find((c) => c.cityId === id)?.name ?? id;
   const between = (a: string, b: string) => routeBetweenCities(a, b, graph, facts);
   const legs: RouteLegAssessment[] = [];
-  const leg = (a: string, b: string, movingTo: string | null) => {
-    const r = between(a, b);
-    if (r) {
-      const d = describeRoute(r);
-      legs.push({
-        fromCityId: a,
-        toCityId: b,
-        movingTo,
-        minutes: r.minutes,
-        // Part of a fare is not the fare: a leg with any ride Bento can't
-        // price has no fare figure (its summary says what is missing).
-        fareJpy: (r.unpricedRides ?? 0) > 0 ? null : r.fareJpy,
-        fareKind: r.fareKind,
-        summary: d.summary,
-        lines: d.lines,
-        fromStation: { name: r.from.name, lat: r.from.lat, lon: r.from.lon },
-        toStation: { name: r.to.name, lat: r.to.lat, lon: r.to.lon },
-      });
-    } else {
-      legs.push({
-        fromCityId: a, toCityId: b, movingTo, minutes: null, fareJpy: null, fareKind: "estimate",
-        summary: copy.plan.route.noLeg(nameOf(a), nameOf(b)), lines: [],
-      });
-    }
-  };
+  const leg = (a: string, b: string, movingTo: string | null) => legs.push(cityLeg(a, b, movingTo, graph, facts));
   // A 0-night city is either a stop on the way between two stays (Himeji
   // between Kyoto and Hiroshima: get off, see the castle, get back on) or a
   // day trip from where you sleep (Nara from Kyoto: there and back). Costing

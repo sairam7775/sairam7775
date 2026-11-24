@@ -711,9 +711,10 @@ Explained in `../docs/bento/30-software/transit.md`.
   (`tripTravelDays` in `trip-view.ts`, which keeps the engine out of the
   page), so they always match it. A leg's
   `movingTo` is the stay it ends at; day trips there and back have none
-  and no travel day. A zero-night city is on the way only when its day
-  (saved, or a ready-made trip's `dayTrips`) is the move day (`stopKinds`),
-  as the planner's move reads it; with no day known it is guessed from the trains.
+  and no travel day. The travel-day card is built date by date from the
+  city saved for that date, as the planner's move is (`travelDayMoves`);
+  a route card takes a zero-night city as on the way only when a ready-made
+  trip's `dayTrips` say so (`stopKinds`), else it guesses from the trains.
 - `src/lib/transit/` is pure: `buildGraph` + `route` + `describeRoute`.
   Search state is (station, line, mode); a line change pays `transferPenaltyMin`
   (default 5; 10 between the Shinkansen and another line at Shin-Osaka,

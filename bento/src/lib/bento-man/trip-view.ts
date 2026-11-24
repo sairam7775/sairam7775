@@ -1,39 +1,44 @@
 /** Prepare the accepted itinerary for the trip page, keeping engine calls
  *  outside components. Stored days override the route's date allocation. */
-import { allocateDates, assessRoute, stopKinds } from "@/lib/engine/route";
+import { allocateDates, cityLeg, type RouteLegAssessment } from "@/lib/engine/route";
 import { dayStats } from "@/lib/engine/day-stats";
-import { cityTrainMinutes, toFive, travelDayMoves } from "@/lib/engine/travel-day";
+import { cityTrainMinutes, toFive, travelDayMoves, travelDayOrigins } from "@/lib/engine/travel-day";
 import { clock } from "./diff";
 import type { TravelMove } from "@/lib/engine/types";
-import { travelDays } from "@/lib/trips/travel-days";
 import { showsMainSights } from "@/lib/trips/route-card";
 import { copy } from "@/copy";
 import type { CoverageTier } from "@/lib/types";
 import type { TripState, TripStore } from "./store";
 
 /** Each travel day's trains, from Bento's own train data, worked out again
- *  from the accepted route so they always match it. A zero-night city's
- *  saved day says whether it is on the way or a day trip (`stopKinds`), the
- *  way the planner's move reads it, so the card never routes a move through
- *  a city visited on another day. */
+ *  from the accepted route so they always match it, and date by date the
+ *  way the planner's move is (`travelDayMoves`): from the stay slept in the
+ *  night before to the city the day is saved in. When that city isn't the
+ *  stay arriving that date (Himeji, on the way), the ride on to the stay
+ *  follows, after the day. A zero-night city on the route with no day saved
+ *  on a travel date is never on the way: the planner moves straight to the
+ *  stay, and so does the card. */
 export async function tripTravelDays(store: Pick<TripStore, "cities" | "graph">, state: TripState) {
+  const out = new Map<string, RouteLegAssessment[]>();
   const sorted = [...state.cities].sort((a, b) => a.sortOrder - b.sortOrder);
-  if (sorted.length < 2) return new Map<string, never>();
-  const [facts, graph] = await Promise.all([store.cities(), store.graph()]);
-  const route = sorted.map((c) => ({ cityId: c.cityId, nights: c.nights }));
-  const a = assessRoute(route, new Map(facts.map((f) => [f.id, f])), graph, null, stopKinds(route, savedStopDays(state, route)));
-  return travelDays(sorted, a.legs);
-}
-
-/** The saved days spent in the route's zero-night cities, as days from the
- *  trip's start. */
-function savedStopDays(state: TripState, route: { cityId: string; nights: number }[]) {
-  const start = state.trip.startDate;
-  if (!start) return [];
-  const zero = new Set(route.filter((c) => c.nights === 0).map((c) => c.cityId));
-  return state.days
-    .filter((d) => d.cityId && zero.has(d.cityId))
-    .map((d) => ({ day: Math.round((Date.parse(`${d.date}T00:00:00Z`) - Date.parse(`${start}T00:00:00Z`)) / 86_400_000), cityId: d.cityId! }));
+  if (sorted.length < 2) return out;
+  const [list, graph] = await Promise.all([store.cities(), store.graph()]);
+  const facts = new Map(list.map((f) => [f.id, f]));
+  const { startDate, endDate } = state.trip;
+  const stays = new Set(sorted.filter((c) => c.nights > 0).map((c) => c.cityId));
+  const arriving = new Map<string, string>();
+  for (const c of allocateDates(startDate, sorted, endDate)) if (c.nights > 0 && c.arriveDate) arriving.set(c.arriveDate, c.cityId);
+  const savedCity = new Map(state.days.filter((d) => d.cityId).map((d) => [d.date, d.cityId!]));
+  for (const [date, from] of travelDayOrigins(startDate, sorted, endDate)) {
+    const stay = arriving.get(date);
+    if (!stay) continue;
+    const day = savedCity.get(date) ?? stay;
+    // A day saved for another stay of the route (planned before the route
+    // changed) has no move in the planner; the card still shows the move.
+    const via = day !== stay && day !== from && !stays.has(day) ? day : null;
+    out.set(date, via ? [cityLeg(from, via, stay, graph, facts), cityLeg(via, stay, stay, graph, facts)] : [cityLeg(from, stay, stay, graph, facts)]);
+  }
+  return out;
 }
 
 /** Each travel day's move, worked out from the accepted route the way the

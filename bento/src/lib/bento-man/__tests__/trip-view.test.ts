@@ -104,6 +104,38 @@ describe("tripTravelDays", () => {
     expect(both.map((l) => `${l.fromCityId}>${l.toCityId}`)).toEqual(["kyoto-city>himeji", "himeji>hiroshima-city"]);
   });
 
+  // Review R1 and R2 (Codex, 24 Nov 2026): the card follows each travel
+  // date's own city, as the planner does, not the route's order.
+  it("goes straight to the next stay when a zero-night city on the route has no saved day", async () => {
+    const store = new MemoryStore({
+      trip: { startDate: "2026-11-20", endDate: "2026-11-24" },
+      cities: [{ cityId: "kyoto-city", nights: 2 }, { cityId: "himeji", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }],
+      days: [{ date: "2026-11-22", cityId: "hiroshima-city", items: [item({ startMin: 700, durationMin: 120 })] }],
+    });
+    const state = await store.state();
+    const legs = (await tripTravelDays(store, state)).get("2026-11-22")!;
+    expect(legs.map((l) => `${l.fromCityId}>${l.toCityId}`)).toEqual(["kyoto-city>hiroshima-city"]);
+    expect(legs[0].minutes).toBe((await tripMoves(store, state)).get("2026-11-22")?.trainMin);
+  });
+
+  it("follows the city saved on each travel date, wherever it sits on the route", async () => {
+    const store = new MemoryStore({
+      trip: { startDate: "2026-11-20", endDate: "2026-11-26" },
+      cities: [{ cityId: "kyoto-city", nights: 2 }, { cityId: "himeji", nights: 0 }, { cityId: "hiroshima-city", nights: 2 }, { cityId: "osaka-city", nights: 2 }],
+      days: [
+        { date: "2026-11-22", cityId: "himeji", items: [item({ startMin: 660, durationMin: 120 })] },
+        { date: "2026-11-24", cityId: "himeji", items: [item({ startMin: 660, durationMin: 120 })] },
+      ],
+    });
+    const state = await store.state();
+    const days = await tripTravelDays(store, state);
+    const moves = await tripMoves(store, state);
+    const pairs = (date: string) => days.get(date)!.map((l) => `${l.fromCityId}>${l.toCityId}:${l.movingTo}`);
+    expect(pairs("2026-11-22")).toEqual(["kyoto-city>himeji:hiroshima-city", "himeji>hiroshima-city:hiroshima-city"]);
+    expect(pairs("2026-11-24")).toEqual(["hiroshima-city>himeji:osaka-city", "himeji>osaka-city:osaka-city"]);
+    for (const date of ["2026-11-22", "2026-11-24"]) expect(days.get(date)![0].minutes).toBe(moves.get(date)?.trainMin);
+  });
+
   it("has no travel days with one stop", async () => {
     const store = new MemoryStore({ trip, cities: [{ cityId: "kyoto-city", nights: 3 }] });
     expect((await tripTravelDays(store, await store.state())).size).toBe(0);
