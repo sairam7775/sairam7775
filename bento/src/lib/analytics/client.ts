@@ -1,6 +1,7 @@
 "use client";
 
 import type { PostHog } from "posthog-js";
+import { safeError } from "./safe-error";
 import { scrubEvent } from "./scrub";
 
 /** The one door to PostHog. Nothing here runs until the traveller has said
@@ -50,7 +51,9 @@ function init(posthog: PostHog, key: string) {
       defaults: "2026-05-30",
       person_profiles: "identified_only",
       capture_pageview: "history_change",
-      capture_exceptions: true,
+      // Off: PostHog's own catcher would hand it errors as thrown, message
+      // and all. Bento's listeners below send them through safeError instead.
+      capture_exceptions: false,
       // Clicks are recorded by element, never by the words on it: a chat
       // bubble or a booking name must not reach analytics.
       mask_all_text: true,
@@ -193,7 +196,17 @@ export function track(event: string, props?: Record<string, Prop>) {
   else if (!refused && queue.length < MAX_QUEUE) queue.push(["event", event, props]);
 }
 
+/** An error, sent without its message: a known type, the stack's frames
+ *  and Bento's own properties (`safeError`; `scrubEvent` checks again). */
 export function trackError(error: unknown, props?: Record<string, Prop>) {
-  if (started) ph?.captureException(error, props);
-  else if (!refused && queue.length < MAX_QUEUE) queue.push(["error", error, props]);
+  const safe = safeError(error);
+  if (started) ph?.captureException(safe, props);
+  else if (!refused && queue.length < MAX_QUEUE) queue.push(["error", safe, props]);
+}
+
+// Errors nothing caught, in place of PostHog's capture_exceptions. Held
+// like any event until the answer is known, and dropped on a no.
+if (typeof window !== "undefined") {
+  window.addEventListener("error", (e) => trackError(e.error, { source: "onerror" }));
+  window.addEventListener("unhandledrejection", (e) => trackError(e.reason, { source: "unhandledrejection" }));
 }

@@ -3,6 +3,32 @@ import { pathOnly } from "./url";
 /** What an error's message becomes before it leaves the browser. */
 export const MESSAGE_REMOVED = "(message removed)";
 
+/** Error names that are code, not words: the JavaScript built-ins, the
+ *  browser's DOMException names Bento may meet, and Next.js's chunk error.
+ *  Any other name (a custom one, or a thrown object's `name`) goes out as
+ *  "Error", because a name can be set to anything. */
+export const KNOWN_ERROR_NAMES = new Set([
+  "Error",
+  "TypeError",
+  "RangeError",
+  "SyntaxError",
+  "ReferenceError",
+  "EvalError",
+  "URIError",
+  "AggregateError",
+  "AbortError",
+  "TimeoutError",
+  "NetworkError",
+  "NotAllowedError",
+  "NotFoundError",
+  "NotSupportedError",
+  "InvalidStateError",
+  "QuotaExceededError",
+  "SecurityError",
+  "DataCloneError",
+  "ChunkLoadError",
+]);
+
 /** The parts of a PostHog event `before_send` hands over. */
 export type OutgoingEvent = {
   event: string;
@@ -28,19 +54,37 @@ const DROPPED = ["$exception_values", "$exception_steps", "$sentry_exception", "
 const top = (bag: Record<string, unknown>) =>
   Object.fromEntries(Object.entries(bag).map(([k, v]) => [k, typeof v === "string" ? pathOnly(v) : v]));
 
-function deep(value: unknown): unknown {
+// Past this depth, or on a loop, a value is replaced, never sent as it was.
+const MAX_DEPTH = 12;
+export const VALUE_OMITTED = "(omitted)";
+
+function deep(value: unknown, depth = 0, seen = new WeakSet<object>()): unknown {
   if (typeof value === "string") return pathOnly(value);
-  if (Array.isArray(value)) return value.map(deep);
-  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, deep(v)]));
-  return value;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString();
+  if (!value || typeof value !== "object") return value;
+  if (depth >= MAX_DEPTH || seen.has(value)) return VALUE_OMITTED;
+  seen.add(value);
+  const out = Array.isArray(value)
+    ? value.map((v) => deep(v, depth + 1, seen))
+    : Object.fromEntries(Object.entries(value).map(([k, v]) => [k, deep(v, depth + 1, seen)]));
+  // Siblings may share an object; only a loop back up is cut.
+  seen.delete(value);
+  return out;
 }
+
+const knownName = (name: unknown) => (typeof name === "string" && KNOWN_ERROR_NAMES.has(name) ? name : "Error");
 
 function exceptionProps(props: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...props };
   for (const k of DROPPED) delete out[k];
   if ("$exception_message" in out) out.$exception_message = MESSAGE_REMOVED;
+  if ("$exception_type" in out) out.$exception_type = knownName(out.$exception_type);
+  // safeError has already cleaned what Bento sends; this holds if anything
+  // reaches PostHog another way.
   if (Array.isArray(out.$exception_list))
-    out.$exception_list = out.$exception_list.map((x) => (x && typeof x === "object" ? { ...x, value: MESSAGE_REMOVED } : x));
+    out.$exception_list = out.$exception_list.map((x) =>
+      x && typeof x === "object" ? { ...x, type: knownName((x as { type?: unknown }).type), value: MESSAGE_REMOVED } : x,
+    );
   return out;
 }
 

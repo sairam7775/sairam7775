@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { MESSAGE_REMOVED, scrubEvent } from "./scrub";
+import { MESSAGE_REMOVED, VALUE_OMITTED, scrubEvent } from "./scrub";
 
-// The shape posthog-js 1.435 builds for an error ($exception), whether
-// captured by Bento (`trackError`) or on its own (`capture_exceptions`).
+// A superset of what posthog-js 1.435 may send for an error ($exception):
+// its builder, its suppression copies and its Sentry integration together.
 const exception = () => ({
   event: "$exception",
   properties: {
@@ -64,6 +64,39 @@ describe("scrubEvent", () => {
     const e = scrubEvent({ event: "$snapshot", properties: { $snapshot_data: data, $current_url: "https://b.example/t?x=1" } });
     expect((e.properties as Record<string, unknown>).$snapshot_data).toBe(data);
     expect((e.properties as Record<string, unknown>).$current_url).toBe("https://b.example/t");
+  });
+
+  it("sends an exception's type only from the known list", () => {
+    const e = scrubEvent({ event: "$exception", properties: { $exception_type: "Kyoto with Mum", $exception_list: [{ type: "Kyoto with Mum", value: "x" }, { type: "RangeError", value: "y" }] } });
+    const p = e.properties as Record<string, unknown>;
+    expect(p.$exception_type).toBe("Error");
+    expect((p.$exception_list as { type: string }[]).map((x) => x.type)).toEqual(["Error", "RangeError"]);
+  });
+
+  it("drops the Sentry copies of the message", () => {
+    const e = scrubEvent({ event: "$exception", properties: { $sentry_exception: { values: ["Kyoto"] }, $sentry_exception_message: "Kyoto" } });
+    expect(JSON.stringify(e)).not.toMatch(/Kyoto/);
+  });
+
+  it("cuts a loop or a value too deep instead of failing (which would drop the event), keeps shared values and dates", () => {
+    const loop: Record<string, unknown> = { a: 1 };
+    loop.self = loop;
+    const shared = { k: "v" };
+    let nested: Record<string, unknown> = { end: true };
+    for (let i = 0; i < 20; i++) nested = { n: nested };
+    const p = scrubEvent({ event: "x", properties: { loop, one: shared, two: shared, when: new Date("2026-11-25T00:00:00Z"), nested } }).properties as Record<string, unknown>;
+    expect((p.loop as Record<string, unknown>).self).toBe(VALUE_OMITTED);
+    expect(p.one).toEqual({ k: "v" });
+    expect(p.two).toEqual({ k: "v" });
+    expect(p.when).toBe("2026-11-25T00:00:00.000Z");
+    expect(JSON.stringify(p.nested)).toContain(VALUE_OMITTED);
+  });
+
+  it("leaves its input untouched", () => {
+    const input = exception();
+    const before = JSON.stringify(input);
+    scrubEvent(input);
+    expect(JSON.stringify(input)).toBe(before);
   });
 
   it("also scrubs $set and $set_once", () => {
