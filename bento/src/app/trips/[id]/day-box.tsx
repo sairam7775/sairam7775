@@ -230,9 +230,24 @@ export function DayBox(p: DayBoxProps) {
             const height = Math.max(MIN_TILE, (it.durationMin ?? 60) * PX_PER_MIN);
             const clash = clashingBookings(it, p.bookings, p.date).map((b) => b.title);
             const suffix = arriveMinutesSuffix(it.arriveMode, it.arriveMinutes);
+            // Free time ends when the leg to this stop starts, so it is drawn
+            // before the leg, or after lunch when lunch is in the same gap.
+            const freeTile = (p.freeTime ?? []).filter((f) => f.beforeIndex === i && it.startMin != null).map((f) => (
+              <div key={`free-${f.startMin}`} className="tile up flex gap-4 bg-sunk px-4 py-3" style={{ animationDelay: `${0.06 * i}s` }}>
+                <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{clock(f.startMin)}</span>
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="disp text-[1.05rem] font-bold">{t.freeTime}</span>
+                    <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(f.endMin - f.startMin)}</span>
+                  </div>
+                  <p className="mt-0.5 text-[0.85rem] text-ink-2">{t.freeTimeNote(it.name, clock(it.startMin!))}</p>
+                </div>
+              </div>
+            ));
             return (
               <div key={it.placeId} className="contents">
                 {blockAt(i).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
+                {!showLunchBefore && freeTile}
                 {i > 0 && it.arriveDetail && (
                   <div className="up flex justify-center px-2" style={{ animationDelay: `${0.06 * i}s` }}>
                     <span className="mono inline-flex items-center gap-2 text-[0.68rem] text-rice/85">
@@ -254,18 +269,7 @@ export function DayBox(p: DayBoxProps) {
                     </div>
                   </div>
                 )}
-                {(p.freeTime ?? []).filter((f) => f.beforeIndex === i && it.startMin != null).map((f) => (
-                  <div key={`free-${f.startMin}`} className="tile up flex gap-4 bg-sunk px-4 py-3" style={{ animationDelay: `${0.06 * i}s` }}>
-                    <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{clock(f.startMin)}</span>
-                    <div className="flex-1">
-                      <div className="flex items-baseline gap-2">
-                        <span className="disp text-[1.05rem] font-bold">{t.freeTime}</span>
-                        <span className="mono ml-auto text-[0.7rem] text-ink-3">{dur(f.endMin - f.startMin)}</span>
-                      </div>
-                      <p className="mt-0.5 text-[0.85rem] text-ink-2">{t.freeTimeNote(it.name, clock(it.startMin!))}</p>
-                    </div>
-                  </div>
-                ))}
+                {showLunchBefore && freeTile}
                 {p.overFromIndex === i && (
                   <div className="flex items-center gap-3 px-2" role="separator" aria-label={t.budgetEndsLabel}>
                     <span className="h-[2px] flex-1 bg-accent/80" style={{ backgroundImage: "repeating-linear-gradient(90deg, transparent 0 6px, var(--color-lacquer) 6px 12px)" }} />

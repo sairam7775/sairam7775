@@ -14,7 +14,7 @@ vi.mock("./booking-actions", () => ({ planBooking: vi.fn(), unplanBooking: vi.fn
 const { DayBox } = await import("./day-box");
 
 const stop = (placeId: string, name: string, startMin: number, durationMin: number, arriveMinutes: number | null) =>
-  ({ placeId, name, startMin, durationMin, locked: false, reason: null, reasonTerms: [], arriveMode: arriveMinutes ? "walk" : null, arriveMinutes, arriveDetail: null });
+  ({ placeId, name, startMin, durationMin, locked: false, reason: null, reasonTerms: [], arriveMode: arriveMinutes ? "walk" : null, arriveMinutes, arriveDetail: arriveMinutes ? `Walk to ${name}` : null });
 
 const box = (items: ReturnType<typeof stop>[]) => {
   const stats = dayStats(items, "standard");
@@ -34,6 +34,8 @@ describe("free time in the day box", () => {
     expect(html).toContain(copy.time.duration(1040 - 869));
     expect(html.indexOf(note)).toBeGreaterThan(html.indexOf("Namba Yasaka Shrine"));
     expect(html.indexOf(note)).toBeLessThan(html.lastIndexOf("Dotonbori"));
+    // Free time ends when the leg to Dotonbori starts, so the leg comes after it.
+    expect(html.indexOf(note)).toBeLessThan(html.indexOf("Walk to Dotonbori"));
   });
 
   it("says nothing for a day without one", () => {

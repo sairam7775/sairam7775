@@ -526,7 +526,9 @@ describe("days", () => {
     expect(pinned.startMin).toBe(600);
     // The day's other stops stay, in an order round the 10:00 pin (so "moved"
     // counts as staying: the pin can reorder every one of them).
-    expect(diff.after.filter((i) => i.change === "kept" || i.change === "moved").length).toBeGreaterThan(0);
+    const stayed = diff.after.filter((i) => i.placeId !== "kyt-sanjusangendo" && day.items.some((d) => d.placeId === i.placeId));
+    expect(stayed.length).toBeGreaterThan(0);
+    for (const i of stayed) expect(["kept", "moved"]).toContain(i.change);
   });
 
   it("replan_day keeps a category out for the day", async () => {

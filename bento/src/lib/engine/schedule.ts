@@ -982,8 +982,9 @@ export function planDay(input: DayInput): DayPlan {
   // Shibuya's evening). Growing puts a stop only on the day's way
   // (`strays`), but one that opened or ended the day there can be moved
   // between two others by ordering, or have the day run on past it. The
-  // worst goes, one per pass, and the refill looks for one on the way;
-  // dropping it shortens the day's path by more than the bar. Never a pin.
+  // worst goes, one per pass (of a run of two, the stop whose leaving
+  // shortens the way most; the next pass looks again), and the refill looks
+  // for one on the way. Never a pin.
   const offTheWay = (): Rejected[] => {
     // A day of four stops or fewer (SHARE_FLOOR) keeps them: a long stay's
     // last day holds what is left of the city, scattered, and was stripped
