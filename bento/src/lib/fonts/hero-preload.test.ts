@@ -24,6 +24,22 @@ describe("hero font preloads", () => {
     expect(faces.some((f) => f.pkg === pkg && f.file === file)).toBe(true);
   });
 
+  // A face that still exists but that the hero no longer draws with would
+  // pass the test above, so tie each preload to the hero's own text: the
+  // heading (h1, Zen Maru Gothic, font-black), the kicker (font-medium,
+  // Kaku 500) and the paragraph (body text, Kaku 400).
+  it("preloads exactly the weights the hero draws with", () => {
+    const hero = read("../../app/page.tsx").split("{/* Hero */}")[1].split("<DayPreview")[0];
+    expect(hero).toMatch(/<h1 className="[^"]*\bfont-black\b/);
+    expect(hero).toMatch(/<p className="[^"]*\bfont-medium\b/);
+    expect(hero).toMatch(/<p className="mt-5 [^"]*text-ink-2">/);
+    expect(imports.map((i) => i.file).sort()).toEqual([
+      "zen-kaku-gothic-new-latin-400-normal.woff2",
+      "zen-kaku-gothic-new-latin-500-normal.woff2",
+      "zen-maru-gothic-latin-900-normal.woff2",
+    ]);
+  });
+
   it("asks for fonts the way the stylesheet will, so the browser reuses the download", () => {
     expect(source).toMatch(/as: "font"/);
     expect(source).toMatch(/type: "font\/woff2"/);
