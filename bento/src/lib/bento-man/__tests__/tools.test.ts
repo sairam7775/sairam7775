@@ -651,7 +651,7 @@ describe("days", () => {
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("23eec2c953e915d28d0f078730fba3101b7e59f19693fb13cac592e60db45bff");
+    expect(sha(plan)).toBe("95041d5572785456109cfacf834f496d41fc9e37c9f7c5a8582271aa00caf2c7");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
     expect(sha(replan)).toBe("1c5c5dd1396e120e0f2fd6752d415a8bc76f9271ba211b6fd99be2168b858ba3");

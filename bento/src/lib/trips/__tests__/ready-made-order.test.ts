@@ -237,11 +237,13 @@ describe("ready-made days don't go back and forth", () => {
   // the relaxed early riser's first Tokyo day, Senso-ji at dawn, Tsukiji's
   // market in its morning, then Kiyosumi Garden. A day of four stops or
   // fewer keeps them rather than lose one off the way (schedule.ts,
-  // `offTheWay`), so a long stay's last day isn't stripped to two.
-  const KNOWN_LOOPS = new Set<string>([
-    ...["tokyo-2", "tokyo-kamakura-3"].flatMap((trip) => ["2027-05-10", "2027-05-12"].map((date) =>
-      `${trip} relaxed 0.2 detour ${date}: tky-sensoji > tky-tsukiji-outer > tky-kiyosumi-garden`)),
-  ]);
+  // `offTheWay`), so a long stay's last day isn't stripped to two. The
+  // Wednesday start (12 May 2027) left the list with 0035: many of Tsukiji's
+  // shops close on Wednesdays, so the planner doesn't choose it that day.
+  const KNOWN_LOOPS = new Set<string>(
+    ["tokyo-2", "tokyo-kamakura-3"].map((trip) =>
+      `${trip} relaxed 0.2 detour 2027-05-10: tky-sensoji > tky-tsukiji-outer > tky-kiyosumi-garden`),
+  );
   it("no ready-made day crosses town and comes back, at any pace or start time", () => {
     const bad: string[] = [];
     const known: string[] = [];
