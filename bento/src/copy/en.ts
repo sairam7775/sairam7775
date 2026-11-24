@@ -1186,12 +1186,9 @@ export const en = {
       afterCrowd: (time: string) => `after ${time}, when it empties out`,
       // A place whose every best window is the evening (Pontocho, Dotonbori).
       evening: "planned for the evening, its best time",
-      // A place whose booking is recommended: said on the stop, whenever the trip is.
-      bookAhead: (lead: number | null) => lead === 1
-        ? "book ahead: tickets go on sale the day before"
-        : lead
-          ? `book ahead: tickets go on sale about ${lead} days before`
-          : "book ahead",
+      // A place whose booking is recommended: said on the stop, whenever the
+      // trip is. The lead is how far ahead to book, not a release date.
+      bookAhead: (lead: number | null) => lead === 1 ? "book a day ahead" : lead ? `book about ${lead} days ahead` : "book ahead",
       // A performance (category "performance"): the plan's time is a guess at a slot.
       setTimes: "shows start at set times, so check the programme and fit the day to yours",
     },

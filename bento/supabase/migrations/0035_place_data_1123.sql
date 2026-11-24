@@ -62,12 +62,18 @@ update places set local_tip = 'Yakitori smoke in a narrow lane by the tracks at 
 
 -- Hiroshima: the Astram Line station for Fudoin (ekitan.com: Hondori to
 -- Fudoin-mae 9 min, ¥260, 4.0 km; position from en.wikipedia).
-insert into stations (id, name, name_ja, city_id, coords, lines) values
-  ('fudoin-mae', 'Fudoin-mae', '不動院前', 'hiroshima-city', extensions.ST_SetSRID(extensions.ST_MakePoint(132.4692, 34.427), 4326)::extensions.geography, array['Astram Line']::text[])
+-- On a fresh database the migrations run before the seeds, so there is no
+-- city, station or place yet: each step runs only where what it points at
+-- exists, and the seeds bring the same rows later.
+insert into stations (id, name, name_ja, city_id, coords, lines)
+select 'fudoin-mae', 'Fudoin-mae', '不動院前', 'hiroshima-city', extensions.ST_SetSRID(extensions.ST_MakePoint(132.4692, 34.427), 4326)::extensions.geography, array['Astram Line']::text[]
+where exists (select 1 from cities where id = 'hiroshima-city')
 on conflict (id) do nothing;
-insert into station_edges (from_station, to_station, line, mode, operator, km, minutes, fare_jpy, stops, note) values
-  ('hondori', 'fudoin-mae', 'Astram Line', 'rail', 'astram', 4, 9, 260, 6, null),
-  ('fudoin-mae', 'hondori', 'Astram Line', 'rail', 'astram', 4, 9, 260, 6, null)
+insert into station_edges (from_station, to_station, line, mode, operator, km, minutes, fare_jpy, stops, note)
+select v.from_station, v.to_station, 'Astram Line', 'rail', 'astram', 4, 9, 260, 6, null
+from (values ('hondori', 'fudoin-mae'), ('fudoin-mae', 'hondori')) as v (from_station, to_station)
+where exists (select 1 from stations where id = 'hondori')
+  and exists (select 1 from stations where id = 'fudoin-mae')
 on conflict (from_station, to_station, line) do nothing;
 
 -- Fudoin: two minutes from Fudoin-mae (dive-hiroshima.com; ja.wikipedia
@@ -77,7 +83,8 @@ update places set
   station_walk_min = 2,
   coords = extensions.ST_SetSRID(extensions.ST_MakePoint(132.471111, 34.427028), 4326)::extensions.geography,
   sources = array['wikivoyage', 'dive-hiroshima.com']::text[]
-where id = 'hir-fudoin';
+where id = 'hir-fudoin'
+  and exists (select 1 from stations where id = 'fudoin-mae');
 
 -- Osaka: hours 9:00–18:00 are right (since 1 Apr 2025); last entry is 17:30
 -- (osakacastle.net/guide/).

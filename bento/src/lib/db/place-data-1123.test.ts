@@ -46,10 +46,20 @@ it("gives Fudoin the seed's station, walk, position and sources, after the stati
   expect(flat).toContain(`ST_MakePoint(${f.lon}, ${f.lat})`);
   expect(flat).toContain(`sources = array[${f.sources.map(sqlText).join(", ")}]::text[] where id = 'hir-fudoin'`);
   const st = stations.find((s) => s.id === "fudoin-mae")!;
-  expect(flat).toContain(`('fudoin-mae', 'Fudoin-mae', '不動院前', 'hiroshima-city', extensions.ST_SetSRID(extensions.ST_MakePoint(${st.lon}, ${st.lat})`);
-  for (const e of edges.filter((x) => x.line === "Astram Line"))
-    expect(flat).toContain(`('${e.from}', '${e.to}', 'Astram Line', 'rail', 'astram', ${e.km}, ${e.minutes}, ${e.fareJpy}, ${e.stops}, null)`);
+  expect(flat).toContain(`select 'fudoin-mae', 'Fudoin-mae', '不動院前', 'hiroshima-city', extensions.ST_SetSRID(extensions.ST_MakePoint(${st.lon}, ${st.lat})`);
+  const astram = edges.filter((x) => x.line === "Astram Line");
+  expect(astram.map((e) => `${e.from}>${e.to}`).sort()).toEqual(["fudoin-mae>hondori", "hondori>fudoin-mae"]);
+  expect(flat).toContain("(values ('hondori', 'fudoin-mae'), ('fudoin-mae', 'hondori'))");
+  for (const e of astram) expect(flat).toContain(`'Astram Line', 'rail', 'astram', ${e.km}, ${e.minutes}, ${e.fareJpy}, ${e.stops}, null`);
   expect(code.indexOf("insert into stations")).toBeLessThan(code.indexOf("nearest_station = 'fudoin-mae'"));
+});
+
+it("runs on a fresh database, where migrations come before the seeds (review finding 1)", () => {
+  // No city, station or place yet: every row it points at is checked first.
+  expect(flat).toMatch(/insert into stations [^;]*where exists \(select 1 from cities where id = 'hiroshima-city'\)/);
+  expect(flat).toMatch(/insert into station_edges [^;]*where exists \(select 1 from stations where id = 'hondori'\) and exists \(select 1 from stations where id = 'fudoin-mae'\)/);
+  expect(flat).toMatch(/where id = 'hir-fudoin' and exists \(select 1 from stations where id = 'fudoin-mae'\);/);
+  expect(flat).not.toMatch(/insert into station(s|_edges) [^;]*\) values/);
 });
 
 it("reads the weekdays from places_public, and none from a view without the column", () => {

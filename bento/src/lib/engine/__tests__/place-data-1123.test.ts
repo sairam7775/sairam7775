@@ -90,9 +90,17 @@ describe("a hike ends in daylight", () => {
     }
   });
 
-  it("leaves a late hike out with the daylight reason", () => {
-    const day = planDay({ date: "2026-12-16", cityId: "kamakura", places: placesByCity.kamakura, traveller, travel, dayStartMin: 14 * 60 + 30, locked: [{ placeId: "kmk-kotoku-in" }] });
-    expect(day.items.map((x) => x.placeId)).not.toContain("kmk-kuzuharaoka");
+  it("plans the trail on a Kamakura day when it fits daylight (so the check above isn't empty)", () => {
+    expect(plan("kamakura-day", "2026-12-16")[0].items.map((x) => x.placeId)).toContain("kmk-kuzuharaoka");
+  });
+
+  it("leaves a late hike out with the daylight reason, where summer light would take it (review finding 6)", () => {
+    const hike = placesByCity.kamakura.find((p) => p.id === "kmk-kuzuharaoka")!;
+    const at = (date: string) => planDay({ date, cityId: "kamakura", places: [hike], traveller, travel, dayStartMin: 14 * 60 + 30 });
+    expect(at("2027-06-16").items.map((x) => x.placeId)).toEqual(["kmk-kuzuharaoka"]);
+    const dec = at("2026-12-16");
+    expect(dec.items).toEqual([]);
+    expect(dec.considered.find((r) => r.placeId === hike.id)?.detail).toContain("in the dark");
   });
 
   it("warns when a pinned hike can only run into the dark", () => {
@@ -122,6 +130,13 @@ describe("Tsukiji Outer Market on a Wednesday or Sunday", () => {
     expect(day.items.map((x) => x.placeId)).toContain("tky-tsukiji-outer");
     expect(day.warnings.some((w) => w.includes("Tsukiji Outer Market") && w.includes("Wednesdays"))).toBe(true);
     expect(day.warnings.some((w) => /pinned/i.test(w))).toBe(false);
+  });
+
+  it("a real closing outranks 'many shops close' for a pin (review finding 5)", () => {
+    const tsukiji = placesByCity["tokyo-city"].find((p) => p.id === "tky-tsukiji-outer")!;
+    const places = placesByCity["tokyo-city"].map((p) => (p.id === tsukiji.id ? { ...p, closedDates: [WED] } : p));
+    const day = planDay({ date: WED, cityId: "tokyo-city", places, traveller, travel, locked: [{ placeId: tsukiji.id }] });
+    expect(day.warnings.some((w) => w.includes("Tsukiji Outer Market") && w.includes(copy.plan.leftOut.closedDate))).toBe(true);
   });
 
   it("is planned as usual on a Tuesday", () => {
@@ -162,6 +177,13 @@ describe("booking cues on the day card", () => {
     const kabuki = day.items.find((x) => x.placeId === "tky-kabukiza")!;
     expect(kabuki.reason.toLowerCase()).toContain(copy.plan.reasons.bookAhead(1).toLowerCase());
     expect(kabuki.reason.toLowerCase()).toContain(copy.plan.reasons.setTimes.toLowerCase());
+  });
+
+  it("says how far ahead to book, never that tickets go on sale then (review finding 4: the lead is a booking interval, not a release date)", () => {
+    expect(copy.plan.reasons.bookAhead(3)).toBe("book about 3 days ahead");
+    expect(copy.plan.reasons.bookAhead(1)).toBe("book a day ahead");
+    expect(copy.plan.reasons.bookAhead(null)).toBe("book ahead");
+    for (const lead of [null, 1, 3, 14]) expect(copy.plan.reasons.bookAhead(lead)).not.toMatch(/on sale|release/);
   });
 
   it("says nothing of booking for a place that needs none", () => {

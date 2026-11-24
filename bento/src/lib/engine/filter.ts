@@ -64,11 +64,6 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
   if (p.closedWeekdays.includes(ctx.weekday)) {
     return reject("closed", copy.plan.leftOut.closed(WEEKDAY[ctx.weekday]));
   }
-  // Open, but most of it shut (Tsukiji's market days): not ours to choose
-  // that day. A pin keeps it, with its own warning (planDay).
-  if (p.manyClosedWeekdays?.includes(ctx.weekday)) {
-    return reject("many_closed", copy.plan.leftOut.manyClosed(WEEKDAY[ctx.weekday]));
-  }
   if (p.closedDates.includes(ctx.date)) {
     return reject("closed", copy.plan.leftOut.closedDate);
   }
@@ -83,6 +78,13 @@ export function hardFilter(p: PlaceInput, t: TravellerInput, ctx: FilterContext)
 
   if (ctx.usedPlaceIds.has(p.id)) {
     return reject("already_planned", copy.plan.leftOut.alreadyPlanned);
+  }
+
+  // Open, but much of it shut (Tsukiji's market days): not ours to choose
+  // that day. Last, so a real closing or a missing ticket is what a pin is
+  // warned of. A pin keeps it, with its own warning (planDay).
+  if (p.manyClosedWeekdays?.includes(ctx.weekday)) {
+    return reject("many_closed", copy.plan.leftOut.manyClosed(WEEKDAY[ctx.weekday]));
   }
 
   return null;
