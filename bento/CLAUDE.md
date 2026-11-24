@@ -495,6 +495,11 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   it is one render-blocking file per weight. A new weight goes in `FONTS`;
   `font-css.test.ts` fails while the file is stale. Zen Maru Gothic
   display, Zen Kaku Gothic New body, DM Mono data.
+  The home page preloads its hero's three Latin files
+  (`lib/fonts/hero-preload.ts`: `?url` imports of the files fonts.css
+  uses; the turbopack rule in `next.config.ts` matches only `?url`, since a
+  rule for every .woff2 broke fonts.css's own urls). Preload nothing more:
+  each preload competes with the stylesheet for the connection.
   The logo wordmark stays outlined Bricolage Grotesque (it is artwork).
 - The seasonal scenes and particles (`components/seasonal/`) are the one
   exception to "tokens, not hex": they are illustration with their own

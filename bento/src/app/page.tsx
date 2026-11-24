@@ -11,6 +11,7 @@ import { Notice } from "@/app/(auth)/ui";
 import { LegalNav } from "@/components/legal/legal-page";
 import { displayName } from "@/lib/account/name";
 import { BentoManSays } from "@/components/mascot/says";
+import { preloadHeroFonts } from "@/lib/fonts/hero-preload";
 
 const t = copy.home;
 
@@ -55,6 +56,7 @@ function greeting(user: User) {
 }
 
 export default async function Home({ searchParams }: PageProps<"/">) {
+  preloadHeroFonts();
   const sp = await searchParams;
   const deleted = sp.deleted === "1";
   // Account deleted, but PostHog couldn't be reached to delete its analytics:

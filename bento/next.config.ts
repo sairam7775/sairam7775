@@ -39,6 +39,13 @@ const nextConfig: NextConfig = {
   },
   // PostHog's API paths end in a slash; a redirect would drop the request.
   skipTrailingSlashRedirect: true,
+  // Importing a font file with `?url` gives its URL, so the home page can
+  // preload the files fonts.css points at (lib/fonts/hero-preload.ts). Only
+  // with the query: a rule for every .woff2 also catches fonts.css's own
+  // url()s, which then reach the browser as node_modules paths.
+  turbopack: {
+    rules: { "*.woff2": { condition: { query: /[?&]url(?=&|$)/ }, type: "asset" } },
+  },
 };
 
 export default nextConfig;
