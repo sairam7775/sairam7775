@@ -5,11 +5,14 @@ const c = "osaka-city";
 /** Osaka — 28 drafts. Seed values throughout; verify hours and prices. */
 export const osaka: PlaceSeed[] = [
   // Main tower closed 28 Dec – 1 Jan (休館日 「12月28日～1月1日」): osakacastle.net/guide/, read 20 Nov 2026.
+  // Hours 9:00–18:00, last entry 17:30 (「9:00～18:00（入館は17:30まで）」, changed
+  // 1 Apr 2025): osakacastle.net/guide/, read 23 Nov 2026. The planner ends a visit
+  // by closing, so a 90-min visit starts by 16:30, well before last entry.
   draft({ id: "osk-osaka-castle", city: c, name: "Osaka Castle", nameJa: "大阪城", category: "castle", lat: 34.6873, lon: 135.5262,
     station: "osakajokoen", walk: 15, tags: ["history"], energy: 0.35, crowd: 0.75, discovery: 0.1, signature: 0.8, physical: 0.4,
     taste: 45, typical: 90, full: 150, window: ["before 09:30"], opens: "09:00", closes: "18:00",
     crowdNote: "The keep is a museum with a lift queue. Weekend afternoons the wait for the lift is longer than the visit.",
-    tip: "The keep is a 1931 concrete reconstruction with a museum inside; the view from the top and the walls and moats outside are the real castle. Walk the outer wall before going in.",
+    tip: "The keep is a 1931 concrete reconstruction with a museum inside; the view from the top and the walls and moats outside are the real castle. Walk the outer wall before going in. Last entry is 17:30, and the ticket queue can be closed earlier on busy days.",
     cost: 600, pairs: ["osk-castle-park"], seasons: ["sakura"], closedYearly: ["12-28..01-01"], sources: ["osakacastle.net"] }),
 
   draft({ id: "osk-castle-park", city: c, name: "Osaka Castle Park", nameJa: "大阪城公園", category: "park", lat: 34.6900, lon: 135.5300,

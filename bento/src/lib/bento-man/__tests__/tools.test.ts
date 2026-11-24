@@ -629,14 +629,18 @@ describe("days", () => {
     // is chosen; a long stay shares its city; a day that crosses town and
     // comes back loses the stop it came back for), and when growing kept
     // stops on the day's way, a chosen daytime stop ended by the day's end
-    // and a re-plan shared the stay's unplanned days (stops nearer the day's way).
+    // and a re-plan shared the stay's unplanned days (stops nearer the day's way),
+    // and when the read-through of 23 Nov 2026 (0035) gave Fudoin its station
+    // (Hiroshima days now reach it by the Astram Line, other stops round it) and
+    // a stop whose booking is recommended began to say "book ahead" (plan_days
+    // only; the re-planned 23rd is byte for byte as before).
     // Refresh only for a change that is meant to alter a well-covered plan.
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const store = routed();
     const ctx = ctxFor(store);
     const plan = (await runTool("plan_days", {}, ctx)).result;
     expect(plan).not.toMatch(/coverage/);
-    expect(sha(plan)).toBe("10348a48542b618cbd47c73c17261ef983e48d69544f217a7d5675cc6a39e70a");
+    expect(sha(plan)).toBe("34b45a36f5660948fd42a8e9759063cd90960ffe8f66b6f25fc28a97b1670aea");
     await store.applyProposal(ctx.proposal!);
     const replan = (await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "10:00" }] }, ctxFor(store))).result;
     expect(sha(replan)).toBe("30a969c1ead1f9fa65aa412aae58ba4c58c23987d1cef43b813139e8e48a8426");

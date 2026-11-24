@@ -1186,6 +1186,14 @@ export const en = {
       afterCrowd: (time: string) => `after ${time}, when it empties out`,
       // A place whose every best window is the evening (Pontocho, Dotonbori).
       evening: "planned for the evening, its best time",
+      // A place whose booking is recommended: said on the stop, whenever the trip is.
+      bookAhead: (lead: number | null) => lead === 1
+        ? "book ahead: tickets go on sale the day before"
+        : lead
+          ? `book ahead: tickets go on sale about ${lead} days before`
+          : "book ahead",
+      // A performance (category "performance"): the plan's time is a guess at a slot.
+      setTimes: "shows start at set times, so check the programme and fit the day to yours",
     },
     // Why a place was left out of a day.
     leftOut: {
@@ -1198,6 +1206,8 @@ export const en = {
       closed: (weekday: string) => `closed on ${weekday}s`,
       closedDate: "closed on this date",
       closedYearly: (range: string) => `closed ${range} every year`,
+      manyClosed: (weekday: string) => `many of its shops close on ${weekday}s`,
+      afterDark: (end: string) => `a trail to finish in daylight, by about ${end}, and the day reaches it too late — it would end in the dark`,
       needsTicket: (lead: number | null) => `needs a ticket booked${lead ? ` about ${lead} days ahead` : ""} — none recorded`,
       clash: (other: string) => `can't share a day with ${other} — they're at opposite ends of the city`,
       noTime: (visit: number, travel: number, left: number) => `needs ${visit} min plus ${travel} min travel; ${left} min left in the day`,
@@ -1216,6 +1226,10 @@ export const en = {
     // Notes under a planned day.
     warnings: {
       pinnedAnyway: (name: string, why: string) => `${name} is pinned but ${why} — kept because you pinned it`,
+      // A place most of whose shops shut that weekday, kept in the day.
+      manyClosed: (name: string, weekday: string) => `Many shops at ${name} close on ${weekday}s; some stay open, so check the ones you want before you go`,
+      // A kept hike the day reaches too late for daylight.
+      afterDark: (name: string, end: string) => `${name} should be finished in daylight, by about ${end}; this day gets there too late and would end in the dark`,
       noTrainData: (min: number, from: string, to: string) => `About ${min} min — no train data between ${from} and ${to} yet`,
       noStation: (name: string, min: number) => `${name} has no station in Bento's train data yet — legs to it are estimated at ${min} min`,
       noRoute: (from: string, to: string, min: number) => `No route between ${from} and ${to} in Bento's train data yet — estimated at ${min} min`,

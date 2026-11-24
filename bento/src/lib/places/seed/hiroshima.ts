@@ -135,12 +135,14 @@ export const hiroshima: PlaceSeed[] = [
     tip: "Closed Mondays. Reopened 2023 after renovation, on top of Hijiyama; a strong collection on the theme of the city. Kurokawa's building is half the reason.",
     cost: 400, pairs: ["hir-hijiyama"], closedYearly: ["12-27..01-01"], sources: ["hiroshima-moca.jp"] }),
 
-  draft({ id: "hir-fudoin", city: c, name: "Fudoin", nameJa: "不動院", category: "temple", lat: 34.4270, lon: 132.4750,
-    station: null, walk: null, tags: ["shrines", "history"], energy: 0.15, crowd: 0.1, discovery: 0.9, signature: 0.5,
+  // Two minutes' walk from Fudoin-mae on the Astram Line: dive-hiroshima.com/en/explore/3237
+  // and ja.wikipedia (不動院 (広島市), which gives the position), read 23 Nov 2026.
+  draft({ id: "hir-fudoin", city: c, name: "Fudoin", nameJa: "不動院", category: "temple", lat: 34.427028, lon: 132.471111,
+    station: "fudoin-mae", walk: 2, tags: ["shrines", "history"], energy: 0.15, crowd: 0.1, discovery: 0.9, signature: 0.5,
     taste: 15, typical: 30, full: 45, opens: "09:00", closes: "17:00",
     crowdNote: "Empty.",
     tip: "The only National Treasure building in Hiroshima that survived the bomb — a 1540 hall four kilometres from the hypocentre. Nobody comes. Astram line to Fudoin-mae, two minutes.",
-    cost: 0, sources: ["wikivoyage"] }),
+    cost: 0, sources: ["wikivoyage", "dive-hiroshima.com"] }),
 
   draft({ id: "hir-toshogu", city: c, name: "Hiroshima Toshogu", nameJa: "広島東照宮", category: "shrine", lat: 34.4045, lon: 132.4770,
     station: "hiroshima", walk: 10, tags: ["shrines"], energy: 0.3, crowd: 0.15, discovery: 0.7, signature: 0.4, physical: 0.3,

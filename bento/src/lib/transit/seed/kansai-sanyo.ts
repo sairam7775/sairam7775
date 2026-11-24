@@ -69,7 +69,9 @@ export const stations: Station[] = [
   { id: "genbaku-domu-mae", name: "Genbaku Dome-mae", nameJa: "原爆ドーム前", cityId: "hiroshima-city", lat: 34.3950, lon: 132.4530, lines: ["Hiroden"] },
   { id: "kamiyacho-nishi", name: "Kamiyacho-nishi", nameJa: "紙屋町西", cityId: "hiroshima-city", lat: 34.3940, lon: 132.4570, lines: ["Hiroden"] },
   { id: "kamiyacho-higashi", name: "Kamiyacho-higashi", nameJa: "紙屋町東", cityId: "hiroshima-city", lat: 34.3950, lon: 132.4583, lines: ["Hiroden"] },
-  { id: "hondori", name: "Hondori", nameJa: "本通", cityId: "hiroshima-city", lat: 34.3930, lon: 132.4590, lines: ["Hiroden"] },
+  { id: "hondori", name: "Hondori", nameJa: "本通", cityId: "hiroshima-city", lat: 34.3930, lon: 132.4590, lines: ["Hiroden", "Astram Line"] },
+  // Astram Line, for Fudoin. Position from en.wikipedia (Fudōin-mae Station), read 23 Nov 2026.
+  { id: "fudoin-mae", name: "Fudoin-mae", nameJa: "不動院前", cityId: "hiroshima-city", lat: 34.4270, lon: 132.4692, lines: ["Astram Line"] },
   { id: "hatchobori", name: "Hatchobori", nameJa: "八丁堀", cityId: "hiroshima-city", lat: 34.3935, lon: 132.4660, lines: ["Hiroden"] },
   { id: "shukkeien-mae", name: "Shukkeien-mae", nameJa: "縮景園前", cityId: "hiroshima-city", lat: 34.3990, lon: 132.4680, lines: ["Hiroden"] },
   { id: "momijidani", name: "Momijidani", nameJa: "紅葉谷", cityId: "miyajima", lat: 34.2950, lon: 132.3220, lines: [] },
@@ -197,6 +199,9 @@ export const edges: Edge[] = [
   ...bothWays(e({ from: "kamiyacho-nishi", to: "genbaku-domu-mae", line: "Hiroden · Line 2", operator: "hiroden", km: 0.3, minutes: 2 })),
   ...bothWays(e({ from: "kamiyacho-nishi", to: "hondori", line: "walk", mode: "walk", minutes: 3, km: 0.2 })),
   ...bothWays(e({ from: "hiroshima", to: "hatchobori", line: "Hiroden · Line 1", operator: "hiroden", km: 1.6, minutes: 10, stops: 5 })),
+  // Hondori to Fudoin-mae: 4.0 km (ja.wikipedia, アストラムライン), 9 min and ¥260 adult
+  // (ekitan.com, sf-8779/st-8768, read 23 Nov 2026). Six stops.
+  ...bothWays(e({ from: "hondori", to: "fudoin-mae", line: "Astram Line", operator: "astram", km: 4.0, minutes: 9, stops: 6, fareJpy: 260 })),
   ...bothWays(e({ from: "hatchobori", to: "shukkeien-mae", line: "Hiroden · Line 9", operator: "hiroden", km: 0.6, minutes: 3, stops: 2 })),
   ...bothWays(e({ from: "hatchobori", to: "kamiyacho-higashi", line: "Hiroden · Line 1", operator: "hiroden", km: 0.5, minutes: 3, stops: 2 })),
   // Kamiyacho is a Hiroden transfer stop: changing here keeps one fare.

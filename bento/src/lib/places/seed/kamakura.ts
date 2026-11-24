@@ -69,12 +69,15 @@ export const kamakura: PlaceSeed[] = [
     tip: "Entry is free; an offering is up to you. Take a basket from the shrine office, carry your coins or notes into the cave and ladle the spring water over them. The tourist association advises arriving by 16:00. The road up is steep.",
     cost: 0, closedWeekdays: [], skipIf: ["limited_mobility"], pairs: ["kmk-kuzuharaoka"], sources: ["trip-kamakura.com/place/195.html"] }),
 
+  // Reverse direction: the signboard on the course gives about 1h10 from the
+  // Daibutsu-zaka entrance to JR Kita-Kamakura (BE-PAL, bepal.net/play/trekking/13088),
+  // read 23 Nov 2026. A hike ends an hour before sunset (engine/daylight.ts).
   draft({ id: "kmk-kuzuharaoka", city: c, name: "Kuzuharaoka-Daibutsu Hiking Course", nameJa: "葛原岡・大仏ハイキングコース", category: "hike", lat: 35.3263, lon: 139.5445,
     station: "kita-kamakura", walk: 15, tags: ["nature", "shrines", "history"], energy: 0.6, crowd: 0.4, discovery: 0.6, signature: 0.6, physical: 0.6,
     taste: 60, typical: 90, full: 150, window: ["before 10:00"],
     crowdNote: "Steady walkers on clear spring and autumn weekends; quiet on weekday mornings.",
-    tip: "About 3 km of dirt trail, roughly an hour and a half, from beside Jochi-ji near Kita-Kamakura Station over Kuzuharaoka Shrine and Genjiyama Park down to the Great Buddha. Wear shoes with grip: roots and clay turn slippery after rain, and hornets are about from summer into autumn. Side paths lead to Zeniarai Benzaiten and Sasuke Inari Shrine. Walk it in daylight.",
-    cost: 0, closedWeekdays: [], skipIf: ["limited_mobility"], seasons: ["sakura", "koyo"], pairs: ["kmk-kotoku-in", "kmk-zeniarai"], sources: ["trip-kamakura.com/article/95.html"] }),
+    tip: "About 3 km of dirt trail, roughly an hour and a half, from beside Jochi-ji near Kita-Kamakura Station over Kuzuharaoka Shrine and Genjiyama Park down to the Great Buddha. Wear shoes with grip: roots and clay turn slippery after rain, and hornets are about from summer into autumn. Side paths lead to Zeniarai Benzaiten and Sasuke Inari Shrine. It can be walked the other way too: from the Daibutsu-zaka entrance near the Great Buddha up over Genjiyama Park to Kita-Kamakura Station, about an hour and ten minutes by the signpost. Walk it in daylight.",
+    cost: 0, closedWeekdays: [], skipIf: ["limited_mobility"], seasons: ["sakura", "koyo"], pairs: ["kmk-kotoku-in", "kmk-zeniarai"], sources: ["trip-kamakura.com/article/95.html", "bepal.net/play/trekking/13088"] }),
 
   draft({ id: "kmk-enoshima", city: c, name: "Enoshima Island", nameJa: "江の島", category: "island", lat: 35.3005, lon: 139.4808,
     station: "enoshima", walk: 23, tags: ["shrines", "nature", "food", "history"], energy: 0.7, crowd: 0.8, discovery: 0.2, signature: 0.85, physical: 0.7,

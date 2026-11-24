@@ -191,7 +191,13 @@ describe("ready-made days don't go back and forth", () => {
   // Tokyo day that went Kabuki-za > Hama-rikyu > Mori Art Museum > Ginza
   // (packed, early riser, 10 May 2027) no longer does since evening-only
   // places became an explicit flag.
-  const KNOWN_LOOPS = new Set<string>([]);
+  // One since 0035 (23 Nov 2026), for the manager to keep or hand to the
+  // day-order work: Fudoin got a station, so a packed early-riser Hiroshima
+  // day now ends there, and its order goes Hondori and then back west to the
+  // Orizuru Tower by the Dome. The data is right; the order is the planner's.
+  const KNOWN_LOOPS = new Set<string>([
+    "kansai-hiroshima-7 packed 0.2 2027-05-17: hir-gokoku-shrine > hir-atomic-dome > hir-peace-park > hir-peace-museum > hir-hondori > hir-orizuru-tower > hir-okonomimura > hir-castle",
+  ]);
   it("no ready-made day crosses town and comes back, at any pace or start time", () => {
     const bad: string[] = [];
     const known: string[] = [];

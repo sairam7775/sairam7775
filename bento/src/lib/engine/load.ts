@@ -25,10 +25,10 @@ export async function loadPlacesForCity(cityId: string): Promise<PlaceInput[]> {
  *  last_verified and sources are never read). place-columns.test.ts keeps
  *  this list equal to what rowToPlace reads; a column added to the view and
  *  to rowToPlace goes here too. Every name must exist in the view, or the
- *  whole request fails: the list needs 0032 and 0033 on the database. One
+ *  whole request fails: the list needs 0032, 0033 and 0035 on the database. One
  *  literal, so the client can type the rows. */
 export const PLACE_COLUMNS =
-  "id, city_id, name, name_ja, category, coords, nearest_station, station_walk_min, interest_tags, energy, crowd_level, discovery, signature, physical_demand, duration_taste_min, duration_typical_min, duration_full_min, best_window, crowd_note, worth_it_if, skip_if, local_tip, cost_jpy, booking_req, booking_lead_days, opens_at, closes_at, closed_weekdays, closed_dates, conflicts_with, pairs_with, verification_status, seasons, hours_vary, closed_yearly, evening_only";
+  "id, city_id, name, name_ja, category, coords, nearest_station, station_walk_min, interest_tags, energy, crowd_level, discovery, signature, physical_demand, duration_taste_min, duration_typical_min, duration_full_min, best_window, crowd_note, worth_it_if, skip_if, local_tip, cost_jpy, booking_req, booking_lead_days, opens_at, closes_at, closed_weekdays, closed_dates, conflicts_with, pairs_with, verification_status, seasons, hours_vary, closed_yearly, evening_only, many_closed_weekdays";
 
 /** A places_public row as the engine reads it. Shared with Bento Man's
  *  store so both paths read the same gate the same way. */
@@ -63,6 +63,9 @@ export function rowToPlace(r: any, tier: CoverageTier): PlaceInput {
     // row without it (the shared plan's) is not evening-only.
     eveningOnly: r.evening_only === true,
     closedWeekdays: r.closed_weekdays ?? [],
+    // The loaders name this column, so they need 0035 on the database. A
+    // row without it (the shared plan's) has none.
+    manyClosedWeekdays: r.many_closed_weekdays ?? [],
     closedDates: r.closed_dates ?? [],
     // The loaders name this column, so they need 0032 on the database. A
     // row without it (the shared plan's) has no yearly closures.
