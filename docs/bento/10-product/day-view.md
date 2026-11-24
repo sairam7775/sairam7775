@@ -9,14 +9,14 @@ code:
   - bento/src/lib/engine/day-stats.ts
   - bento/src/lib/engine/travel-day.ts
   - bento/src/lib/bento-man/trip-view.ts
-last_reviewed: 2026-11-21
+last_reviewed: 2026-11-24
 ---
 
 # The day view (the box)
 
 ## Summary
 
-Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments, each sized to the time its stop takes. So an over-packed day *looks* over-packed before you read a word. The train is written on the frame between compartments, lunch sits in the first gap, and a dashed line shows where the day's time runs out.
+Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments, each sized to the time its stop takes. So an over-packed day *looks* over-packed before you read a word. The train is written on the frame between compartments, lunch sits in the first gap, a gap of over two hours says "Free time" and what it waits for ("Nothing planned until Dotonbori at 17:30."), and a dashed line shows where the day's time runs out.
 
 ## User journey
 
@@ -32,7 +32,7 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 - Re-timing makes no choices: the order is the traveller's, and the times follow.
 - Only `planDay` chooses stops, and it always returns a proposal.
 - A tile's height is time (about a pixel a minute); tiles past the day's time budget carry an "over" mark.
-- Stats for the day (active time, the over-budget point, the lunch gap) are summed from what's stored; nothing is invented.
+- Stats for the day (active time, the over-budget point, the lunch gap, free time) are summed from what's stored; nothing is invented.
 - Map links are plain Google Maps links: the place's name (Japanese when known) and city, or a train journey's two stations. **Nothing reaches Google until the traveller opens one,** and the privacy page says so.
 - A stop has a map link only while its place is still public.
 

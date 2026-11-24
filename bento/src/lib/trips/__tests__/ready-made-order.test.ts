@@ -82,6 +82,23 @@ const returns = (day: DayPlan, detourKm = 1.5): string[] => {
   return out;
 };
 
+/** Every trip out of the day's way: one or two stops the planner chose, in a
+ *  row, that take the day more than `detourKm` further than the straight
+ *  line between the stops either side. A pin is where the traveller chose
+ *  to be, so it is never one. */
+const detours = (day: DayPlan, detourKm = 3.5): string[] => {
+  const ids = day.items.map((i) => i.placeId);
+  const out: string[] = [];
+  for (let k = 1; k + 1 < ids.length; k++)
+    for (let w = 1; w <= 2 && k + w < ids.length; w++) {
+      if (day.items.slice(k, k + w).some((i) => i.locked)) break;
+      let path = 0;
+      for (let j = k - 1; j < k + w; j++) path += km(ids[j], ids[j + 1]);
+      if (path - km(ids[k - 1], ids[k + w]) > detourKm * w) out.push(`${day.date}: ${ids.slice(k - 1, k + w + 1).join(" > ")}`);
+    }
+  return out;
+};
+
 const names = (day: DayPlan) => day.items.map((i) => i.placeId);
 const travelMin = (day: DayPlan) => day.items.reduce((s, i) => s + (i.arriveBy?.minutes ?? 0), 0);
 
@@ -174,6 +191,32 @@ describe("ready-made days don't go back and forth", () => {
     // Four packed Tokyo trips over the Kanto network: seconds on a busy runner.
   }, 30_000);
 
+  // Found reading the newly shown trips on 23 Nov (December starts, the
+  // standard pace). A stop that opened the day across town was moved
+  // between two others by ordering, or a day ran on across the city and
+  // back: none is now more than 3.5 km off the line between its neighbours.
+  it("Tokyo day 2: no filler across town and back while the day waits for Shibuya at 17:30", () => {
+    // Before: Shinjuku Gyoen > Tsukiji Hongan-ji (26 min east) > Shibuya
+    // Crossing (26 min back west), a detour of 9.6 km.
+    for (const [tripId, start, i] of [["all-nine-14", "2026-12-09", 1], ["classic-7", "2026-12-10", 1], ["tokyo-to-miyajima-10", "2026-12-07", 1]] as const) {
+      const day = plan(tripId, start).days[i];
+      expect(day.items.some((it) => it.placeId === "tky-shibuya-crossing"), `${tripId}: ${names(day).join(" > ")}`).toBe(true);
+      expect(detours(day), `${tripId}: ${names(day).join(" > ")}`).toEqual([]);
+    }
+  });
+
+  it("Kyoto: Arashiyama days don't zigzag to Fushimi or the Kamo river and back", () => {
+    // Before: classic-7 day 7 went Okochi Sanso > Fushimi sake district >
+    // Philosopher's Path (west, south, north-east); tokyo-to-miyajima-10
+    // day 5 went Togetsukyo > Nijo Castle > Kamo river > back north-west
+    // to Kinkaku-ji.
+    for (const [tripId, start, i] of [["classic-7", "2026-12-10", 6], ["tokyo-to-miyajima-10", "2026-12-07", 4]] as const) {
+      const day = plan(tripId, start).days[i];
+      expect(day.cityId).toBe("kyoto-city");
+      expect(detours(day), `${tripId}: ${names(day).join(" > ")}`).toEqual([]);
+    }
+  });
+
   it("the one-day Arashiyama trip starts in Arashiyama, not in central Kyoto", () => {
     const day = plan("kyoto-arashiyama").days[0];
     // Before: Kamo River banks first, then 41 min to the bamboo grove.
@@ -190,12 +233,17 @@ describe("ready-made days don't go back and forth", () => {
   // fixed, "<trip> <pace> <crowd> <return>" as reported below. Empty: the
   // Tokyo day that went Kabuki-za > Hama-rikyu > Mori Art Museum > Ginza
   // (packed, early riser, 10 May 2027) no longer does since evening-only
-  // places became an explicit flag.
-  // 0035 (23 Nov 2026) briefly added a packed early-riser Hiroshima day of
-  // kansai-hiroshima-7 that went Hondori and back west to the Orizuru Tower;
-  // the trip's new ending (back to Osaka) changed that day, and it no longer
-  // loops.
-  const KNOWN_LOOPS = new Set<string>([]);
+  // places became an explicit flag. Kept, for the manager to judge (24 Nov):
+  // the relaxed early riser's first Tokyo day, Senso-ji at dawn, Tsukiji's
+  // market in its morning, then Kiyosumi Garden. A day of four stops or
+  // fewer keeps them rather than lose one off the way (schedule.ts,
+  // `offTheWay`), so a long stay's last day isn't stripped to two. The
+  // Wednesday start (12 May 2027) left the list with 0035: many of Tsukiji's
+  // shops close on Wednesdays, so the planner doesn't choose it that day.
+  const KNOWN_LOOPS = new Set<string>(
+    ["tokyo-2", "tokyo-kamakura-3"].map((trip) =>
+      `${trip} relaxed 0.2 detour 2027-05-10: tky-sensoji > tky-tsukiji-outer > tky-kiyosumi-garden`),
+  );
   it("no ready-made day crosses town and comes back, at any pace or start time", () => {
     const bad: string[] = [];
     const known: string[] = [];
@@ -203,7 +251,7 @@ describe("ready-made days don't go back and forth", () => {
       for (const pace of ["relaxed", "standard", "packed"] as const)
         for (const crowd of [0.2, 0.6])
           for (const start of ["2027-05-10", "2027-05-12", "2026-11-24"])
-            for (const day of plan(trip.id, start, pace, crowd).days) for (const r of returns(day, 3.5)) {
+            for (const day of plan(trip.id, start, pace, crowd).days) for (const r of [...returns(day, 3.5), ...detours(day).map((d) => `detour ${d}`)]) {
               const key = `${trip.id} ${pace} ${crowd} ${r}`;
               (KNOWN_LOOPS.has(key) ? known : bad).push(key);
             }

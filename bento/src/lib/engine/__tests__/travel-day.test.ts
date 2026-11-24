@@ -83,7 +83,10 @@ describe("planDay on a travel day", () => {
     expect(moved.budgetMin).toBe(FULL - move.minutes);
     expect(moved.items[0].startMin).toBeGreaterThanOrEqual(USUAL_START + move.minutes);
     expect(moved.activeMin).toBeLessThan(usual.activeMin);
-    expect(moved.items.length).toBeLessThanOrEqual(usual.items.length);
+    // Less time at places too. Not fewer stops: the travel day leaves out
+    // Fushimi Inari, off its way, and refills with shorter visits on it.
+    const visits = (d: typeof usual) => d.items.reduce((s, i) => s + i.durationMin, 0);
+    expect(visits(moved)).toBeLessThan(visits(usual));
     // A known train needs no warning.
     expect(moved.warnings.some((w) => w === copy.plan.warnings.moveUnknown(UNKNOWN_TRAIN_MIN + MOVE_ALLOWANCE_MIN))).toBe(false);
   });

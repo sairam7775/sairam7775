@@ -29,6 +29,17 @@ const OPEN_WAIT_LAST_RESORT_MIN = 120;
  *  RETURN_DETOUR_KM, brings the day back across town (validate, below). */
 const RETURN_NEAR_M = 600;
 const RETURN_DETOUR_KM = 1.5;
+/** A chosen stop the finished day goes this far out of its way for, off the
+ *  line between the stops either side, is dropped (validate, below). Wider
+ *  than growing's bar: a walking loop (Takeshita Street > Shinjuku Gyoen >
+ *  Shibuya, 3.3 km) is a loop, not a trip across town. */
+const DETOUR_DROP_KM = 3.5;
+/** Extra validation passes a day may spend refilling after such drops. */
+const DETOUR_PASSES_MAX = 6;
+/** Runs of up to this many chosen stops count as one trip out, at the bar
+ *  for each stop (two stops, 7 km): Togetsukyo >
+ *  Nijo Castle > the Kamo river > back to Kinkaku-ji. */
+const DETOUR_RUN_MAX = 2;
 /** No chosen daytime stop ends after this (an evening place may). */
 const DAY_END_LATEST = 19 * 60;
 /** The 09:00 start a day's end is measured from (`usualDayStart`). */
@@ -347,6 +358,34 @@ export function planDay(input: DayInput): DayPlan {
     return out;
   };
 
+  /** The planner's own stops a day goes more than DETOUR_DROP_KM out of
+   *  its way for, off the line between the stops either side, worst first.
+   *  A pin is where the traveller chose to be, so never one. */
+  const offWayOf = (s: Draft[]): Draft[] => {
+    const out: { d: Draft; excess: number }[] = [];
+    for (let k = 1; k + 1 < s.length; k++)
+      for (let w = 1; w <= DETOUR_RUN_MAX && k + w < s.length; w++) {
+        const run = s.slice(k, k + w);
+        const a = s[k - 1].place;
+        const b = s[k + w].place;
+        if (run.some((d) => d.locked || d.anchored || !hasPoint(d.place)) || !hasPoint(a) || !hasPoint(b)) break;
+        const pts = [a, ...run.map((d) => d.place), b];
+        let path = 0;
+        for (let j = 0; j + 1 < pts.length; j++) path += km(pts[j], pts[j + 1]);
+        const excess = path - km(a, b);
+        if (excess <= DETOUR_DROP_KM * w) continue;
+        // The stop of the run whose leaving shortens the way most.
+        let best = run[0];
+        let gain = -1;
+        run.forEach((d, j) => {
+          const g = km(pts[j], d.place) + km(d.place, pts[j + 2]) - km(pts[j], pts[j + 2]);
+          if (g > gain) { gain = g; best = d; }
+        });
+        out.push({ d: best, excess });
+      }
+    return out.sort((x, y) => y.excess - x.excess).map((x) => x.d);
+  };
+
   // 4 GROW — insert the candidate with the best marginal (score minus the
   // travel it adds) until the budget is spent or nothing is worth adding.
   // Where a stop may go: a daytime one before the first evening stop, an
@@ -452,6 +491,7 @@ export function planDay(input: DayInput): DayPlan {
         const misfit = (tm: ReturnType<typeof time>) => tm.violations.filter((v) => !isLocked(v.placeId));
         const lateBefore = latePinsOf(now);
         const misfitBefore = new Set(misfit(now).map((v) => v.placeId));
+        const offWayNow = new Set(offWayOf(seq).map((d) => d.place.id));
         for (const o of ranked) {
           const [first, last] = spotsFor(o.p, o.duration);
           const spots = [o.at, ...Array.from({ length: last + 1 - first }, (_, i) => i + first).filter((at) => at !== o.at)];
@@ -472,6 +512,13 @@ export function planDay(input: DayInput): DayPlan {
             // on the day's way, never out and back again.
             // (Not an evening place: the day ends there, wherever it began.)
             if (eveningStart(o.p, o.duration) == null && strays(o.p, at)) { strayed = true; continue; }
+            // Nor where it would itself be off the day's way as validation
+            // counts it (`offWayOf`, a run of two included): at the day's
+            // start or end `strays` looks one way only, so the Fushimi sake
+            // district after Arashiyama, then the Philosopher's Path after
+            // it, each passed. A neighbour it leaves off the way is
+            // validation's to drop and refill.
+            if (offWayOf([...seq.slice(0, at), draftOf(o.p), ...seq.slice(at)]).some((d) => d.place.id === o.p.id && !offWayNow.has(d.place.id))) { strayed = true; continue; }
             const saved = seq;
             seq = [...seq.slice(0, at), draftOf(o.p), ...seq.slice(at)];
             const trial = time(true);
@@ -929,16 +976,43 @@ export function planDay(input: DayInput): DayPlan {
     }
     return [];
   };
+  // A stop the planner chose that the finished day goes out of its way for:
+  // more than DETOUR_DROP_KM off the straight line between the stops either
+  // side (Tsukiji Hongan-ji between Shinjuku Gyoen and Shibuya, waiting for
+  // Shibuya's evening). Growing puts a stop only on the day's way
+  // (`strays`), but one that opened or ended the day there can be moved
+  // between two others by ordering, or have the day run on past it. The
+  // worst goes, one per pass (of a run of two, the stop whose leaving
+  // shortens the way most; the next pass looks again), and the refill looks
+  // for one on the way. Never a pin.
+  const offTheWay = (): Rejected[] => {
+    // A day of four stops or fewer (SHARE_FLOOR) keeps them: a long stay's
+    // last day holds what is left of the city, scattered, and was stripped
+    // to two.
+    if (seq.length <= SHARE_FLOOR) return [];
+    const worst = offWayOf(seq)[0];
+    return worst ? [{ placeId: worst.place.id, name: worst.place.name, stage: "validate", term: "travel", detail: copy.plan.leftOut.outOfWay }] : [];
+  };
+  // Each such drop earns the day another pass (up to DETOUR_PASSES_MAX), so
+  // the refill after it can find a stop on the way: a long stay's last day
+  // is what is left of the city, scattered, and without the extra passes it
+  // was stripped to three stops.
+  let detourPasses = 0;
+  let lastOff = false;
   const toDrop = (): Rejected[] => {
+    lastOff = false;
     const own = unlockedViolations();
     if (own.length) return own;
     const waits = eveningWaits();
     if (waits.length) return waits;
     const back = comesBack();
-    return back.length ? back : pinDrop();
+    if (back.length) return back;
+    const off = offTheWay();
+    lastOff = off.length > 0;
+    return off.length ? off : pinDrop();
   };
   let stale = false;
-  for (let round = 0; round < MAX_VALIDATE_ROUNDS; round++) {
+  for (let round = 0; round < MAX_VALIDATE_ROUNDS + detourPasses; round++) {
     grow();
     order();
     timed = time();
@@ -948,8 +1022,9 @@ export function planDay(input: DayInput): DayPlan {
     considered.push(...drop);
     seq = seq.filter((d) => !drop.some((v) => v.placeId === d.place.id));
     stale = true;
+    if (lastOff && detourPasses < DETOUR_PASSES_MAX) detourPasses++;
     // Only a drop for opening hours is what this warns of.
-    if (round === MAX_VALIDATE_ROUNDS - 1 && drop.some((v) => v.term === "hours")) warnings.push(copy.plan.warnings.hoursNotFitted);
+    if (round === MAX_VALIDATE_ROUNDS + detourPasses - 1 && drop.some((v) => v.term === "hours")) warnings.push(copy.plan.warnings.hoursNotFitted);
   }
   // Out of rounds with drops still pending: `timed` was computed before the
   // last drop and still holds the places just rejected — the plan would show

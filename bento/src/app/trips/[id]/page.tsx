@@ -356,6 +356,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 overBy={stats?.overBy ?? 0}
                 overFromIndex={stats?.overFromIndex ?? null}
                 lunch={stats?.lunch ?? null}
+                freeTime={stats?.freeTime ?? []}
                 editable={cover!.editable}
                 uncovered={cover!.uncovered}
                 mainSights={cover!.mainSights}

@@ -38,6 +38,38 @@ describe("dayStats", () => {
     expect(s.lunch).toEqual({ startMin: 690, endMin: 750 });
   });
 
+  it("says where the day has free time: a gap of over two hours, after lunch and before the next leg", () => {
+    // kansai-hiroshima-7 day 1 (12 Dec 2026): Namba Yasaka Shrine ends
+    // 14:29, then nothing until Dotonbori at 17:30, a 10-minute walk.
+    const s = dayStats(
+      [
+        { startMin: 540, durationMin: 30, arriveMinutes: null },
+        { startMin: 651, durationMin: 60, arriveMinutes: 34 },
+        { startMin: 776, durationMin: 60, arriveMinutes: 5 },
+        { startMin: 849, durationMin: 20, arriveMinutes: 13 },
+        { startMin: 1050, durationMin: 75, arriveMinutes: 10 },
+        { startMin: 1129, durationMin: 30, arriveMinutes: 4 },
+      ],
+      "standard",
+    );
+    expect(s.freeTime).toEqual([{ startMin: 869, endMin: 1040, beforeIndex: 4 }]);
+    // Lunch inside a long gap comes first; what is left after it is the free time.
+    const withLunch = dayStats(
+      [
+        { startMin: 540, durationMin: 150, arriveMinutes: null },
+        { startMin: 1050, durationMin: 30, arriveMinutes: 20 },
+      ],
+      "standard",
+    );
+    expect(withLunch.lunch).toEqual({ startMin: 690, endMin: 750 });
+    expect(withLunch.freeTime).toEqual([{ startMin: 750, endMin: 1030, beforeIndex: 1 }]);
+    // Two hours or less is not free time: an evening stop's usual wait.
+    expect(dayStats([
+      { startMin: 540, durationMin: 60, arriveMinutes: null },
+      { startMin: 730, durationMin: 60, arriveMinutes: 10 },
+    ], "standard").freeTime).toEqual([]);
+  });
+
   it("is empty for an empty day and has no lunch when there is no gap", () => {
     expect(dayStats([], "standard")).toMatchObject({ activeMin: 0, overBy: 0, overFromIndex: null, lunch: null });
     const s = dayStats(

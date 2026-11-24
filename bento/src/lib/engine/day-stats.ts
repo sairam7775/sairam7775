@@ -16,12 +16,17 @@ export interface DayStats {
   overBy: number;
   /** The first gap of 45 minutes or more between 11:30 and 14:00. */
   lunch: { startMin: number; endMin: number } | null;
+  /** Every gap of over two hours between two stops, less lunch and the leg
+   *  to the next stop: free time, before the stop at `beforeIndex`. */
+  freeTime: { startMin: number; endMin: number; beforeIndex: number }[];
   /** Where, in the sequence, the budget runs out (index of the first stop past it), or null. */
   overFromIndex: number | null;
 }
 
 const LUNCH_EARLIEST = 11 * 60 + 30;
 const LUNCH_LATEST = 14 * 60;
+/** As the planner's own note (`FREE_TIME_NOTE_MIN`, schedule.ts). */
+const FREE_TIME_MIN = 120;
 
 /** `moveMin`: on a travel day, the move (`travelDayMoves`), which the
  *  planner took out of the day's time; the box measures against the same. */
@@ -55,5 +60,20 @@ export function dayStats(items: StatItem[], pace: TravelPace, moveMin = 0): DayS
     }
   }
 
-  return { budgetMin, activeMin, overBy: Math.max(0, activeMin - budgetMin), lunch, overFromIndex };
+  // Free time: what is left of a gap between two stops, after lunch, before
+  // the leg to the next one. The planner warns of the same wait before a
+  // pinned evening stop, but a day saved at once (a ready-made trip) never
+  // shows its warnings, so the box says it from the stored times.
+  const freeTime: DayStats["freeTime"] = [];
+  for (let i = 0; i + 1 < items.length; i++) {
+    const a = items[i];
+    const b = items[i + 1];
+    if (a.startMin == null || a.durationMin == null || b.startMin == null) continue;
+    let from = a.startMin + a.durationMin;
+    const to = b.startMin - (b.arriveMinutes ?? 0);
+    if (lunch && lunch.startMin >= from && lunch.endMin <= to) from = lunch.endMin;
+    if (to - from > FREE_TIME_MIN) freeTime.push({ startMin: from, endMin: to, beforeIndex: i + 1 });
+  }
+
+  return { budgetMin, activeMin, overBy: Math.max(0, activeMin - budgetMin), lunch, freeTime, overFromIndex };
 }
