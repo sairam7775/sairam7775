@@ -424,12 +424,18 @@ export function DayBox(p: DayBoxProps) {
                   onDrop={(e) => onDrop(e, it.placeId)}
                   // A held stop follows the finger with `translate`, which the
                   // tile's rise animation (on `transform`) doesn't override.
+                  // Inline, because `.tile` outranks utilities: the held stop
+                  // is solid (a see-through tile shows the one under it) and
+                  // the stop it would land on is outlined.
                   style={{
                     minHeight: height,
                     animationDelay: `${0.08 * i + 0.1}s`,
-                    ...(held?.id === it.placeId ? { translate: `0 ${held.dy}px`, touchAction: "none" } : {}),
+                    ...(held?.id === it.placeId
+                      ? { translate: `0 ${held.dy}px`, touchAction: "none", background: "var(--color-surface)", outline: "2px solid var(--color-accent)" }
+                      : {}),
+                    ...(held && held.id !== it.placeId && held.to === i ? { outline: "2px dashed var(--color-accent)", outlineOffset: "2px" } : {}),
                   }}
-                  className={`tile up lift relative flex gap-4 px-4 py-3.5 sm:px-5 ${FILLS[i % FILLS.length]} ${isOver ? "ring-2 ring-ume/70" : ""} ${dragging === it.placeId ? "opacity-40" : ""} ${over === it.placeId && dragging && dragging !== it.placeId ? "ring-2 ring-accent" : ""} ${held?.id === it.placeId ? "z-20 ring-2 ring-accent motion-safe:scale-[1.02]" : ""} ${held && held.id !== it.placeId && held.to === i ? "ring-2 ring-accent/60" : ""} ${p.editable ? "cursor-grab active:cursor-grabbing pointer-coarse:select-none [-webkit-touch-callout:none]" : ""}`}
+                  className={`tile up lift relative flex gap-4 px-4 py-3.5 sm:px-5 ${FILLS[i % FILLS.length]} ${isOver ? "ring-2 ring-ume/70" : ""} ${dragging === it.placeId ? "opacity-40" : ""} ${over === it.placeId && dragging && dragging !== it.placeId ? "ring-2 ring-accent" : ""} ${held?.id === it.placeId ? "z-20 motion-safe:scale-[1.02]" : ""} ${p.editable ? "cursor-grab active:cursor-grabbing pointer-coarse:select-none [-webkit-touch-callout:none]" : ""}`}
                 >
                   <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{it.startMin != null ? clock(it.startMin) : copy.time.noTime}</span>
                   <div className="min-w-0 flex-1">
