@@ -662,13 +662,14 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
   const pace = traveller.pace;
   const later = [...plannedDates(state)].filter(([d, c]) => d > date && c === cityId && !state.days.find((x) => x.date === d)?.items.length);
   const cityDaysLeft = dayShare(pace, move) + later.reduce((s, [d]) => s + dayShare(pace, moveFor(d, cityId)), 0);
+  const travel = aroundCustomStops(travelFromGraph(graph, { mobility: state.prefs.mobility }));
   const plan = planDay({
     date,
     cityId,
     places: pool,
     cityDaysLeft,
     traveller,
-    travel: aroundCustomStops(travelFromGraph(graph, { mobility: state.prefs.mobility })),
+    travel,
     locked: [...lockedMap.values()],
     usedPlaceIds: [...used],
     dayStartMin,
@@ -678,7 +679,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     // and the move still comes out of the day, as when it was planned.
     move,
   });
-  restoreCustomStops(plan, existing?.items ?? []);
+  restoreCustomStops(plan, existing?.items ?? [], { places: pool, locked: [...lockedMap.values()], travel });
   if (lifted) plan.warnings.push(copy.plan.warnings.liftedStart(clock(toFive(dayStartMin!)), factsMap(cities).get(move!.fromCityId)?.name ?? move!.fromCityId));
   return { diff: computeDayDiff(existing?.items ?? [], plan, pool), tier: f.tier };
 }
@@ -915,7 +916,7 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           // A long stay shares the city's places across its days, as planTrip does.
           cityDaysLeft: targets.slice(ti).filter((x) => x.cityId === t.cityId).reduce((s, x) => s + dayShare(traveller.pace, moveOn(x.date, x.cityId)), 0),
         });
-        restoreCustomStops(plan, existing?.items ?? []);
+        restoreCustomStops(plan, existing?.items ?? [], { places, locked, travel });
         for (const it of plan.items) if (!isCustomStop(it.placeId)) used.add(it.placeId);
         tiers.push(f.tier);
         // The base is the day as saved, not as the proposed route leaves it:

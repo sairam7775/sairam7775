@@ -8,6 +8,8 @@ import { buildGraph } from "@/lib/transit/graph";
 import { MemoryStore } from "../store.memory";
 import { SupabaseStore } from "../store.supabase";
 import { runTool, type ToolContext } from "../tools";
+import { restoreCustomStops } from "../custom-plan";
+import type { DayPlan, PlaceInput } from "@/lib/engine/types";
 import type { DayRow, ItemRow } from "../store";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
@@ -129,5 +131,66 @@ describe("a free-text stop is a fixed interval (review 3, #1)", () => {
     await store.applyProposal(proposal!);
     const saved = (await store.state()).days.find((d) => d.date === "2026-11-23")!.items;
     expect(saved.find((i) => i.placeId === tea.placeId)).toMatchObject({ startMin: 20 * 60, durationMin: 60 });
+  });
+});
+
+describe("pins and a free-text stop on one day", () => {
+  const pin = (placeId: string, name: string, startMin: number | null, durationMin = 45): ItemRow => ({ ...row, placeId, name, sortOrder: 0, startMin, durationMin, locked: true });
+  const onDay = (items: ItemRow[]) => trip([{ ...day, items }]);
+
+  it("a pin during the dinner is planned after it and said to be late, never on top of it", async () => {
+    const { result, proposal } = await replan(onDay([pin("kyt-gion", "Gion — Hanamikoji", 19 * 60 + 30), keiko]), [{ op: "start_at", time: "11:00" }]);
+    const after = proposal!.days![0].after;
+    const gion = after.find((a) => a.placeId === "kyt-gion")!;
+    expect(after.find((a) => a.placeId === keiko.placeId)).toMatchObject({ startMin: 19 * 60, endMin: 20 * 60 + 30 });
+    expect(gion.startMin).toBeGreaterThanOrEqual(20 * 60 + 30 + 45);
+    expect(gion).toMatchObject({ arriveMode: "estimate", arriveMinutes: 45 });
+    expect(result.day.warnings.some((w: string) => w.startsWith("Gion — Hanamikoji is pinned for 19:30"))).toBe(true);
+  });
+
+  it("every leg to or from the dinner is the guess, and the day's first stop has none", async () => {
+    for (const items of [[pin("kyt-gion", "Gion", 19 * 60 + 30), keiko], [pin("kyt-nishiki-market", "Nishiki Market", null), keiko]])
+      for (const time of ["11:00", "20:00"]) {
+        const { proposal } = await replan(onDay(items), [{ op: "start_at", time }]);
+        const after = proposal!.days![0].after;
+        expect(after[0].arriveMode ?? null).toBeNull();
+        const k = after.findIndex((a) => a.placeId === keiko.placeId);
+        if (k > 0) expect(after[k]).toMatchObject({ arriveMode: "estimate", arriveMinutes: 45 });
+        if (after[k + 1]) expect(after[k + 1]).toMatchObject({ arriveMode: "estimate", arriveMinutes: 45 });
+      }
+  });
+});
+
+describe("restoreCustomStops, on the order it ends with", () => {
+  const item = (placeId: string, startMin: number, endMin: number, arriveBy: DayPlan["items"][number]["arriveBy"] = null) =>
+    ({ placeId, name: placeId, category: "x", startMin, endMin, durationMin: endMin - startMin, locked: false, reason: "r", reasonTerms: [], arriveBy, alternatives: [], costJpy: 0, score: {} }) as unknown as DayPlan["items"][number];
+  const planOf = (items: DayPlan["items"], warnings: string[] = []) => ({ startMin: items[0].startMin, items, warnings }) as unknown as DayPlan;
+  const walk = { mode: "walk", minutes: 7, fareJpy: 0, fareKind: "exact", detail: "Walk" } as unknown as NonNullable<DayPlan["items"][number]["arriveBy"]>;
+
+  const around = (closes: Record<string, string> = {}, locked: { placeId: string; startMin: number | null }[] = []) => ({
+    places: ["a", "b"].map((id) => ({ id, closesAt: closes[id] ?? null }) as unknown as PlaceInput),
+    locked,
+    travel: () => walk,
+  });
+
+  it("a dinner the journey makes late says so, though the stop before ends in time", () => {
+    const p = restoreCustomStops(planOf([item("a", 18 * 60, 18 * 60 + 45), item(keiko.placeId, 19 * 60 + 30, 21 * 60, { ...walk, minutes: 45 })]), [keiko], around());
+    expect(p.items[1]).toMatchObject({ startMin: 19 * 60, endMin: 20 * 60 + 30 });
+    expect(p.warnings).toEqual([copy.plan.warnings.pinnedLate(keiko.placeId, "19:00", "19:30")]);
+  });
+
+  it("a Bento stop on top of the dinner starts after it, and past its closing that is said", () => {
+    const p = restoreCustomStops(planOf([item("a", 19 * 60 + 30, 20 * 60), item(keiko.placeId, 20 * 60 + 45, 22 * 60 + 15)]), [keiko], around({ a: "21:00" }, [{ placeId: "a", startMin: 19 * 60 + 30 }]));
+    expect(p.items.map((i) => [i.placeId, i.startMin, i.endMin])).toEqual([[keiko.placeId, 19 * 60, 20 * 60 + 30], ["a", 21 * 60 + 15, 21 * 60 + 45]]);
+    expect(p.warnings).toEqual([
+      copy.plan.warnings.pinnedLate(keiko.placeId, "19:00", "19:30"),
+      copy.plan.warnings.pinnedLate("a", "19:30", "21:15"),
+      copy.plan.warnings.closesDuring("a", "21:00", "21:45"),
+    ]);
+  });
+
+  it("two Bento stops a re-sorted dinner no longer sits between get their own leg", () => {
+    const p = restoreCustomStops(planOf([item("a", 18 * 60, 19 * 60 + 30), item(keiko.placeId, 20 * 60 + 15, 21 * 60 + 45), item("b", 22 * 60 + 30, 23 * 60)]), [{ ...keiko, startMin: 17 * 60, durationMin: 90 }], around());
+    expect(p.items.map((i) => [i.placeId, i.arriveBy?.mode ?? null])).toEqual([[keiko.placeId, null], ["a", "estimate"], ["b", "walk"]]);
   });
 });
