@@ -3,7 +3,7 @@ import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed/kansai-sanyo";
 import { copy } from "@/copy";
 import { travelFromGraph } from "../travel";
-import { fitPlace, type FitInput } from "../fit";
+import { fitPlace, fitUnchecked, type FitInput } from "../fit";
 import { kyoto, owner } from "../__fixtures__/kyoto";
 import type { PlaceInput } from "../types";
 
@@ -159,5 +159,32 @@ describe("fitPlace: a place the traveller adds by hand", () => {
     const r = fitPlace(input(P("kyt-ginkakuji"), { items: [stop("kyt-sanjusangendo")] }));
     const leg = r.at === 0 ? copy.plan.warnings.noRouteAssumed("Ginkaku-ji", "Sanjusangen-do", 45) : copy.plan.warnings.noRouteAssumed("Sanjusangen-do", "Ginkaku-ji", 45);
     expect(r.notes).toEqual([leg]);
+  });
+});
+
+describe("fitUnchecked: a free-text stop Bento doesn't know", () => {
+  const base = { places: new Map(kyoto.map((p) => [p.id, p])), travel, pace: "standard" as const, dayStartMin: 9 * 60 };
+
+  it("goes at the end, unchecked, held to nothing but the length given", () => {
+    const r = fitUnchecked({ ...base, key: "custom:ramen", durationMin: 60, items: [stop("kyt-sanjusangendo"), stop("kyt-kiyomizu")] });
+    expect(r.checked).toBe(false);
+    expect(r.at).toBe(2);
+    expect(r.item).toEqual({ placeId: "custom:ramen", durationMin: 60, locked: false, startMin: null, unchecked: true });
+    expect(r.endMin - r.startMin).toBe(60);
+    expect(r.problems).toEqual([]);
+    // The leg is said to be a guess.
+    expect(r.notes).toEqual([copy.plan.warnings.uncheckedLeg(45)]);
+  });
+
+  it("still says when its length runs the day over", () => {
+    const items = [stop("kyt-fushimi-inari", 150), stop("kyt-kiyomizu", 120), stop("kyt-ninenzaka", 120)];
+    const r = fitUnchecked({ ...base, key: "custom:tea", durationMin: 120, items, dayStartMin: 7 * 60 });
+    expect(r.problems.map((p) => p.term)).toContain("over_day");
+  });
+
+  it("a Bento place beside a free-text stop: the leg is said to be a guess", () => {
+    const items = [stop("kyt-sanjusangendo"), { placeId: "custom:ramen", durationMin: 60, locked: false, startMin: null, unchecked: true }];
+    const r = fitPlace(input(P("kyt-kiyomizu"), { items, at: 2 }));
+    expect(r.notes).toContain(copy.plan.warnings.uncheckedLeg(45));
   });
 });

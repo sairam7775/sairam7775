@@ -179,11 +179,8 @@ export function fitPlace(input: FitInput): PlaceFit {
         out.push({ term: "pushes_pin", text: copy.plan.fit.pushesPin(q.name, clock(input.items[i].startMin!)) });
       }
     });
-    if (after.overBy > before.overBy) {
-      out.push(before.overBy === 0
-        ? { term: "over_day", text: copy.plan.fit.overDay(dur(after.overBy), dur(after.budgetMin)) }
-        : { term: "over_day", text: copy.plan.fit.moreOver(dur(after.overBy - before.overBy), dur(before.overBy)) });
-    }
+    const over = overDayProblem(before, after);
+    if (over) out.push(over);
     const detour = detourKm(at);
     if (detour != null && detour > DETOUR_DROP_KM) {
       const [prev, next] = neighbours(at);
@@ -256,6 +253,54 @@ export function fitPlace(input: FitInput): PlaceFit {
     const out: string[] = [];
     if (prev && !input.travel(prev, place)) out.push(copy.plan.warnings.noRouteAssumed(prev.name, place.name, FALLBACK_TRAVEL_MIN));
     if (next && !input.travel(place, next)) out.push(copy.plan.warnings.noRouteAssumed(place.name, next.name, FALLBACK_TRAVEL_MIN));
+    // Beside a stop Bento doesn't know, the leg is the re-timer's guess.
+    if (input.items[at - 1]?.unchecked || input.items[at]?.unchecked) out.push(copy.plan.warnings.uncheckedLeg(FALLBACK_TRAVEL_MIN));
     return out;
   }
+}
+
+/** A stop the traveller named that Bento doesn't know (0036). Nothing about
+ *  the place can be checked: no hours, no position, no route. It goes at the
+ *  end of the day, for the length the traveller gave, and the clock's own
+ *  facts still hold: the day's budget and its end, with the legs to it
+ *  guessed (`retimeDay`'s `unchecked`). `checked` is always false, so no
+ *  caller can present it as a fit. */
+export function fitUnchecked(input: {
+  key: string;
+  durationMin: number;
+  items: RetimeItem[];
+  places: Map<string, PlaceInput>;
+  travel: TravelFn;
+  pace: TravellerInput["pace"];
+  dayStartMin: number;
+  moveMin?: number;
+}): { checked: false; at: number; item: RetimeItem; startMin: number; endMin: number; problems: FitProblem[]; notes: string[] } {
+  const item: RetimeItem = { placeId: input.key, durationMin: input.durationMin, locked: false, startMin: null, unchecked: true };
+  const at = input.items.length;
+  const retime = (items: RetimeItem[]) => retimeDay({ items, places: input.places, travel: input.travel, pace: input.pace, dayStartMin: input.dayStartMin });
+  const before = retime(input.items);
+  const after = retime([...input.items, item]);
+  const mine = after.items[at];
+  const problems: FitProblem[] = [];
+  const dayEnd = dayEndFor(input.dayStartMin, input.pace, input.moveMin ?? 0);
+  if (mine.endMin > dayEnd) problems.push({ term: "past_day_end", text: copy.plan.leftOut.pastDayEnd(clock(dayEnd)) });
+  const over = overDayProblem(before, after);
+  if (over) problems.push(over);
+  return {
+    checked: false,
+    at,
+    item,
+    startMin: mine.startMin,
+    endMin: mine.endMin,
+    problems,
+    notes: at > 0 ? [copy.plan.warnings.uncheckedLeg(FALLBACK_TRAVEL_MIN)] : [],
+  };
+}
+
+/** More time over the day's budget than before, said once the same way. */
+function overDayProblem(before: RetimedDay, after: RetimedDay): FitProblem | null {
+  if (after.overBy <= before.overBy) return null;
+  return before.overBy === 0
+    ? { term: "over_day", text: copy.plan.fit.overDay(dur(after.overBy), dur(after.budgetMin)) }
+    : { term: "over_day", text: copy.plan.fit.moreOver(dur(after.overBy - before.overBy), dur(before.overBy)) };
 }

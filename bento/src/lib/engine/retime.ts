@@ -17,6 +17,9 @@ export interface RetimeItem {
   locked: boolean;
   /** A time the traveller fixed. Only honoured on locked items. */
   startMin: number | null;
+  /** A stop Bento doesn't know (a free-text stop, 0036): no hours to keep,
+   *  and the legs to and from it are the fallback guess, said as one. */
+  unchecked?: boolean;
 }
 
 export interface RetimedItem extends RetimeItem {
@@ -67,16 +70,21 @@ export function retimeDay(input: {
   let activeMin = 0;
   let prev: PlaceInput | null = null;
   let lunchDone = false;
+  let afterUnchecked = false;
   const meals: RetimedDay["meals"] = [];
 
   for (const it of input.items) {
-    const place = input.places.get(it.placeId);
+    const place = it.unchecked ? undefined : input.places.get(it.placeId);
     let leg: TravelLeg | null = null;
-    if (prev && place) {
+    // To or from a stop Bento doesn't know, the leg is a guess, and stored
+    // as one so the box says so and the day's sums count it.
+    const guessed = out.length > 0 && (it.unchecked || afterUnchecked);
+    if (guessed) leg = uncheckedLeg();
+    else if (prev && place) {
       leg = input.travel(prev, place);
       if (!leg) warnings.push(copy.plan.warnings.noRouteAssumed(prev.name, place.name, FALLBACK_TRAVEL_MIN));
     }
-    const travelMin = prev ? (leg?.minutes ?? FALLBACK_TRAVEL_MIN) : 0;
+    const travelMin = guessed || prev ? (leg?.minutes ?? FALLBACK_TRAVEL_MIN) : 0;
     let start = clockMin + travelMin;
 
     // Lunch goes in the first gap it fits, before the stop that would
@@ -121,6 +129,7 @@ export function retimeDay(input: {
     out.push({ ...it, startMin: start, endMin: end, arriveBy: leg, over: activeMin > budgetMin, reachedMin, waitMin, pinShortMin, pastClosing });
     clockMin = end;
     prev = place ?? prev;
+    afterUnchecked = Boolean(it.unchecked);
   }
 
   // A day that runs past the window without a gap still eats: lunch goes
@@ -142,5 +151,17 @@ export function retimeDay(input: {
     activeMin,
     overBy,
     warnings,
+  };
+}
+
+/** The leg to or from a stop Bento doesn't know: the fallback, said as a guess. */
+function uncheckedLeg(): TravelLeg {
+  return {
+    mode: "estimate",
+    minutes: FALLBACK_TRAVEL_MIN,
+    fareJpy: 0,
+    fareKind: "estimate",
+    detail: copy.plan.warnings.uncheckedLeg(FALLBACK_TRAVEL_MIN),
+    lines: [],
   };
 }
