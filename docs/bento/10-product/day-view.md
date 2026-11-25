@@ -9,7 +9,9 @@ code:
   - bento/src/lib/engine/day-stats.ts
   - bento/src/lib/engine/travel-day.ts
   - bento/src/lib/bento-man/trip-view.ts
-last_reviewed: 2026-11-24
+  - bento/src/app/trips/[id]/add-place.tsx
+  - bento/src/lib/engine/fit.ts
+last_reviewed: 2026-11-25
 ---
 
 # The day view (the box)
@@ -24,7 +26,8 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 2. The traveller opens a day and sees its box.
 3. They can drag stops into a new order, move them up or down, pin, unpin or remove them. These apply at once.
 4. Or they ask to **re-plan this day**: the engine chooses again around what's pinned, and the result comes back as a [proposal](proposals-and-diffs.md).
-5. Each stop has Map and Directions links to Google Maps.
+5. Or they **add a place** they want to go: see below.
+6. Each stop has Map and Directions links to Google Maps.
 
 ## Acceptance criteria
 
@@ -35,6 +38,17 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 - Stats for the day (active time, the over-budget point, the lunch gap, free time) are summed from what's stored; nothing is invented.
 - Map links are plain Google Maps links: the place's name (Japanese when known) and city, or a train journey's two stations. **Nothing reaches Google until the traveller opens one,** and the privacy page says so.
 - A stop has a map link only while its place is still public.
+
+## Adding a place
+
+Each planned day in a city Bento can plan ends with an **Add a place** button. It opens a sheet (a bottom sheet on a phone; a modal dialog that keeps focus inside, closes on Escape and gives focus back): the traveller searches Bento's places in that day's city by English or Japanese name (verified places only, read through `places_public`) and picks one.
+
+The server checks it against the day in the engine, never a model ([engine](../30-software/engine.md#adding-a-place-by-hand-fitplace)): open that day, a ticket held if one is needed, nothing it can't share a day with, open when the day reaches it, an evening place reached near its evening, the day's end and time budget, the stops already there kept on time and before closing, and not across town from its neighbours. It goes in at the spot in the traveller's order where it fits best.
+
+- **It fits:** it is added at once and re-timed like any edit. The sheet says what's true about it there, from the engine's own clauses, and no more ("Good call. It's on your way between Nanzen-ji and Gion; matches history & castles. Shoren-in goes in at 11:20."). With nothing true to praise it just says it fits and when.
+- **It doesn't fit:** nothing changes yet. The sheet lists each reason in the planner's words ("closed on Mondays", "the day would run 1h 20m over its 8h", "can't share a day with Fushimi Inari Taisha — they're at opposite ends of the city") and offers **Add anyway** or **Not now**. Added anyway, it goes in at the same spot and the day shows its usual warnings (the over-budget line and marks).
+- A leg Bento has no route for is said either way ("No route on record from … — assumed 45 min").
+- A place already on that day can't be added twice. An evening-only place is added pinned at its evening start.
 
 ## Travel days
 
@@ -51,6 +65,7 @@ On the day a traveller moves to their next stay, the planned day in the new city
 ## Code and tests
 
 - The box: `bento/src/app/trips/[id]/day-box.tsx`; the edits: `day-actions.ts`; re-timing: `bento/src/lib/engine/retime.ts`; day stats: `engine/day-stats.ts`.
+- Adding a place: the sheet `add-place.tsx`, the actions `placesForDay` and `addPlaceToDay` in `day-actions.ts`, the check `bento/src/lib/engine/fit.ts`, the search `bento/src/lib/trips/place-search.ts`. Tests: `add-place.test.ts`, `engine/__tests__/fit.test.ts`, `trips/place-search.test.ts`.
 - Map links: `bento/src/lib/maps/links.ts`.
 - Design: palette, motion and fonts in [design](../20-design/README.md).
 - Agent rules: [bento/CLAUDE.md](../../../bento/CLAUDE.md), "Day view (P7)".
