@@ -304,3 +304,53 @@ describe("savedDayProblems: what's off about the day as saved (review F9)", () =
     expect(run([saved("kyt-sanjusangendo", 600), { placeId: "custom:ramen", startMin: 720, durationMin: 60, unchecked: true }])).toEqual([[], []]);
   });
 });
+
+describe("re-check (review round 2)", () => {
+  it("F3: a hike already past its daylight end that gets later still is a problem", () => {
+    const hike = { ...P("kyt-daimonji-hike"), lat: 35.0254, lon: 135.8006 };
+    const date = "2026-12-15";
+    const dusk = daylightEndMin(hike, date)!;
+    const dayStartMin = 15 * 60 + 1;
+    // Already 10 min past daylight on its own.
+    const items = [{ placeId: hike.id, durationMin: dusk - dayStartMin + 10, locked: false, startMin: null }];
+    const r = fitPlace(input(P("kyt-sanjusangendo"), { date, items, places: new Map([[hike.id, hike]]), at: 0, dayStartMin, traveller: { ...owner, excludes: [] } }));
+    expect(r.problems.map((p) => p.term)).toContain("pushes_dark");
+  });
+
+  it("F3: the same for a stop already past closing that would run later", () => {
+    const items = [stop("kyt-tofukuji", 60)];
+    const r = fitPlace(input(P("kyt-sanjusangendo"), { items, at: 0, dayStartMin: 16 * 60 }));
+    expect(r.problems.map((p) => p.term)).toContain("pushes_closing");
+  });
+
+  it("#12: an evening place may end the day back where it began, as the planner allows", () => {
+    const at = (p: PlaceInput, lat: number, lon: number): PlaceInput => ({ ...p, lat, lon });
+    const a = at(P("kyt-sanjusangendo"), 34.9880, 135.7720);
+    const far = at(P("kyt-kinkakuji"), 35.0394, 135.7292);
+    const dinner = at({ ...P("kyt-nishiki-market"), id: "kyt-pontocho", name: "Pontocho", eveningOnly: true, opensAt: null, closesAt: null, bestWindow: ["after 17:30"] }, 34.9899, 135.7731);
+    const places = new Map([a, far, dinner].map((p) => [p.id, p]));
+    const r = fitPlace(input(dinner, { items: [stop(a.id), stop(far.id)], places, dayStartMin: 13 * 60 }));
+    expect(r.problems.map((p) => p.term)).not.toContain("out_of_way");
+    // A daytime place there still strays (F7).
+    const back = at(P("kyt-national-museum"), 34.9899, 135.7731);
+    const day = fitPlace(input(back, { items: [stop(a.id), stop(far.id)], places: new Map([a, far, back].map((p) => [p.id, p])), at: 2 }));
+    expect(day.problems.map((p) => p.term)).toContain("out_of_way");
+  });
+
+  it("F9: a saved daytime stop ending after the day's end says so; an evening one doesn't", () => {
+    const pontocho: PlaceInput = { ...P("kyt-nishiki-market"), id: "kyt-pontocho", name: "Pontocho", eveningOnly: true, opensAt: null, closesAt: null, bestWindow: ["after 17:30"] };
+    const places = new Map([...byId, [pontocho.id, pontocho]]);
+    // Standard pace from 09:00: the day's end is 18:00.
+    const r = savedDayProblems({ date: TUESDAY, places, traveller: owner, items: [
+      { placeId: "kyt-ninenzaka", startMin: 9 * 60, durationMin: 60 },
+      { placeId: "kyt-gion-x", startMin: 12 * 60, durationMin: 60 },
+      { placeId: "kyt-ninenzaka", startMin: 17 * 60 + 30, durationMin: 60 },
+      { placeId: "kyt-pontocho", startMin: 18 * 60, durationMin: 90 },
+    ] });
+    expect(r[2]).toContain(copy.plan.leftOut.pastDayEnd("18:00"));
+    expect(r[0]).toEqual([]);
+    expect(r[3]).toEqual([]);
+    // A travel day ends as any day: the move doesn't move the end earlier here.
+    expect(savedDayProblems({ date: TUESDAY, places, traveller: owner, moveMin: 90, items: [{ placeId: "kyt-ninenzaka", startMin: 9 * 60, durationMin: 60 }] })).toEqual([[]]);
+  });
+});

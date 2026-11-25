@@ -154,6 +154,19 @@ export function straysAt(
   return false;
 }
 
+/** When a stop is an evening stop, the clock time it starts: an
+ *  evening-only place (or, pinned without a time, one whose best windows are
+ *  all evening) whose visit fits between its evening and closing. Null for
+ *  any other stop. Such a stop ends the day wherever the day began, so the
+ *  way rule (`straysAt`) doesn't apply to it. */
+export function eveningStartOf(p: PlaceInput, durationMin: number, lockedStart: number | null = null, locked = false): number | null {
+  if (lockedStart != null) return null;
+  const from = eveningFrom(p) ?? (locked ? eveningWindow(p) : null);
+  if (from == null) return null;
+  const at = Math.max(from, parseClock(p.opensAt) ?? 0);
+  return at + durationMin <= (parseClock(p.closesAt) ?? 24 * 60) ? at : null;
+}
+
 /** The day's usual start: 07:00 for a crowd-avoider, else 09:00. */
 export function usualDayStart(crowdTolerance: number): number {
   return crowdTolerance < 0.35 ? 7 * 60 : 9 * 60;
@@ -289,13 +302,7 @@ export function planDay(input: DayInput): DayPlan {
    *  (`eveningWindow`: Dotonbori as a must-see), starts at the earliest, if
    *  its visit fits before it closes. Null for any other stop, and for a
    *  pin with a time of its own. */
-  const eveningStart = (p: PlaceInput, durationMin: number, lockedStart: number | null = null, locked = false): number | null => {
-    if (lockedStart != null) return null;
-    const from = eveningFrom(p) ?? (locked ? eveningWindow(p) : null);
-    if (from == null) return null;
-    const at = Math.max(from, parseClock(p.opensAt) ?? 0);
-    return at + durationMin <= (parseClock(p.closesAt) ?? 24 * 60) ? at : null;
-  };
+  const eveningStart = eveningStartOf;
   const eveningOf = (d: Draft) => eveningStart(d.place, d.durationMin, d.lockedStart, d.locked);
   const isEvening = (d: Draft) => eveningOf(d) != null;
   /** A stop held to the day: neither evening (above) nor one whose best
