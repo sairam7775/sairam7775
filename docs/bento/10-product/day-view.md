@@ -39,14 +39,16 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 
 ## Moving a stop on a phone
 
-With a mouse, a stop is dragged at once, as before. With a finger or a pen, the traveller **holds a stop still for about half a second** (450 ms): it lifts (solid, outlined, a slight grow unless reduced motion is on, and a short buzz where the phone allows), follows the finger, and lands where it is let go. The stop it would land on gets a dashed outline. Letting go saves the new order through the same edit as a mouse drag (`reorderDay`), and the engine re-times the day.
+With a mouse, a stop is dragged at once, as before. With a finger, the traveller **holds a stop still for about half a second** (450 ms): it lifts (solid, outlined, a slight grow unless reduced motion is on, and a short buzz where the phone allows), follows the finger, and lands where it is let go. The stop it would land on gets a dashed outline. Letting go saves the new order through the same edit as a mouse drag (`reorderDay`), and the engine re-times the day.
 
-- **A swipe still scrolls.** Moving the finger more than 10 px before the hold ends cancels it, and the page is held still only once a stop has lifted.
-- Near the top or bottom of the screen (64 px), a lifted stop scrolls the page, faster the closer it is to the edge.
+- **A swipe still scrolls.** Moving the finger more than 10 px before the hold ends cancels it, and so does the page starting to scroll; the page is held still only once a stop has lifted.
+- Near the top or bottom of the screen (64 px), a lifted stop scrolls the page, faster the closer it is to the edge. Only the finger holding the stop counts: a second finger or a mouse doesn't steer it.
+- **A drop never saves a stale order.** The lift remembers the day's order. If the day changes before the drop (an up or down tap, a refresh), the drag is cancelled and nothing is saved, and so it is if the held stop disappears. While a stop is lifted or a reorder is saving, the stops' Pin, up, down and Remove buttons wait; after one of them is used, no hold starts until the day comes back.
 - Pressing a button, the Map link or "About this place" never starts a hold.
+- **A pen doesn't hold-and-drag.** A pen can scroll the page without the touch events that keep it still under a lifted stop, so it uses the up and down buttons.
 - A pinned stop moves like any other, as with the up and down buttons: re-timing never starts it before its pinned time (later only if the stops before it run on), and the others follow.
-- The up and down buttons stay, for keyboards and screen readers.
-- The rules are pure and tested (`hold-to-drag.ts`); the box only feeds them pointer events and the cards' positions. On touch screens a stop's text can't be selected, so a long press doesn't select it.
+- The up and down buttons stay, for keyboards, screen readers and pens.
+- The rules are pure and tested (`hold-to-drag.ts`); the box only feeds them pointer events, scrolls and the cards' positions. On any device with a touch screen a stop's text can't be selected, so a long press doesn't select it.
 
 ## Travel days
 

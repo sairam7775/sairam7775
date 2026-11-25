@@ -484,11 +484,15 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   `engine/retime.ts` — never by the component, never by a model. The
   component only reorders an id list optimistically.
 - A mouse drags a stop at once (HTML drag, offered only where there is a
-  fine pointer); a finger or pen holds it first (`hold-to-drag.ts`, pure
-  and tested: 450 ms still, cancelled by moving over 10 px so a swipe
-  scrolls, page held still only once lifted). Both save through
-  `reorderDay`. Pins move like any stop, as ↑ ↓ allow; keep the ↑ ↓
-  buttons for keyboards and screen readers.
+  fine pointer); a finger holds it first (`hold-to-drag.ts`, pure and
+  tested: 450 ms still, cancelled by moving over 10 px or by the page
+  scrolling, so a swipe scrolls; page held still only once lifted). A
+  pen doesn't hold (it pans without touch events). Both drags save
+  through `reorderDay`. A lift keeps the day's order and the drop saves
+  only if the day is unchanged, by id; a changed day, a lost capture or
+  a removed stop cancels without saving, and the stop buttons wait
+  while a stop is lifted or saving. Pins move like any stop, as ↑ ↓
+  allow; keep the ↑ ↓ buttons for keyboards, screen readers and pens.
 - `retimeDay` makes no choices: the order is the traveller's, the times
   follow. `planDay` (via `replanDay` in tools.ts) is the only thing that
   chooses, and it always returns a proposal.
