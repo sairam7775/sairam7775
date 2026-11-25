@@ -585,7 +585,7 @@ export const en = {
     addPlace: {
       open: "Add a place",
       title: "Add a place",
-      intro: (city: string) => `Search Bento's places in ${city}. Bento checks it against the day before it goes in.`,
+      intro: (city: string) => `Search Bento's places in ${city}, or type any name. Bento checks its own places against the day before they go in.`,
       searchLabel: "Place name",
       searchHint: (city: string) => `A place in ${city}`,
       loading: "Getting the places…",
@@ -610,6 +610,17 @@ export const en = {
       back: "Pick another place",
       close: "Close",
       done: "Done",
+      // A place Bento doesn't know, typed by the traveller (0036). Said
+      // plainly: nothing about it is checked.
+      custom: {
+        offer: (name: string) => `Add “${name}” as your own stop`,
+        offerNote: "Not one of Bento's places",
+        cantCheck: (name: string) => `Bento doesn't know ${name}, so it can't check its hours or the travel time. It goes at the end of the day, for as long as you say.`,
+        lengthLabel: "How long there",
+        add: "Add it",
+        added: (name: string, at: string | null) => `Added ${name}${at ? ` at ${at}` : ""}. Bento hasn't checked it.`,
+        clockLabel: "What the day's clock says:",
+      },
       errors: {
         badInput: "That didn't come through properly. Try again.",
         signedOut: "Your session ended. Sign in again to change the day.",
