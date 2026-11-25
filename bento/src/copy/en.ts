@@ -1330,6 +1330,8 @@ export const en = {
       outOfWay: (from: string, to: string, km: string) => `it takes the day ${km} km out of its way between ${from} and ${to}`,
       onTheWay: (from: string, to: string) => `it's on your way between ${from} and ${to}`,
       walkFrom: (min: number, from: string) => `${min} min on foot from ${from}`,
+      // A saved evening-only stop timed before its evening (savedDayProblems).
+      beforeEvening: (from: string) => `planned before its evening, which starts at ${from}`,
     },
     // Routes between cities.
     route: {

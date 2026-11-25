@@ -34,6 +34,8 @@ export interface DayBoxItem {
   background?: string | null;
   /** A stop the traveller named that Bento doesn't know (0036). */
   unchecked?: boolean;
+  /** What's off about it as saved (`savedDayProblems`), worked out on render. */
+  problems?: string[];
 }
 
 export interface DayBoxProps {
@@ -322,6 +324,7 @@ export function DayBox(p: DayBoxProps) {
                       </a>
                     )}
                     {it.unchecked && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{t.unchecked}</p>}
+                    {it.problems?.map((x) => <p key={x} className="mt-1 text-[0.86rem] font-medium leading-snug text-ume">{x.replace(/^./, (c) => c.toUpperCase())}</p>)}
                     {it.reason && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{it.reason}</p>}
                     {it.background && (
                       <details className="mt-1.5 text-[0.84rem] text-ink-2">

@@ -376,3 +376,44 @@ function overDayProblem(before: RetimedDay, after: RetimedDay): FitProblem | nul
     ? { term: "over_day", text: copy.plan.fit.overDay(dur(after.overBy), dur(after.budgetMin)) }
     : { term: "over_day", text: copy.plan.fit.moreOver(dur(after.overBy - before.overBy), dur(before.overBy)) };
 }
+
+/** What is off about a day as it is saved, stop by stop, by the same rules
+ *  and in the same words: closed that day, a ticket needed and not held,
+ *  an exclude or a hard mobility need, a stop it can't share a day with,
+ *  a visit past closing (a hike past its daylight), an evening place before
+ *  its evening. Worked out again on every render, never stored, so a stop
+ *  added anyway keeps saying what's off after the sheet closes, and stops
+ *  saying it once it isn't (a ticket booked, the stop moved). A stop Bento
+ *  doesn't know has nothing to check. */
+export function savedDayProblems(input: {
+  date: string;
+  items: { placeId: string; startMin: number | null; durationMin: number | null; unchecked?: boolean }[];
+  places: Map<string, PlaceInput>;
+  traveller: TravellerInput;
+  bookedPlaceIds?: Iterable<string>;
+}): string[][] {
+  const { places, dark } = daylit(input.places, input.date);
+  const booked = new Set(input.bookedPlaceIds ?? []);
+  const placeOf = (it: { placeId: string; unchecked?: boolean }) => (it.unchecked ? undefined : places.get(it.placeId));
+  return input.items.map((it, i) => {
+    const p = placeOf(it);
+    if (!p) return [];
+    const out: string[] = [];
+    const rejected = hardFilter(p, input.traveller, { date: input.date, weekday: WEEKDAY_OF(input.date), bookedPlaceIds: booked, usedPlaceIds: new Set() });
+    if (rejected) out.push(rejected.detail);
+    input.items.forEach((other, j) => {
+      const q = j === i ? undefined : placeOf(other);
+      if (q && (p.conflictsWith.includes(q.id) || q.conflictsWith.includes(p.id))) out.push(copy.plan.leftOut.clash(q.name));
+    });
+    if (it.startMin != null && it.durationMin != null) {
+      const end = it.startMin + it.durationMin;
+      const closes = parseClock(p.closesAt);
+      if (closes != null && end > closes) {
+        out.push(dark.has(p.id) ? copy.plan.warnings.afterDark(p.name, p.closesAt!) : copy.plan.warnings.closesDuring(p.name, p.closesAt!, clock(end)));
+      }
+      const evening = eveningFrom(p);
+      if (evening != null && it.startMin < evening) out.push(copy.plan.fit.beforeEvening(clock(evening)));
+    }
+    return out;
+  });
+}
