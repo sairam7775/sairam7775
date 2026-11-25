@@ -306,6 +306,7 @@ describe("eval scenarios", () => {
         "Aunt Keiko's isn't one of Bento's places, so I can't check its hours. If you tell me its nearest station, I can look up the train there.",
         "I can't check Aunt Keiko's: an address doesn't help me, but its nearest station would, and then I can find the train.",
         "I can't check Aunt Keiko's. Instead of an address, I can use its nearest station.",
+        "I can't check Aunt Keiko's. Don't send me the address. I'll find a route from its nearest station.",
         "I can't check Aunt Keiko's hours or tell you to leave at 18:30.",
         "I can't confirm whether Aunt Keiko's is open until 22:00.",
       ]],
