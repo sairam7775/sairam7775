@@ -5,11 +5,12 @@ implementation: shipped
 code:
   - bento/src/app/trips/[id]/day-box.tsx
   - bento/src/app/trips/[id]/day-actions.ts
+  - bento/src/app/trips/[id]/hold-to-drag.ts
   - bento/src/lib/engine/retime.ts
   - bento/src/lib/engine/day-stats.ts
   - bento/src/lib/engine/travel-day.ts
   - bento/src/lib/bento-man/trip-view.ts
-last_reviewed: 2026-11-24
+last_reviewed: 2026-11-25
 ---
 
 # The day view (the box)
@@ -22,7 +23,7 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 
 1. On a trip page (`/trips/<id>?day=YYYY-MM-DD`), a strip shows every date of the accepted route, with a bar for how full each day is.
 2. The traveller opens a day and sees its box.
-3. They can drag stops into a new order, move them up or down, pin, unpin or remove them. These apply at once.
+3. They can drag stops into a new order (on a phone: hold a stop, then drag it), move them up or down, pin, unpin or remove them. These apply at once.
 4. Or they ask to **re-plan this day**: the engine chooses again around what's pinned, and the result comes back as a [proposal](proposals-and-diffs.md).
 5. Each stop has Map and Directions links to Google Maps.
 
@@ -35,6 +36,19 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 - Stats for the day (active time, the over-budget point, the lunch gap, free time) are summed from what's stored; nothing is invented.
 - Map links are plain Google Maps links: the place's name (Japanese when known) and city, or a train journey's two stations. **Nothing reaches Google until the traveller opens one,** and the privacy page says so.
 - A stop has a map link only while its place is still public.
+
+## Moving a stop on a phone
+
+With a mouse, a stop is dragged at once, as before. With a finger, the traveller **holds a stop still for about half a second** (450 ms): it lifts (solid, outlined, a slight grow unless reduced motion is on, and a short buzz where the phone allows), follows the finger, and lands where it is let go. The stop it would land on gets a dashed outline. Letting go saves the new order through the same edit as a mouse drag (`reorderDay`), and the engine re-times the day.
+
+- **A swipe still scrolls.** Moving the finger more than 10 px before the hold ends cancels it, and so does the page starting to scroll; the page is held still only once a stop has lifted.
+- Near the top or bottom of the screen (64 px), a lifted stop scrolls the page, faster the closer it is to the edge. Only the finger holding the stop counts: a second finger or a mouse doesn't steer it.
+- **A drop never saves a stale order.** The lift remembers the day's order. If the day changes before the drop (an up or down tap, a refresh), the drag is cancelled and nothing is saved, and so it is if the held stop disappears or anything moves the stops on the page (a booking block, a free-time tile, a stop's height, something above the box). While a stop is lifted, or any stop edit (a reorder, Pin, up, down, Remove) is on its way, the other edits and holds wait until it has finished, whether it worked or failed.
+- Pressing a button, the Map link or "About this place" never starts a hold.
+- **A pen doesn't hold-and-drag.** A pen can scroll the page without the touch events that keep it still under a lifted stop, so it uses the up and down buttons.
+- A pinned stop moves like any other, as with the up and down buttons: re-timing never starts it before its pinned time (later only if the stops before it run on), and the others follow.
+- The up and down buttons stay, for keyboards, screen readers and pens.
+- The rules are pure and tested (`hold-to-drag.ts`); the box only feeds them pointer events, scrolls and the cards' positions. On any device with a touch screen a stop's text can't be selected, so a long press doesn't select it.
 
 ## Travel days
 

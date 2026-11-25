@@ -573,7 +573,8 @@ export const en = {
     slack: (slack: string) => `${slack} slack`,
     ringLabel: (pct: number) => `${pct}% of the day`,
     pinnedCount: (n: number) => `${n} pinned. `,
-    howTo: "Drag to reorder, pin what must stay, remove what you don’t want. Times follow.",
+    // True on a phone too: there a stop moves after a press and hold.
+    howTo: "Hold and drag a stop to move it, pin what must stay, remove what you don’t want. Times follow.",
     replan: "Re-plan this day",
     replanNote: "Bento chooses again around your pins. It comes back as a proposal you can reject.",
     // Why a stop was chosen, as small tags under it.
@@ -1850,7 +1851,7 @@ export const en = {
       },
       dayBox: {
         title: "Each day is a box",
-        body: "Stops are sized to the time they take. Drag to reorder, pin a stop to keep it, or re-plan the day around your pins. Drag a booking in from the Bookings column — only to its own date.",
+        body: "Stops are sized to the time they take. Drag to reorder (on a phone, hold a stop first), pin a stop to keep it, or re-plan the day around your pins. Drag a booking in from the Bookings column — only to its own date.",
       },
       vault: {
         title: "The vault",
