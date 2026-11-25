@@ -98,6 +98,7 @@ A traveller can give the people they're travelling with a **link to their trip p
   - [0020_trip_sharing.sql](../../../bento/supabase/migrations/0020_trip_sharing.sql): the `trip_shares` table, the token and `shared_trip()`;
   - [0024_share_expiry.sql](../../../bento/supabase/migrations/0024_share_expiry.sql): expiry;
   - [0030_renew_trip_share.sql](../../../bento/supabase/migrations/0030_renew_trip_share.sql): `renew_trip_share()`, a new link in one transaction.
+  - [0036_custom_stops.sql](../../../bento/supabase/migrations/0036_custom_stops.sql): each stop carries `custom_name`, so the sheet names a stop the traveller typed (and says it isn't checked).
 - Address scrubbing for analytics: [url.ts](../../../bento/src/lib/analytics/url.ts).
 - The words on screen are in `copy.share` in [en.ts](../../../bento/src/copy/en.ts).
 - The rules agents must keep are in [bento/CLAUDE.md](../../../bento/CLAUDE.md), "Sharing".

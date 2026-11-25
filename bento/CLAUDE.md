@@ -494,6 +494,14 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   `eveningFrom`, the detour bar) and never adds one of its own. Praise is
   only the engine's clauses. Doesn't fit: nothing is written until the
   traveller says "Add anyway". It never chooses what goes in.
+- A name Bento doesn't know goes in as a free-text stop (`addCustomStop`,
+  0036: `place_id` null, `custom_name`; key `custom:<name>` from
+  `bento-man/custom-stop.ts`). Never called a fit: it goes at the end for
+  the length given, `retimeDay` takes it as `unchecked` (45-minute
+  estimate legs either side), and every reader says it isn't checked.
+  `planDay` never sees one (a re-plan shows it out). A new reader of
+  items must handle `place_id` null; `dayBase` sends `placeId: null` for
+  one, as 0031 reads it.
 - `engine/day-stats.ts` sums what is stored for the view (active time,
   over-budget index, the lunch gap). It must not invent times.
 - Map and Directions links (`lib/maps/links.ts`) are plain Google Maps
