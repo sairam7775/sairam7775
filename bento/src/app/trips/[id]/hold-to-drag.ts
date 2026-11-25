@@ -139,6 +139,17 @@ export function edgeScrollSpeed(clientY: number, viewportHeight: number): number
   return 0;
 }
 
+/** How far a stop may sit from where it was measured before the drag's
+ *  sums are stale (rounding, sub-pixel layout). */
+export const LAYOUT_SLACK_PX = 1;
+
+/** Whether the stops moved since they were measured at the lift: anything
+ *  re-rendered in the box (a booking block, a free-time tile, a leg) or
+ *  above it. Then the drag is cancelled rather than dropped by old sums. */
+export function layoutMoved(saved: number[], now: number[]): boolean {
+  return saved.length !== now.length || saved.some((m, i) => Math.abs(m - now[i]) > LAYOUT_SLACK_PX);
+}
+
 function sameOrder(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((id, i) => id === b[i]);
 }

@@ -7,6 +7,7 @@ import {
   MOVE_TOLERANCE_PX,
   edgeScrollSpeed,
   holdComplete,
+  layoutMoved,
   lift,
   moveTo,
   nativeScroll,
@@ -223,5 +224,19 @@ describe("edgeScrollSpeed", () => {
   it("never goes past the top speed, even off screen", () => {
     expect(edgeScrollSpeed(-200, 800)).toBe(-MAX_EDGE_SCROLL_PX);
     expect(edgeScrollSpeed(2_000, 800)).toBe(MAX_EDGE_SCROLL_PX);
+  });
+});
+
+describe("layoutMoved", () => {
+  it("is still while every stop is where it was measured, give or take a pixel", () => {
+    expect(layoutMoved(MIDS, [100, 300.5, 499.4, 700])).toBe(false);
+  });
+
+  it("moves when any stop shifts: a booking block, a free-time tile or a leg changed above it", () => {
+    expect(layoutMoved(MIDS, [100, 300, 540, 740])).toBe(true);
+  });
+
+  it("moves when a stop is added or taken away", () => {
+    expect(layoutMoved(MIDS, [100, 300, 500])).toBe(true);
   });
 });
