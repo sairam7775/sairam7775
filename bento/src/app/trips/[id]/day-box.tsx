@@ -12,6 +12,7 @@ import { placeMapUrl } from "@/lib/maps/links";
 import { showsMainSights } from "@/lib/trips/route-card";
 import { arriveMinutesSuffix } from "@/lib/trips/arrive-line";
 import { HOLD_MS, IDLE, edgeScrollSpeed, layoutMoved, lift, nativeScroll, owns, pointerMove, press, release, stillValid, type HoldState } from "./hold-to-drag";
+import { AddPlace } from "./add-place";
 
 const t = copy.day;
 /** The clock a hold is timed by (event handlers only). */
@@ -593,6 +594,7 @@ export function DayBox(p: DayBoxProps) {
             );
           })}
           {blockAt(items.length).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
+          {p.editable && <AddPlace tripId={p.tripId} date={p.date} cityName={p.cityName} />}
         </div>
 
         <aside className="flex flex-col gap-2.5">
