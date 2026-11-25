@@ -23,7 +23,8 @@ describe("0036 custom stops", () => {
     expect(sql).toMatch(/alter table itinerary_items\s+add column custom_name text;/);
     expect(squash(sql)).toContain("char_length(custom_name) between 1 and 80");
     expect(squash(sql)).toContain("add constraint itinerary_items_one_kind check (custom_name is null or place_id is null)");
-    expect(squash(sql)).toContain("check (custom_name is null or duration_min between 5 and 720)");
+    // F8: a NULL length would pass a bare "between", so it is required.
+    expect(squash(sql)).toContain("check (custom_name is null or (duration_min is not null and duration_min between 5 and 720))");
     expect(squash(sql)).toContain("check (place_id is not null or custom_name is not null) not valid");
     expect(sql).toContain("custom_name !~ '[[:cntrl:]]'");
   });
@@ -54,9 +55,43 @@ describe("0036 custom stops", () => {
     expect(after).toBe(before.replace("coalesce(p.name, i.place_id, '?')", "coalesce(p.name, i.custom_name, i.place_id, '?')"));
   });
 
-  it("leaves apply_proposal alone and grants nothing new", () => {
-    expect(sql).not.toMatch(/function apply_proposal/);
-    expect(sql).not.toMatch(/\bgrant\b/i);
+  it("apply_proposal is 0031's with only its base query moved into day_base", () => {
+    const m31 = read("0031_stale_proposals.sql");
+    const start = m31.indexOf("create function apply_proposal(");
+    const before = m31.slice(start, m31.indexOf("$$;", m31.indexOf("as $$", start) + 5) + 3).replace("create function apply_proposal(", "create or replace function apply_proposal(");
+    const a = before.indexOf("      select coalesce(jsonb_agg(jsonb_build_object(");
+    const mark = "where d.trip_id = p_trip and d.date = (v_day->>'date')::date;";
+    const expected = before.slice(0, a) + "v_base := day_base(p_trip, (v_day->>'date')::date);" + before.slice(before.indexOf(mark, a) + mark.length);
+    expect(a).toBeGreaterThan(-1);
+    expect(squash(fn(sql, "apply_proposal"))).toBe(squash(expected));
+  });
+
+  it("day_base is 0031's base plus a free-text stop's name, in dayBase's total order", () => {
+    const at = sql.indexOf("create or replace function day_base(");
+    const base = squash(sql.slice(at, sql.indexOf("$$;", sql.indexOf("as $$", at) + 5)));
+    expect(base).toContain("|| case when i.custom_name is not null then jsonb_build_object('customName', i.custom_name) else '{}'::jsonb end");
+    expect(base).toContain(
+      `order by i.sort_order, i.place_id collate "C" nulls last, i.custom_name collate "C" nulls last, ` +
+      `(extract(hour from i.start_time) * 60 + extract(minute from i.start_time))::int nulls last, i.duration_min nulls last, i.locked, ` +
+      `i.arrive_mode collate "C" nulls last, i.arrive_minutes nulls last, i.arrive_detail collate "C" nulls last)`,
+    );
+    expect(base).toContain("security invoker set search_path = public");
+  });
+
+  it("replace_day_items_checked compares under the trip lock, before writing", () => {
+    const checked = squash(fn(sql, "replace_day_items_checked"));
+    expect(checked).toContain("security invoker set search_path = public");
+    const lock = checked.indexOf("perform 1 from trips where id = p_trip for update;");
+    expect(lock).toBeGreaterThan(-1);
+    expect(lock).toBeLessThan(checked.indexOf("day_base(p_trip, p_date) is distinct from"));
+    expect(checked.indexOf("return 'stale_day';")).toBeLessThan(checked.indexOf("perform replace_day_items("));
+  });
+
+  it("the new functions are for authenticated and service_role, never anon; no new definer function", () => {
+    for (const sig of ["day_base(uuid, date)", "replace_day_items_checked(uuid, date, text, jsonb, jsonb)"]) {
+      expect(sql).toContain(`revoke all on function ${sig} from public, anon;`);
+      expect(sql).toContain(`grant execute on function ${sig} to authenticated, service_role;`);
+    }
     // shared_trip is the one definer function, as it was.
     expect(sql.match(/^security definer$/gim)).toHaveLength(1);
   });
