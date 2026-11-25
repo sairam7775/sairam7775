@@ -5,7 +5,7 @@ import type { DayPlan, LockedItem, PlaceInput, PlannedItem, TravelFn, TravelLeg 
 import { daylightEndMin } from "@/lib/engine/daylight";
 import { parseClock } from "@/lib/engine/filter";
 import { uncheckedLeg } from "@/lib/engine/retime";
-import { eveningFrom } from "@/lib/engine/schedule";
+import { eveningFrom, eveningWindow } from "@/lib/engine/schedule";
 import { copy } from "@/copy";
 import { isCustomStop } from "./custom-stop";
 import type { ItemRow } from "./store";
@@ -54,9 +54,9 @@ export function restoreCustomStops(plan: DayPlan, items: ItemRow[], { places, lo
     if (isCustomStop(prev) || isCustomStop(id)) return uncheckedLeg();
     const a = placeOf.get(prev);
     const b = placeOf.get(id);
-    return a && b ? travel(a, b) : null;
+    // No route on record: the planner's own flat guess.
+    return (a && b ? travel(a, b) : null) ?? uncheckedLeg();
   };
-  // A leg Bento has no route for costs the planner's own flat guess.
   const legMin = (prev: string, id: string) => legFor(prev, id)?.minutes ?? uncheckedLeg().minutes;
   const closesOf = (id: string): { at: number; dark: boolean } | null => {
     const q = placeOf.get(id);
@@ -83,6 +83,8 @@ export function restoreCustomStops(plan: DayPlan, items: ItemRow[], { places, lo
   const moved = new Set<string>();
   // Pins that can't be kept without running past midnight.
   const stuck = new Set<string>();
+  // A pin, or the traveller's own stop without a time, is never left out.
+  const kept = (it: PlannedItem) => it.locked || isCustomStop(it.placeId);
 
   /** Places every movable stop; returns a chosen one that no longer fits. */
   function placeAll(): { it: PlannedItem; term: string; detail: string } | null {
@@ -111,18 +113,20 @@ export function restoreCustomStops(plan: DayPlan, items: ItemRow[], { places, lo
       }
       const end = at + it.durationMin;
       if (at !== was.startMin) {
-        if (it.locked && end > DAY_MIN) {
+        if (kept(it) && end > DAY_MIN) {
           stuck.add(it.placeId);
           setStart(it, was.startMin);
           done.push(it);
           continue;
         }
-        if (!it.locked) {
+        if (!kept(it)) {
           const closes = closesOf(it.placeId);
           if (closes && end > closes.at)
             return { it, term: "hours", detail: closes.dark ? copy.plan.leftOut.afterDark(clock(closes.at)) : copy.plan.leftOut.closesBefore(clock(closes.at), clock(at), it.durationMin) };
           const q = placeOf.get(it.placeId);
-          if (end > DAY_MIN || (end > plan.dayEndMin && !(q && eveningFrom(q) != null)))
+          // As the planner: an evening place, or one in its evening window, may run later.
+          const win = q ? eveningFrom(q) ?? eveningWindow(q) : null;
+          if (end > DAY_MIN || (end > plan.dayEndMin && (win == null || at < win)))
             return { it, term: "day_end", detail: copy.plan.leftOut.pastDayEnd(clock(plan.dayEndMin)) };
         }
         moved.add(it.placeId);
@@ -184,6 +188,12 @@ export function restoreCustomStops(plan: DayPlan, items: ItemRow[], { places, lo
   plan.costJpy = plan.placesJpy + plan.faresJpy;
   plan.startMin = plan.items[0].startMin;
   plan.endMin = Math.max(...plan.items.map((it) => it.endMin));
-  plan.meals = plan.meals.filter((m) => !plan.items.some((it) => it.startMin < m.endMin && it.endMin > m.startMin));
+  // A meal stays only clear of every stop, in a gap with room for the journey too.
+  plan.meals = plan.meals.filter((m) => {
+    if (plan.items.some((it) => it.startMin < m.endMin && it.endMin > m.startMin)) return false;
+    const next = plan.items.find((it) => it.startMin >= m.endMin);
+    const prev = plan.items.filter((it) => it.endMin <= m.startMin).pop();
+    return !prev || !next || next.startMin - prev.endMin >= m.endMin - m.startMin + (next.arriveBy?.minutes ?? 0);
+  });
   return plan;
 }

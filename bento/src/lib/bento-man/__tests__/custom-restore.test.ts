@@ -80,6 +80,38 @@ describe("restoreCustomStops", () => {
     expect(dark.considered[0].detail).toMatch(/daylight/);
   });
 
+  it("never leaves out a free-text stop without a time (review 5)", () => {
+    const p = restoreCustomStops(
+      plan([stop("b", 1140, 60, { locked: true }), stop("custom:a", 1245, 60, { arriveBy: guess }), stop("custom:u", 1350, 60, { arriveBy: guess })]),
+      [own("a", 1170, 60), own("u", null, 60)], using({}, { b: 1140 }));
+    expect(p.items.map((i) => i.placeId).sort()).toEqual(["b", "custom:a", "custom:u"]);
+    for (const i of p.items) expect(i.endMin).toBeLessThanOrEqual(24 * 60);
+  });
+
+  it("lets a stop in its evening window run past the day's end, as the planner does", () => {
+    const p = restoreCustomStops(plan([stop("custom:t", 1080, 60), stop("b", 1110, 60)]), [own("t", 1080, 60)], using({ b: { bestWindow: ["after 17:30"] } }));
+    expect(rows(p)).toEqual([["custom:t", 1080, 1140], ["b", 1185, 1245]]);
+    expect(p.considered).toEqual([]);
+  });
+
+  it("counts the flat guess for a journey Bento has no route for", () => {
+    const p = restoreCustomStops(
+      plan([stop("b", 1080, 60, { locked: true }), stop("custom:k", 1200, 60, { arriveBy: guess }), stop("d", 1305, 30, { locked: true, arriveBy: guess })]),
+      [own("k", 900, 60)], { ...using(), travel: () => null });
+    expect(p.items.map((i) => i.placeId)).toEqual(["custom:k", "b", "d"]);
+    expect(p.items[2].arriveBy).toMatchObject({ mode: "estimate", minutes: 45 });
+    expect(p.activeMin).toBe(60 + 60 + 30 + 45 + 45);
+  });
+
+  it("keeps lunch only in a gap the journey leaves room for", () => {
+    const make = (b: number) => restoreCustomStops(
+      plan([stop("custom:t", 660, 60), stop("b", b, 60, { locked: true, arriveBy: guess })], { meals: [{ kind: "lunch", startMin: 735, endMin: 795 }] }),
+      [own("t", 660, 60)], using());
+    expect(make(780).meals).toEqual([]);
+    expect(make(800).meals).toEqual([]);
+    expect(make(840).meals).toHaveLength(1);
+  });
+
   it("keeps a pin, and never past midnight", () => {
     const p = restoreCustomStops(plan([stop("custom:t", 1350, 90), stop("b", 1380, 30, { locked: true })]), [own("t", 1350, 90)], using({}, { b: 1380 }));
     expect(rows(p)).toEqual([["custom:t", 1350, 1440], ["b", 1380, 1410]]);

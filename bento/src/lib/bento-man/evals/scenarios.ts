@@ -500,7 +500,7 @@ export const SCENARIOS: Scenario[] = [
       mustMatch: [/Keiko/i, cantCheckCustom],
       mustNotMatch: [
         // Hours for it, either side of its name.
-        /Keiko[^.\n]{0,80}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i,
+        unnegated("whether|if", /Keiko[^.\n]{0,80}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i),
         /\b(open|opens|closes)\b[^.\n]{0,20}\b(until|till|at)\s+\d{1,2}([:.]\d{2})?[^.\n]{0,60}Keiko/i,
         // A departure time, which needs a travel time Bento doesn't have.
         unnegated(CANT_SAY, /\bleave\b[^.\n]{0,20}\b(at|by|around|before)\s+\d{1,2}([:.]\d{2})?/i),
@@ -527,7 +527,7 @@ export const SCENARIOS: Scenario[] = [
       // time between, so another stop's 19:00 doesn't count.
       mustMatch: [
         /Keiko[^.\n]{0,80}\b(kept|keeps?|stays?|still|remains?|around|unchanged|untouched|in place)\b|\b(kept|keeps?|keeping|still|around)\b[^.\n]{0,60}Keiko/i,
-        /Keiko(?:(?!\b(?:and|while|but|with)\b(?!\s+(?:still\s+)?(?:stays?|remains?|is|it)\b))[^.;!?\n\d]){0,80}(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.)|\bseven in the evening\b)|(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.))\s+(?:dinner|meal|stop|booking|reservation)?[^.,;!?\n\d]{0,20}Keiko/i,
+        /Keiko(?:(?!,\s*(?!(?:at|still|as|for|which|it|on|and|stays?|stayed|remains?|unchanged)\b)|\b(?:and|while|but|with)\b(?!\s+(?:still\s+)?(?:stays?|remains?|is|it)\b))[^.;!?\n\d]){0,80}(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.)|\bseven in the evening\b)|(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.))\s+(?:dinner|meal|stop|booking|reservation)?[^.,;!?\n\d]{0,20}Keiko/i,
       ],
       mustNotMatch: [
         // Said to be dropped or left out of the day.

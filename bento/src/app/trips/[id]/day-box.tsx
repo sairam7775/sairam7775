@@ -600,7 +600,7 @@ export function DayBox(p: DayBoxProps) {
             );
           })}
           {blockAt(items.length).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
-          {p.editable && <AddPlace tripId={p.tripId} date={p.date} cityName={p.cityName} locked={editsLocked} edit={edit} />}
+          {p.editable && <AddPlace tripId={p.tripId} date={p.date} cityName={p.cityName} locked={editsLocked} onOpen={cancelHold} edit={edit} />}
         </div>
 
         <aside className="flex flex-col gap-2.5">

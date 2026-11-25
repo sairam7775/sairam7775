@@ -288,6 +288,7 @@ describe("eval scenarios", () => {
         "See you there at 19:00. Enjoy dinner.",
         // A negation in another clause doesn't excuse the claim.
         "I can't check Aunt Keiko's hours, so leave at 18:30.",
+        "I can't check Aunt Keiko's, but it is open until 22:00.",
         "I don't know Aunt Keiko's but leave by 18:15.",
       ],
       [
@@ -296,6 +297,7 @@ describe("eval scenarios", () => {
         // Review 3, #3: a negated statement is not a claim.
         "I can't check Aunt Keiko's hours, so I can't tell you to leave at 18:30.",
         "I can't check Aunt Keiko's hours or tell you to leave at 18:30.",
+        "I can't confirm whether Aunt Keiko's is open until 22:00.",
       ]],
     ["days-replan-keeps-custom",
       [
@@ -311,6 +313,7 @@ describe("eval scenarios", () => {
         "I kept Aunt Keiko's dinner at 20:00, and Pontocho stays at 19:00.",
         "Pontocho is at 19:00, and I kept Aunt Keiko's dinner.",
         "I kept Aunt Keiko's dinner, and Pontocho stays at 19:00.",
+        "I kept Aunt Keiko's dinner, Pontocho stays at 19:00.",
         "Aunt Keiko's dinner at 19:00 was kept before, but Aunt Keiko's dinner had to be dropped.",
         "The dinner at Aunt Keiko's stays at 19:00 for now. I haven't changed the rest, but removed Aunt Keiko's dinner.",
       ],

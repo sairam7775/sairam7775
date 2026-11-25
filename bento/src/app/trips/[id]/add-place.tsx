@@ -36,7 +36,7 @@ type Step =
  *
  *  A native modal dialog: it keeps focus inside, closes on Escape and gives
  *  focus back to the button. On a phone it is a sheet from the bottom. */
-export function AddPlace({ tripId, date, cityName, locked, edit }: { tripId: string; date: string; cityName: string; locked: boolean; edit: (run: () => Promise<void>) => void }) {
+export function AddPlace({ tripId, date, cityName, locked, onOpen, edit }: { tripId: string; date: string; cityName: string; locked: boolean; onOpen: () => void; edit: (run: () => Promise<void>) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -52,6 +52,7 @@ export function AddPlace({ tripId, date, cityName, locked, edit }: { tripId: str
   const matches = useMemo(() => searchPlaces(places ?? [], query).slice(0, SHOWN), [places, query]);
 
   function open() {
+    onOpen();
     setStep({ kind: "search" });
     setQuery("");
     dialog.current?.showModal();
