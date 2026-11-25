@@ -9,6 +9,7 @@ import type { BookingKind } from "@/lib/types";
 import type { TripState } from "@/lib/bento-man/store";
 import { detectGaps, type BookingRow, type GapCity, type GapPlace, type GapReport } from "./gaps";
 import { BookingRefError, decryptRef, maskRef } from "./crypto";
+import { isCustomStop } from "@/lib/bento-man/custom-stop";
 
 export interface VaultBooking {
   id: string;
@@ -132,7 +133,8 @@ export function gapSourceOf(state: TripState, bookings: BookingRow[], dismissed:
     startDate: state.trip.startDate,
     endDate: state.trip.endDate,
     cities: state.cities,
-    days: state.days.map((d) => ({ date: d.date, placeIds: d.items.map((i) => i.placeId) })),
+    // A free-text stop (0036) is no place, so no booking it could need.
+    days: state.days.map((d) => ({ date: d.date, placeIds: d.items.map((i) => i.placeId).filter((id) => !isCustomStop(id)) })),
     bookings,
     dismissed,
   };

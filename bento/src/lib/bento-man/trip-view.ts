@@ -9,6 +9,7 @@ import { showsMainSights } from "@/lib/trips/route-card";
 import { copy } from "@/copy";
 import type { CoverageTier } from "@/lib/types";
 import type { TripState, TripStore } from "./store";
+import { isCustomStop } from "./custom-stop";
 
 /** Each travel day's trains, from Bento's own train data, worked out again
  *  from the accepted route so they always match it, and date by date the
@@ -130,6 +131,8 @@ export function buildTripView(state: TripState, requested: string | null, moves?
     arriveMode: item.arriveMode,
     arriveMinutes: item.arriveMinutes,
     arriveDetail: item.arriveDetail,
+    // A stop the traveller named that Bento doesn't know (0036).
+    unchecked: isCustomStop(item.placeId),
   }));
   const selectedMeta = selected ? dates.get(selected)! : null;
   const stats = selectedDay ? statsByDate.get(selectedDay.date)! : null;

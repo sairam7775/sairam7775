@@ -140,6 +140,7 @@ function Entry({ e }: { e: DocEntry }) {
           {e.durationMin != null && <span className="mono ml-2 text-[0.76rem] font-normal text-ink-3">{copy.time.duration(e.durationMin)}{e.end ? ` · ${e.time}–${e.end}` : ""}</span>}
         </p>
         {e.clashesWith.length > 0 && <p className="mt-0.5 text-[0.84rem] font-medium text-ume">{copy.day.clashesWith(e.clashesWith.join(", "))}</p>}
+        {e.unchecked && <p className="mt-0.5 text-[0.84rem] text-ink-2">{copy.day.unchecked}</p>}
         {facts.length > 0 && <p className="mt-0.5 text-[0.84rem] text-ink-2">{facts.join(" · ")}</p>}
         {e.crowdNote && <p className="mt-0.5 text-[0.84rem] text-ink-2">{e.crowdNote}</p>}
         {e.tip && <p className="mt-0.5 text-[0.84rem] text-ink-2">{e.tip}</p>}

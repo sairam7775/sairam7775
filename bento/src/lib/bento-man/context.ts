@@ -56,7 +56,9 @@ export function buildContext(state: TripState, cities: CityFacts[], today: strin
       lines.push(`  ${d.date} · ${d.cityId ?? "no city"}:`);
       if (!d.items.length) lines.push("    (empty)");
       for (const it of d.items) {
-        lines.push(`    ${it.startMin != null ? clock(it.startMin) : "--:--"} ${field(it.name)} (${it.placeId})${it.locked ? " [pinned]" : ""}${it.durationMin ? ` · ${it.durationMin} min` : ""}`);
+        // A free-text stop's key holds the traveller's words, so it is cleaned
+        // too; a place id is unchanged by field().
+        lines.push(`    ${it.startMin != null ? clock(it.startMin) : "--:--"} ${field(it.name)} (${field(it.placeId)})${it.locked ? " [pinned]" : ""}${it.durationMin ? ` · ${it.durationMin} min` : ""}`);
       }
     }
   } else {

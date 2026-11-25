@@ -7,7 +7,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { retimeDay, type RetimeItem } from "@/lib/engine/retime";
 import { travelFromGraph } from "@/lib/engine/travel";
-import { fitPlace, type FitProblem } from "@/lib/engine/fit";
+import { fitPlace, fitUnchecked, type FitProblem } from "@/lib/engine/fit";
+import { customStopKey, isCustomStop } from "@/lib/bento-man/custom-stop";
 import type { PlaceInput, TravelFn, TravelMove } from "@/lib/engine/types";
 import { movesFor, plannedDates, replanDay, travellerFor, type ReplanFailure } from "@/lib/bento-man/tools";
 import { usualDayStart } from "@/lib/engine/schedule";
@@ -75,7 +76,9 @@ export async function replanDayAction(formData: FormData) {
   const { store, tripId, date } = await guard(formData);
   const state = await store.state();
   const day = state.days.find((d) => d.date === date);
-  const pinned = (day?.items ?? []).filter((i) => i.locked);
+  // A free-text stop (0036) is no place the engine can plan around: the
+  // proposal shows it out, and rejecting it keeps the day as it is.
+  const pinned = (day?.items ?? []).filter((i) => i.locked && !isCustomStop(i.placeId));
   // With no pins, no ops: replanDay keeps the first stop's start itself
   // (and on a travel day, never before the move lets the traveller arrive).
   const ops = pinned.map((i) => ({ op: "pin" as const, place_id: i.placeId, time: i.startMin == null ? undefined : clock(i.startMin) }));
@@ -172,6 +175,7 @@ function retimeItems(items: ItemRow[], places: Map<string, PlaceInput>): RetimeI
     durationMin: i.durationMin ?? places.get(i.placeId)?.durationTypicalMin ?? 60,
     locked: i.locked,
     startMin: i.locked ? i.startMin : null,
+    unchecked: isCustomStop(i.placeId),
   }));
 }
 
@@ -260,8 +264,7 @@ export async function addPlaceToDay(input: { tripId: string; date: string; place
     const ctx = await dayClock(store, date, true);
     if (!ctx) return { status: "error", error: ad.errors.notADay };
     const { state, day, places } = ctx;
-    const tier = day.city?.tier ?? state.cities.find((c) => c.cityId === day.cityId)?.tier ?? (await store.cities()).find((c) => c.id === day.cityId)?.tier;
-    if (!tier || tier === "stub") return { status: "error", error: ad.errors.notCovered };
+    if (!(await plannable(store, ctx))) return { status: "error", error: ad.errors.notCovered };
     const place = places.get(placeId);
     if (!place || place.verificationStatus !== "verified") return { status: "error", error: ad.errors.notHere };
     if (day.items.some((i) => i.placeId === placeId)) return { status: "error", error: ad.errors.alreadyHere(place.name) };
@@ -305,6 +308,80 @@ export async function addPlaceToDay(input: { tripId: string; date: string; place
     if (e instanceof OutcomeUnknownError) return { status: "error", error: e.message };
     return { status: "error", error: ad.errors.failed };
   }
+}
+
+export type AddCustomResult =
+  | { status: "added"; name: string; startMin: number | null; problems: FitProblem[]; notes: string[] }
+  | { status: "error"; error: string };
+
+/** A name the traveller types: trimmed, single spaces, no control
+ *  characters, something to key it by. The database checks the same. */
+const CustomName = z.string()
+  .transform((s) => s.replace(/\s+/g, " ").trim())
+  .pipe(z.string().min(1).max(80).refine((s) => !/\p{Cc}/u.test(s) && customStopKey(s) != null));
+const AddCustom = Base.extend({ name: CustomName, durationMin: z.number().int().min(5).max(720) });
+
+/** "Add a place" for a place Bento doesn't know (0036). Nothing about it
+ *  can be checked, and the result never says it fits: it goes in at the
+ *  end of the day for the length the traveller gave, with the legs to it
+ *  guessed, and the clock's own facts (over budget, past the day's end)
+ *  said. The box marks it as unchecked. */
+export async function addCustomStop(input: { tripId: string; date: string; name: string; durationMin: number }): Promise<AddCustomResult> {
+  const parsed = AddCustom.safeParse(input);
+  if (!parsed.success) return { status: "error", error: ad.errors.badInput };
+  const { tripId, date, name, durationMin } = parsed.data;
+  const key = customStopKey(name)!;
+  const signedIn = await signedInStore(tripId);
+  if ("error" in signedIn) return { status: "error", error: signedIn.error };
+  const { store } = signedIn;
+
+  try {
+    const ctx = await dayClock(store, date, true);
+    if (!ctx) return { status: "error", error: ad.errors.notADay };
+    if (!(await plannable(store, ctx))) return { status: "error", error: ad.errors.notCovered };
+    if (ctx.day.items.some((i) => i.placeId === key)) return { status: "error", error: ad.errors.alreadyHere(name) };
+
+    const check = fitUnchecked({
+      key,
+      durationMin,
+      items: retimeItems(ctx.day.items, ctx.places),
+      places: ctx.places,
+      travel: ctx.travel,
+      pace: ctx.state.prefs.pace,
+      dayStartMin: ctx.dayStart,
+      moveMin: ctx.move?.minutes,
+    });
+    const row: ItemRow = {
+      placeId: key,
+      customName: name,
+      name,
+      mapName: null,
+      nameJa: null,
+      sortOrder: check.at,
+      startMin: null,
+      durationMin,
+      locked: false,
+      reason: null,
+      reasonTerms: [],
+      arriveMode: null,
+      arriveMinutes: null,
+      arriveDetail: null,
+    };
+    const edited = await editDay(store, date, (items) => [...items.slice(0, check.at), row, ...items.slice(check.at)], ctx);
+    revalidatePath(`/trips/${tripId}`);
+    const saved = edited.day?.items.find((i) => i.placeId === key);
+    return { status: "added", name, startMin: saved?.startMin ?? null, problems: check.problems, notes: check.notes };
+  } catch (e) {
+    if (e instanceof OutcomeUnknownError) return { status: "error", error: e.message };
+    return { status: "error", error: ad.errors.failed };
+  }
+}
+
+/** Bento can plan days in the day's own city: never add to one it can't. */
+async function plannable(store: TripStore, ctx: DayClock): Promise<boolean> {
+  const { state, day } = ctx;
+  const tier = day.city?.tier ?? state.cities.find((c) => c.cityId === day.cityId)?.tier ?? (await store.cities()).find((c) => c.id === day.cityId)?.tier;
+  return tier != null && tier !== "stub";
 }
 
 /** The signed-in traveller's store for their own trip. A client-called
