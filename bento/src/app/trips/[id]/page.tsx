@@ -17,7 +17,7 @@ import { travelDayParts } from "@/lib/trips/travel-days";
 import type { RouteLegAssessment } from "@/lib/engine/route";
 import { bookingRowOf, gapSourceOf, gapsFrom } from "@/lib/vault/store";
 import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
-import { savedStopWarnings } from "@/lib/trips/stop-warnings";
+import { savedStopWarnings, stopWarningPlaces } from "@/lib/trips/stop-warnings";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
 import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
@@ -72,19 +72,26 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
   // it (a failure leaves every day measured as a whole day), each travel
   // day's trains (a failure only leaves them off the page), the day's checked
   // backgrounds (0027; none shown if they can't be read), and the gaps (a
-  // failure leaves the bookings bar off), and what's off about each of the
-  // day's stops (none said if it can't be worked out). The two travel reads
-  // share the store's city and graph reads.
-  const [moves, travel, backgrounds, gaps, stopWarnings] = await Promise.all([
+  // failure leaves the bookings bar off), and the selected day's own places
+  // for what's off about its stops (none said if they can't be read). The
+  // two travel reads share the store's city and graph reads.
+  const [moves, travel, backgrounds, gaps, warnPlaces] = await Promise.all([
     tripMoves(store, state).catch(() => null),
     tripTravelDays(store, state).catch(() => null),
     loadBackgrounds(db, selectedItems.map((i) => i.placeId)),
     gapsFrom(db, gapSourceOf(state, (bookingRows ?? []).map(bookingRowOf), (dismissals ?? []).map((d) => d.gap_key)), today).catch(() => null),
-    savedStopWarnings(store, state, firstView.selected).catch(() => null),
+    stopWarningPlaces(db, state, firstView.selected).catch(() => null),
   ]);
 
   const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested, moves);
   const move = selected ? moves?.get(selected) ?? null : null;
+  // Worked out from what is already read: the booking rows, the move.
+  let stopWarnings: Map<string, string[]> | null = null;
+  try {
+    if (warnPlaces) stopWarnings = savedStopWarnings({ state, date: selected, places: warnPlaces, bookings: (bookingRows ?? []).map(bookingRowOf), moveMin: move?.minutes });
+  } catch {
+    stopWarnings = null;
+  }
   const fromName = move ? state.cities.find((c) => c.cityId === move.fromCityId)?.name ?? move.fromCityId : "";
   // An edit lifted the day's start to the arrival; the address says only that.
   const lifted = sp.note === "start-lifted" ? startLiftedLine(move, selectedDay?.items ?? [], fromName) : null;

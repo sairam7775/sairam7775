@@ -326,7 +326,8 @@ describe("after the sheet closes (review F9)", () => {
     const added = await addPlaceToDay({ tripId: TRIP, date: DAY, placeId: "kyt-philosophers-path", anyway: true });
     expect(added.status).toBe("added");
     // A fresh read, as the page does on reload.
-    const warnings = await savedStopWarnings(store, await store.state(), DAY);
+    const fresh = await store.state();
+    const warnings = savedStopWarnings({ state: fresh, date: DAY, places: new Map((await store.places("kyoto-city")).map((p) => [p.id, p])), bookings: await store.bookings() });
     expect(warnings.get("kyt-philosophers-path")).toEqual([copy.plan.leftOut.closed("Tuesday")]);
     expect(warnings.has("kyt-nanzenji")).toBe(false);
   });
