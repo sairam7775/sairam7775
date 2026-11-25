@@ -134,7 +134,7 @@ describe("moveTo", () => {
     expect(moveTo(order, 5, 0)).toEqual(order);
   });
 
-  it("moves a pinned stop like any other: the ↑ ↓ buttons and reorderDay allow it, and its time stays pinned", () => {
+  it("moves a pinned stop like any other: the ↑ ↓ buttons and reorderDay allow it", () => {
     expect(moveTo(["pinned", "b"], 0, 1)).toEqual(["b", "pinned"]);
   });
 });

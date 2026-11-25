@@ -6,7 +6,8 @@
  *  Moving more than `MOVE_TOLERANCE_PX` first cancels the hold, so a swipe
  *  is a scroll. A mouse never arms a hold: the desktop keeps its own drag.
  *  Pinned stops lift like any other, because the ↑ ↓ buttons and
- *  `reorderDay` move them too; a pin keeps its time and the rest follow. */
+ *  `reorderDay` move them too; re-timing never starts a pin before its
+ *  pinned time. */
 
 export const HOLD_MS = 450;
 export const MOVE_TOLERANCE_PX = 10;
