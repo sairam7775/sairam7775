@@ -552,6 +552,10 @@ export const en = {
     pinned: "pinned",
     over: "over",
     clashesWith: (titles: string) => `clashes with ${titles}`,
+    // A day write that timed out: it may have been saved after Bento gave up.
+    saveUnknown: "Bento couldn't confirm whether the day was saved. Check it before changing it again.",
+    // A stop the traveller named that isn't one of Bento's places (0036).
+    unchecked: "Not one of Bento's places, so its hours and the travel to it aren't checked.",
     pin: "Pin",
     unpin: "Unpin",
     pinHint: "Keep this exactly here",
@@ -577,6 +581,62 @@ export const en = {
     howTo: "Hold and drag a stop to move it, pin what must stay, remove what you don’t want. Times follow.",
     replan: "Re-plan this day",
     replanNote: "Bento chooses again around your pins. It comes back as a proposal you can reject.",
+    // "Add a place": the traveller picks one of Bento's places in the day's
+    // city; the engine checks it against the day (engine/fit.ts). The praise
+    // and the problems are the engine's clauses (copy.plan.fit, reasons,
+    // leftOut), joined here, never written for the occasion.
+    addPlace: {
+      open: "Add a place",
+      title: "Add a place",
+      intro: (city: string) => `Search Bento's places in ${city}, or type any name. Bento checks its own places against the day before they go in.`,
+      searchLabel: "Place name",
+      searchHint: (city: string) => `A place in ${city}`,
+      loading: "Getting the places…",
+      noMatch: (city: string) => `Bento has no place by that name in ${city}.`,
+      found: (n: number) => (n === 1 ? "1 place" : `${n} places`),
+      onDay: "already on this day",
+      checking: (name: string) => `Checking ${name} against the day…`,
+      // When it fits. A compliment only when the engine has a true reason.
+      fits: (name: string, at: string, praise: string[]) =>
+        praise.length
+          ? `Good call. ${praise.join("; ").replace(/^./, (c) => c.toUpperCase())}. ${name} goes in at ${at}.`
+          : `${name} fits. It goes in at ${at}.`,
+      fitsUntimed: (name: string) => `${name} fits, and it's in the day.`,
+      // When it doesn't: the engine's reasons, then the choice.
+      doesntFit: (name: string) => `${name} doesn't fit this day as it stands:`,
+      anywayNote: "You can still add it. The day will show what's off.",
+      addAnyway: "Add anyway",
+      notNow: "Not now",
+      addedAnyway: (name: string, at: string | null) => `Added ${name}${at ? ` at ${at}` : ""}. The day shows what doesn't fit.`,
+      // A leg the engine can only guess, said either way.
+      notesLabel: "Bento can't check everything here:",
+      back: "Pick another place",
+      close: "Close",
+      done: "Done",
+      // A place Bento doesn't know, typed by the traveller (0036). Said
+      // plainly: nothing about it is checked.
+      custom: {
+        offer: (name: string) => `Add “${name}” as your own stop`,
+        offerNote: "Not one of Bento's places",
+        cantCheck: (name: string) => `Bento doesn't know ${name}, so it can't check its hours or the travel time. It goes at the end of the day, for as long as you say.`,
+        lengthLabel: "How long there",
+        add: "Add it",
+        added: (name: string, at: string | null) => `Added ${name}${at ? ` at ${at}` : ""}. Bento hasn't checked it.`,
+        clockLabel: "What the day's clock says:",
+      },
+      errors: {
+        badInput: "That didn't come through properly. Try again.",
+        signedOut: "Your session ended. Sign in again to change the day.",
+        notADay: "That date isn't a day of this trip any more.",
+        notCovered: "Bento can't plan days in this city yet, so it can't add places here.",
+        notHere: "That isn't one of Bento's places in this city, so it can't go in this day.",
+        alreadyHere: (name: string) => `${name} is already on this day.`,
+        failed: "Couldn't add it. Nothing changed; try again.",
+        // The day changed between the check and the write (another tab, an
+        // accepted proposal): nothing was added.
+        dayChanged: "This day changed while Bento was checking, so nothing was added. Look at the day and try again.",
+      },
+    },
     // Why a stop was chosen, as small tags under it.
     reasons: {
       interest_match: "your interests",
@@ -1251,10 +1311,28 @@ export const en = {
         : `${n} rides' fares aren't in Bento yet, so the day's cost leaves them out`,
       // After a traveller's own edit.
       noRouteAssumed: (from: string, to: string, min: number) => `No route on record from ${from} to ${to} — assumed ${min} min`,
+      // The leg to or from a stop the traveller named that Bento doesn't know.
+      uncheckedLeg: (min: number) => `Travel time unknown — the day allows ${min} min`,
       pinnedShort: (name: string, pinned: string, prevEnds: string, short: number) => `${name} is pinned at ${pinned} but the previous stop runs until ${prevEnds} — ${short} min short`,
       opensWait: (name: string, time: string, wait: number) => `${name} opens at ${time} — ${wait} min wait`,
       closesDuring: (name: string, closes: string, ends: string) => `${name} closes at ${closes}; this visit runs to ${ends}`,
       overDay: (over: string, hours: number) => `${over} over a ${hours}-hour day`,
+    },
+    // A place the traveller adds by hand (engine/fit.ts). The problems say
+    // why it doesn't fit the day as it stands; the praise says what is true
+    // and good about it there. Each comes from the engine's own facts, with
+    // the planner's own lines (leftOut, reasons) wherever one already says it.
+    fit: {
+      overDay: (over: string, budget: string) => `the day would run ${over} over its ${budget}`,
+      moreOver: (more: string, over: string) => `the day is already ${over} over, and this adds ${more}`,
+      pushesClosing: (name: string, closes: string) => `${name} would then run past its closing at ${closes}`,
+      pushesPin: (name: string, pinned: string) => `you'd reach ${name} after ${pinned}, the time it's pinned for`,
+      eveningWait: (from: string, reached: string) => `it's an evening place, at its best after ${from}, and the day's other stops are done by ${reached}`,
+      outOfWay: (from: string, to: string, km: string) => `it takes the day ${km} km out of its way between ${from} and ${to}`,
+      onTheWay: (from: string, to: string) => `it's on your way between ${from} and ${to}`,
+      walkFrom: (min: number, from: string) => `${min} min on foot from ${from}`,
+      // A saved evening-only stop timed before its evening (savedDayProblems).
+      beforeEvening: (from: string) => `planned before its evening, which starts at ${from}`,
     },
     // Routes between cities.
     route: {

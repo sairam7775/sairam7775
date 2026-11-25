@@ -13,10 +13,15 @@ import { copy } from "@/copy";
 
 export interface RetimeItem {
   placeId: string;
+  /** What the traveller calls it, for a stop with no place (a free-text stop). */
+  name?: string;
   durationMin: number;
   locked: boolean;
   /** A time the traveller fixed. Only honoured on locked items. */
   startMin: number | null;
+  /** A stop Bento doesn't know (a free-text stop, 0036): no hours to keep,
+   *  and the legs to and from it are the fallback guess, said as one. */
+  unchecked?: boolean;
 }
 
 export interface RetimedItem extends RetimeItem {
@@ -25,6 +30,14 @@ export interface RetimedItem extends RetimeItem {
   arriveBy: TravelLeg | null;
   /** Fell past the day's budget. */
   over: boolean;
+  /** When the day gets there, before any wait for a pinned time or opening. */
+  reachedMin: number;
+  /** Minutes the day waits for it to open. */
+  waitMin: number;
+  /** Minutes after its pinned time the day reaches it; 0 when on time. */
+  pinShortMin: number;
+  /** The visit runs past its closing time. */
+  pastClosing: boolean;
 }
 
 export interface RetimedDay {
@@ -39,7 +52,7 @@ export interface RetimedDay {
   warnings: string[];
 }
 
-const FALLBACK_TRAVEL_MIN = 45;
+export const FALLBACK_TRAVEL_MIN = 45;
 const LUNCH_MIN = 60;
 const LUNCH_EARLIEST = 11 * 60 + 30;
 const LUNCH_LATEST = 14 * 60;
@@ -51,24 +64,32 @@ export function retimeDay(input: {
   travel: TravelFn;
   pace: TravelPace;
   dayStartMin: number;
+  /** A travel day's move, in minutes (`dayStats` takes the same). */
+  moveMin?: number;
 }): RetimedDay {
-  const budgetMin = DAY_BUDGET_MINUTES[input.pace];
+  // A travel day's move comes out of the day's time, as the box measures it.
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[input.pace] - (input.moveMin ?? 0));
   const warnings: string[] = [];
   const out: RetimedItem[] = [];
   let clockMin = input.dayStartMin;
   let activeMin = 0;
   let prev: PlaceInput | null = null;
   let lunchDone = false;
+  let afterUnchecked = false;
   const meals: RetimedDay["meals"] = [];
 
   for (const it of input.items) {
-    const place = input.places.get(it.placeId);
+    const place = it.unchecked ? undefined : input.places.get(it.placeId);
     let leg: TravelLeg | null = null;
-    if (prev && place) {
+    // To or from a stop Bento doesn't know, the leg is a guess, and stored
+    // as one so the box says so and the day's sums count it.
+    const guessed = out.length > 0 && (it.unchecked || afterUnchecked);
+    if (guessed) leg = uncheckedLeg();
+    else if (prev && place) {
       leg = input.travel(prev, place);
       if (!leg) warnings.push(copy.plan.warnings.noRouteAssumed(prev.name, place.name, FALLBACK_TRAVEL_MIN));
     }
-    const travelMin = prev ? (leg?.minutes ?? FALLBACK_TRAVEL_MIN) : 0;
+    const travelMin = guessed || prev ? (leg?.minutes ?? FALLBACK_TRAVEL_MIN) : 0;
     let start = clockMin + travelMin;
 
     // Lunch goes in the first gap it fits, before the stop that would
@@ -80,8 +101,12 @@ export function retimeDay(input: {
       lunchDone = true;
     }
 
+    const reachedMin = start;
+    let pinShortMin = 0;
+    let waitMin = 0;
     if (it.locked && it.startMin != null) {
       if (it.startMin < start) {
+        pinShortMin = start - it.startMin;
         warnings.push(copy.plan.warnings.pinnedShort(place?.name ?? it.placeId, clock(it.startMin), clock(start - travelMin), start - it.startMin));
       }
       start = Math.max(start, it.startMin);
@@ -91,19 +116,25 @@ export function retimeDay(input: {
       const opens = parseClock(place.opensAt);
       if (opens != null && start < opens) {
         warnings.push(copy.plan.warnings.opensWait(place.name, place.opensAt!, opens - start));
+        waitMin = opens - start;
         start = opens;
       }
     }
     const end = start + it.durationMin;
+    let pastClosing = false;
     if (place?.closesAt) {
       const closes = parseClock(place.closesAt);
-      if (closes != null && end > closes) warnings.push(copy.plan.warnings.closesDuring(place.name, place.closesAt!, clock(end)));
+      if (closes != null && end > closes) {
+        pastClosing = true;
+        warnings.push(copy.plan.warnings.closesDuring(place.name, place.closesAt!, clock(end)));
+      }
     }
 
     activeMin += travelMin + it.durationMin;
-    out.push({ ...it, startMin: start, endMin: end, arriveBy: leg, over: activeMin > budgetMin });
+    out.push({ ...it, startMin: start, endMin: end, arriveBy: leg, over: activeMin > budgetMin, reachedMin, waitMin, pinShortMin, pastClosing });
     clockMin = end;
     prev = place ?? prev;
+    afterUnchecked = Boolean(it.unchecked);
   }
 
   // A day that runs past the window without a gap still eats: lunch goes
@@ -125,5 +156,17 @@ export function retimeDay(input: {
     activeMin,
     overBy,
     warnings,
+  };
+}
+
+/** The leg to or from a stop Bento doesn't know: the fallback, said as a guess. */
+export function uncheckedLeg(): TravelLeg {
+  return {
+    mode: "estimate",
+    minutes: FALLBACK_TRAVEL_MIN,
+    fareJpy: 0,
+    fareKind: "estimate",
+    detail: copy.plan.warnings.uncheckedLeg(FALLBACK_TRAVEL_MIN),
+    lines: [],
   };
 }

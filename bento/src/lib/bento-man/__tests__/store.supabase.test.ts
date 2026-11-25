@@ -3,10 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { copy } from "@/copy";
 import { buildGraph } from "@/lib/transit/graph";
 import { SupabaseStore } from "../store.supabase";
-import { OutcomeUnknownError } from "../store";
+import { OutcomeUnknownError, StaleDayError } from "../store";
 import { buildTripView, dayCoverage } from "../trip-view";
 import { planDocument } from "@/lib/trips/plan-document";
-import { computeDayDiff } from "../diff";
+import { baseMatches, computeDayDiff, dayBase } from "../diff";
+import { customStopKey } from "../custom-stop";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
 
@@ -57,7 +58,7 @@ describe("request-local SupabaseStore reads", () => {
   it("passes a populated base unchanged and keeps old proposals without one", async () => {
     const { store, rpc } = fixture();
     const diff = computeDayDiff([{ placeId: "a", name: "A", sortOrder: 0, startMin: 540, locked: true }], {
-      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], dayStartMin: 540, dayEndMin: 1140, startMin: 540, endMin: 1020,
       budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
       fareKind: "exact", considered: [], warnings: [],
     });
@@ -84,7 +85,7 @@ describe("request-local SupabaseStore reads", () => {
   it("passes an empty base to p_days and maps 'stale_day' to copy", async () => {
     const { store, rpc } = fixture();
     const diff = computeDayDiff([], {
-      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], dayStartMin: 540, dayEndMin: 1140, startMin: 540, endMin: 1020,
       budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
       fareKind: "exact", considered: [], warnings: [],
     });
@@ -439,5 +440,105 @@ describe("SupabaseStore reference reads past the API's row limit", () => {
 
     expect((await store.cities()).length).toBe(1200);
     expect((await store.places("city-0001")).length).toBe(1005);
+  });
+});
+
+describe("free-text stops (0036)", () => {
+  it("writes one as place_id null and its name, and a Bento stop exactly as before", async () => {
+    const { store, rpc } = fixture();
+    const base = { sortOrder: 0, startMin: 600, durationMin: 60, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null };
+    await store.saveDay({ date: "2026-11-21", cityId: "kyoto-city", items: [
+      { ...base, placeId: "kyt-gion", name: "Gion" },
+      { ...base, placeId: customStopKey("Ramen Ichiran")!, customName: "Ramen Ichiran", name: "Ramen Ichiran" },
+    ] });
+    const items = rpc.mock.calls.find(([name]) => name === "replace_day_items")![1].p_items as Record<string, unknown>[];
+    expect(items[0]).not.toHaveProperty("custom_name");
+    expect(items[0].place_id).toBe("kyt-gion");
+    expect(items[1]).toMatchObject({ place_id: "", custom_name: "Ramen Ichiran" });
+  });
+
+  it("reads one back by its name, with no map link", async () => {
+    const { store, rows } = fixture();
+    rows.itinerary_days = [{ id: "d1", date: "2026-11-21", city_id: "kyoto-city", cities: null, itinerary_items: [
+      { id: "i1", place_id: null, custom_name: "Ramen Ichiran", sort_order: 0, start_time: "12:00:00", duration_min: 60, locked: false, reason: null, reason_terms: [], arrive_mode: null, arrive_minutes: null, arrive_detail: null },
+    ] }];
+    const item = (await store.state()).days[0].items[0];
+    expect(item).toMatchObject({ placeId: "custom:ramen-ichiran", customName: "Ramen Ichiran", name: "Ramen Ichiran", mapName: null });
+  });
+
+  it("the proposal base reads it as 0031 does: placeId null", () => {
+    const base = dayBase([{ placeId: "custom:ramen", name: "Ramen", sortOrder: 0, startMin: 600, locked: false }]);
+    expect(base[0].placeId).toBeNull();
+  });
+
+  it("one key per name, whatever the spacing or case; nothing for a name of only symbols", () => {
+    expect(customStopKey("  Ramen   ICHIRAN ")).toBe(customStopKey("ramen-ichiran"));
+    expect(customStopKey("一蘭 ラーメン")).toBe("custom:一蘭-ラーメン");
+    expect(customStopKey("!!!")).toBeNull();
+  });
+});
+
+describe("day writes (review)", () => {
+  const day = { date: "2026-11-21", cityId: "kyoto-city", items: [{ placeId: "kyt-gion", name: "Gion", sortOrder: 0, startMin: 600, durationMin: 60, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null }] };
+  const timedOut = () => Object.assign(new Error("AbortError: Supabase request timed out after 15000 ms"), { code: "" });
+
+  it("F10: a day write that timed out claims neither success nor failure", async () => {
+    const { store, rpcErrors } = fixture();
+    rpcErrors.replace_day_items = timedOut();
+    const err = await store.saveDay(day).then(() => null, (e: Error) => e);
+    expect(err).toBeInstanceOf(OutcomeUnknownError);
+    expect(err!.message).toBe(copy.day.saveUnknown);
+  });
+
+  it("F10: so does a checked write that timed out", async () => {
+    const { store, rpcErrors } = fixture();
+    rpcErrors.replace_day_items_checked = timedOut();
+    await expect(store.saveDay(day, [])).rejects.toBeInstanceOf(OutcomeUnknownError);
+  });
+
+  it("F1: with the day as read, writes through the checked function and refuses a stale day", async () => {
+    const { store, rpc } = fixture();
+    rpc.mockImplementationOnce(async () => ({ data: "stale_day", error: null }));
+    await expect(store.saveDay(day, [])).rejects.toBeInstanceOf(StaleDayError);
+    const [name, args] = rpc.mock.calls.at(-1)!;
+    expect(name).toBe("replace_day_items_checked");
+    expect(args.p_base).toEqual([]);
+    rpc.mockImplementationOnce(async () => ({ data: "applied", error: null }));
+    await expect(store.saveDay(day, [])).resolves.toBeUndefined();
+    rpc.mockImplementationOnce(async () => ({ data: "maybe", error: null }));
+    await expect(store.saveDay(day, [])).rejects.toBeInstanceOf(OutcomeUnknownError);
+  });
+
+  it("F1: without one, every other edit writes as before", async () => {
+    const { store, rpc } = fixture();
+    await store.saveDay(day);
+    expect(rpc.mock.calls.at(-1)![0]).toBe("replace_day_items");
+  });
+});
+
+describe("the proposal base tells free-text stops apart (F2)", () => {
+  const stop = (o: Record<string, unknown>) => ({ placeId: "kyt-gion", name: "x", sortOrder: 0, startMin: 600, locked: false, durationMin: 60, ...o });
+
+  it("carries a free-text stop's name, and only a free-text stop's", () => {
+    const base = dayBase([stop({ placeId: "custom:lunch", customName: "Lunch with Aki" }), stop({ sortOrder: 1 })]);
+    expect(base[0]).toMatchObject({ placeId: null, customName: "Lunch with Aki" });
+    expect(base[1]).not.toHaveProperty("customName");
+  });
+
+  it("a stop swapped for another at the same slot is a different day", () => {
+    const before = dayBase([stop({ placeId: "custom:lunch", customName: "Lunch with Aki" })]);
+    expect(baseMatches(before, [stop({ placeId: "custom:hotel", customName: "Hotel check-in" })])).toBe(false);
+    expect(baseMatches(before, [stop({ placeId: "custom:lunch", customName: "Lunch with Aki" })])).toBe(true);
+  });
+
+  it("orders as day_base does: place id, then the name, nulls last", () => {
+    const base = dayBase([stop({ placeId: "custom:b", customName: "B" }), stop({ placeId: "custom:a", customName: "A" }), stop({})]);
+    expect(base.map((b) => b.placeId ?? b.customName)).toEqual(["kyt-gion", "A", "B"]);
+  });
+
+  it("a base stored before 0036 still matches a day of Bento stops", () => {
+    const stored = JSON.parse(JSON.stringify(dayBase([stop({})])));
+    expect(stored[0]).not.toHaveProperty("customName");
+    expect(baseMatches(stored, [stop({})])).toBe(true);
   });
 });

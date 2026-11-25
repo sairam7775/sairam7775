@@ -12,6 +12,7 @@ import { placeMapUrl } from "@/lib/maps/links";
 import { showsMainSights } from "@/lib/trips/route-card";
 import { arriveMinutesSuffix } from "@/lib/trips/arrive-line";
 import { HOLD_MS, IDLE, edgeScrollSpeed, layoutMoved, lift, nativeScroll, owns, pointerMove, press, release, stillValid, type HoldState } from "./hold-to-drag";
+import { AddPlace } from "./add-place";
 
 const t = copy.day;
 /** The clock a hold is timed by (event handlers only). */
@@ -40,6 +41,10 @@ export interface DayBoxItem {
   arriveDetail: string | null;
   /** The place's checked background (0027), when it has one. */
   background?: string | null;
+  /** A stop the traveller named that Bento doesn't know (0036). */
+  unchecked?: boolean;
+  /** What's off about it as saved (`savedDayProblems`), worked out on render. */
+  problems?: string[];
 }
 
 export interface DayBoxProps {
@@ -202,13 +207,13 @@ export function DayBox(p: DayBoxProps) {
   // `pending` is true from the moment one starts until it settles, whether
   // it worked or failed. Holds and saves wait on it, and one edit never
   // races another over the same day.
+  // Adding a place is one too (`AddPlace` calls `edit`).
+  function edit(run: () => Promise<void>) {
+    cancelHold();
+    start(run);
+  }
   function stopEdit(action: (fd: FormData) => Promise<void>) {
-    return (fd: FormData) => {
-      cancelHold();
-      start(async () => {
-        await action(fd);
-      });
-    };
+    return (fd: FormData) => edit(() => action(fd));
   }
 
   // Where there is a mouse; and while a stop is held, the page stays still
@@ -546,6 +551,8 @@ export function DayBox(p: DayBoxProps) {
                         {t.map}
                       </a>
                     )}
+                    {it.unchecked && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{t.unchecked}</p>}
+                    {it.problems?.map((x) => <p key={x} className="mt-1 text-[0.86rem] font-medium leading-snug text-ume">{x.replace(/^./, (c) => c.toUpperCase())}</p>)}
                     {it.reason && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{it.reason}</p>}
                     {it.background && (
                       <details className="mt-1.5 text-[0.84rem] text-ink-2">
@@ -593,6 +600,7 @@ export function DayBox(p: DayBoxProps) {
             );
           })}
           {blockAt(items.length).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
+          {p.editable && <AddPlace tripId={p.tripId} date={p.date} cityName={p.cityName} locked={editsLocked} onOpen={cancelHold} edit={edit} />}
         </div>
 
         <aside className="flex flex-col gap-2.5">

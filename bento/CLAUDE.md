@@ -378,8 +378,8 @@ Explained in `../docs/bento/30-software/bento-man.md`, `../docs/bento/10-product
   value as an unknown outcome (`outcomeUnknown`: claim neither), and so is
   a write RPC that hit the Supabase time limit (`OutcomeUnknownError`,
   `lib/supabase/timeout.ts`): it may have committed after the app gave up.
-  `dayBase` (diff.ts) and 0031's `order by` share one total order: change
-  both together. `base` never goes to the browser (`proposalForClient`).
+  `dayBase` (diff.ts) and 0036's `day_base` (which `apply_proposal` now
+  calls) share one total order: change both together. `base` never goes to the browser (`proposalForClient`).
   Proposals without a base and date proposals with days are unchecked
   (Q13); the latter need each day's original date before a sound check.
   Run on PGlite on one connection; true concurrency not exercised.
@@ -498,6 +498,32 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
 - `retimeDay` makes no choices: the order is the traveller's, the times
   follow. `planDay` (via `replanDay` in tools.ts) is the only thing that
   chooses, and it always returns a proposal.
+- "Add a place" (`add-place.tsx`, `placesForDay` / `addPlaceToDay`) adds a
+  place the traveller picked from `places_public` (verified, that day's
+  city). `engine/fit.ts` `fitPlace` checks it first and finds the spot in
+  the traveller's order; it reuses the planner's rules and words
+  (`hardFilter`, conflicts, `retimeDay`'s per-stop facts, `dayEndFor`,
+  `eveningFrom`, the detour bar) and never adds one of its own. Praise is
+  only the engine's clauses. Doesn't fit: nothing is written until the
+  traveller says "Add anyway". It never chooses what goes in.
+- A name Bento doesn't know goes in as a free-text stop (`addCustomStop`,
+  0036: `place_id` null, `custom_name`; key `custom:<name>` from
+  `bento-man/custom-stop.ts`). Never called a fit: it goes at the end for
+  the length given, `retimeDay` takes it as `unchecked` (45-minute
+  estimate legs either side), and every reader says it isn't checked.
+  A re-plan (`replanDay`, `plan_days`) keeps it at its saved
+  time and length as a fixed block, never in `removed` (`custom-plan.ts`:
+  a pinned stand-in place with guessed legs; `restoreCustomStops`,
+  `custom-restore.ts`, puts it back to that interval after `planDay` and
+  places Bento's stops around it; `own_stops` in the result has him say so). A new reader of
+  items must handle `place_id` null; `dayBase` and `day_base` give one
+  `placeId: null` and its `customName`.
+- An add is written only onto the day it was checked against
+  (`saveDay(day, dayBase(read))` → `replace_day_items_checked`, 0036;
+  `StaleDayError` otherwise). A day write that timed out is an
+  `OutcomeUnknownError`, never "nothing changed". What's off about each
+  stop is worked out on render (`savedDayProblems`, `savedStopWarnings`),
+  never stored.
 - `engine/day-stats.ts` sums what is stored for the view (active time,
   over-budget index, the lunch gap). It must not invent times.
 - Map and Directions links (`lib/maps/links.ts`) are plain Google Maps

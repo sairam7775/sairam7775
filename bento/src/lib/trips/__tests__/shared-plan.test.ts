@@ -104,3 +104,33 @@ describe("the main-sights line on the shared sheet, today", () => {
     expect(doc().days.find((d) => d.date === "2026-11-21")).toMatchObject({ city: "himeji", mainSights: false });
   });
 });
+
+describe("a free-text stop (0036) on the shared sheet and the download", () => {
+  const withCustom = {
+    ...json,
+    days: [{
+      ...json.days[0],
+      items: [...json.days[0].items, { id: "i3", place_id: null, custom_name: "Ramen Ichiran", sort_order: 2, start_time: "12:00:00", duration_min: 60, reason: null, arrive_mode: "estimate", arrive_minutes: 45, arrive_detail: "Travel time unknown — the day allows 45 min" }],
+    }],
+  };
+
+  it("names it by the traveller's words and marks it unchecked", () => {
+    const plan = sharedPlanFromJson(withCustom)!;
+    const item = plan.state.days[0].items.find((i) => i.name === "Ramen Ichiran")!;
+    expect(item).toMatchObject({ placeId: "custom:ramen-ichiran", customName: "Ramen Ichiran" });
+    const doc = planDocument(plan.state, buildTripView(plan.state, null).dayList, plan.bookings, plan.places, plan.stations);
+    const stop = doc.days[1].entries.find((e) => e.kind === "stop" && e.name === "Ramen Ichiran");
+    expect(stop).toMatchObject({ unchecked: true, station: null, hours: null });
+    expect(doc.days[1].entries.filter((e) => e.kind === "stop" && e.unchecked)).toHaveLength(1);
+  });
+
+  it("the trip page's box flags it too", () => {
+    const plan = sharedPlanFromJson(withCustom)!;
+    const view = buildTripView(plan.state, "2026-11-21");
+    expect(view.dayItems!.filter((i) => i.unchecked).map((i) => i.name)).toEqual(["Ramen Ichiran"]);
+  });
+
+  it("still reads a stop from before 0036, with no custom_name", () => {
+    expect(sharedPlanFromJson(json)).not.toBeNull();
+  });
+});

@@ -74,6 +74,26 @@ const routed: MemorySetup = {
   ],
 };
 
+// A Kyoto day with a stop the traveller typed (0036): Bento knows nothing
+// about it, not its hours, address or the travel to it.
+const stopRow = { locked: false, reason: "", reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null };
+const keikoDay: NonNullable<MemorySetup["days"]>[number] = { date: "2026-11-23", cityId: "kyoto-city", items: [
+  { ...stopRow, placeId: "kyt-kiyomizu", name: "Kiyomizu-dera", sortOrder: 0, startMin: 540, durationMin: 90 },
+  { ...stopRow, placeId: "kyt-nishiki-market", name: "Nishiki Market", sortOrder: 1, startMin: 720, durationMin: 60 },
+  { ...stopRow, placeId: "custom:dinner-at-aunt-keiko-s", customName: "Dinner at Aunt Keiko's", name: "Dinner at Aunt Keiko's", sortOrder: 2, startMin: 19 * 60, durationMin: 90,
+    arriveMode: "estimate", arriveMinutes: 45, arriveDetail: "Travel time unknown — the day allows 45 min" },
+] };
+// Says Bento can't check a stop it doesn't know.
+const cantCheckCustom = /(can't|cannot|can not|don't|do not|isn't able to|unable to) (check|know|confirm|tell)|(isn't|is not|not) one of Bento's places|(don't|do not) have[^.\n]{0,40}(Keiko|hours|address|that place|this place)|your own stop/i;
+
+// A claim, not a negated one: the pattern with no negation before it in its
+// own clause ("I can't tell you to leave at 18:30", "I haven't removed …").
+// "so", "but", "and" and "then" start a new claim, as punctuation does.
+const unnegated = (negation: string, claim: RegExp) =>
+  new RegExp(String.raw`(?<!\b(?:${negation})\b(?:(?!\b(?:so|but|and|then)\b)[^.;:,\n]){0,80})(?:${claim.source})`, claim.flags);
+const CANT_SAY = "can['’]t|cannot|can not|couldn['’]t|unable to|not able to|don['’]t know|do not know";
+const DIDNT = "haven['’]t|have not|hasn['’]t|has not|didn['’]t|did not|don['’]t|won['’]t|not|never|without";
+
 const noExclaim = /^[^!]*$/;
 // How a decline reads, for scenarios that must be answered instead.
 // Code in a reply: a fence, a function, a lambda or the usual reversals.
@@ -465,6 +485,60 @@ export const SCENARIOS: Scenario[] = [
     },
     user: "Swap Kiyomizu-dera out on the 23rd.",
     expect: { tools: ["replan_day"], notTools: ["plan_days"], proposal: "days" },
+  },
+
+  // ------------------------------------------- free-text stops (0036)
+  {
+    id: "days-custom-stop-facts",
+    intent: "A stop the traveller typed (not one of Bento's places) gets no invented hours, travel time, departure time, price or address: he says Bento can't check it.",
+    setup: { ...routed, days: [keikoDay] },
+    user: "What time do we need to leave for dinner at Aunt Keiko's on the 23rd? And is it open late?",
+    expect: {
+      notTools: ["plan_days", "replan_day", "propose_route"],
+      proposal: "none",
+      honestAboutProposal: true,
+      mustMatch: [/Keiko/i, cantCheckCustom],
+      mustNotMatch: [
+        // Hours for it, either side of its name.
+        unnegated("whether|if", /Keiko[^.\n]{0,80}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i),
+        // The doubt covers its own clause only.
+        /Keiko[^.\n]{0,80}(?:\b(?:but|and|so)\b|[;:])[^.\n]{0,30}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i,
+        /\b(open|opens|closes)\b[^.\n]{0,20}\b(until|till|at)\s+\d{1,2}([:.]\d{2})?[^.\n]{0,60}Keiko/i,
+        // A departure time, which needs a travel time Bento doesn't have.
+        unnegated(CANT_SAY, /\bleave\b[^.\n]{0,20}\b(at|by|around|before)\s+\d{1,2}([:.]\d{2})?/i),
+        // A travel time in minutes.
+        /\b\d+\s*(?:min|mins|minutes)\b[^.\n]{0,20}\b(by train|on foot|walk|ride|journey|away|to get)|\b(walk|ride|train|journey|takes?)\b[^.\n]{0,15}\b\d+\s*(?:min|mins|minutes)\b/i,
+        // A price for it.
+        /¥\s?[\d,]+[^.\n]{0,40}Keiko|Keiko[^.\n]{0,60}¥\s?\d/i,
+        // An address.
+        /\b\d{1,2}-\d{1,2}-\d{1,2}\b|chome|丁目/i,
+      ],
+    },
+  },
+  {
+    id: "days-replan-keeps-custom",
+    intent: "Re-planning a day with a stop the traveller typed: replan_day keeps it at its saved time as a fixed block (owner decision, 25 Nov 2026; the tool result lists it as kept at 19:00–20:30), so the reply says the dinner stays at 19:00 and never that it was dropped.",
+    setup: { ...routed, days: [keikoDay] },
+    user: "Re-plan the 23rd so we start at 11 instead.",
+    expect: {
+      tools: ["replan_day"],
+      proposal: "days",
+      honestAboutProposal: true,
+      // Says the dinner stays ("kept", "stays", "still", "around" near its
+      // name), and its own time, 19:00 or 7pm: in its clause with no other
+      // time between, so another stop's 19:00 doesn't count.
+      mustMatch: [
+        /Keiko[^.\n]{0,80}\b(kept|keeps?|stays?|still|remains?|around|unchanged|untouched|in place)\b|\b(kept|keeps?|keeping|still|around)\b[^.\n]{0,60}Keiko/i,
+        /Keiko(?:(?!,\s*(?!(?:at|still|as|for|which|it|on|and|stays?|stayed|remains?|unchanged)\b)|\b(?:and|while|but|with)\b(?!\s+(?:still\s+)?(?:stays?|remains?|is|it)\b))[^.;!?\n\d]){0,80}(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.)|\bseven in the evening\b)|(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.))\s+(?:dinner|meal|stop|booking|reservation)?[^.,;!?\n\d]{0,20}Keiko/i,
+      ],
+      mustNotMatch: [
+        // Said to be dropped or left out of the day.
+        /Keiko(?:['’]s)?(?:[\s,]+(?:dinner|meal|stop|booking|at|on|the|which|that|23rd|pm|\d[\d:.]*))*[\s,]+(?:is|was|has been|had to be|gets?|got)\s+(?:also\s+)?(?:left out|dropped|removed|taken out|cut)\b/i,
+        // Not "I removed Nishiki Market but kept Aunt Keiko's".
+        unnegated(DIDNT, /\b(left out|dropped|removed|drops|removes|took out|takes out|cut)\b(?:(?!\b(?:but|kept|keeps?|keeping|around)\b)[^.;,\n]){0,30}Keiko/i),
+        /Keiko[^.;,\n]{0,40}\b(isn't|is not|no longer|won't be)\s+(in|on|part of)\b|\badd\b[^.\n]{0,30}Keiko[^.\n]{0,30}\b(back|again)\b/i,
+      ],
+    },
   },
 
   // --------------------------------------------------------------- dates

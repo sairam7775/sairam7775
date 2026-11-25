@@ -11,6 +11,7 @@ import type { DayPlan } from "@/lib/engine/types";
 import type { RouteAssessment } from "@/lib/engine/route";
 import { copy } from "@/copy";
 import { clock, describeDates } from "./diff-text";
+import { isCustomStop } from "./custom-stop";
 
 export const DiffItemSchema = z.object({
   placeId: z.string(),
@@ -32,9 +33,12 @@ export const DiffItemSchema = z.object({
 export type DiffItem = z.infer<typeof DiffItemSchema>;
 
 const DayBaseItemSchema = z.object({
-  placeId: z.string(), sortOrder: z.number().int(), locked: z.boolean(),
+  placeId: z.string().nullable(), sortOrder: z.number().int(), locked: z.boolean(),
   startMin: z.number().int().nullable(), durationMin: z.number().int().nullable(),
   arriveMode: z.string().nullable(), arriveMinutes: z.number().int().nullable(), arriveDetail: z.string().nullable(),
+  /** A free-text stop's name (0036); absent on every other stop, and on
+   *  every base stored before 0036. */
+  customName: z.string().optional(),
 });
 
 export const DayDiffSchema = z.object({
@@ -151,9 +155,11 @@ export interface ExistingItem {
   arriveMode?: string | null;
   arriveMinutes?: number | null;
   arriveDetail?: string | null;
+  /** A free-text stop's name (0036). */
+  customName?: string | null;
 }
 
-type DayBaseItem = z.infer<typeof DayBaseItemSchema>;
+export type DayBaseItem = z.infer<typeof DayBaseItemSchema>;
 
 // Nulls last, as Postgres sorts ascending. Strings by code point, which is
 // the byte order of UTF-8 and so of `collate "C"`; numbers as numbers;
@@ -174,8 +180,9 @@ function cmp(a: string | number | boolean | null, b: string | number | boolean |
 }
 
 /** One total order over every compared field, so two stops that share a
- *  sort order still come out the same way here and in 0031's
- *  `order by i.sort_order, i.place_id collate "C" nulls last, <start
+ *  sort order still come out the same way here and in 0036's day_base
+ *  `order by i.sort_order, i.place_id collate "C" nulls last,
+ *  i.custom_name collate "C" nulls last, <start
  *  minute> nulls last, i.duration_min nulls last, i.locked, i.arrive_mode
  *  collate "C" nulls last, i.arrive_minutes nulls last, i.arrive_detail
  *  collate "C" nulls last`. Change both together. Stops equal on every
@@ -183,6 +190,7 @@ function cmp(a: string | number | boolean | null, b: string | number | boolean |
 function byBaseOrder(a: DayBaseItem, b: DayBaseItem): number {
   return a.sortOrder - b.sortOrder
     || cmp(a.placeId, b.placeId)
+    || cmp(a.customName ?? null, b.customName ?? null)
     || cmp(a.startMin, b.startMin)
     || cmp(a.durationMin, b.durationMin)
     || cmp(a.locked, b.locked)
@@ -193,18 +201,24 @@ function byBaseOrder(a: DayBaseItem, b: DayBaseItem): number {
 
 /** Only fields hand edits write: no generated row ids or display names. */
 export function dayBase(items: ExistingItem[]): DayBaseItem[] {
-  return items.map((i) => ({
-    placeId: i.placeId, sortOrder: i.sortOrder, locked: i.locked, startMin: i.startMin,
-    durationMin: i.durationMin ?? null, arriveMode: i.arriveMode ?? null,
-    arriveMinutes: i.arriveMinutes ?? null, arriveDetail: i.arriveDetail ?? null,
-  })).sort(byBaseOrder);
+  return items.map((i) => {
+    const base: DayBaseItem = {
+      // A free-text stop (0036) has no place_id, as day_base reads it.
+      placeId: isCustomStop(i.placeId) ? null : i.placeId, sortOrder: i.sortOrder, locked: i.locked, startMin: i.startMin,
+      durationMin: i.durationMin ?? null, arriveMode: i.arriveMode ?? null,
+      arriveMinutes: i.arriveMinutes ?? null, arriveDetail: i.arriveDetail ?? null,
+    };
+    // Only a free-text stop has the key, as only it has a name in day_base.
+    if (isCustomStop(i.placeId) && i.customName) base.customName = i.customName;
+    return base;
+  }).sort(byBaseOrder);
 }
 
 /** The accept check: the stored base, as stored (the database doesn't
  *  re-sort it either), against the day as saved now. */
 export function baseMatches(base: DayBaseItem[], saved: ExistingItem[]): boolean {
   const now = dayBase(saved);
-  const keys: (keyof DayBaseItem)[] = ["placeId", "sortOrder", "locked", "startMin", "durationMin", "arriveMode", "arriveMinutes", "arriveDetail"];
+  const keys: (keyof DayBaseItem)[] = ["placeId", "customName", "sortOrder", "locked", "startMin", "durationMin", "arriveMode", "arriveMinutes", "arriveDetail"];
   return base.length === now.length && base.every((b, i) => keys.every((k) => (b[k] ?? null) === (now[i][k] ?? null)));
 }
 

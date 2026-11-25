@@ -1,7 +1,7 @@
 import { DAY_BUDGET_MINUTES } from "@/lib/types";
 import { hardFilter, parseClock, parseWindow } from "./filter";
 import { buildReason, chooseDuration, DEFAULT_WEIGHTS, scorePlace, type ScoreContext } from "./score";
-import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, Weights } from "./types";
+import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, TravellerInput, Weights } from "./types";
 import { copy } from "@/copy";
 import { toFive } from "./travel-day";
 import { metresBetween } from "./travel";
@@ -20,14 +20,14 @@ const MAX_STOPS = 12;
 const SHARE_FLOOR = 4;
 /** A chosen stop may keep the day waiting this long for it to open: the
  *  point at which the day warns "the day waits … for it". */
-const OPEN_WAIT_MAX_MIN = 20;
+export const OPEN_WAIT_MAX_MIN = 20;
 /** …unless nothing fits without a wait: then up to two hours, an early
  *  riser's 07:00 start before anything near opens at 09:00. Evening-only
  *  places have their own rule (`eveningFrom`, below). */
 const OPEN_WAIT_LAST_RESORT_MIN = 120;
 /** A stop this close to an earlier one, reached by a detour longer than
  *  RETURN_DETOUR_KM, brings the day back across town (validate, below). */
-const RETURN_NEAR_M = 600;
+export const RETURN_NEAR_M = 600;
 const RETURN_DETOUR_KM = 1.5;
 /** A chosen stop the finished day goes this far out of its way for, off the
  *  line between the stops either side, is dropped (validate, below). Wider
@@ -49,7 +49,7 @@ const USUAL_LATE_START = 9 * 60;
 const EVENING_FROM = 17 * 60;
 /** An unpinned evening place goes in only when the day reaches this close
  *  to its window by itself; a pinned one waits as long as it takes. */
-const EVENING_WAIT_MAX = 60;
+export const EVENING_WAIT_MAX = 60;
 /** A pinned evening stop the day waits longer than this for gets a note. */
 const FREE_TIME_NOTE_MIN = 120;
 
@@ -86,6 +86,85 @@ interface Draft {
   lockedStart: number | null;
   score: ReturnType<typeof scorePlace>;
   alternatives: Alternative[];
+}
+
+/** When a chosen daytime stop must end: a 09:00 start, the pace's time
+ *  and an hour for lunch, or later for a later start, never after 19:00:
+ *  relaxed 16:00, standard 18:00, packed 19:00. An early riser starts
+ *  early to beat the crowds, not to finish early; a travel day starts
+ *  later by the move and has that much less time, so it ends as any day. */
+export function dayEndFor(dayStartMin: number, pace: TravellerInput["pace"], moveMin = 0): number {
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[pace] - moveMin);
+  return Math.min(DAY_END_LATEST, Math.max(dayStartMin + budgetMin, USUAL_LATE_START + DAY_BUDGET_MINUTES[pace]) + LUNCH_MIN);
+}
+
+/** Has a position to measure the day's shape by. */
+const hasPoint = (p: PlaceInput) => p.lat != null && p.lon != null;
+
+/** Is a stop `direct` km from an earlier one, by `path` km through the
+ *  stops between, a return to it? Back within RETURN_NEAR_M (or within a
+ *  quarter of the way round, across a city: Kappabashi, 700 m from
+ *  Senso-ji after Kabuki-za), by a detour of over RETURN_DETOUR_KM. */
+export function isReturnKm(direct: number, path: number): boolean {
+  return direct <= Math.max(RETURN_NEAR_M / 1000, path / 4) && path - direct > RETURN_DETOUR_KM;
+}
+
+/** Would a stop at `at` in `seq` take the day out of its way? Between two
+ *  stops: a detour of over RETURN_DETOUR_KM off the straight line between
+ *  them (Kyoto Tower between Yasaka Shrine and Gion). At the day's end: back
+ *  to an area the day already left, away from where it is now (Kappabashi
+ *  after Kabuki-za, beside Senso-ji where the day began). The planner's
+ *  growth rule; `fitPlace` uses it for a place the traveller adds. */
+export function straysAt(
+  seq: ReadonlyArray<{ place: PlaceInput; locked: boolean }>,
+  p: PlaceInput,
+  at: number,
+  km: (a: PlaceInput, b: PlaceInput) => number = (a, b) => (metresBetween(a, b) ?? 0) / 1000,
+): boolean {
+  const isReturn = isReturnKm;
+  if (!hasPoint(p)) return false;
+  const prev = seq[at - 1]?.place;
+  const next = seq[at]?.place;
+  if (prev && next) return km(prev, p) + km(p, next) - km(prev, next) > RETURN_DETOUR_KM;
+  const near = RETURN_NEAR_M / 1000;
+  if (prev) {
+    if (km(prev, p) <= near) return false;
+    for (let i = 0; i < at - 1; i++) {
+      if (!hasPoint(seq[i].place)) continue;
+      let path = km(prev, p);
+      for (let j = i; j < at - 1; j++) path += km(seq[j].place, seq[j + 1].place);
+      if (isReturn(km(seq[i].place, p), path)) return true;
+    }
+    return false;
+  }
+  // At the day's start, the same the other way round: not where the day
+  // will come back to after leaving (Tsukiji before Senso-ji, when Kabuki-za
+  // beside Tsukiji is pinned after it).
+  if (!next || km(p, next) <= near) return false;
+  // Nor across town from a pin the day opens with: the pin is where the
+  // traveller chose to be (Nijo Castle before Kiyomizu-dera, on a day of
+  // the east bank).
+  if (seq[at].locked && km(p, next) > RETURN_DETOUR_KM) return true;
+  for (let k = at + 1; k < seq.length; k++) {
+    if (!hasPoint(seq[k].place)) continue;
+    let path = km(p, next);
+    for (let j = at; j < k; j++) path += km(seq[j].place, seq[j + 1].place);
+    if (isReturn(km(seq[k].place, p), path)) return true;
+  }
+  return false;
+}
+
+/** When a stop is an evening stop, the clock time it starts: an
+ *  evening-only place (or, pinned without a time, one whose best windows are
+ *  all evening) whose visit fits between its evening and closing. Null for
+ *  any other stop. Such a stop ends the day wherever the day began, so the
+ *  way rule (`straysAt`) doesn't apply to it. */
+export function eveningStartOf(p: PlaceInput, durationMin: number, lockedStart: number | null = null, locked = false): number | null {
+  if (lockedStart != null) return null;
+  const from = eveningFrom(p) ?? (locked ? eveningWindow(p) : null);
+  if (from == null) return null;
+  const at = Math.max(from, parseClock(p.opensAt) ?? 0);
+  return at + durationMin <= (parseClock(p.closesAt) ?? 24 * 60) ? at : null;
 }
 
 /** The day's usual start: 07:00 for a crowd-avoider, else 09:00. */
@@ -127,12 +206,8 @@ export function planDay(input: DayInput): DayPlan {
   // because its visits are the full ones and its budget the shortest. On a
   // long stay it takes no more than its share of the places left (below).
   let maxItems = input.maxItems ?? MAX_STOPS;
-  // When a chosen daytime stop must end: a 09:00 start, the pace's time
-  // and an hour for lunch, or later for a later start, never after 19:00:
-  // relaxed 16:00, standard 18:00, packed 19:00. An early riser starts
-  // early to beat the crowds, not to finish early; a travel day starts
-  // later by the move and has that much less time, so it ends as any day.
-  const dayEndMin = Math.min(DAY_END_LATEST, Math.max(dayStart + budgetMin, USUAL_LATE_START + DAY_BUDGET_MINUTES[t.pace]) + LUNCH_MIN);
+  // When a chosen daytime stop must end (`dayEndFor`).
+  const dayEndMin = dayEndFor(dayStart, t.pace, moveMin);
 
   const considered: Rejected[] = [];
   const warnings: string[] = [];
@@ -227,13 +302,7 @@ export function planDay(input: DayInput): DayPlan {
    *  (`eveningWindow`: Dotonbori as a must-see), starts at the earliest, if
    *  its visit fits before it closes. Null for any other stop, and for a
    *  pin with a time of its own. */
-  const eveningStart = (p: PlaceInput, durationMin: number, lockedStart: number | null = null, locked = false): number | null => {
-    if (lockedStart != null) return null;
-    const from = eveningFrom(p) ?? (locked ? eveningWindow(p) : null);
-    if (from == null) return null;
-    const at = Math.max(from, parseClock(p.opensAt) ?? 0);
-    return at + durationMin <= (parseClock(p.closesAt) ?? 24 * 60) ? at : null;
-  };
+  const eveningStart = eveningStartOf;
   const eveningOf = (d: Draft) => eveningStart(d.place, d.durationMin, d.lockedStart, d.locked);
   const isEvening = (d: Draft) => eveningOf(d) != null;
   /** A stop held to the day: neither evening (above) nor one whose best
@@ -291,49 +360,9 @@ export function planDay(input: DayInput): DayPlan {
     if (v == null) { v = (metresBetween(a, b) ?? 0) / 1000; kmMemo.set(key, v); }
     return v;
   };
-  const hasPoint = (p: PlaceInput) => p.lat != null && p.lon != null;
-  /** Is a stop `direct` km from an earlier one, by `path` km through the
-   *  stops between, a return to it? Back within RETURN_NEAR_M (or within a
-   *  quarter of the way round, across a city: Kappabashi, 700 m from
-   *  Senso-ji after Kabuki-za), by a detour of over RETURN_DETOUR_KM. */
-  const isReturn = (direct: number, path: number) => direct <= Math.max(RETURN_NEAR_M / 1000, path / 4) && path - direct > RETURN_DETOUR_KM;
-  /** Would a stop at `at` take the day out of its way? Between two stops:
-   *  a detour of over RETURN_DETOUR_KM off the straight line between them
-   *  (Kyoto Tower between Yasaka Shrine and Gion). At the day's end: back
-   *  to an area the day already left, away from where it is now (Kappabashi
-   *  after Kabuki-za, beside Senso-ji where the day began). */
-  const strays = (p: PlaceInput, at: number): boolean => {
-    if (!hasPoint(p)) return false;
-    const prev = seq[at - 1]?.place;
-    const next = seq[at]?.place;
-    if (prev && next) return km(prev, p) + km(p, next) - km(prev, next) > RETURN_DETOUR_KM;
-    const near = RETURN_NEAR_M / 1000;
-    if (prev) {
-      if (km(prev, p) <= near) return false;
-      for (let i = 0; i < at - 1; i++) {
-        if (!hasPoint(seq[i].place)) continue;
-        let path = km(prev, p);
-        for (let j = i; j < at - 1; j++) path += km(seq[j].place, seq[j + 1].place);
-        if (isReturn(km(seq[i].place, p), path)) return true;
-      }
-      return false;
-    }
-    // At the day's start, the same the other way round: not where the day
-    // will come back to after leaving (Tsukiji before Senso-ji, when Kabuki-za
-    // beside Tsukiji is pinned after it).
-    if (!next || km(p, next) <= near) return false;
-    // Nor across town from a pin the day opens with: the pin is where the
-    // traveller chose to be (Nijo Castle before Kiyomizu-dera, on a day of
-    // the east bank).
-    if (seq[at].locked && km(p, next) > RETURN_DETOUR_KM) return true;
-    for (let k = at + 1; k < seq.length; k++) {
-      if (!hasPoint(seq[k].place)) continue;
-      let path = km(p, next);
-      for (let j = at; j < k; j++) path += km(seq[j].place, seq[j + 1].place);
-      if (isReturn(km(seq[k].place, p), path)) return true;
-    }
-    return false;
-  };
+  const isReturn = isReturnKm;
+  /** `straysAt`, on the day as it stands now. */
+  const strays = (p: PlaceInput, at: number): boolean => straysAt(seq, p, at, km);
   /** Where a day comes back to an area it left: a stop within RETURN_NEAR_M
    *  of an earlier one, reached by a detour of over RETURN_DETOUR_KM through
    *  the stops between. Not when a pin lies between them (the pins made
@@ -1059,6 +1088,8 @@ export function planDay(input: DayInput): DayPlan {
     meals: timed.meals,
     startMin: timed.items[0]?.startMin ?? dayStart,
     endMin: timed.endMin,
+    dayStartMin: dayStart,
+    dayEndMin,
     budgetMin,
     activeMin,
     slackMin: Math.max(0, budgetMin - activeMin),

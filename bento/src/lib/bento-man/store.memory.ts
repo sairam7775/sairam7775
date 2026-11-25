@@ -13,10 +13,11 @@ import { miyajima } from "@/lib/places/seed/miyajima";
 import { himeji } from "@/lib/places/seed/himeji";
 import { seedToPlaceInput } from "@/lib/places/seed/to-input";
 import type { CoverageTier } from "@/lib/types";
-import { baseMatches, type Proposal } from "./diff";
+import { baseMatches, type DayBaseItem, type Proposal } from "./diff";
+import { isCustomStop } from "./custom-stop";
 import { copy } from "@/copy";
 import { allocateDates } from "@/lib/engine/route";
-import { DEFAULT_PREFS, nightsBetween, planDateChange, shiftDate, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripCityRow, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
+import { DEFAULT_PREFS, nightsBetween, planDateChange, shiftDate, StaleDayError, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripCityRow, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
 import type { PlaceBackground } from "@/lib/places/backgrounds";
 import { shiftConflicts, shiftRefusal, staleDayDates } from "./shift";
@@ -227,9 +228,11 @@ export class MemoryStore implements TripStore {
     return { id };
   }
 
-  async saveDay(day: DayRow): Promise<void> {
+  async saveDay(day: DayRow, expect?: DayBaseItem[]): Promise<void> {
     const items = day.items.map((i, idx) => ({ ...i, sortOrder: idx }));
     const existing = this.days.find((x) => x.date === day.date);
+    // As replace_day_items_checked (0036): only onto the day the edit read.
+    if (expect && !baseMatches(expect, existing?.items ?? [])) throw new StaleDayError(copy.day.addPlace.errors.dayChanged);
     if (existing) {
       existing.cityId = day.cityId;
       existing.items = items;
@@ -276,6 +279,7 @@ export class MemoryStore implements TripStore {
     for (const d of p.days) {
       const items = d.after.map((it, i) => ({
         placeId: it.placeId,
+        ...(isCustomStop(it.placeId) ? { customName: it.name } : {}),
         name: it.name,
         sortOrder: i,
         startMin: it.startMin,
