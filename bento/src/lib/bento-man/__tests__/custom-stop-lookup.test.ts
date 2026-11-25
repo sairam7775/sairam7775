@@ -39,6 +39,30 @@ describe("get_place on the traveller's own stop", () => {
     }
   });
 
+  it("doesn't take a word every dinner has, or a letter, for one stop (review 1)", async () => {
+    const friend: ItemRow = { ...keiko, placeId: "custom:dinner-at-a-friend-s", customName: "Dinner at a friend's", name: "Dinner at a friend's", sortOrder: 3, startMin: 21 * 60 };
+    for (const query of ["dinner", "a", "at", "Dinner at", "friend"]) {
+      const r = JSON.parse(await getPlace(store([keiko, friend]), query));
+      expect(r.own_stop, query).toBeUndefined();
+      expect(r.own_stops, query).toBeUndefined();
+    }
+  });
+
+  it("lists every stop a name fits rather than choosing one, an exact one first (review 2)", async () => {
+    const lunch: ItemRow = { ...keiko, placeId: "custom:lunch-at-aunt-keiko-s", customName: "Lunch at Aunt Keiko's", name: "Lunch at Aunt Keiko's", sortOrder: 1, startMin: 12 * 60, durationMin: 60 };
+    const both = JSON.parse(await getPlace(store([lunch, keiko]), "Aunt Keiko's"));
+    expect(both.own_stop).toBeUndefined();
+    expect(both.own_stops.map((s: { name: string }) => s.name)).toEqual(["Lunch at Aunt Keiko's", "Dinner at Aunt Keiko's"]);
+    const exact = JSON.parse(await getPlace(store([lunch, keiko]), "Dinner at Aunt Keiko's"));
+    expect(exact.own_stop).toMatchObject({ name: "Dinner at Aunt Keiko's" });
+  });
+
+  it("finds a Japanese name inside a longer one (review 3)", async () => {
+    const ichiran: ItemRow = { ...keiko, placeId: "custom:京都の一蘭で夕食", customName: "京都の一蘭で夕食", name: "京都の一蘭で夕食" };
+    expect(JSON.parse(await getPlace(store([ichiran]), "一蘭")).own_stop).toMatchObject({ name: "京都の一蘭で夕食" });
+    expect(JSON.parse(await getPlace(store([ichiran]), "で")).own_stop).toBeUndefined();
+  });
+
   it("is unchanged for a name that is nobody's stop", async () => {
     const sha = (s: string) => createHash("sha256").update(s).digest("hex");
     const without = await getPlace(store([]), "Aunt Keiko's");
