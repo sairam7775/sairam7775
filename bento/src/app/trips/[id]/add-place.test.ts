@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { copy } from "@/copy";
 import { MemoryStore } from "@/lib/bento-man/store.memory";
 import { runTool, type ToolContext } from "@/lib/bento-man/tools";
-import type { DayRow } from "@/lib/bento-man/store";
+import { OutcomeUnknownError, type DayRow } from "@/lib/bento-man/store";
 
 const mocks = vi.hoisted(() => ({ store: null as unknown, user: { id: "u1" } as { id: string } | null }));
 
@@ -270,5 +270,48 @@ describe("addCustomStop: a place Bento doesn't know", () => {
     const diff = append.mock.calls[0][2]!.days![0];
     expect(diff.removed.map((x) => x.name)).toContain("Ramen");
     expect(diff.warnings.join(" ")).not.toMatch(/custom:/);
+  });
+});
+
+describe("two edits at once (review F1)", () => {
+  /** Another write lands between this action's read and its own write. */
+  function raceOnce(store: MemoryStore, other: (day: DayRow) => DayRow) {
+    const save = store.saveDay.bind(store);
+    let raced = false;
+    vi.spyOn(store, "saveDay").mockImplementation(async (day, expect) => {
+      if (!raced) {
+        raced = true;
+        const now = (await store.state()).days.find((d) => d.date === day.date)!;
+        await save(other(now));
+      }
+      return save(day, expect);
+    });
+  }
+  const withStop = (placeId: string, name = placeId) => (d: DayRow): DayRow => ({ ...d, items: [...d.items, { ...d.items[0], placeId, name, customName: placeId.startsWith("custom:") ? name : undefined, sortOrder: d.items.length }] });
+
+  it("an add worked out from a day that changed meanwhile adds nothing and says so; the other edit stays", async () => {
+    const store = await tripWith(["kyt-nanzenji"]);
+    mocks.store = store;
+    raceOnce(store, withStop("kyt-gion"));
+    const r = await addPlaceToDay({ tripId: TRIP, date: DAY, placeId: "kyt-philosophers-path" });
+    expect(r).toEqual({ status: "error", error: ad.errors.dayChanged });
+    expect((await dayOf(store)).items.map((i) => i.placeId)).toEqual(["kyt-nanzenji", "kyt-gion"]);
+  });
+
+  it("the same for a free-text stop", async () => {
+    const store = await tripWith(["kyt-nanzenji"]);
+    mocks.store = store;
+    raceOnce(store, withStop("custom:tea", "Tea"));
+    const r = await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 });
+    expect(r).toEqual({ status: "error", error: ad.errors.dayChanged });
+    expect((await dayOf(store)).items.map((i) => i.placeId)).toEqual(["kyt-nanzenji", "custom:tea"]);
+  });
+
+  it("a write that timed out says it can't confirm, not that nothing changed", async () => {
+    const store = await tripWith(["kyt-nanzenji"]);
+    mocks.store = store;
+    vi.spyOn(store, "saveDay").mockRejectedValue(new OutcomeUnknownError(copy.day.saveUnknown));
+    expect(await addPlaceToDay({ tripId: TRIP, date: DAY, placeId: "kyt-gion" })).toEqual({ status: "error", error: copy.day.saveUnknown });
+    expect(await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 })).toEqual({ status: "error", error: copy.day.saveUnknown });
   });
 });
