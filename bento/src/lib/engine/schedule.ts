@@ -33,7 +33,7 @@ const RETURN_DETOUR_KM = 1.5;
  *  line between the stops either side, is dropped (validate, below). Wider
  *  than growing's bar: a walking loop (Takeshita Street > Shinjuku Gyoen >
  *  Shibuya, 3.3 km) is a loop, not a trip across town. */
-export const DETOUR_DROP_KM = 3.5;
+const DETOUR_DROP_KM = 3.5;
 /** Extra validation passes a day may spend refilling after such drops. */
 const DETOUR_PASSES_MAX = 6;
 /** Runs of up to this many chosen stops count as one trip out, at the bar

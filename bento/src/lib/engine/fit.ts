@@ -4,17 +4,17 @@
  *  makes no choice about WHAT goes in the day; it finds WHERE it fits best
  *  in the traveller's own order and says, from the engine's own rules,
  *  what is true about it there. Nothing new is decided here: the hard rules
- *  are `hardFilter`'s, the clock is `retimeDay`'s, the day's end is
- *  `dayEndFor`'s, the evening rule is `eveningFrom`'s, the detour bar is
- *  the planner's, and the praise is `scorePlace`'s clauses and the
- *  scheduler's timing clauses. If it doesn't fit, the traveller may still
- *  add it, and the day shows its usual warnings. Pure: no network, no model. */
-import { DAY_BUDGET_MINUTES } from "@/lib/types";
+ *  are `hardFilter`'s, the clock is `retimeDay`'s, a hike's closing is its
+ *  daylight (`daylightEndMin`), the day's end is `dayEndFor`'s, the evening
+ *  rule is `eveningFrom`'s, the detour rule is the planner's `straysAt`,
+ *  and the praise is `scorePlace`'s clauses and the scheduler's timing
+ *  clauses. If it doesn't fit, the traveller may still add it, and the day
+ *  shows its usual warnings. Pure: no network, no model. */
 import { copy } from "@/copy";
 import { hardFilter, parseClock, parseWindow } from "./filter";
 import { buildReason, chooseDuration, scorePlace } from "./score";
 import { FALLBACK_TRAVEL_MIN, retimeDay, type RetimeItem, type RetimedDay } from "./retime";
-import { dayEndFor, DETOUR_DROP_KM, eveningFrom, eveningWindow, EVENING_WAIT_MAX, OPEN_WAIT_MAX_MIN, RETURN_NEAR_M } from "./schedule";
+import { dayEndFor, eveningFrom, eveningWindow, EVENING_WAIT_MAX, OPEN_WAIT_MAX_MIN, RETURN_NEAR_M, straysAt } from "./schedule";
 import { daylightEndMin } from "./daylight";
 import { metresBetween } from "./travel";
 import type { PlaceInput, TravelFn, TravellerInput } from "./types";
@@ -32,7 +32,8 @@ export interface FitInput {
   traveller: TravellerInput;
   /** Where the day's clock starts (the same start an edit re-times from). */
   dayStartMin: number;
-  /** A travel day's move, in minutes: the day ends as any day would. */
+  /** A travel day's move, in minutes: it comes out of the day's budget, as
+   *  the day box measures it (`dayStats`), and the day ends as any day. */
   moveMin?: number;
   /** Places the traveller holds a ticket for on this date (`match.ts`). */
   bookedPlaceIds?: Iterable<string>;
@@ -63,11 +64,14 @@ export interface PlaceFit {
   praise: string[];
   /** Things Bento can't check, said either way (a leg it has no route for). */
   notes: string[];
-  /** The stop's reason as the planner would store it (`buildReason`). */
+  /** The stop's reason as the planner would store it (`buildReason`), from
+   *  the stops before it only. */
   reason: { reason: string; terms: string[] };
   budgetMin: number;
   overByBefore: number;
   overByAfter: number;
+  /** The day as re-timed with it at `at`. */
+  day: RetimedDay;
 }
 
 const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
@@ -77,14 +81,78 @@ const MAX_PRAISE = 3;
 /** Never a stop this length when the place has no duration on record. */
 const FALLBACK_VISIT_MIN = 60;
 
+/** The day's places as the planner times them: a hike closes at its
+ *  daylight end on that date, when that is earlier than its own closing.
+ *  `dark` holds the ones whose closing is their daylight. */
+function daylit(places: Map<string, PlaceInput>, date: string): { places: Map<string, PlaceInput>; dark: Set<string> } {
+  const out = new Map<string, PlaceInput>();
+  const dark = new Set<string>();
+  for (const [id, p] of places) {
+    const end = daylightEndMin(p, date);
+    const own = parseClock(p.closesAt);
+    if (end == null || (own != null && own <= end)) out.set(id, p);
+    else {
+      out.set(id, { ...p, closesAt: clock(end) });
+      dark.add(id);
+    }
+  }
+  return { places: out, dark };
+}
+
+/** A daytime stop: one the day's end applies to. An evening place may end
+ *  later, and a stop Bento doesn't know may be a dinner: neither counts. */
+function daytime(it: RetimeItem, p: PlaceInput | undefined): boolean {
+  return !it.unchecked && p != null && eveningFrom(p) == null && eveningWindow(p) == null;
+}
+
+/** What putting a stop at `at` does to the stops already there: one past
+ *  closing (or into the dark) that wasn't, a pin reached later than before,
+ *  a daytime stop now ending after the day's end, more time over budget. */
+function effectsOnDay(c: {
+  items: RetimeItem[];
+  before: RetimedDay;
+  after: RetimedDay;
+  at: number;
+  places: Map<string, PlaceInput>;
+  dark: Set<string>;
+  dayEnd: number;
+}): FitProblem[] {
+  const out: FitProblem[] = [];
+  c.before.items.forEach((was, i) => {
+    const now = c.after.items[i >= c.at ? i + 1 : i];
+    const it = c.items[i];
+    const q = c.places.get(it.placeId);
+    const name = q?.name ?? it.name ?? it.placeId;
+    if (q && now.pastClosing && !was.pastClosing) {
+      out.push(c.dark.has(q.id)
+        ? { term: "pushes_dark", text: copy.plan.warnings.afterDark(q.name, q.closesAt!) }
+        : { term: "pushes_closing", text: copy.plan.fit.pushesClosing(q.name, q.closesAt!) });
+    }
+    // A pin's time is the traveller's, whatever the stop: no place needed.
+    if (it.locked && it.startMin != null && now.pinShortMin > was.pinShortMin) {
+      out.push({ term: "pushes_pin", text: copy.plan.fit.pushesPin(name, clock(it.startMin)) });
+    }
+    if (daytime(it, q) && was.endMin <= c.dayEnd && now.endMin > c.dayEnd) {
+      out.push({ term: "past_day_end", text: copy.plan.leftOut.pastDayEnd(clock(c.dayEnd)) });
+    }
+  });
+  const over = overDayProblem(c.before, c.after);
+  if (over) out.push(over);
+  return out;
+}
+
+/** The same problem said once. */
+function unique(ps: FitProblem[]): FitProblem[] {
+  const seen = new Set<string>();
+  return ps.filter((p) => (seen.has(p.text) ? false : (seen.add(p.text), true)));
+}
+
 export function fitPlace(input: FitInput): PlaceFit {
   const { date, traveller: t } = input;
-  // A hike closes at dusk, as it does for the planner.
-  const dusk = daylightEndMin(input.place, date);
-  const own = parseClock(input.place.closesAt);
-  const place = dusk != null && (own == null || dusk < own) ? { ...input.place, closesAt: clock(dusk) } : input.place;
-  const places = new Map(input.places);
-  places.set(place.id, place);
+  const all = new Map(input.places);
+  all.set(input.place.id, input.place);
+  const { places, dark } = daylit(all, date);
+  const place = places.get(input.place.id)!;
 
   const common: FitProblem[] = [];
   // The hard rules, in the planner's words. "Unverified" and "not covered"
@@ -99,7 +167,7 @@ export function fitPlace(input: FitInput): PlaceFit {
   // Conflicts, both ways (the Arashiyama trap).
   for (const it of input.items) {
     const q = places.get(it.placeId);
-    if (q && (place.conflictsWith.includes(q.id) || q.conflictsWith.includes(place.id))) {
+    if (q && !it.unchecked && (place.conflictsWith.includes(q.id) || q.conflictsWith.includes(place.id))) {
       common.push({ term: "conflicts_with", text: copy.plan.leftOut.clash(q.name) });
     }
   }
@@ -107,8 +175,12 @@ export function fitPlace(input: FitInput): PlaceFit {
   const durationMin = chooseDuration(place, t.pace) ?? FALLBACK_VISIT_MIN;
   const evening = eveningFrom(place);
   const dayEnd = dayEndFor(input.dayStartMin, t.pace, input.moveMin ?? 0);
-  const retime = (items: RetimeItem[]) => retimeDay({ items, places, travel: input.travel, pace: t.pace, dayStartMin: input.dayStartMin });
+  const retime = (items: RetimeItem[]) => retimeDay({ items, places, travel: input.travel, pace: t.pace, dayStartMin: input.dayStartMin, moveMin: input.moveMin });
   const before = retime(input.items);
+  // The day's shape is measured on the stops Bento knows where to find.
+  const known = input.items.map((it) => ({ place: it.unchecked ? undefined : places.get(it.placeId), locked: it.locked }));
+  const seq = known.filter((k): k is { place: PlaceInput; locked: boolean } => k.place != null);
+  const seqAt = (at: number) => known.slice(0, at).filter((k) => k.place != null).length;
 
   // Every spot in the traveller's order; an evening place only after the
   // day's other stops, as the planner puts it.
@@ -119,7 +191,7 @@ export function fitPlace(input: FitInput): PlaceFit {
   for (const at of spots) {
     const item = itemFor(at);
     const after = retime([...input.items.slice(0, at), item, ...input.items.slice(at)]);
-    const problems = [...common, ...spotProblems(at, after)];
+    const problems = unique([...common, ...spotProblems(at, after), ...effectsOnDay({ items: input.items, before, after, at, places, dark, dayEnd })]);
     const cost = problems.length * 100_000 + after.overBy * 10 + (after.activeMin - before.activeMin);
     // A tie goes to the later spot: the end of the day, as a list would.
     if (!best || cost <= best.cost) best = { at, item, after, problems, cost };
@@ -136,10 +208,11 @@ export function fitPlace(input: FitInput): PlaceFit {
     problems,
     praise: praiseAt(at, after),
     notes: notesAt(at),
-    reason: buildReason(score()),
+    reason: buildReason(score(at)),
     budgetMin: before.budgetMin,
     overByBefore: before.overBy,
     overByAfter: after.overBy,
+    day: after,
   };
 
   /** The stop to insert. An evening place the day reaches before its
@@ -151,12 +224,13 @@ export function fitPlace(input: FitInput): PlaceFit {
     return reached < evening ? { ...plain, locked: true, startMin: evening } : plain;
   }
 
+  /** The candidate's own problems at `at`. */
   function spotProblems(at: number, after: RetimedDay): FitProblem[] {
     const out: FitProblem[] = [];
     const mine = after.items[at];
     if (mine.pastClosing) {
-      out.push(dusk != null && place.closesAt === clock(dusk)
-        ? { term: "after_dark", text: copy.plan.leftOut.afterDark(place.closesAt) }
+      out.push(dark.has(place.id)
+        ? { term: "after_dark", text: copy.plan.leftOut.afterDark(place.closesAt!) }
         : { term: "closes", text: copy.plan.leftOut.closesBefore(place.closesAt!, clock(mine.startMin), durationMin) });
     }
     if (evening != null && evening - mine.reachedMin > EVENING_WAIT_MAX) {
@@ -166,31 +240,26 @@ export function fitPlace(input: FitInput): PlaceFit {
     if (evening == null && mine.waitMin > OPEN_WAIT_MAX_MIN) {
       out.push({ term: "opens_later", text: copy.plan.leftOut.opensLater(place.opensAt!, mine.waitMin) });
     }
-    if (evening == null && mine.endMin > dayEnd) {
+    if (daytime(mine, place) && mine.endMin > dayEnd) {
       out.push({ term: "past_day_end", text: copy.plan.leftOut.pastDayEnd(clock(dayEnd)) });
     }
-    // What it does to the stops already there.
-    before.items.forEach((was, i) => {
-      const now = after.items[i >= at ? i + 1 : i];
-      const q = places.get(was.placeId);
-      if (!q) return;
-      if (now.pastClosing && !was.pastClosing) out.push({ term: "pushes_closing", text: copy.plan.fit.pushesClosing(q.name, q.closesAt!) });
-      if (now.pinShortMin > was.pinShortMin && input.items[i].locked && input.items[i].startMin != null) {
-        out.push({ term: "pushes_pin", text: copy.plan.fit.pushesPin(q.name, clock(input.items[i].startMin!)) });
-      }
-    });
-    const over = overDayProblem(before, after);
-    if (over) out.push(over);
-    const detour = detourKm(at);
-    if (detour != null && detour > DETOUR_DROP_KM) {
-      const [prev, next] = neighbours(at);
-      out.push({ term: "out_of_way", text: copy.plan.fit.outOfWay(prev!.name, next!.name, detour.toFixed(1)) });
+    // The planner's way rule at every spot, the day's ends included.
+    const k = seqAt(at);
+    if (straysAt(seq, place, k)) {
+      const detour = detourKm(at);
+      out.push(detour != null
+        ? { term: "out_of_way", text: copy.plan.fit.outOfWay(seq[k - 1].place.name, seq[k].place.name, detour.toFixed(1)) }
+        : { term: "out_of_way", text: copy.plan.leftOut.outOfWay });
     }
     return out;
   }
 
   function neighbours(at: number): [PlaceInput | undefined, PlaceInput | undefined] {
-    return [places.get(input.items[at - 1]?.placeId ?? ""), places.get(input.items[at]?.placeId ?? "")];
+    const k = seqAt(at);
+    // Neighbours in the order, not past a stop Bento doesn't know.
+    const prev = at > 0 && known[at - 1].place ? seq[k - 1]?.place : undefined;
+    const next = at < known.length && known[at].place ? seq[k]?.place : undefined;
+    return [prev, next];
   }
 
   /** Kilometres off the straight line between the stops either side, or
@@ -205,15 +274,17 @@ export function fitPlace(input: FitInput): PlaceFit {
     return (a + b - ab) / 1000;
   }
 
-  function score() {
+  /** The score as the planner gives it, counting only the stops before it,
+   *  so "your third temple today" is the third one shown. */
+  function score(at: number) {
     const categoryCounts = new Map<string, number>();
-    for (const it of input.items) {
-      const c = places.get(it.placeId)?.category;
+    for (const it of input.items.slice(0, at)) {
+      const c = it.unchecked ? undefined : places.get(it.placeId)?.category;
       if (c) categoryCounts.set(c, (categoryCounts.get(c) ?? 0) + 1);
     }
     return scorePlace(place, t, {
       categoryCounts,
-      remainingMin: Math.max(0, DAY_BUDGET_MINUTES[t.pace] - before.activeMin),
+      remainingMin: Math.max(0, before.budgetMin - before.activeMin),
       date,
       earlyStart: input.dayStartMin <= 8 * 60,
     });
@@ -239,7 +310,7 @@ export function fitPlace(input: FitInput): PlaceFit {
       else if (late) out.push(copy.plan.reasons.afterCrowd(clock(late.after!)));
     }
 
-    const clauses = score().terms
+    const clauses = score(at).terms
       .filter((x) => x.clause && x.contribution > 0)
       .sort((x, y) => y.contribution - x.contribution)
       .map((x) => x.clause!);
@@ -262,11 +333,13 @@ export function fitPlace(input: FitInput): PlaceFit {
 /** A stop the traveller named that Bento doesn't know (0036). Nothing about
  *  the place can be checked: no hours, no position, no route. It goes at the
  *  end of the day, for the length the traveller gave, and the clock's own
- *  facts still hold: the day's budget and its end, with the legs to it
- *  guessed (`retimeDay`'s `unchecked`). `checked` is always false, so no
- *  caller can present it as a fit. */
+ *  facts still hold: the day's budget (less a travel day's move) and its
+ *  end, the stops already there, with the legs to it guessed (`retimeDay`'s
+ *  `unchecked`). `checked` is always false, so no caller can present it as
+ *  a fit. */
 export function fitUnchecked(input: {
   key: string;
+  name?: string;
   durationMin: number;
   items: RetimeItem[];
   places: Map<string, PlaceInput>;
@@ -274,25 +347,24 @@ export function fitUnchecked(input: {
   pace: TravellerInput["pace"];
   dayStartMin: number;
   moveMin?: number;
+  /** The day, for hikes' daylight. Without it, hikes keep their own hours. */
+  date?: string;
 }): { checked: false; at: number; item: RetimeItem; startMin: number; endMin: number; problems: FitProblem[]; notes: string[] } {
-  const item: RetimeItem = { placeId: input.key, durationMin: input.durationMin, locked: false, startMin: null, unchecked: true };
+  const item: RetimeItem = { placeId: input.key, name: input.name, durationMin: input.durationMin, locked: false, startMin: null, unchecked: true };
   const at = input.items.length;
-  const retime = (items: RetimeItem[]) => retimeDay({ items, places: input.places, travel: input.travel, pace: input.pace, dayStartMin: input.dayStartMin });
+  const { places, dark } = input.date ? daylit(input.places, input.date) : { places: input.places, dark: new Set<string>() };
+  const retime = (items: RetimeItem[]) => retimeDay({ items, places, travel: input.travel, pace: input.pace, dayStartMin: input.dayStartMin, moveMin: input.moveMin });
   const before = retime(input.items);
   const after = retime([...input.items, item]);
   const mine = after.items[at];
-  const problems: FitProblem[] = [];
   const dayEnd = dayEndFor(input.dayStartMin, input.pace, input.moveMin ?? 0);
-  if (mine.endMin > dayEnd) problems.push({ term: "past_day_end", text: copy.plan.leftOut.pastDayEnd(clock(dayEnd)) });
-  const over = overDayProblem(before, after);
-  if (over) problems.push(over);
   return {
     checked: false,
     at,
     item,
     startMin: mine.startMin,
     endMin: mine.endMin,
-    problems,
+    problems: unique(effectsOnDay({ items: input.items, before, after, at, places, dark, dayEnd })),
     notes: at > 0 ? [copy.plan.warnings.uncheckedLeg(FALLBACK_TRAVEL_MIN)] : [],
   };
 }
