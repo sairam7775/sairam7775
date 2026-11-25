@@ -39,7 +39,7 @@ Each day of a trip is drawn as **a bento box**: a lacquer frame of compartments,
 
 ## Moving a stop on a phone
 
-With a mouse, a stop is dragged at once, as before. With a finger or a pen, the traveller **holds a stop still for about half a second** (450 ms): it lifts (a ring, a slight grow unless reduced motion is on, and a short buzz where the phone allows), follows the finger, and lands where it is let go. The card it would land on is ringed. Letting go saves the new order through the same edit as a mouse drag (`reorderDay`), and the engine re-times the day.
+With a mouse, a stop is dragged at once, as before. With a finger or a pen, the traveller **holds a stop still for about half a second** (450 ms): it lifts (solid, outlined, a slight grow unless reduced motion is on, and a short buzz where the phone allows), follows the finger, and lands where it is let go. The stop it would land on gets a dashed outline. Letting go saves the new order through the same edit as a mouse drag (`reorderDay`), and the engine re-times the day.
 
 - **A swipe still scrolls.** Moving the finger more than 10 px before the hold ends cancels it, and the page is held still only once a stop has lifted.
 - Near the top or bottom of the screen (64 px), a lifted stop scrolls the page, faster the closer it is to the edge.
