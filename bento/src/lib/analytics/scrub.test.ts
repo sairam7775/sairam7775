@@ -124,6 +124,22 @@ describe("scrubEvent", () => {
     expect((e.properties as Record<string, unknown>).$pathname).toBe("/trips");
   });
 
+  it("drops lifted values under PostHog's own field names, inside properties.$set too", () => {
+    const e = scrubEvent({
+      event: "$identify",
+      properties: {
+        msclkid: "Kyoto",
+        rdt_cid: "Kyoto",
+        sccid: "Kyoto",
+        $initial_search_engine: "Kyoto",
+        $set: { $initial_utm_campaign: "Kyoto", $initial_msclkid: "Kyoto", plan: "free" },
+        $set_once: { $initial_title: "Kyoto", $session_entry_ph_keyword: "Kyoto" },
+      },
+    });
+    expect(JSON.stringify(e)).not.toMatch(/Kyoto/);
+    expect(((e.properties as Record<string, unknown>).$set as Record<string, unknown>).plan).toBe("free");
+  });
+
   it("also scrubs $set and $set_once", () => {
     const e = scrubEvent({ event: "$pageview", properties: {}, $set: { $current_url: "https://b.example/x?y=1" }, $set_once: { $initial_current_url: "https://b.example/z#k" } });
     expect(e.$set).toEqual({ $current_url: "https://b.example/x" });

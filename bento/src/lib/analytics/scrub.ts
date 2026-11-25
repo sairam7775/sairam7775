@@ -94,9 +94,19 @@ function exceptionProps(props: Record<string, unknown>): Record<string, unknown>
 // and values it lifts out of an address (marketing and search parameters,
 // also kept as first-seen and session-start copies). An address is cut to
 // its path, so what came after it must not survive under another name.
-const LIFTED = /^(?:\$initial_|\$session_entry_)?(?:title|utm_\w+|\w*clid|gad_source|gclsrc|gbraid|wbraid|li_fat_id|igshid|mc_cid|_kx|epik|irclid|\$search_engine|ph_keyword)$/;
+// The first-seen and session copies drop the field's own "$"
+// ($search_engine becomes $initial_search_engine).
+const LIFTED =
+  /^(?:\$initial_|\$session_entry_)?\$?(?:title|utm_\w+|\w*clid|msclkid|rdt_cid|sccid|qclid|gad_source|gclsrc|gbraid|wbraid|li_fat_id|igshid|mc_cid|_kx|epik|irclid|search_engine|ph_keyword)$/;
 
-const unlifted = (bag: Record<string, unknown>) => Object.fromEntries(Object.entries(bag).filter(([k]) => !LIFTED.test(k)));
+// Person properties can also ride inside the event as properties.$set and
+// properties.$set_once (identify and setPersonProperties do that).
+const unlifted = (bag: Record<string, unknown>): Record<string, unknown> =>
+  Object.fromEntries(
+    Object.entries(bag)
+      .filter(([k]) => !LIFTED.test(k))
+      .map(([k, v]) => [k, (k === "$set" || k === "$set_once") && v && typeof v === "object" && !Array.isArray(v) ? unlifted(v as Record<string, unknown>) : v]),
+  );
 
 // Heatmaps are keyed by the page's full address; the keys are cut to their
 // path too, merging what lands on the same one.

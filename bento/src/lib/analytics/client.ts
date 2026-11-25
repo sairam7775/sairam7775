@@ -221,16 +221,18 @@ let errorsSent = 0;
 const reported = new WeakSet<object>();
 
 export function trackError(error: unknown, props?: Record<string, Prop>) {
+  // Nothing is used up by an error that won't be sent or held.
+  if (!started && (refused || queue.length >= MAX_QUEUE)) return;
+  if (errorsSent >= MAX_ERRORS) return;
   // The same thrown object reported twice (a boundary and the window) is one.
   if (error && typeof error === "object") {
     if (reported.has(error)) return;
     reported.add(error);
   }
-  if (errorsSent >= MAX_ERRORS) return;
   errorsSent++;
   const safe = safeError(error);
   if (started) ph?.captureException(safe, props);
-  else if (!refused && queue.length < MAX_QUEUE) queue.push(["error", safe, props]);
+  else queue.push(["error", safe, props]);
 }
 
 // Errors nothing caught, in place of PostHog's capture_exceptions (marked

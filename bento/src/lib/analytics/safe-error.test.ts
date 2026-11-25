@@ -94,10 +94,34 @@ describe("an error on its way to PostHog", () => {
     expect(outgoing(obj.Kyoto())).not.toMatch(SECRET);
   });
 
-  it("keeps no file outside Bento's built code, not even a forged one under it", () => {
+  it("keeps no file outside Bento's built code, and never a frame's host", () => {
     const e = new Error("x");
-    e.stack = ["Error: x", "    at f (https://bento.example/secret-Kyoto.js:1:1)", "    at g (/_next/static/Kyoto with Mum.js:1:1)"].join("\n");
-    expect(outgoing(e)).not.toMatch(SECRET);
+    e.stack = [
+      "Error: x",
+      "    at f (https://bento.example/secret-Kyoto.js:1:1)",
+      "    at g (/_next/static/Kyoto with Mum.js:1:1)",
+      "    at h (https://attacker.test/_next/static/chunks/app.js:2:2)",
+      "    at i (/_next/static/../../Kyoto.js:3:3)",
+    ].join("\n");
+    const json = outgoing(e);
+    expect(json).not.toMatch(SECRET);
+    expect(json).not.toMatch(/attacker/);
+    // The built file stays, as a path on Bento's own site.
+    expect(json).toContain('"/_next/static/chunks/app.js"');
+  });
+
+  it("keeps route chunks, whose paths have [id] and (group) in them", () => {
+    const e = new Error("x");
+    e.stack = [
+      "Error: x",
+      `    at a (${APP}/app/trips/[id]/page-123.js:1:2)`,
+      // An engine line with no file doesn't cost the frames around it.
+      "    at async Promise.all (index 0)",
+      `    at b (${APP}/app/(main)/layout-9.js:3:4)`,
+    ].join("\n");
+    const json = outgoing(e);
+    expect(json).toContain("/_next/static/chunks/app/trips/[id]/page-123.js");
+    expect(json).toContain("/_next/static/chunks/app/(main)/layout-9.js");
   });
 
   it("survives an error whose properties throw when read", () => {
