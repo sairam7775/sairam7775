@@ -57,3 +57,30 @@ describe("retimeDay", () => {
     expect(d.items[1].startMin).toBeGreaterThan(7 * 60 + 30);
   });
 });
+
+describe("retimeDay, per-stop facts", () => {
+  it("says when the day reaches each stop, how long it waits and whether it runs past closing", () => {
+    const d = retimeDay({
+      items: [
+        { placeId: "kyt-kiyomizu", durationMin: 90, locked: false, startMin: null },
+        { placeId: "kyt-fushimi-inari", durationMin: 60, locked: true, startMin: 7 * 60 + 30 },
+        { placeId: "kyt-nishiki-market", durationMin: 60, locked: false, startMin: null },
+      ],
+      places, travel, pace: "standard", dayStartMin: 7 * 60,
+    });
+    expect(d.items[0]).toMatchObject({ reachedMin: 420, waitMin: 0, pinShortMin: 0, pastClosing: false });
+    // Pinned for 07:30, reached after 08:30: short by the difference.
+    expect(d.items[1].pinShortMin).toBe(d.items[1].reachedMin - (7 * 60 + 30));
+    expect(d.items[1].pinShortMin).toBeGreaterThan(0);
+    // Nishiki opens at 10:00: the day waits for it.
+    expect(d.items[2].waitMin).toBe(d.items[2].startMin - d.items[2].reachedMin);
+  });
+
+  it("marks a stop that runs past closing", () => {
+    const d = retimeDay({
+      items: [{ placeId: "kyt-tofukuji", durationMin: 60, locked: false, startMin: null }],
+      places, travel, pace: "standard", dayStartMin: 16 * 60,
+    });
+    expect(d.items[0].pastClosing).toBe(true);
+  });
+});

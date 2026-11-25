@@ -25,6 +25,14 @@ export interface RetimedItem extends RetimeItem {
   arriveBy: TravelLeg | null;
   /** Fell past the day's budget. */
   over: boolean;
+  /** When the day gets there, before any wait for a pinned time or opening. */
+  reachedMin: number;
+  /** Minutes the day waits for it to open. */
+  waitMin: number;
+  /** Minutes after its pinned time the day reaches it; 0 when on time. */
+  pinShortMin: number;
+  /** The visit runs past its closing time. */
+  pastClosing: boolean;
 }
 
 export interface RetimedDay {
@@ -39,7 +47,7 @@ export interface RetimedDay {
   warnings: string[];
 }
 
-const FALLBACK_TRAVEL_MIN = 45;
+export const FALLBACK_TRAVEL_MIN = 45;
 const LUNCH_MIN = 60;
 const LUNCH_EARLIEST = 11 * 60 + 30;
 const LUNCH_LATEST = 14 * 60;
@@ -80,8 +88,12 @@ export function retimeDay(input: {
       lunchDone = true;
     }
 
+    const reachedMin = start;
+    let pinShortMin = 0;
+    let waitMin = 0;
     if (it.locked && it.startMin != null) {
       if (it.startMin < start) {
+        pinShortMin = start - it.startMin;
         warnings.push(copy.plan.warnings.pinnedShort(place?.name ?? it.placeId, clock(it.startMin), clock(start - travelMin), start - it.startMin));
       }
       start = Math.max(start, it.startMin);
@@ -91,17 +103,22 @@ export function retimeDay(input: {
       const opens = parseClock(place.opensAt);
       if (opens != null && start < opens) {
         warnings.push(copy.plan.warnings.opensWait(place.name, place.opensAt!, opens - start));
+        waitMin = opens - start;
         start = opens;
       }
     }
     const end = start + it.durationMin;
+    let pastClosing = false;
     if (place?.closesAt) {
       const closes = parseClock(place.closesAt);
-      if (closes != null && end > closes) warnings.push(copy.plan.warnings.closesDuring(place.name, place.closesAt!, clock(end)));
+      if (closes != null && end > closes) {
+        pastClosing = true;
+        warnings.push(copy.plan.warnings.closesDuring(place.name, place.closesAt!, clock(end)));
+      }
     }
 
     activeMin += travelMin + it.durationMin;
-    out.push({ ...it, startMin: start, endMin: end, arriveBy: leg, over: activeMin > budgetMin });
+    out.push({ ...it, startMin: start, endMin: end, arriveBy: leg, over: activeMin > budgetMin, reachedMin, waitMin, pinShortMin, pastClosing });
     clockMin = end;
     prev = place ?? prev;
   }

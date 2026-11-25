@@ -1,7 +1,7 @@
 import { DAY_BUDGET_MINUTES } from "@/lib/types";
 import { hardFilter, parseClock, parseWindow } from "./filter";
 import { buildReason, chooseDuration, DEFAULT_WEIGHTS, scorePlace, type ScoreContext } from "./score";
-import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, Weights } from "./types";
+import type { Alternative, DayInput, DayPlan, Meal, PlaceInput, PlannedItem, Rejected, TravelLeg, TravellerInput, Weights } from "./types";
 import { copy } from "@/copy";
 import { toFive } from "./travel-day";
 import { metresBetween } from "./travel";
@@ -20,20 +20,20 @@ const MAX_STOPS = 12;
 const SHARE_FLOOR = 4;
 /** A chosen stop may keep the day waiting this long for it to open: the
  *  point at which the day warns "the day waits … for it". */
-const OPEN_WAIT_MAX_MIN = 20;
+export const OPEN_WAIT_MAX_MIN = 20;
 /** …unless nothing fits without a wait: then up to two hours, an early
  *  riser's 07:00 start before anything near opens at 09:00. Evening-only
  *  places have their own rule (`eveningFrom`, below). */
 const OPEN_WAIT_LAST_RESORT_MIN = 120;
 /** A stop this close to an earlier one, reached by a detour longer than
  *  RETURN_DETOUR_KM, brings the day back across town (validate, below). */
-const RETURN_NEAR_M = 600;
+export const RETURN_NEAR_M = 600;
 const RETURN_DETOUR_KM = 1.5;
 /** A chosen stop the finished day goes this far out of its way for, off the
  *  line between the stops either side, is dropped (validate, below). Wider
  *  than growing's bar: a walking loop (Takeshita Street > Shinjuku Gyoen >
  *  Shibuya, 3.3 km) is a loop, not a trip across town. */
-const DETOUR_DROP_KM = 3.5;
+export const DETOUR_DROP_KM = 3.5;
 /** Extra validation passes a day may spend refilling after such drops. */
 const DETOUR_PASSES_MAX = 6;
 /** Runs of up to this many chosen stops count as one trip out, at the bar
@@ -49,7 +49,7 @@ const USUAL_LATE_START = 9 * 60;
 const EVENING_FROM = 17 * 60;
 /** An unpinned evening place goes in only when the day reaches this close
  *  to its window by itself; a pinned one waits as long as it takes. */
-const EVENING_WAIT_MAX = 60;
+export const EVENING_WAIT_MAX = 60;
 /** A pinned evening stop the day waits longer than this for gets a note. */
 const FREE_TIME_NOTE_MIN = 120;
 
@@ -86,6 +86,16 @@ interface Draft {
   lockedStart: number | null;
   score: ReturnType<typeof scorePlace>;
   alternatives: Alternative[];
+}
+
+/** When a chosen daytime stop must end: a 09:00 start, the pace's time
+ *  and an hour for lunch, or later for a later start, never after 19:00:
+ *  relaxed 16:00, standard 18:00, packed 19:00. An early riser starts
+ *  early to beat the crowds, not to finish early; a travel day starts
+ *  later by the move and has that much less time, so it ends as any day. */
+export function dayEndFor(dayStartMin: number, pace: TravellerInput["pace"], moveMin = 0): number {
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[pace] - moveMin);
+  return Math.min(DAY_END_LATEST, Math.max(dayStartMin + budgetMin, USUAL_LATE_START + DAY_BUDGET_MINUTES[pace]) + LUNCH_MIN);
 }
 
 /** The day's usual start: 07:00 for a crowd-avoider, else 09:00. */
@@ -127,12 +137,8 @@ export function planDay(input: DayInput): DayPlan {
   // because its visits are the full ones and its budget the shortest. On a
   // long stay it takes no more than its share of the places left (below).
   let maxItems = input.maxItems ?? MAX_STOPS;
-  // When a chosen daytime stop must end: a 09:00 start, the pace's time
-  // and an hour for lunch, or later for a later start, never after 19:00:
-  // relaxed 16:00, standard 18:00, packed 19:00. An early riser starts
-  // early to beat the crowds, not to finish early; a travel day starts
-  // later by the move and has that much less time, so it ends as any day.
-  const dayEndMin = Math.min(DAY_END_LATEST, Math.max(dayStart + budgetMin, USUAL_LATE_START + DAY_BUDGET_MINUTES[t.pace]) + LUNCH_MIN);
+  // When a chosen daytime stop must end (`dayEndFor`).
+  const dayEndMin = dayEndFor(dayStart, t.pace, moveMin);
 
   const considered: Rejected[] = [];
   const warnings: string[] = [];

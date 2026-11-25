@@ -1256,6 +1256,20 @@ export const en = {
       closesDuring: (name: string, closes: string, ends: string) => `${name} closes at ${closes}; this visit runs to ${ends}`,
       overDay: (over: string, hours: number) => `${over} over a ${hours}-hour day`,
     },
+    // A place the traveller adds by hand (engine/fit.ts). The problems say
+    // why it doesn't fit the day as it stands; the praise says what is true
+    // and good about it there. Each comes from the engine's own facts, with
+    // the planner's own lines (leftOut, reasons) wherever one already says it.
+    fit: {
+      overDay: (over: string, budget: string) => `the day would run ${over} over its ${budget}`,
+      moreOver: (more: string, over: string) => `the day is already ${over} over, and this adds ${more}`,
+      pushesClosing: (name: string, closes: string) => `${name} would then run past its closing at ${closes}`,
+      pushesPin: (name: string, pinned: string) => `you'd reach ${name} after ${pinned}, the time it's pinned for`,
+      eveningWait: (from: string, reached: string) => `it's an evening place, at its best after ${from}, and the day's other stops are done by ${reached}`,
+      outOfWay: (from: string, to: string, km: string) => `it takes the day ${km} km out of its way between ${from} and ${to}`,
+      onTheWay: (from: string, to: string) => `it's on your way between ${from} and ${to}`,
+      walkFrom: (min: number, from: string) => `${min} min on foot from ${from}`,
+    },
     // Routes between cities.
     route: {
       canPlan: {
