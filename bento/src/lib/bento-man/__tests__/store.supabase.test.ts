@@ -6,7 +6,8 @@ import { SupabaseStore } from "../store.supabase";
 import { OutcomeUnknownError } from "../store";
 import { buildTripView, dayCoverage } from "../trip-view";
 import { planDocument } from "@/lib/trips/plan-document";
-import { computeDayDiff } from "../diff";
+import { computeDayDiff, dayBase } from "../diff";
+import { customStopKey } from "../custom-stop";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
 
@@ -439,5 +440,40 @@ describe("SupabaseStore reference reads past the API's row limit", () => {
 
     expect((await store.cities()).length).toBe(1200);
     expect((await store.places("city-0001")).length).toBe(1005);
+  });
+});
+
+describe("free-text stops (0036)", () => {
+  it("writes one as place_id null and its name, and a Bento stop exactly as before", async () => {
+    const { store, rpc } = fixture();
+    const base = { sortOrder: 0, startMin: 600, durationMin: 60, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null };
+    await store.saveDay({ date: "2026-11-21", cityId: "kyoto-city", items: [
+      { ...base, placeId: "kyt-gion", name: "Gion" },
+      { ...base, placeId: customStopKey("Ramen Ichiran")!, customName: "Ramen Ichiran", name: "Ramen Ichiran" },
+    ] });
+    const items = rpc.mock.calls.find(([name]) => name === "replace_day_items")![1].p_items as Record<string, unknown>[];
+    expect(items[0]).not.toHaveProperty("custom_name");
+    expect(items[0].place_id).toBe("kyt-gion");
+    expect(items[1]).toMatchObject({ place_id: "", custom_name: "Ramen Ichiran" });
+  });
+
+  it("reads one back by its name, with no map link", async () => {
+    const { store, rows } = fixture();
+    rows.itinerary_days = [{ id: "d1", date: "2026-11-21", city_id: "kyoto-city", cities: null, itinerary_items: [
+      { id: "i1", place_id: null, custom_name: "Ramen Ichiran", sort_order: 0, start_time: "12:00:00", duration_min: 60, locked: false, reason: null, reason_terms: [], arrive_mode: null, arrive_minutes: null, arrive_detail: null },
+    ] }];
+    const item = (await store.state()).days[0].items[0];
+    expect(item).toMatchObject({ placeId: "custom:ramen-ichiran", customName: "Ramen Ichiran", name: "Ramen Ichiran", mapName: null });
+  });
+
+  it("the proposal base reads it as 0031 does: placeId null", () => {
+    const base = dayBase([{ placeId: "custom:ramen", name: "Ramen", sortOrder: 0, startMin: 600, locked: false }]);
+    expect(base[0].placeId).toBeNull();
+  });
+
+  it("one key per name, whatever the spacing or case; nothing for a name of only symbols", () => {
+    expect(customStopKey("  Ramen   ICHIRAN ")).toBe(customStopKey("ramen-ichiran"));
+    expect(customStopKey("一蘭 ラーメン")).toBe("custom:一蘭-ラーメン");
+    expect(customStopKey("!!!")).toBeNull();
   });
 });
