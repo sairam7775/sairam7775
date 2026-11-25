@@ -22,7 +22,7 @@ import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
 import { nightsBetween, OutcomeUnknownError, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
-import { isCustomStop } from "./custom-stop";
+import { CUSTOM_STOP_PREFIX, customStopKey, isCustomStop } from "./custom-stop";
 import { aroundCustomStops, customStopsForPlan } from "./custom-plan";
 import { restoreCustomStops } from "./custom-restore";
 import { bookedPlaceIds } from "@/lib/vault/match";
@@ -306,6 +306,48 @@ export const TOOLS: ModelTool[] = [
 // ---------------------------------------------------------------- helpers
 
 const j = (v: unknown) => JSON.stringify(v);
+
+/** A stop the traveller typed (0036) that a lookup by name finds: by its
+ *  key, its name, or a name inside it ("Aunt Keiko's" for "Dinner at Aunt
+ *  Keiko's"). Live, 26 Nov 2026: told only "nothing matches", he offered to
+ *  look the journey up from an address. Nothing in Bento does that;
+ *  route_between takes a station. */
+const OWN_STOP_NOTE =
+  "This is the traveller's own stop, not one of Bento's places: Bento has no hours, position or station for it, and nothing in Bento can look up an address. Don't offer to work anything out from an address. If the traveller tells you its nearest station, route_between can give the train to that station.";
+
+type OwnStop = { name: string; date: string; time: string | null };
+
+// Words that start or join many stops' names: alone, they name none.
+const GENERIC = new Set("a an the at in on of to with and for my our dinner lunch breakfast brunch tea coffee drinks meal cafe restaurant bar shop hotel friend friends home".split(" "));
+// Kana and kanji: a Japanese name has no spaces to split on.
+const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+
+/** Is `wanted` enough of `slug` (both slugs) to name it? Whole words of
+ *  it, not all of them generic, or two or more Japanese characters inside it. */
+function namesPart(slug: string, wanted: string): boolean {
+  if (CJK.test(wanted)) return [...wanted].length >= 2 && slug.includes(wanted);
+  if (!`-${slug}-`.includes(`-${wanted}-`)) return false;
+  return wanted.split("-").some((w) => w.length >= 2 && !GENERIC.has(w));
+}
+
+/** The traveller's own stops a name fits: an exact one alone if there is
+ *  one, else every one it names part of (up to five), in trip order. */
+async function ownStopsNamed(store: TripStore, query: string): Promise<OwnStop[]> {
+  const wanted = (isCustomStop(query.trim()) ? query.trim() : customStopKey(query))?.slice(CUSTOM_STOP_PREFIX.length);
+  if (!wanted) return [];
+  const state = await store.state();
+  const exact: OwnStop[] = [];
+  const part: OwnStop[] = [];
+  for (const d of [...state.days].sort((a, b) => a.date.localeCompare(b.date)))
+    for (const it of [...d.items].sort((a, b) => a.sortOrder - b.sortOrder)) {
+      if (!isCustomStop(it.placeId)) continue;
+      const slug = it.placeId.slice(CUSTOM_STOP_PREFIX.length);
+      const stop = { name: it.customName ?? it.name, date: d.date, time: it.startMin == null ? null : `${clock(it.startMin)}–${clock(it.startMin + (it.durationMin ?? 0))}` };
+      if (slug === wanted) exact.push(stop);
+      else if (namesPart(slug, wanted)) part.push(stop);
+    }
+  return (exact.length ? exact : part).slice(0, 5);
+}
 
 /** The traveller for one city: preferences plus that city's budget band. */
 export function travellerFor(prefs: Prefs, budgetBand: BudgetBand | null): TravellerInput {
@@ -958,7 +1000,12 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       const p = GetPlace.safeParse(rawInput);
       if (!p.success) return fail(`invalid input: ${p.error.issues[0].message}`);
       const matches = await store.searchPlaces(p.data.query, p.data.city_id ?? null);
-      if (!matches.length) return { result: j({ matches: [], note: "nothing in the database matches — say you don't have it rather than guessing" }) };
+      if (!matches.length) {
+        const own = await ownStopsNamed(store, p.data.query);
+        if (own.length === 1) return { result: j({ matches: [], own_stop: own[0], note: OWN_STOP_NOTE }) };
+        if (own.length) return { result: j({ matches: [], own_stops: own, note: `${OWN_STOP_NOTE} Several of their stops fit this name: ask which one if it matters.` }) };
+        return { result: j({ matches: [], note: "nothing in the database matches — say you don't have it rather than guessing" }) };
+      }
       return { result: j({ matches: matches.slice(0, 5).map(placeFacts) }) };
     }
 

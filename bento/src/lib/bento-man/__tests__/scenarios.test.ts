@@ -290,6 +290,12 @@ describe("eval scenarios", () => {
         "I can't check Aunt Keiko's hours, so leave at 18:30.",
         "I can't check Aunt Keiko's, but it is open until 22:00.",
         "I can't check whether Aunt Keiko's takes bookings, but it is open until 22:00.",
+        // Live, 26 Nov: an offer Bento can't keep (nothing looks up an address).
+        "I do not have the location or the opening hours for Aunt Keiko's on file, so I cannot tell you when to leave or how late it stays open. If you have the address, I can look up how long it takes to travel there from your location that evening.",
+        "I do not have information on Aunt Keiko's in my records, so I cannot tell you when it opens or closes, or when you should leave for it. If you have an address for the restaurant, I can look up how long it takes to reach it from your previous location.",
+        "I don't know Aunt Keiko's. Send me the address and I'll work out the route.",
+        "I don't know Aunt Keiko's. Send me the address. I'll work out the route.",
+        "I don't know Aunt Keiko's. I can look up the journey if you give me the address.",
         "I don't know Aunt Keiko's but leave by 18:15.",
       ],
       [
@@ -297,6 +303,10 @@ describe("eval scenarios", () => {
         "I don't know Aunt Keiko's: it's your own stop, so Bento can't check whether it's open late or the travel time. Your plan has it at 19:00 for 90 minutes.",
         // Review 3, #3: a negated statement is not a claim.
         "I can't check Aunt Keiko's hours, so I can't tell you to leave at 18:30.",
+        "Aunt Keiko's isn't one of Bento's places, so I can't check its hours. If you tell me its nearest station, I can look up the train there.",
+        "I can't check Aunt Keiko's: an address doesn't help me, but its nearest station would, and then I can find the train.",
+        "I can't check Aunt Keiko's. Instead of an address, I can use its nearest station.",
+        "I can't check Aunt Keiko's. Don't send me the address. I'll find a route from its nearest station.",
         "I can't check Aunt Keiko's hours or tell you to leave at 18:30.",
         "I can't confirm whether Aunt Keiko's is open until 22:00.",
       ]],
