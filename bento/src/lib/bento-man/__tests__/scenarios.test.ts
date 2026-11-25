@@ -286,10 +286,15 @@ describe("eval scenarios", () => {
         "Plan on ¥3,000 a head at Aunt Keiko's.",
         "It's a 20 min walk to Aunt Keiko's from the market.",
         "See you there at 19:00. Enjoy dinner.",
+        // A negation in another clause doesn't excuse the claim.
+        "I can't check Aunt Keiko's hours, so leave at 18:30.",
+        "I don't know Aunt Keiko's but leave by 18:15.",
       ],
       [
         "Dinner at Aunt Keiko's isn't one of Bento's places, so I can't check its hours or how long it takes to get there. Ask Keiko for the address and check the route on the day. Nishiki Market ends at 13:00, so the evening is yours.",
         "I don't know Aunt Keiko's: it's your own stop, so Bento can't check whether it's open late or the travel time. Your plan has it at 19:00 for 90 minutes.",
+        // Review 3, #3: a negated statement is not a claim.
+        "I can't check Aunt Keiko's hours, so I can't tell you to leave at 18:30.",
       ]],
     ["days-replan-keeps-custom",
       [
@@ -300,10 +305,19 @@ describe("eval scenarios", () => {
         "Here's the 23rd from 11:00. Note the proposal drops Aunt Keiko's dinner at 19:00.",
         // Kept, but no time said.
         "The 23rd now starts at 11:00 with Nanzen-ji; Aunt Keiko's dinner stays. It's on the card.",
+        // Review 3, #2: the time must be the dinner's own, not another stop's.
+        "I kept Aunt Keiko's dinner at 20:00; Pontocho stays at 19:00.",
+        "I kept Aunt Keiko's dinner at 20:00, and Pontocho stays at 19:00.",
+        "Pontocho is at 19:00, and I kept Aunt Keiko's dinner.",
+        "The dinner at Aunt Keiko's stays at 19:00 for now. I haven't changed the rest, but removed Aunt Keiko's dinner.",
       ],
       [
         "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's stays at 19:00, and the day is planned around it.",
         "Here's the 23rd from 11:00, waiting for your OK. I kept Aunt Keiko's dinner at 7pm, as you had it.",
+        // Review 3, #3: a negated statement is not a claim it was dropped.
+        "Keiko's dinner stays at 19:00; I haven't removed Aunt Keiko's dinner.",
+        "I removed Nishiki Market but kept Aunt Keiko's dinner at 19:00.",
+        "Your 19:00 dinner at Aunt Keiko's is still there, and the rest starts at 11:00.",
       ]],
   );
   for (const [id, bad, good] of graded) {

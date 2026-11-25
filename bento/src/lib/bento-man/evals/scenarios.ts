@@ -86,6 +86,14 @@ const keikoDay: NonNullable<MemorySetup["days"]>[number] = { date: "2026-11-23",
 // Says Bento can't check a stop it doesn't know.
 const cantCheckCustom = /(can't|cannot|can not|don't|do not|isn't able to|unable to) (check|know|confirm|tell)|(isn't|is not|not) one of Bento's places|(don't|do not) have[^.\n]{0,40}(Keiko|hours|address|that place|this place)|your own stop/i;
 
+// A claim, not a negated one: the pattern with no negation before it in its
+// own clause ("I can't tell you to leave at 18:30", "I haven't removed …").
+// "so", "but", "and" and "then" start a new claim, as punctuation does.
+const unnegated = (negation: string, claim: RegExp) =>
+  new RegExp(String.raw`(?<!\b(?:${negation})\b(?:(?!\b(?:so|but|and|then)\b)[^.;:,\n]){0,40})(?:${claim.source})`, claim.flags);
+const CANT_SAY = "can['’]t|cannot|can not|couldn['’]t|unable to|not able to|don['’]t know|do not know";
+const DIDNT = "haven['’]t|have not|hasn['’]t|has not|didn['’]t|did not|don['’]t|won['’]t|not|never|without";
+
 const noExclaim = /^[^!]*$/;
 // How a decline reads, for scenarios that must be answered instead.
 // Code in a reply: a fence, a function, a lambda or the usual reversals.
@@ -495,7 +503,7 @@ export const SCENARIOS: Scenario[] = [
         /Keiko[^.\n]{0,80}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i,
         /\b(open|opens|closes)\b[^.\n]{0,20}\b(until|till|at)\s+\d{1,2}([:.]\d{2})?[^.\n]{0,60}Keiko/i,
         // A departure time, which needs a travel time Bento doesn't have.
-        /\bleave\b[^.\n]{0,20}\b(at|by|around|before)\s+\d{1,2}([:.]\d{2})?/i,
+        unnegated(CANT_SAY, /\bleave\b[^.\n]{0,20}\b(at|by|around|before)\s+\d{1,2}([:.]\d{2})?/i),
         // A travel time in minutes.
         /\b\d+\s*(?:min|mins|minutes)\b[^.\n]{0,20}\b(by train|on foot|walk|ride|journey|away|to get)|\b(walk|ride|train|journey|takes?)\b[^.\n]{0,15}\b\d+\s*(?:min|mins|minutes)\b/i,
         // A price for it.
@@ -515,14 +523,18 @@ export const SCENARIOS: Scenario[] = [
       proposal: "days",
       honestAboutProposal: true,
       // Says the dinner stays ("kept", "stays", "still", "around" near its
-      // name), and its time, 19:00 or 7pm, somewhere in the reply.
+      // name), and its own time, 19:00 or 7pm: in its clause with no other
+      // time between, so another stop's 19:00 doesn't count.
       mustMatch: [
         /Keiko[^.\n]{0,80}\b(kept|keeps?|stays?|still|remains?|around|unchanged|untouched|in place)\b|\b(kept|keeps?|keeping|still|around)\b[^.\n]{0,60}Keiko/i,
-        /\b19[:.]00\b|\b7\s?(pm|p\.m\.)|\bseven in the evening\b/i,
+        /Keiko[^.;!?\n\d]{0,80}(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.)|\bseven in the evening\b)|(?:\b19[:.]00\b|\b7(?:[:.]00)?\s?(?:pm|p\.m\.))\s+(?:dinner|meal|stop|booking|reservation)?[^.,;!?\n\d]{0,20}Keiko/i,
       ],
       mustNotMatch: [
         // Said to be dropped or left out of the day.
-        /Keiko[^.\n]{0,60}\b(is|was|has been|gets?|got)\s+(left out|dropped|removed|taken out|cut)\b|\b(left out|dropped|removed|drops|took out|takes out|cut)\b[^.\n]{0,30}Keiko|Keiko[^.\n]{0,40}\b(isn't|is not|no longer|won't be)\s+(in|on|part of)\b|\badd\b[^.\n]{0,30}Keiko[^.\n]{0,30}\b(back|again)\b/i,
+        /Keiko[^.\n]{0,60}\b(is|was|has been|gets?|got)\s+(left out|dropped|removed|taken out|cut)\b/i,
+        // Not "I removed Nishiki Market but kept Aunt Keiko's".
+        unnegated(DIDNT, /\b(left out|dropped|removed|drops|removes|took out|takes out|cut)\b(?:(?!\b(?:but|kept|keeps?|keeping|around)\b)[^.;,\n]){0,30}Keiko/i),
+        /Keiko[^.\n]{0,40}\b(isn't|is not|no longer|won't be)\s+(in|on|part of)\b|\badd\b[^.\n]{0,30}Keiko[^.\n]{0,30}\b(back|again)\b/i,
       ],
     },
   },
