@@ -22,6 +22,7 @@ import { describeRoute } from "@/lib/transit/describe";
 import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
 import { nightsBetween, OutcomeUnknownError, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
+import { isCustomStop } from "./custom-stop";
 import { bookedPlaceIds } from "@/lib/vault/match";
 import { copy } from "@/copy";
 import { coverageWords } from "./context";
@@ -592,7 +593,8 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
 
   const all = await store.places(cityId);
   const byId = new Map(all.map((x) => [x.id, x]));
-  const lockedMap = new Map<string, LockedItem>((existing?.items ?? []).filter((i) => i.locked).map((i) => [i.placeId, { placeId: i.placeId, startMin: i.startMin }]));
+  // A free-text stop (0036) is no place to plan around, pinned or not.
+  const lockedMap = new Map<string, LockedItem>((existing?.items ?? []).filter((i) => i.locked && !isCustomStop(i.placeId)).map((i) => [i.placeId, { placeId: i.placeId, startMin: i.startMin }]));
   const excluded = new Set<string>();
   const avoidCategories = new Set<string>();
   // The day's start isn't stored, but nothing precedes the first stop, so

@@ -12,6 +12,7 @@ import { bookingDates, bookingSlot, canPlanOn, clashingBookings, type PlannableB
 import { clock } from "@/lib/bento-man/diff";
 import { copy } from "@/copy";
 import { showsMainSights } from "./route-card";
+import { isCustomStop } from "@/lib/bento-man/custom-stop";
 
 export interface DocBooking extends PlannableBooking {
   id: string;
@@ -42,6 +43,8 @@ export type DocEntry =
       crowdNote: string | null;
       tip: string | null;
       why: string | null;
+      /** A free-text stop (0036): nothing about it was checked. */
+      unchecked: boolean;
       /** Planned bookings this stop runs into, as the day box flags them. */
       clashesWith: string[];
     };
@@ -106,6 +109,7 @@ export function planDocument(
           crowdNote: p?.crowdNote ?? null,
           tip: p?.localTip ?? null,
           why: it.reason,
+          unchecked: isCustomStop(it.placeId),
           clashesWith: clashingBookings(it, bookings, date).map((b) => b.title),
         },
       };

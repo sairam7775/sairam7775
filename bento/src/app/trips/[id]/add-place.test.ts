@@ -17,7 +17,7 @@ vi.mock("@/lib/bento-man/store.supabase", () => ({
   SupabaseStore: function SupabaseStore() { return mocks.store; },
 }));
 
-import { addPlaceToDay, placesForDay } from "./day-actions";
+import { addCustomStop, addPlaceToDay, placesForDay, replanDayAction } from "./day-actions";
 
 const TRIP = "11111111-1111-4111-8111-111111111111";
 // Tuesday 24 November 2026, a Kyoto day.
@@ -194,5 +194,81 @@ describe("copy: the compliment and the refusal are the engine's words", () => {
   it("no filler: no exclamation marks or emoji anywhere in the sheet", () => {
     const lines = [ad.fits("A", "10:00", ["x"]), ad.doesntFit("A"), ad.anywayNote, ad.addedAnyway("A", "10:00"), ad.intro("Kyoto"), ...Object.values(copy.plan.fit).map((f) => (f as (...a: string[]) => string)("A", "B", "1.0"))];
     for (const l of lines) expect(l).not.toMatch(/!|\p{Extended_Pictographic}/u);
+  });
+});
+
+describe("addCustomStop: a place Bento doesn't know", () => {
+  it("validates the name and the length", async () => {
+    mocks.store = await tripWith(["kyt-nanzenji"]);
+    for (const bad of [
+      { name: "", durationMin: 60 },
+      { name: "x".repeat(81), durationMin: 60 },
+      { name: "!!!", durationMin: 60 },
+      { name: "Bar\u0007", durationMin: 60 },
+      { name: "Ramen", durationMin: 2 },
+      { name: "Ramen", durationMin: 721 },
+      { name: "Ramen", durationMin: 30.5 },
+    ]) {
+      expect(await addCustomStop({ tripId: TRIP, date: DAY, ...bad }), JSON.stringify(bad)).toEqual({ status: "error", error: ad.errors.badInput });
+    }
+  });
+
+  it("refuses when nobody is signed in, and on someone else's trip writes nothing", async () => {
+    mocks.user = null;
+    expect(await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 })).toEqual({ status: "error", error: ad.errors.signedOut });
+    mocks.user = { id: "u1" };
+    const store = await tripWith(["kyt-nanzenji"]);
+    vi.spyOn(store, "state").mockRejectedValue(new Error("trip not found"));
+    const save = vi.spyOn(store, "saveDay");
+    mocks.store = store;
+    expect(await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 })).toEqual({ status: "error", error: ad.errors.failed });
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it("adds it at the end, unchecked, for the length given, with guessed legs", async () => {
+    const store = await tripWith(["kyt-nanzenji", "kyt-gion"]);
+    mocks.store = store;
+    const r = await addCustomStop({ tripId: TRIP, date: DAY, name: "  Ramen   Ichiran ", durationMin: 90 });
+    expect(r.status).toBe("added");
+    if (r.status !== "added") return;
+    expect(r.name).toBe("Ramen Ichiran");
+    const day = await dayOf(store);
+    const last = day.items[day.items.length - 1];
+    expect(last).toMatchObject({ placeId: "custom:ramen-ichiran", customName: "Ramen Ichiran", name: "Ramen Ichiran", durationMin: 90, arriveMode: "estimate", arriveMinutes: 45 });
+    expect(r.startMin).toBe(last.startMin);
+    expect(r.notes).toEqual([copy.plan.warnings.uncheckedLeg(45)]);
+    // Once a day per name.
+    expect(await addCustomStop({ tripId: TRIP, date: DAY, name: "ramen ichiran", durationMin: 60 })).toEqual({ status: "error", error: ad.errors.alreadyHere("ramen ichiran") });
+  });
+
+  it("a Bento place added after it takes a guessed leg from it, not a train from the stop before", async () => {
+    const store = await tripWith(["kyt-nanzenji"]);
+    mocks.store = store;
+    await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 });
+    const r = await addPlaceToDay({ tripId: TRIP, date: DAY, placeId: "kyt-gion", anyway: true });
+    expect(r.status).toBe("added");
+    const day = await dayOf(store);
+    const ramen = day.items.findIndex((i) => i.placeId === "custom:ramen");
+    // Both legs touching the free-text stop are the guess, wherever Gion went.
+    expect(day.items[ramen].arriveMode).toBe("estimate");
+    if (ramen + 1 < day.items.length) expect(day.items[ramen + 1].arriveMode).toBe("estimate");
+    expect(day.items.filter((i) => i.arriveMode === "estimate")).toHaveLength(ramen + 1 < day.items.length ? 2 : 1);
+  });
+
+  it("a re-plan never errors on one: it is left to the proposal, which shows it out", async () => {
+    const store = await tripWith(["kyt-nanzenji"]);
+    mocks.store = store;
+    await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 });
+    const day = await dayOf(store);
+    await store.saveDay({ ...day, items: day.items.map((i) => ({ ...i, locked: true })) });
+    const append = vi.spyOn(store, "append");
+    const form = new FormData();
+    form.set("tripId", TRIP);
+    form.set("date", DAY);
+    const thrown = await replanDayAction(form).then(() => "", (e: Error) => e.message);
+    expect(thrown).not.toMatch(/error=/);
+    const diff = append.mock.calls[0][2]!.days![0];
+    expect(diff.removed.map((x) => x.name)).toContain("Ramen");
+    expect(diff.warnings.join(" ")).not.toMatch(/custom:/);
   });
 });

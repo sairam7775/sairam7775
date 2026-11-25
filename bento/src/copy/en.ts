@@ -552,6 +552,8 @@ export const en = {
     pinned: "pinned",
     over: "over",
     clashesWith: (titles: string) => `clashes with ${titles}`,
+    // A stop the traveller named that isn't one of Bento's places (0036).
+    unchecked: "Not one of Bento's places, so its hours and the travel to it aren't checked.",
     pin: "Pin",
     unpin: "Unpin",
     pinHint: "Keep this exactly here",

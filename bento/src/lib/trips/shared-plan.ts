@@ -7,6 +7,7 @@ import { DEFAULT_PREFS, type TripState } from "@/lib/bento-man/store";
 import { rowToPlace } from "@/lib/engine/load";
 import type { PlaceInput } from "@/lib/engine/types";
 import type { DocBooking } from "./plan-document";
+import { customStopKey } from "@/lib/bento-man/custom-stop";
 
 const text = z.string().nullable();
 const count = z.number().int().nullable();
@@ -36,7 +37,9 @@ export const SharedPlanSchema = z.object({
     city_id: text,
     items: z.array(z.object({
       id: z.string(),
-      place_id: z.string(),
+      // Null for a free-text stop (0036), named by custom_name instead.
+      place_id: z.string().nullable(),
+      custom_name: text.optional(),
       sort_order: z.number().int(),
       start_time: text,
       duration_min: count,
@@ -101,7 +104,11 @@ export function sharedPlanFromJson(v: unknown): SharedPlan | null {
         date: d.date,
         cityId: d.city_id,
         items: d.items.map((i) => ({
-          id: i.id, placeId: i.place_id, name: names.get(i.place_id) ?? i.place_id, sortOrder: i.sort_order,
+          id: i.id,
+          placeId: i.place_id ?? (i.custom_name ? customStopKey(i.custom_name) : null) ?? i.id,
+          customName: i.custom_name ?? null,
+          name: i.custom_name ?? (i.place_id ? names.get(i.place_id) ?? i.place_id : ""),
+          sortOrder: i.sort_order,
           startMin: toMin(i.start_time), durationMin: i.duration_min, locked: false, reason: i.reason, reasonTerms: [],
           arriveMode: i.arrive_mode, arriveMinutes: i.arrive_minutes, arriveDetail: i.arrive_detail,
         })),

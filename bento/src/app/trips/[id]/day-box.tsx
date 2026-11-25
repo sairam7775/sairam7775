@@ -41,6 +41,8 @@ export interface DayBoxItem {
   arriveDetail: string | null;
   /** The place's checked background (0027), when it has one. */
   background?: string | null;
+  /** A stop the traveller named that Bento doesn't know (0036). */
+  unchecked?: boolean;
 }
 
 export interface DayBoxProps {
@@ -547,6 +549,7 @@ export function DayBox(p: DayBoxProps) {
                         {t.map}
                       </a>
                     )}
+                    {it.unchecked && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{t.unchecked}</p>}
                     {it.reason && <p className="mt-1 text-[0.86rem] leading-snug text-ink-2">{it.reason}</p>}
                     {it.background && (
                       <details className="mt-1.5 text-[0.84rem] text-ink-2">
