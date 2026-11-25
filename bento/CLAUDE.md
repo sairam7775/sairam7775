@@ -511,7 +511,9 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   `bento-man/custom-stop.ts`). Never called a fit: it goes at the end for
   the length given, `retimeDay` takes it as `unchecked` (45-minute
   estimate legs either side), and every reader says it isn't checked.
-  `planDay` never sees one (a re-plan shows it out). A new reader of
+  A re-plan (`replanDay`, `plan_days`) keeps it at its saved
+  time and length as a fixed block, never in `removed` (`custom-plan.ts`:
+  a pinned stand-in place with guessed legs). A new reader of
   items must handle `place_id` null; `dayBase` and `day_base` give one
   `placeId: null` and its `customName`.
 - An add is written only onto the day it was checked against
