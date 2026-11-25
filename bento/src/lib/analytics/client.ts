@@ -1,7 +1,8 @@
 "use client";
 
 import type { PostHog } from "posthog-js";
-import { pathOnly } from "./url";
+import { safeError } from "./safe-error";
+import { scrubEvent } from "./scrub";
 
 /** The one door to PostHog. Nothing here runs until the traveller has said
  *  yes (`start`), and every call is a no-op before that, so feature code can
@@ -10,8 +11,9 @@ import { pathOnly } from "./url";
  *
  *  What may be sent: event names, counts, durations, ids, booleans, and
  *  enum-like labels. Never chat text, a booking's title or reference, an
- *  email, a name or a birth date. Autocapture keeps no element text, and
- *  session replays blank out every piece of text, attribute and field. */
+ *  email, a name or a birth date. Autocapture keeps no element text,
+ *  session replays blank out every piece of text, attribute and field, and
+ *  an error leaves without its message (`scrubEvent`). */
 
 type Prop = string | number | boolean | null | string[];
 
@@ -32,12 +34,6 @@ let forgetPending = false;
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
-type Bag = Record<string, unknown> | undefined;
-const scrub = (bag: Bag) => {
-  if (!bag) return;
-  for (const [k, v] of Object.entries(bag)) if (typeof v === "string") bag[k] = pathOnly(v);
-};
-
 export const analyticsConfigured = () => Boolean(KEY);
 
 // Events from the moments between a yes and the SDK being ready (a cold
@@ -55,7 +51,9 @@ function init(posthog: PostHog, key: string) {
       defaults: "2026-05-30",
       person_profiles: "identified_only",
       capture_pageview: "history_change",
-      capture_exceptions: true,
+      // Off: PostHog's own catcher would hand it errors as thrown, message
+      // and all. Bento's listeners below send them through safeError instead.
+      capture_exceptions: false,
       // Clicks are recorded by element, never by the words on it: a chat
       // bubble or a booking name must not reach analytics.
       mask_all_text: true,
@@ -65,7 +63,24 @@ function init(posthog: PostHog, key: string) {
         maskTextSelector: "*",
         // Names also sit in attributes (aria-label="Delete Kyoto trip").
         maskAllElementAttributes: true,
+        // No network requests in recordings, whatever the project settings.
+        recordHeaders: false,
+        recordBody: false,
       },
+      // Each of these is off here so PostHog's project settings can't turn
+      // it on: console output (could hold anything; recordings and the logs
+      // pipeline, which skips before_send), its own page-speed capture (Bento
+      // sends three numbers itself, without the element), dead clicks,
+      // marketing parameters taken from the address, and features Bento
+      // doesn't use.
+      enable_recording_console_log: false,
+      logs: { captureConsoleLogs: false, beforeSend: () => null },
+      capture_performance: false,
+      capture_dead_clicks: false,
+      save_campaign_params: false,
+      disable_product_tours: true,
+      disable_conversations: true,
+      disable_web_experiments: true,
       // Opted out unless told otherwise, so reset() (sign-out, withdrawal) or
       // cleared storage can only ever fall back to not capturing.
       opt_out_capturing_by_default: true,
@@ -75,10 +90,8 @@ function init(posthog: PostHog, key: string) {
         // No location from the IP address: Bento has no use for it (the
         // privacy page says so).
         event.properties = { ...event.properties, $geoip_disable: true };
-        scrub(event.properties);
-        scrub(event.$set as Bag);
-        scrub(event.$set_once as Bag);
-        return event;
+        // Error messages removed, addresses cut to their path, at any depth.
+        return scrubEvent(event);
       },
     });
 }
@@ -200,7 +213,39 @@ export function track(event: string, props?: Record<string, Prop>) {
   else if (!refused && queue.length < MAX_QUEUE) queue.push(["event", event, props]);
 }
 
+/** An error, sent without its message: a known type, the stack's frames
+ *  and Bento's own properties (`safeError`; `scrubEvent` checks again). */
+// A page that keeps failing sends the first few, not a flood.
+const MAX_ERRORS = 20;
+let errorsSent = 0;
+const reported = new WeakSet<object>();
+
 export function trackError(error: unknown, props?: Record<string, Prop>) {
-  if (started) ph?.captureException(error, props);
-  else if (!refused && queue.length < MAX_QUEUE) queue.push(["error", error, props]);
+  // Nothing is used up by an error that won't be sent or held.
+  if (!started && (refused || queue.length >= MAX_QUEUE)) return;
+  if (errorsSent >= MAX_ERRORS) return;
+  // The same thrown object reported twice (a boundary and the window) is one.
+  if (error && typeof error === "object") {
+    if (reported.has(error)) return;
+    reported.add(error);
+  }
+  errorsSent++;
+  const safe = safeError(error);
+  if (started) ph?.captureException(safe, props);
+  else queue.push(["error", safe, props]);
+}
+
+// Errors nothing caught, in place of PostHog's capture_exceptions (marked
+// unhandled in `source`). Held like any event until the answer is known,
+// and dropped on a no. Never throws: a broken error object is skipped.
+if (typeof window !== "undefined") {
+  const send = (thrown: unknown, source: string) => {
+    try {
+      trackError(thrown, { source, unhandled: true });
+    } catch {
+      // Nothing to report with.
+    }
+  };
+  window.addEventListener("error", (e) => send(e.error, "onerror"));
+  window.addEventListener("unhandledrejection", (e) => send(e.reason, "unhandledrejection"));
 }

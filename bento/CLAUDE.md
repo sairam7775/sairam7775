@@ -77,7 +77,19 @@ Explained in `../docs/bento/40-non-functional/` (security, privacy, costs) and `
   send names, counts, durations, ids, booleans and copy keys (`reasonOf`),
   never chat text, booking titles or references, emails, names or birth
   dates. Autocapture keeps no element text; replays mask all text and
-  inputs. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
+  inputs; an error leaves with a known type and only its frames in Bento's
+  built files (no function names), never its message (`trackError` sends `safeError`,
+  `lib/analytics/safe-error.ts`; PostHog's own `capture_exceptions` is off
+  and window listeners send uncaught errors the same way), and
+  `scrubEvent` (`lib/analytics/scrub.ts`, in `before_send`) checks again
+  and keeps only the path of addresses at any depth (heatmap keys too), and
+  drops the page title and values lifted from an address. Console capture,
+  PostHog's own page-speed capture, dead clicks, campaign parameters and
+  network recording are off in `init`, so project settings can't turn them
+  on. Pass `trackError` and `track` only Bento's own values, never text from
+  a traveller. The copy makes no "never what you type" promise: features
+  PostHog runs from its own settings (the recorder, the toolbar) aren't
+  auditable from here. Without `NEXT_PUBLIC_POSTHOG_KEY` nothing loads and nobody is
   asked. If you collect something new, update `copy.privacy` too.
 - **CSP is enforced.** The policy lives in `src/lib/security/csp.ts`; a
   third-party origin it doesn't list is blocked in production, so add one
