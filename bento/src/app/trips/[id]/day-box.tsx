@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useOptimistic, useRef, useState, useTransition, type DragEvent, type PointerEvent } from "react";
+import { useEffect, useEffectEvent, useOptimistic, useRef, useState, useTransition, type DragEvent, type PointerEvent } from "react";
 import { moveItem, removeItem, reorderDay, replanDayAction, togglePin } from "./day-actions";
 import { planBooking, unplanBooking } from "./booking-actions";
 import { BOOKING_DRAG, BookingsColumn, KIND_LABEL, shortDate, whenText, type PlanBooking } from "./bookings-column";
@@ -11,7 +11,7 @@ import { track } from "@/lib/analytics/client";
 import { placeMapUrl } from "@/lib/maps/links";
 import { showsMainSights } from "@/lib/trips/route-card";
 import { arriveMinutesSuffix } from "@/lib/trips/arrive-line";
-import { HOLD_MS, IDLE, edgeScrollSpeed, holdComplete, lift, moveTo, pointerMove, press, release, type HoldState } from "./hold-to-drag";
+import { HOLD_MS, IDLE, edgeScrollSpeed, lift, nativeScroll, owns, pointerMove, press, release, stillValid, type HoldState } from "./hold-to-drag";
 
 const t = copy.day;
 /** The clock a hold is timed by (event handlers only). */
@@ -105,12 +105,18 @@ export function DayBox(p: DayBoxProps) {
   const [message, setMessage] = useState<{ tone: "error" | "ok"; text: string } | null>(null);
   // Hold-to-drag on a touch screen. The rules are in hold-to-drag.ts; the
   // ref is the truth for event handlers, `held` is what the render shows.
+  // The stops' container captures the finger, so a card re-rendered or
+  // removed under it can't strand the drag.
   const stopsRef = useRef<HTMLDivElement>(null);
   const holdRef = useRef<HoldState>(IDLE);
   const holdTimer = useRef<number | null>(null);
   const scrollFrame = useRef<number | null>(null);
   const lastClientY = useRef(0);
   const [held, setHeld] = useState<{ id: string; dy: number; to: number } | null>(null);
+  // An up/down, pin or remove sent from this box, until the day comes back
+  // from the server (a new `items`): no hold starts meanwhile.
+  const [editedItems, setEditedItems] = useState<DayBoxItem[] | null>(null);
+  const editing = editedItems === p.items;
   // The desktop drag only where there is a mouse: on a phone a long press
   // could start the browser's own drag and fight the hold.
   const [mouseDrag, setMouseDrag] = useState(true);
@@ -190,46 +196,90 @@ export function DayBox(p: DayBoxProps) {
     });
   }
 
+  // Where there is a mouse; and while a stop is held, the page stays still
+  // under it, and a press the page scrolls under is a swipe.
   useEffect(() => {
     const media = window.matchMedia("(any-hover: hover) and (any-pointer: fine)");
     const update = () => setMouseDrag(media.matches);
     update();
     media.addEventListener("change", update);
-    // React's touch listeners are passive. While a stop is held this one
+    // React's touch listeners are passive. While a stop is lifted this one
     // stops the page scrolling under the finger; a plain swipe still scrolls.
     const box = stopsRef.current;
     const holdScroll = (e: TouchEvent) => {
       if (holdRef.current.phase === "dragging" && e.cancelable) e.preventDefault();
     };
+    // Scrolling began before the hold was done: the browser has the
+    // gesture, so the hold gives way rather than lift and be cut off.
+    const pageScrolled = () => {
+      if (nativeScroll(holdRef.current) !== holdRef.current) clearHold();
+    };
     box?.addEventListener("touchmove", holdScroll, { passive: false });
+    window.addEventListener("scroll", pageScrolled, { passive: true });
     return () => {
       media.removeEventListener("change", update);
       box?.removeEventListener("touchmove", holdScroll);
-      if (holdTimer.current != null) window.clearTimeout(holdTimer.current);
-      if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current);
+      window.removeEventListener("scroll", pageScrolled);
+      clearHold();
     };
   }, []);
+
+  // The day changed while a stop was held (an up/down, a refresh): its
+  // order and the measured cards are stale, so the drag is dropped unsaved.
+  const ids = items.map((i) => i.placeId);
+  const idsKey = ids.join("\n");
+  const dropStaleHold = useEffectEvent((current: string[]) => {
+    if (!stillValid(holdRef.current, current)) cancelHold();
+  });
+  useEffect(() => {
+    dropStaleHold(idsKey ? idsKey.split("\n") : []);
+  }, [idsKey]);
 
   function setHold(s: HoldState) {
     holdRef.current = s;
     setHeld(s.phase === "dragging" ? { id: s.id, dy: s.dy, to: s.to } : null);
   }
 
-  function endHold() {
+  /** Stops the timer, the edge scroll and the capture. Saves nothing. */
+  function clearHold() {
+    const s = holdRef.current;
     if (holdTimer.current != null) window.clearTimeout(holdTimer.current);
     if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current);
     holdTimer.current = null;
     scrollFrame.current = null;
+    holdRef.current = IDLE;
+    const box = stopsRef.current;
+    if (s.phase !== "idle" && box?.hasPointerCapture(s.pointerId)) {
+      try {
+        box.releasePointerCapture(s.pointerId);
+      } catch {
+        // Already released by the browser.
+      }
+    }
   }
 
-  function onHoldDown(e: PointerEvent, id: string) {
-    if (!p.editable || pending) return;
+  /** The one way a hold ends without a drop. */
+  function cancelHold() {
+    clearHold();
+    setHeld(null);
+  }
+
+  function onHoldDown(e: PointerEvent<HTMLDivElement>) {
+    if (!p.editable || pending || editing) return;
+    const target = e.target as Element;
     // Buttons, links and "About this place" keep their own taps.
-    if ((e.target as Element).closest("a, button, summary, input, select, textarea")) return;
+    if (target.closest("a, button, summary, input, select, textarea")) return;
+    const id = target.closest<HTMLElement>("[data-stop]")?.dataset.stop;
+    if (!id) return;
     const next = press(holdRef.current, { id, pointerId: e.pointerId, pointerType: e.pointerType, x: e.clientX, y: e.clientY, at: now() });
     if (next === holdRef.current) return;
     holdRef.current = next;
     lastClientY.current = e.clientY;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // The pointer is already gone.
+    }
     holdTimer.current = window.setTimeout(liftHeld, HOLD_MS);
   }
 
@@ -237,18 +287,22 @@ export function DayBox(p: DayBoxProps) {
     holdTimer.current = null;
     const s = holdRef.current;
     if (s.phase !== "pressing") return;
-    if (!holdComplete(s, now())) {
+    const cards = [...(stopsRef.current?.querySelectorAll<HTMLElement>("[data-stop]") ?? [])];
+    const lifted = lift(s, {
+      order: cards.map((c) => c.dataset.stop ?? ""),
+      mids: cards.map((c) => {
+        const r = c.getBoundingClientRect();
+        return r.top + window.scrollY + r.height / 2;
+      }),
+      pageY: lastClientY.current + window.scrollY,
+      now: now(),
+    });
+    if (lifted === s) {
       holdTimer.current = window.setTimeout(liftHeld, 16);
       return;
     }
-    const cards = [...(stopsRef.current?.querySelectorAll<HTMLElement>("[data-stop]") ?? [])];
-    const from = cards.findIndex((c) => c.dataset.stop === s.id);
-    if (from < 0) return setHold(IDLE);
-    const mids = cards.map((c) => {
-      const r = c.getBoundingClientRect();
-      return r.top + window.scrollY + r.height / 2;
-    });
-    setHold(lift(s, { from, mids, pageY: lastClientY.current + window.scrollY }));
+    if (lifted.phase !== "dragging") return cancelHold();
+    setHold(lifted);
     try {
       navigator.vibrate?.(10);
     } catch {
@@ -271,29 +325,30 @@ export function DayBox(p: DayBoxProps) {
 
   function onHoldMove(e: PointerEvent) {
     const s = holdRef.current;
-    if (s.phase === "idle") return;
+    // Only the holding finger counts; a second finger or a mouse is ignored.
+    if (!owns(s, e.pointerId)) return;
     lastClientY.current = e.clientY;
     const next = pointerMove(s, { pointerId: e.pointerId, x: e.clientX, y: e.clientY, pageY: e.clientY + window.scrollY });
     if (next === s) return;
-    if (next.phase === "idle") endHold();
+    if (next.phase === "idle") return cancelHold();
     setHold(next);
   }
 
   function onHoldUp(e: PointerEvent) {
     const s = holdRef.current;
-    if (s.phase === "idle" || e.pointerId !== s.pointerId) return;
-    endHold();
-    const { state, move } = release(s, e.pointerId);
-    setHold(state);
-    if (move) saveOrder(moveTo(items.map((i) => i.placeId), move.from, move.to));
+    if (!owns(s, e.pointerId)) return;
+    const { next } = release(s, e.pointerId, ids);
+    cancelHold();
+    if (next && !pending && !editing) saveOrder(next);
   }
 
-  function onHoldCancel(e: PointerEvent) {
-    const s = holdRef.current;
-    if (s.phase === "idle" || e.pointerId !== s.pointerId) return;
-    endHold();
-    setHold(IDLE);
+  function onHoldLost(e: PointerEvent) {
+    if (owns(holdRef.current, e.pointerId)) cancelHold();
   }
+
+  // While a stop is lifted or a reorder is saving, the other edits wait, so
+  // two changes never race over the same day.
+  const editsLocked = held != null || pending;
 
   const hidden = (
     <>
@@ -307,6 +362,16 @@ export function DayBox(p: DayBoxProps) {
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_236px]">
         <div
           ref={stopsRef}
+          onPointerDown={onHoldDown}
+          onPointerMove={onHoldMove}
+          onPointerUp={onHoldUp}
+          onPointerCancel={onHoldLost}
+          onLostPointerCapture={onHoldLost}
+          // An up/down, pin or remove: no hold until the day comes back.
+          onSubmitCapture={() => {
+            cancelHold();
+            setEditedItems(p.items);
+          }}
           className={`relative flex flex-col gap-2.5 rounded-2xl ${dropFits === true ? "ring-2 ring-accent ring-offset-2 ring-offset-lacquer" : ""} ${dropFits === false ? "ring-2 ring-ume ring-offset-2 ring-offset-lacquer" : ""}`}
           onDragOver={(e) => {
             const dragged = draggingBooking ?? (e.dataTransfer.types.includes(BOOKING_DRAG) ? draggedRef.current : null);
@@ -410,10 +475,6 @@ export function DayBox(p: DayBoxProps) {
                     if (holdRef.current.phase !== "idle") return e.preventDefault();
                     setDragging(it.placeId);
                   }}
-                  onPointerDown={(e) => onHoldDown(e, it.placeId)}
-                  onPointerMove={onHoldMove}
-                  onPointerUp={onHoldUp}
-                  onPointerCancel={onHoldCancel}
                   // A long press would open the browser's menu over the stop.
                   onContextMenu={(e) => {
                     if (holdRef.current.phase !== "idle") e.preventDefault();
@@ -435,7 +496,7 @@ export function DayBox(p: DayBoxProps) {
                       : {}),
                     ...(held && held.id !== it.placeId && held.to === i ? { outline: "2px dashed var(--color-accent)", outlineOffset: "2px" } : {}),
                   }}
-                  className={`tile up lift relative flex gap-4 px-4 py-3.5 sm:px-5 ${FILLS[i % FILLS.length]} ${isOver ? "ring-2 ring-ume/70" : ""} ${dragging === it.placeId ? "opacity-40" : ""} ${over === it.placeId && dragging && dragging !== it.placeId ? "ring-2 ring-accent" : ""} ${held?.id === it.placeId ? "z-20 motion-safe:scale-[1.02]" : ""} ${p.editable ? "cursor-grab active:cursor-grabbing pointer-coarse:select-none [-webkit-touch-callout:none]" : ""}`}
+                  className={`tile up lift relative flex gap-4 px-4 py-3.5 sm:px-5 ${FILLS[i % FILLS.length]} ${isOver ? "ring-2 ring-ume/70" : ""} ${dragging === it.placeId ? "opacity-40" : ""} ${over === it.placeId && dragging && dragging !== it.placeId ? "ring-2 ring-accent" : ""} ${held?.id === it.placeId ? "z-20 motion-safe:scale-[1.02]" : ""} ${p.editable ? "cursor-grab active:cursor-grabbing [@media(any-pointer:coarse)]:select-none [-webkit-touch-callout:none]" : ""}`}
                 >
                   <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{it.startMin != null ? clock(it.startMin) : copy.time.noTime}</span>
                   <div className="min-w-0 flex-1">
@@ -496,16 +557,16 @@ export function DayBox(p: DayBoxProps) {
                     {p.editable && (
                       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                         <form action={togglePin}>{hidden}<input type="hidden" name="placeId" value={it.placeId} />
-                          <button className="min-h-9 rounded-full border border-ink/15 px-3 text-[0.78rem] text-ink-2 hover:border-ink/40" title={it.locked ? t.unpinHint : t.pinHint}>{it.locked ? t.unpin : t.pin}</button>
+                          <button className="min-h-9 rounded-full border border-ink/15 px-3 text-[0.78rem] text-ink-2 hover:border-ink/40 disabled:opacity-50" title={it.locked ? t.unpinHint : t.pinHint} disabled={editsLocked}>{it.locked ? t.unpin : t.pin}</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="up" />
-                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === 0} aria-label={t.moveEarlier(it.name)}>↑</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={editsLocked || i === 0} aria-label={t.moveEarlier(it.name)}>↑</button>
                         </form>
                         <form action={moveItem}>{hidden}<input type="hidden" name="placeId" value={it.placeId} /><input type="hidden" name="dir" value="down" />
-                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={i === items.length - 1} aria-label={t.moveLater(it.name)}>↓</button>
+                          <button className="min-h-9 min-w-9 rounded-full border border-ink/15 px-2 text-[0.9rem] text-ink-2 hover:border-ink/40 disabled:opacity-30" disabled={editsLocked || i === items.length - 1} aria-label={t.moveLater(it.name)}>↓</button>
                         </form>
                         <form action={removeItem} className="ml-auto">{hidden}<input type="hidden" name="placeId" value={it.placeId} />
-                          <ConfirmButton message={t.removeConfirm(it.name)} aria-label={t.removeLabel(it.name)} className="min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume">{t.remove}</ConfirmButton>
+                          <ConfirmButton disabled={editsLocked} message={t.removeConfirm(it.name)} aria-label={t.removeLabel(it.name)} className="min-h-9 rounded-full px-3 text-[0.78rem] text-ink-3 hover:bg-ume-soft hover:text-ume">{t.remove}</ConfirmButton>
                         </form>
                       </div>
                     )}

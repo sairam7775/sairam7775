@@ -1,10 +1,18 @@
 /** Hold a stop, then drag it: the day box's reorder on a touch screen.
  *  Pure, so the rules are tested without a browser; `day-box.tsx` feeds it
- *  pointer events, a timer and the cards' measured middles.
+ *  pointer events, a timer, scrolls and the cards' measured middles.
  *
- *  A finger or pen must be held still for `HOLD_MS` before the stop lifts.
- *  Moving more than `MOVE_TOLERANCE_PX` first cancels the hold, so a swipe
- *  is a scroll. A mouse never arms a hold: the desktop keeps its own drag.
+ *  A finger must be held still for `HOLD_MS` before the stop lifts. Moving
+ *  more than `MOVE_TOLERANCE_PX` first, or the page starting to scroll,
+ *  cancels the hold, so a swipe is a scroll. A mouse never arms a hold: the
+ *  desktop keeps its own drag. Nor does a pen: it can pan the page without
+ *  sending touch events, so nothing can stop the page scrolling under a
+ *  lifted stop; a pen uses the ↑ ↓ buttons.
+ *
+ *  A lifted stop keeps the day's order as it was when it lifted. If the day
+ *  changes before the drop (an ↑ ↓ tap, a refresh), the drag is cancelled
+ *  and nothing is saved: dropping by position would move the wrong stop.
+ *
  *  Pinned stops lift like any other, because the ↑ ↓ buttons and
  *  `reorderDay` move them too; re-timing never starts a pin before its
  *  pinned time. */
@@ -23,6 +31,8 @@ export type HoldState =
       phase: "dragging";
       id: string;
       pointerId: number;
+      /** The day's stop ids as they were when it lifted. */
+      order: string[];
       from: number;
       to: number;
       /** Each stop's middle, in page coordinates, measured as it lifted. */
@@ -38,36 +48,69 @@ export function press(
   s: HoldState,
   p: { id: string; pointerId: number; pointerType: string; x: number; y: number; at: number },
 ): HoldState {
-  if (s.phase !== "idle") return s;
-  if (p.pointerType !== "touch" && p.pointerType !== "pen") return s;
+  if (s.phase !== "idle" || p.pointerType !== "touch") return s;
   return { phase: "pressing", id: p.id, pointerId: p.pointerId, x: p.x, y: p.y, at: p.at };
+}
+
+/** Whether this pointer is the one holding. Check it before using any of
+ *  the event's values, so a second finger or a mouse can't steer the drag. */
+export function owns(s: HoldState, pointerId: number): boolean {
+  return s.phase !== "idle" && s.pointerId === pointerId;
 }
 
 export function holdComplete(s: HoldState, now: number): boolean {
   return s.phase === "pressing" && now - s.at >= HOLD_MS;
 }
 
-/** The hold is done: the stop at `from` lifts under the finger. */
-export function lift(s: HoldState, m: { from: number; mids: number[]; pageY: number }): HoldState {
-  if (s.phase !== "pressing") return s;
-  return { phase: "dragging", id: s.id, pointerId: s.pointerId, from: m.from, to: m.from, mids: m.mids, startPageY: m.pageY, dy: 0 };
+/** The hold is done: the stop lifts under the finger. `order` and `mids`
+ *  are the day's cards as they are now, in the same order. */
+export function lift(s: HoldState, m: { order: string[]; mids: number[]; pageY: number; now: number }): HoldState {
+  if (s.phase !== "pressing" || !holdComplete(s, m.now)) return s;
+  const from = m.order.indexOf(s.id);
+  if (from < 0 || m.mids.length !== m.order.length) return IDLE;
+  return {
+    phase: "dragging",
+    id: s.id,
+    pointerId: s.pointerId,
+    order: [...m.order],
+    from,
+    to: from,
+    mids: m.mids,
+    startPageY: m.pageY,
+    dy: 0,
+  };
 }
 
 /** `x`/`y` are screen coordinates (for the hold's tolerance); `pageY`
  *  includes the page's scroll (for where a dragged stop lands). */
 export function pointerMove(s: HoldState, p: { pointerId: number; x: number; y: number; pageY?: number }): HoldState {
-  if (s.phase === "idle" || p.pointerId !== s.pointerId) return s;
+  if (!owns(s, p.pointerId)) return s;
   if (s.phase === "pressing") {
     return Math.hypot(p.x - s.x, p.y - s.y) > MOVE_TOLERANCE_PX ? IDLE : s;
   }
-  if (p.pageY == null) return s;
+  if (s.phase !== "dragging" || p.pageY == null) return s;
   return { ...s, dy: p.pageY - s.startPageY, to: targetIndex(s.mids, s.from, p.pageY) };
 }
 
-export function release(s: HoldState, pointerId: number): { state: HoldState; move: { id: string; from: number; to: number } | null } {
-  if (s.phase === "idle" || pointerId !== s.pointerId) return { state: s, move: null };
-  if (s.phase === "pressing" || s.to === s.from) return { state: IDLE, move: null };
-  return { state: IDLE, move: { id: s.id, from: s.from, to: s.to } };
+/** The page scrolled by itself: a press it scrolled under is a swipe. A
+ *  lifted stop's own edge scroll is expected. */
+export function nativeScroll(s: HoldState): HoldState {
+  return s.phase === "pressing" ? IDLE : s;
+}
+
+/** Whether a hold still makes sense against the day as it is now. */
+export function stillValid(s: HoldState, order: string[]): boolean {
+  if (s.phase === "idle") return true;
+  if (s.phase === "pressing") return order.includes(s.id);
+  return sameOrder(s.order, order);
+}
+
+/** Let go. `next` is the order to save, or null when there is nothing to
+ *  save: a tap, a drop where it started, or a day that changed meanwhile. */
+export function release(s: HoldState, pointerId: number, order: string[]): { state: HoldState; next: string[] | null } {
+  if (!owns(s, pointerId)) return { state: s, next: null };
+  if (s.phase !== "dragging" || s.to === s.from || !stillValid(s, order)) return { state: IDLE, next: null };
+  return { state: IDLE, next: moveTo(s.order, s.order.indexOf(s.id), s.to) };
 }
 
 /** Where the dragged stop would land: after every other stop whose middle
@@ -94,4 +137,8 @@ export function edgeScrollSpeed(clientY: number, viewportHeight: number): number
   if (clientY < EDGE_PX) return -ramp(EDGE_PX - clientY);
   if (clientY > viewportHeight - EDGE_PX) return ramp(clientY - (viewportHeight - EDGE_PX));
   return 0;
+}
+
+function sameOrder(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i]);
 }
