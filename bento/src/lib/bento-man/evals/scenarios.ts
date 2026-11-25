@@ -74,6 +74,18 @@ const routed: MemorySetup = {
   ],
 };
 
+// A Kyoto day with a stop the traveller typed (0036): Bento knows nothing
+// about it, not its hours, address or the travel to it.
+const stopRow = { locked: false, reason: "", reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null };
+const keikoDay: NonNullable<MemorySetup["days"]>[number] = { date: "2026-11-23", cityId: "kyoto-city", items: [
+  { ...stopRow, placeId: "kyt-kiyomizu", name: "Kiyomizu-dera", sortOrder: 0, startMin: 540, durationMin: 90 },
+  { ...stopRow, placeId: "kyt-nishiki-market", name: "Nishiki Market", sortOrder: 1, startMin: 720, durationMin: 60 },
+  { ...stopRow, placeId: "custom:dinner-at-aunt-keiko-s", customName: "Dinner at Aunt Keiko's", name: "Dinner at Aunt Keiko's", sortOrder: 2, startMin: 19 * 60, durationMin: 90,
+    arriveMode: "estimate", arriveMinutes: 45, arriveDetail: "Travel time unknown — the day allows 45 min" },
+] };
+// Says Bento can't check a stop it doesn't know.
+const cantCheckCustom = /(can't|cannot|can not|don't|do not|isn't able to|unable to) (check|know|confirm|tell)|(isn't|is not|not) one of Bento's places|(don't|do not) have[^.\n]{0,40}(Keiko|hours|address|that place|this place)|your own stop/i;
+
 const noExclaim = /^[^!]*$/;
 // How a decline reads, for scenarios that must be answered instead.
 // Code in a reply: a fence, a function, a lambda or the usual reversals.
@@ -465,6 +477,50 @@ export const SCENARIOS: Scenario[] = [
     },
     user: "Swap Kiyomizu-dera out on the 23rd.",
     expect: { tools: ["replan_day"], notTools: ["plan_days"], proposal: "days" },
+  },
+
+  // ------------------------------------------- free-text stops (0036)
+  {
+    id: "days-custom-stop-facts",
+    intent: "A stop the traveller typed (not one of Bento's places) gets no invented hours, travel time, departure time, price or address: he says Bento can't check it.",
+    setup: { ...routed, days: [keikoDay] },
+    user: "What time do we need to leave for dinner at Aunt Keiko's on the 23rd? And is it open late?",
+    expect: {
+      notTools: ["plan_days", "replan_day", "propose_route"],
+      proposal: "none",
+      honestAboutProposal: true,
+      mustMatch: [/Keiko/i, cantCheckCustom],
+      mustNotMatch: [
+        // Hours for it, either side of its name.
+        /Keiko[^.\n]{0,80}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i,
+        /\b(open|opens|closes)\b[^.\n]{0,20}\b(until|till|at)\s+\d{1,2}([:.]\d{2})?[^.\n]{0,60}Keiko/i,
+        // A departure time, which needs a travel time Bento doesn't have.
+        /\bleave\b[^.\n]{0,20}\b(at|by|around|before)\s+\d{1,2}([:.]\d{2})?/i,
+        // A travel time in minutes.
+        /\b\d+\s*(?:min|mins|minutes)\b[^.\n]{0,20}\b(by train|on foot|walk|ride|journey|away|to get)|\b(walk|ride|train|journey|takes?)\b[^.\n]{0,15}\b\d+\s*(?:min|mins|minutes)\b/i,
+        // A price for it.
+        /¥\s?[\d,]+[^.\n]{0,40}Keiko|Keiko[^.\n]{0,60}¥\s?\d/i,
+        // An address.
+        /\b\d{1,2}-\d{1,2}-\d{1,2}\b|chome|丁目/i,
+      ],
+    },
+  },
+  {
+    id: "days-replan-keeps-custom",
+    intent: "Re-planning a day with a stop Bento doesn't know: replan_day drops it (the tool result lists it under removed), so the reply says it is left out and how to keep it, never that it was kept.",
+    setup: { ...routed, days: [keikoDay] },
+    user: "Re-plan the 23rd so we start at 11 instead.",
+    expect: {
+      tools: ["replan_day"],
+      proposal: "days",
+      honestAboutProposal: true,
+      mustMatch: [/Keiko/i, /left out|leaves? (it )?(out|off)|\bdrops?\b|dropped|\bremoved?\b|takes? (it )?out|\bnot (in|part of|on)\b|isn't (in|part of|on)|won't (be )?(in|kept)|add (it )?(back|again)/i],
+      mustNotMatch: [
+        // Claimed kept: "kept Aunt Keiko's dinner", "Keiko's is kept / still on the plan".
+        /\b(kept|keeps|keeping|still (has|includes))\b[^.\n]{0,30}Keiko/i,
+        /Keiko[^.\n]{0,40}\b(is|are|stays?|remains?)\s+(still\s+)?(kept|in place|in (the|your) (plan|day)|on (the|your) (plan|day))/i,
+      ],
+    },
   },
 
   // --------------------------------------------------------------- dates

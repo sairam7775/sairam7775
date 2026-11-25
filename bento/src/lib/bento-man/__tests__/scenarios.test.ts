@@ -276,6 +276,32 @@ describe("eval scenarios", () => {
       ],
       []],
   );
+  // Free-text stops (0036): Bento knows nothing about Aunt Keiko's.
+  graded.push(
+    ["days-custom-stop-facts",
+      [
+        "Aunt Keiko's is open until 22:00, so there's no rush. It's about 25 minutes by train from Nishiki Market, so leave at 18:30.",
+        "Dinner at Aunt Keiko's: leave by 18:15 to be there for 19:00.",
+        "Aunt Keiko's closes at 21:00, so you'll have time.",
+        "Plan on ¥3,000 a head at Aunt Keiko's.",
+        "It's a 20 min walk to Aunt Keiko's from the market.",
+        "See you there at 19:00. Enjoy dinner.",
+      ],
+      [
+        "Dinner at Aunt Keiko's isn't one of Bento's places, so I can't check its hours or how long it takes to get there. Ask Keiko for the address and check the route on the day. Nishiki Market ends at 13:00, so the evening is yours.",
+        "I don't know Aunt Keiko's: it's your own stop, so Bento can't check whether it's open late or the travel time. Your plan has it at 19:00 for 90 minutes.",
+      ]],
+    ["days-replan-keeps-custom",
+      [
+        "Done: the 23rd now starts at 11:00 with Nanzen-ji, and dinner at Aunt Keiko's is kept at 19:00. It's on the card to accept.",
+        "The 23rd starts at 11:00 now, Nanzen-ji first, Pontocho in the evening. Accept it below.",
+        "I've kept Aunt Keiko's dinner and moved the rest to an 11:00 start; the new 23rd is on the card.",
+      ],
+      [
+        "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's is left out of the re-plan, since Bento can't plan around a place it doesn't know: add it back after you accept, or reject to keep the day as it is.",
+        "Here's the 23rd from 11:00, waiting for your OK. Note the proposal drops Aunt Keiko's dinner; it's your own stop, so add it again once you accept.",
+      ]],
+  );
   for (const [id, bad, good] of graded) {
     it(`grades ${id} on what it asks for`, () => {
       for (const b of bad) expect(proseFails(byId(id), b), `should fail: ${b}`).toBe(true);
@@ -400,5 +426,36 @@ describe("eval scenarios", () => {
     expect(proseFails(kansai, "Two nights in Osaka, two in Kyoto, and a day trip to Nara.")).toBe(false);
     expect(proseFails(kansai, "One night in Osaka, then three nights in Kyoto, with a day trip to Nara.")).toBe(true);
     expect(proseFails(kansai, "Osaka for 2 nights, Kyoto for 2, and a day trip to Nara: be at Todai-ji by 08:30.")).toBe(true);
+  });
+});
+
+describe("free-text stop scenarios (0036) set up what they grade", () => {
+  const scenario = (id: string) => SCENARIOS.find((s) => s.id === id)!;
+
+  it("put Aunt Keiko's in the trip state as a stop Bento doesn't know", async () => {
+    for (const id of ["days-custom-stop-facts", "days-replan-keeps-custom"]) {
+      const day = (await new MemoryStore(scenario(id).setup).state()).days.find((d) => d.date === "2026-11-23")!;
+      const keiko = day.items.find((i) => i.customName === "Dinner at Aunt Keiko's");
+      expect(keiko, id).toMatchObject({ placeId: "custom:dinner-at-aunt-keiko-s", startMin: 19 * 60, durationMin: 90 });
+      expect(day.items.some((i) => !i.placeId.startsWith("custom:")), id).toBe(true);
+    }
+  });
+
+  it("the re-plan's tool result drops it, so the scenario grades saying so", async () => {
+    const store = new MemoryStore(scenario("days-replan-keeps-custom").setup);
+    const r = await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "11:00" }] }, { store, today: "2026-11-01", proposal: null });
+    const day = JSON.parse(r.result).day;
+    expect(day.removed).toContain("Dinner at Aunt Keiko's");
+    expect(day.stops.map((s: { name: string }) => s.name)).not.toContain("Dinner at Aunt Keiko's");
+  });
+});
+
+describe("free-text stop scenarios: the good replies pass the voice lint", () => {
+  it("the replies the graders let through are in Bento Man's voice", () => {
+    const good = [
+      "Dinner at Aunt Keiko's isn't one of Bento's places, so I can't check its hours or how long it takes to get there. Ask Keiko for the address and check the route on the day. Nishiki Market ends at 13:00, so the evening is yours.",
+      "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's is left out of the re-plan, since Bento can't plan around a place it doesn't know: add it back after you accept, or reject to keep the day as it is.",
+    ];
+    for (const g of good) expect(voiceLint(g), g).toEqual([]);
   });
 });
