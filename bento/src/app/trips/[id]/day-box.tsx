@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useRef, useState, useTransition, type DragEvent } from "react";
+import { useEffect, useOptimistic, useRef, useState, useTransition, type DragEvent, type PointerEvent } from "react";
 import { moveItem, removeItem, reorderDay, replanDayAction, togglePin } from "./day-actions";
 import { planBooking, unplanBooking } from "./booking-actions";
 import { BOOKING_DRAG, BookingsColumn, KIND_LABEL, shortDate, whenText, type PlanBooking } from "./bookings-column";
@@ -11,8 +11,11 @@ import { track } from "@/lib/analytics/client";
 import { placeMapUrl } from "@/lib/maps/links";
 import { showsMainSights } from "@/lib/trips/route-card";
 import { arriveMinutesSuffix } from "@/lib/trips/arrive-line";
+import { HOLD_MS, IDLE, edgeScrollSpeed, holdComplete, lift, moveTo, pointerMove, press, release, type HoldState } from "./hold-to-drag";
 
 const t = copy.day;
+/** The clock a hold is timed by (event handlers only). */
+const now = () => performance.now();
 const bk = copy.bookings;
 
 export interface DayBoxItem {
@@ -79,8 +82,9 @@ const TERM_LABEL: Record<string, string> = t.reasons;
 
 /** A day is a bento box. Compartments are sized to the time each stop
  *  takes, so an over-packed day looks over-packed before you read a word.
- *  Drag reorders; pin and remove apply at once and the engine re-times
- *  the day. Re-plan asks the engine to choose again around the pins.
+ *  Drag reorders (a mouse drags at once; a finger or pen holds a stop
+ *  first, `hold-to-drag.ts`); pin and remove apply at once and the engine
+ *  re-times the day. Re-plan asks the engine to choose again around the pins.
  *
  *  Bookings dragged in from the Bookings column sit in the box as fixed
  *  blocks at their booked time. The engine never moves them; a stop that
@@ -99,6 +103,17 @@ export function DayBox(p: DayBoxProps) {
   const draggedRef = useRef<PlanBooking | null>(null);
   const [dropFits, setDropFits] = useState<boolean | null>(null);
   const [message, setMessage] = useState<{ tone: "error" | "ok"; text: string } | null>(null);
+  // Hold-to-drag on a touch screen. The rules are in hold-to-drag.ts; the
+  // ref is the truth for event handlers, `held` is what the render shows.
+  const stopsRef = useRef<HTMLDivElement>(null);
+  const holdRef = useRef<HoldState>(IDLE);
+  const holdTimer = useRef<number | null>(null);
+  const scrollFrame = useRef<number | null>(null);
+  const lastClientY = useRef(0);
+  const [held, setHeld] = useState<{ id: string; dy: number; to: number } | null>(null);
+  // The desktop drag only where there is a mouse: on a phone a long press
+  // could start the browser's own drag and fight the hold.
+  const [mouseDrag, setMouseDrag] = useState(true);
   const byId = new Map(p.items.map((i) => [i.placeId, i]));
   // The optimistic order, plus anything the server added since (an accepted
   // proposal, say) so a stop never silently disappears from the box.
@@ -161,6 +176,10 @@ export function DayBox(p: DayBoxProps) {
     next.splice(next.indexOf(targetId), 0, dragging);
     setDragging(null);
     setOver(null);
+    saveOrder(next);
+  }
+
+  function saveOrder(next: string[]) {
     const fd = new FormData();
     fd.set("tripId", p.tripId);
     fd.set("date", p.date);
@@ -169,6 +188,111 @@ export function DayBox(p: DayBoxProps) {
       setOrder(next);
       await reorderDay(fd);
     });
+  }
+
+  useEffect(() => {
+    const media = window.matchMedia("(any-hover: hover) and (any-pointer: fine)");
+    const update = () => setMouseDrag(media.matches);
+    update();
+    media.addEventListener("change", update);
+    // React's touch listeners are passive. While a stop is held this one
+    // stops the page scrolling under the finger; a plain swipe still scrolls.
+    const box = stopsRef.current;
+    const holdScroll = (e: TouchEvent) => {
+      if (holdRef.current.phase === "dragging" && e.cancelable) e.preventDefault();
+    };
+    box?.addEventListener("touchmove", holdScroll, { passive: false });
+    return () => {
+      media.removeEventListener("change", update);
+      box?.removeEventListener("touchmove", holdScroll);
+      if (holdTimer.current != null) window.clearTimeout(holdTimer.current);
+      if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current);
+    };
+  }, []);
+
+  function setHold(s: HoldState) {
+    holdRef.current = s;
+    setHeld(s.phase === "dragging" ? { id: s.id, dy: s.dy, to: s.to } : null);
+  }
+
+  function endHold() {
+    if (holdTimer.current != null) window.clearTimeout(holdTimer.current);
+    if (scrollFrame.current != null) cancelAnimationFrame(scrollFrame.current);
+    holdTimer.current = null;
+    scrollFrame.current = null;
+  }
+
+  function onHoldDown(e: PointerEvent, id: string) {
+    if (!p.editable || pending) return;
+    // Buttons, links and "About this place" keep their own taps.
+    if ((e.target as Element).closest("a, button, summary, input, select, textarea")) return;
+    const next = press(holdRef.current, { id, pointerId: e.pointerId, pointerType: e.pointerType, x: e.clientX, y: e.clientY, at: now() });
+    if (next === holdRef.current) return;
+    holdRef.current = next;
+    lastClientY.current = e.clientY;
+    holdTimer.current = window.setTimeout(liftHeld, HOLD_MS);
+  }
+
+  function liftHeld() {
+    holdTimer.current = null;
+    const s = holdRef.current;
+    if (s.phase !== "pressing") return;
+    if (!holdComplete(s, now())) {
+      holdTimer.current = window.setTimeout(liftHeld, 16);
+      return;
+    }
+    const cards = [...(stopsRef.current?.querySelectorAll<HTMLElement>("[data-stop]") ?? [])];
+    const from = cards.findIndex((c) => c.dataset.stop === s.id);
+    if (from < 0) return setHold(IDLE);
+    const mids = cards.map((c) => {
+      const r = c.getBoundingClientRect();
+      return r.top + window.scrollY + r.height / 2;
+    });
+    setHold(lift(s, { from, mids, pageY: lastClientY.current + window.scrollY }));
+    try {
+      navigator.vibrate?.(10);
+    } catch {
+      // No vibration here; the lift still shows.
+    }
+    scrollFrame.current = requestAnimationFrame(edgeScroll);
+  }
+
+  // Near the top or bottom of the screen, a held stop scrolls the page.
+  function edgeScroll() {
+    const s = holdRef.current;
+    if (s.phase !== "dragging") return;
+    const v = edgeScrollSpeed(lastClientY.current, window.innerHeight);
+    if (v) {
+      window.scrollBy(0, v);
+      setHold(pointerMove(s, { pointerId: s.pointerId, x: 0, y: lastClientY.current, pageY: lastClientY.current + window.scrollY }));
+    }
+    scrollFrame.current = requestAnimationFrame(edgeScroll);
+  }
+
+  function onHoldMove(e: PointerEvent) {
+    const s = holdRef.current;
+    if (s.phase === "idle") return;
+    lastClientY.current = e.clientY;
+    const next = pointerMove(s, { pointerId: e.pointerId, x: e.clientX, y: e.clientY, pageY: e.clientY + window.scrollY });
+    if (next === s) return;
+    if (next.phase === "idle") endHold();
+    setHold(next);
+  }
+
+  function onHoldUp(e: PointerEvent) {
+    const s = holdRef.current;
+    if (s.phase === "idle" || e.pointerId !== s.pointerId) return;
+    endHold();
+    const { state, move } = release(s, e.pointerId);
+    setHold(state);
+    if (move) saveOrder(moveTo(items.map((i) => i.placeId), move.from, move.to));
+  }
+
+  function onHoldCancel(e: PointerEvent) {
+    const s = holdRef.current;
+    if (s.phase === "idle" || e.pointerId !== s.pointerId) return;
+    endHold();
+    setHold(IDLE);
   }
 
   const hidden = (
@@ -182,6 +306,7 @@ export function DayBox(p: DayBoxProps) {
     <div data-tour="day-box" className={`box up p-3 sm:p-3.5 ${pending ? "opacity-70" : ""}`} aria-busy={pending}>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_236px]">
         <div
+          ref={stopsRef}
           className={`relative flex flex-col gap-2.5 rounded-2xl ${dropFits === true ? "ring-2 ring-accent ring-offset-2 ring-offset-lacquer" : ""} ${dropFits === false ? "ring-2 ring-ume ring-offset-2 ring-offset-lacquer" : ""}`}
           onDragOver={(e) => {
             const dragged = draggingBooking ?? (e.dataTransfer.types.includes(BOOKING_DRAG) ? draggedRef.current : null);
@@ -278,14 +403,33 @@ export function DayBox(p: DayBoxProps) {
                   </div>
                 )}
                 <div
-                  draggable={p.editable}
-                  onDragStart={() => setDragging(it.placeId)}
+                  data-stop={it.placeId}
+                  draggable={p.editable && mouseDrag}
+                  onDragStart={(e) => {
+                    // A finger holding the stop owns this drag.
+                    if (holdRef.current.phase !== "idle") return e.preventDefault();
+                    setDragging(it.placeId);
+                  }}
+                  onPointerDown={(e) => onHoldDown(e, it.placeId)}
+                  onPointerMove={onHoldMove}
+                  onPointerUp={onHoldUp}
+                  onPointerCancel={onHoldCancel}
+                  // A long press would open the browser's menu over the stop.
+                  onContextMenu={(e) => {
+                    if (holdRef.current.phase !== "idle") e.preventDefault();
+                  }}
                   onDragEnd={() => { setDragging(null); setOver(null); }}
                   onDragOver={(e) => { e.preventDefault(); if (over !== it.placeId) setOver(it.placeId); }}
                   onDragLeave={() => setOver((o) => (o === it.placeId ? null : o))}
                   onDrop={(e) => onDrop(e, it.placeId)}
-                  style={{ minHeight: height, animationDelay: `${0.08 * i + 0.1}s` }}
-                  className={`tile up lift relative flex gap-4 px-4 py-3.5 sm:px-5 ${FILLS[i % FILLS.length]} ${isOver ? "ring-2 ring-ume/70" : ""} ${dragging === it.placeId ? "opacity-40" : ""} ${over === it.placeId && dragging && dragging !== it.placeId ? "ring-2 ring-accent" : ""} ${p.editable ? "cursor-grab active:cursor-grabbing" : ""}`}
+                  // A held stop follows the finger with `translate`, which the
+                  // tile's rise animation (on `transform`) doesn't override.
+                  style={{
+                    minHeight: height,
+                    animationDelay: `${0.08 * i + 0.1}s`,
+                    ...(held?.id === it.placeId ? { translate: `0 ${held.dy}px`, touchAction: "none" } : {}),
+                  }}
+                  className={`tile up lift relative flex gap-4 px-4 py-3.5 sm:px-5 ${FILLS[i % FILLS.length]} ${isOver ? "ring-2 ring-ume/70" : ""} ${dragging === it.placeId ? "opacity-40" : ""} ${over === it.placeId && dragging && dragging !== it.placeId ? "ring-2 ring-accent" : ""} ${held?.id === it.placeId ? "z-20 ring-2 ring-accent motion-safe:scale-[1.02]" : ""} ${held && held.id !== it.placeId && held.to === i ? "ring-2 ring-accent/60" : ""} ${p.editable ? "cursor-grab active:cursor-grabbing pointer-coarse:select-none [-webkit-touch-callout:none]" : ""}`}
                 >
                   <span className="mono w-11 shrink-0 pt-0.5 text-[0.8rem] text-ink-2">{it.startMin != null ? clock(it.startMin) : copy.time.noTime}</span>
                   <div className="min-w-0 flex-1">
