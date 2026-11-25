@@ -295,6 +295,7 @@ describe("eval scenarios", () => {
         "I don't know Aunt Keiko's: it's your own stop, so Bento can't check whether it's open late or the travel time. Your plan has it at 19:00 for 90 minutes.",
         // Review 3, #3: a negated statement is not a claim.
         "I can't check Aunt Keiko's hours, so I can't tell you to leave at 18:30.",
+        "I can't check Aunt Keiko's hours or tell you to leave at 18:30.",
       ]],
     ["days-replan-keeps-custom",
       [
@@ -309,6 +310,8 @@ describe("eval scenarios", () => {
         "I kept Aunt Keiko's dinner at 20:00; Pontocho stays at 19:00.",
         "I kept Aunt Keiko's dinner at 20:00, and Pontocho stays at 19:00.",
         "Pontocho is at 19:00, and I kept Aunt Keiko's dinner.",
+        "I kept Aunt Keiko's dinner, and Pontocho stays at 19:00.",
+        "Aunt Keiko's dinner at 19:00 was kept before, but Aunt Keiko's dinner had to be dropped.",
         "The dinner at Aunt Keiko's stays at 19:00 for now. I haven't changed the rest, but removed Aunt Keiko's dinner.",
       ],
       [
@@ -317,6 +320,9 @@ describe("eval scenarios", () => {
         // Review 3, #3: a negated statement is not a claim it was dropped.
         "Keiko's dinner stays at 19:00; I haven't removed Aunt Keiko's dinner.",
         "I removed Nishiki Market but kept Aunt Keiko's dinner at 19:00.",
+        "Aunt Keiko's dinner stays at 19:00; Nishiki was removed.",
+        "Aunt Keiko's dinner stays at 19:00, and Nishiki Market was removed.",
+        "Aunt Keiko's dinner is kept and stays at 19:00.",
         "Your 19:00 dinner at Aunt Keiko's is still there, and the rest starts at 11:00.",
       ]],
   );

@@ -513,9 +513,9 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
   estimate legs either side), and every reader says it isn't checked.
   A re-plan (`replanDay`, `plan_days`) keeps it at its saved
   time and length as a fixed block, never in `removed` (`custom-plan.ts`:
-  a pinned stand-in place with guessed legs; `restoreCustomStops` puts it
-  back to that interval after `planDay` and moves Bento's stops off it,
-  never it). A new reader of
+  a pinned stand-in place with guessed legs; `restoreCustomStops`,
+  `custom-restore.ts`, puts it back to that interval after `planDay` and
+  places Bento's stops around it; `own_stops` in the result has him say so). A new reader of
   items must handle `place_id` null; `dayBase` and `day_base` give one
   `placeId: null` and its `customName`.
 - An add is written only onto the day it was checked against

@@ -207,13 +207,13 @@ export function DayBox(p: DayBoxProps) {
   // `pending` is true from the moment one starts until it settles, whether
   // it worked or failed. Holds and saves wait on it, and one edit never
   // races another over the same day.
+  // Adding a place is one too (`AddPlace` calls `edit`).
+  function edit(run: () => Promise<void>) {
+    cancelHold();
+    start(run);
+  }
   function stopEdit(action: (fd: FormData) => Promise<void>) {
-    return (fd: FormData) => {
-      cancelHold();
-      start(async () => {
-        await action(fd);
-      });
-    };
+    return (fd: FormData) => edit(() => action(fd));
   }
 
   // Where there is a mouse; and while a stop is held, the page stays still
@@ -600,7 +600,7 @@ export function DayBox(p: DayBoxProps) {
             );
           })}
           {blockAt(items.length).map(({ b, slot }) => <BookingBlock key={b.id} b={b} startMin={slot.startMin} endMin={slot.endMin} part={slot.part} busy={pending} onRemove={removeBooking} />)}
-          {p.editable && <AddPlace tripId={p.tripId} date={p.date} cityName={p.cityName} />}
+          {p.editable && <AddPlace tripId={p.tripId} date={p.date} cityName={p.cityName} locked={editsLocked} edit={edit} />}
         </div>
 
         <aside className="flex flex-col gap-2.5">

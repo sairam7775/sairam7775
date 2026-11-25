@@ -30,9 +30,13 @@ type Step =
  *  comes from the server's result through `copy.day.addPlace`; this
  *  component decides nothing.
  *
+ *  An add is one of the day's edits: it runs in the box's own transition
+ *  (`edit`), so it waits for a reorder, pin or removal, and they and a hold
+ *  wait for it, even if the sheet is closed meanwhile.
+ *
  *  A native modal dialog: it keeps focus inside, closes on Escape and gives
  *  focus back to the button. On a phone it is a sheet from the bottom. */
-export function AddPlace({ tripId, date, cityName }: { tripId: string; date: string; cityName: string }) {
+export function AddPlace({ tripId, date, cityName, locked, edit }: { tripId: string; date: string; cityName: string; locked: boolean; edit: (run: () => Promise<void>) => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -42,7 +46,8 @@ export function AddPlace({ tripId, date, cityName }: { tripId: string; date: str
   const [loadError, setLoadError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [step, setStep] = useState<Step>({ kind: "search" });
-  const [pending, start] = useTransition();
+  const [loading, load] = useTransition();
+  const pending = loading || locked;
 
   const matches = useMemo(() => searchPlaces(places ?? [], query).slice(0, SHOWN), [places, query]);
 
@@ -52,7 +57,7 @@ export function AddPlace({ tripId, date, cityName }: { tripId: string; date: str
     dialog.current?.showModal();
     // The list is read each time it opens: the day may have changed.
     setLoadError(null);
-    start(async () => {
+    load(async () => {
       const r = await placesForDay({ tripId, date });
       if ("error" in r) setLoadError(r.error);
       else setPlaces(r.places);
@@ -70,7 +75,7 @@ export function AddPlace({ tripId, date, cityName }: { tripId: string; date: str
 
   function add(place: { id: string; name: string }, anyway: boolean) {
     setStep({ kind: "checking", name: place.name });
-    start(async () => {
+    edit(async () => {
       const result = await addPlaceToDay({ tripId, date, placeId: place.id, anyway });
       setStep({ kind: "result", result, placeId: place.id });
       track("place_added", {
@@ -84,7 +89,7 @@ export function AddPlace({ tripId, date, cityName }: { tripId: string; date: str
 
   function addCustom(name: string, durationMin: number) {
     setStep({ kind: "checking", name });
-    start(async () => {
+    edit(async () => {
       const result = await addCustomStop({ tripId, date, name, durationMin });
       setStep({ kind: "customResult", result });
       track("place_added", { result: result.status === "added" ? "custom" : "error", problems: result.status === "added" ? result.problems.length : 0 });
@@ -103,7 +108,8 @@ export function AddPlace({ tripId, date, cityName }: { tripId: string; date: str
       <button
         type="button"
         onClick={open}
-        className="tile flex min-h-11 w-full items-center justify-center gap-2 border-2 border-dashed border-rice/40 bg-transparent px-4 text-[0.9rem] font-medium text-rice hover:border-rice/70"
+        disabled={locked}
+        className="tile flex min-h-11 w-full items-center justify-center gap-2 border-2 border-dashed border-rice/40 bg-transparent px-4 text-[0.9rem] font-medium text-rice hover:border-rice/70 disabled:opacity-50"
       >
         <span aria-hidden>+</span>
         {ad.open}
