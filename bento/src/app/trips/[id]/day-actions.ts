@@ -172,6 +172,7 @@ async function dayClock(store: TripStore, date: string, orNew = false): Promise<
 function retimeItems(items: ItemRow[], places: Map<string, PlaceInput>): RetimeItem[] {
   return items.map((i) => ({
     placeId: i.placeId,
+    name: i.name,
     durationMin: i.durationMin ?? places.get(i.placeId)?.durationTypicalMin ?? 60,
     locked: i.locked,
     startMin: i.locked ? i.startMin : null,
@@ -343,6 +344,8 @@ export async function addCustomStop(input: { tripId: string; date: string; name:
 
     const check = fitUnchecked({
       key,
+      name,
+      date,
       durationMin,
       items: retimeItems(ctx.day.items, ctx.places),
       places: ctx.places,

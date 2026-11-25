@@ -6,6 +6,8 @@ import { travelFromGraph } from "../travel";
 import { fitPlace, fitUnchecked, type FitInput } from "../fit";
 import { kyoto, owner } from "../__fixtures__/kyoto";
 import type { PlaceInput } from "../types";
+import { daylightEndMin } from "../daylight";
+import { dayStats } from "../day-stats";
 
 const travel = travelFromGraph(buildGraph(stations, edges));
 const byId = new Map(kyoto.map((p) => [p.id, p]));
@@ -186,5 +188,81 @@ describe("fitUnchecked: a free-text stop Bento doesn't know", () => {
     const items = [stop("kyt-sanjusangendo"), { placeId: "custom:ramen", durationMin: 60, locked: false, startMin: null, unchecked: true }];
     const r = fitPlace(input(P("kyt-kiyomizu"), { items, at: 2 }));
     expect(r.notes).toContain(copy.plan.warnings.uncheckedLeg(45));
+  });
+});
+
+describe("fitPlace: what an insertion does to the stops already there (review)", () => {
+  it("F3: pushing an existing hike past its daylight end is a problem", () => {
+    const hike = { ...P("kyt-daimonji-hike"), lat: 35.0254, lon: 135.8006 };
+    const date = "2026-12-15";
+    const dusk = daylightEndMin(hike, date)!;
+    const places = new Map([[hike.id, hike]]);
+    // After the lunch window, so lunch moves nothing: the hike ends 2 min
+    // before its daylight end on its own, and in the dark with a stop first.
+    const dayStartMin = 15 * 60 + 1;
+    const items = [{ placeId: hike.id, durationMin: dusk - dayStartMin - 2, locked: false, startMin: null }];
+    expect(items[0].durationMin).toBeGreaterThan(10);
+    const alone = fitPlace(input(P("kyt-sanjusangendo"), { date, items, places, at: 1, dayStartMin, traveller: { ...owner, excludes: [] } }));
+    expect(alone.problems.map((p) => p.term)).not.toContain("pushes_dark");
+    const r = fitPlace(input(P("kyt-sanjusangendo"), { date, items, places, at: 0, dayStartMin, traveller: { ...owner, excludes: [] } }));
+    expect(r.problems.map((p) => p.term)).toContain("pushes_dark");
+    expect(r.fits).toBe(false);
+  });
+
+  it("F4: pushing the day's last daytime stop past the day's end is a problem", () => {
+    const items = [stop("kyt-ninenzaka", 350)];
+    const r = fitPlace(input(P("kyt-sanjusangendo"), { items, at: 0, dayStartMin: 12 * 60 }));
+    expect(r.problems).toContainEqual({ term: "past_day_end", text: copy.plan.leftOut.pastDayEnd("19:00") });
+  });
+
+  it("F5: a pinned free-text stop made late is a problem, by its own name", () => {
+    const items = [{ placeId: "custom:lunch", name: "Lunch with Aki", durationMin: 60, locked: true, startMin: 9 * 60, unchecked: true }];
+    const r = fitPlace(input(P("kyt-sanjusangendo"), { items, at: 0 }));
+    expect(r.problems).toContainEqual({ term: "pushes_pin", text: copy.plan.fit.pushesPin("Lunch with Aki", "09:00") });
+  });
+
+  it("F6: a travel day measures the budget less the move, as the day box does", () => {
+    const items = [stop("kyt-fushimi-inari", 150), stop("kyt-tofukuji", 120)];
+    const moveMin = 180;
+    const r = fitPlace(input(P("kyt-sanjusangendo"), { items, moveMin, at: 2 }));
+    expect(r.budgetMin).toBe(480 - moveMin);
+    expect(r.problems.map((p) => p.term)).toContain("over_day");
+    const stored = r.day.items.map((it) => ({ startMin: it.startMin, durationMin: it.durationMin, arriveMinutes: it.arriveBy?.minutes ?? null }));
+    expect(dayStats(stored, "standard", moveMin).overBy).toBe(r.overByAfter);
+  });
+
+  it("F7: the day's end is checked too: no going back to an area the day left", () => {
+    const at = (p: PlaceInput, lat: number, lon: number): PlaceInput => ({ ...p, lat, lon });
+    const a = at(P("kyt-sanjusangendo"), 34.9880, 135.7720);
+    const far = at(P("kyt-kinkakuji"), 35.0394, 135.7292);
+    const back = at(P("kyt-national-museum"), 34.9899, 135.7731);
+    const places = new Map([a, far, back].map((p) => [p.id, p]));
+    const r = fitPlace(input(back, { items: [stop(a.id), stop(far.id)], places, at: 2 }));
+    expect(r.problems).toContainEqual({ term: "out_of_way", text: copy.plan.leftOut.outOfWay });
+  });
+
+  it("F7: nor across town before a pin the day opens with", () => {
+    const at = (p: PlaceInput, lat: number, lon: number): PlaceInput => ({ ...p, lat, lon });
+    const pin = at(P("kyt-kiyomizu"), 34.9949, 135.7850);
+    const far = at(P("kyt-nijo-castle"), 35.0142, 135.7482);
+    const places = new Map([pin, far].map((p) => [p.id, p]));
+    const r = fitPlace(input(far, { items: [{ placeId: pin.id, durationMin: 90, locked: true, startMin: 12 * 60 }], places, at: 0 }));
+    expect(r.problems.map((p) => p.term)).toContain("out_of_way");
+  });
+
+  it("F11: the reason counts only the stops before it", () => {
+    const items = [stop("kyt-tofukuji"), stop("kyt-kiyomizu")];
+    const first = fitPlace(input(P("kyt-sanjusangendo"), { items, at: 0 }));
+    expect(first.reason.reason).not.toMatch(/third temple/);
+    const last = fitPlace(input(P("kyt-sanjusangendo"), { items, at: 2 }));
+    expect(last.reason.reason).toMatch(/third temple/);
+  });
+});
+
+describe("fitUnchecked: what it does to the stops already there (review)", () => {
+  it("F5/F6: a pin made late and a travel day's budget count for a free-text stop too", () => {
+    const items = [stop("kyt-fushimi-inari", 150), { placeId: "kyt-tofukuji", durationMin: 60, locked: true, startMin: 12 * 60 }];
+    const r = fitUnchecked({ places: new Map(kyoto.map((p) => [p.id, p])), travel, pace: "standard", dayStartMin: 9 * 60, key: "custom:x", durationMin: 60, items, moveMin: 300 });
+    expect(r.problems.map((p) => p.term)).toContain("over_day");
   });
 });

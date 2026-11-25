@@ -13,6 +13,8 @@ import { copy } from "@/copy";
 
 export interface RetimeItem {
   placeId: string;
+  /** What the traveller calls it, for a stop with no place (a free-text stop). */
+  name?: string;
   durationMin: number;
   locked: boolean;
   /** A time the traveller fixed. Only honoured on locked items. */
@@ -62,8 +64,11 @@ export function retimeDay(input: {
   travel: TravelFn;
   pace: TravelPace;
   dayStartMin: number;
+  /** A travel day's move, in minutes (`dayStats` takes the same). */
+  moveMin?: number;
 }): RetimedDay {
-  const budgetMin = DAY_BUDGET_MINUTES[input.pace];
+  // A travel day's move comes out of the day's time, as the box measures it.
+  const budgetMin = Math.max(0, DAY_BUDGET_MINUTES[input.pace] - (input.moveMin ?? 0));
   const warnings: string[] = [];
   const out: RetimedItem[] = [];
   let clockMin = input.dayStartMin;
