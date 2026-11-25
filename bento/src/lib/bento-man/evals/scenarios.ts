@@ -501,6 +501,8 @@ export const SCENARIOS: Scenario[] = [
       mustNotMatch: [
         // Hours for it, either side of its name.
         unnegated("whether|if", /Keiko[^.\n]{0,80}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i),
+        // The doubt covers its own clause only.
+        /Keiko[^.\n]{0,80}(?:\b(?:but|and|so)\b|[;:])[^.\n]{0,30}\b(open|opens|closes|closing|last orders?)\b[^.\n]{0,20}\b(until|till|at|from|by)\s+\d{1,2}([:.]\d{2})?/i,
         /\b(open|opens|closes)\b[^.\n]{0,20}\b(until|till|at)\s+\d{1,2}([:.]\d{2})?[^.\n]{0,60}Keiko/i,
         // A departure time, which needs a travel time Bento doesn't have.
         unnegated(CANT_SAY, /\bleave\b[^.\n]{0,20}\b(at|by|around|before)\s+\d{1,2}([:.]\d{2})?/i),

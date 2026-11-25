@@ -165,7 +165,9 @@ export function restoreCustomStops(plan: DayPlan, items: ItemRow[], { places, lo
     if (at != null || stuck.has(it.placeId)) {
       if (at != null) unsay(it.name, at);
       const reached = prev ? prev.endMin + (it.arriveBy?.minutes ?? 0) : plan.dayStartMin;
-      if (prev && prev.endMin > it.startMin) say(copy.plan.warnings.pinnedShort(it.name, clock(it.startMin), clock(prev.endMin), prev.endMin - it.startMin));
+      // Whatever still runs, not only the stop just before: one can hold two others.
+      const runs = plan.items.slice(0, k).reduce((m, x) => Math.max(m, x.endMin), 0);
+      if (runs > it.startMin) say(copy.plan.warnings.pinnedShort(it.name, clock(it.startMin), clock(runs), runs - it.startMin));
       else if (reached > it.startMin) say(copy.plan.warnings.pinnedLate(it.name, clock(it.startMin), clock(reached)));
       return;
     }

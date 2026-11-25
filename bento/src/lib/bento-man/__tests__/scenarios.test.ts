@@ -289,6 +289,7 @@ describe("eval scenarios", () => {
         // A negation in another clause doesn't excuse the claim.
         "I can't check Aunt Keiko's hours, so leave at 18:30.",
         "I can't check Aunt Keiko's, but it is open until 22:00.",
+        "I can't check whether Aunt Keiko's takes bookings, but it is open until 22:00.",
         "I don't know Aunt Keiko's but leave by 18:15.",
       ],
       [

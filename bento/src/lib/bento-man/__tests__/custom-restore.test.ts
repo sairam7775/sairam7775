@@ -80,6 +80,14 @@ describe("restoreCustomStops", () => {
     expect(dark.considered[0].detail).toMatch(/daylight/);
   });
 
+  it("says every overlap when one free-text stop holds two others (review 6)", () => {
+    const p = restoreCustomStops(
+      plan([stop("custom:a", 600, 240), stop("custom:b", 690, 30), stop("custom:c", 780, 30)]),
+      [own("a", 600, 240), own("b", 690, 30), own("c", 780, 30)], using());
+    expect(rows(p)).toEqual([["custom:a", 600, 840], ["custom:b", 690, 720], ["custom:c", 780, 810]]);
+    expect(p.warnings).toEqual([W.pinnedShort("custom:b", "11:30", "14:00", 150), W.pinnedShort("custom:c", "13:00", "14:00", 60)]);
+  });
+
   it("never leaves out a free-text stop without a time (review 5)", () => {
     const p = restoreCustomStops(
       plan([stop("b", 1140, 60, { locked: true }), stop("custom:a", 1245, 60, { arriveBy: guess }), stop("custom:u", 1350, 60, { arriveBy: guess })]),
