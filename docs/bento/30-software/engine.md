@@ -107,6 +107,8 @@ A travel day is the day a traveller moves from one stay to the next: the arrival
 
 When it fits, the praise is only what's true: "it's on your way between A and B" (a detour within `RETURN_NEAR_M`), or "N min on foot from A" when the leg is a walk; the scheduler's window clauses when the day reaches its window ("starting 08:30, before it fills", "after 17:30, when it empties out", "planned for the evening, its best time"); then `scorePlace`'s positive clauses. At most three. The stop stores `buildReason`'s sentence, like a planned stop. Tests: `bento/src/lib/engine/__tests__/fit.test.ts`.
 
+**A stop Bento doesn't know** (a free-text stop, 0036) can't be checked. `fitUnchecked` puts it at the end of the day for the length the traveller gave and reports only the clock's facts (over the budget, past the day's end); it is never called a fit. `retimeDay` takes it as `unchecked`: no hours, and the legs to and from it are the 45-minute fallback, stored as an `estimate` leg ("Travel time unknown — the day allows 45 min") so the day's sums count them. Before, the stop after an unknown one took the train from the stop before it. `planDay` never sees such a stop: a re-plan neither pins it nor fails on it, and its proposal shows it out.
+
 ## Ready-made trips
 
 Implementation: partial (packages 1B and 1C of the ready-made trips plan: the trips, and starting one from "Plan a Japan trip"; no Bento Man tool reads them yet).
