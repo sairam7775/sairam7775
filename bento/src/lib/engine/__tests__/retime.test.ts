@@ -4,6 +4,7 @@ import { stations, edges } from "@/lib/transit/seed/kansai-sanyo";
 import { travelFromGraph } from "../travel";
 import { retimeDay } from "../retime";
 import { kyoto } from "../__fixtures__/kyoto";
+import { copy } from "@/copy";
 
 const places = new Map(kyoto.map((p) => [p.id, p]));
 const travel = travelFromGraph(buildGraph(stations, edges));
@@ -82,5 +83,24 @@ describe("retimeDay, per-stop facts", () => {
       places, travel, pace: "standard", dayStartMin: 16 * 60,
     });
     expect(d.items[0].pastClosing).toBe(true);
+  });
+});
+
+describe("retimeDay, a stop Bento doesn't know", () => {
+  it("guesses the legs to and from it, says so, and counts them in the day", () => {
+    const d = retimeDay({
+      items: [
+        { placeId: "kyt-sanjusangendo", durationMin: 50, locked: false, startMin: null },
+        { placeId: "custom:ramen", durationMin: 60, locked: false, startMin: null, unchecked: true },
+        { placeId: "kyt-kiyomizu", durationMin: 90, locked: false, startMin: null },
+      ],
+      places, travel, pace: "standard", dayStartMin: 9 * 60,
+    });
+    for (const i of [1, 2]) {
+      expect(d.items[i].arriveBy).toMatchObject({ mode: "estimate", minutes: 45, detail: copy.plan.warnings.uncheckedLeg(45) });
+    }
+    // Not the train from Sanjusangen-do straight to Kiyomizu-dera.
+    expect(d.items[2].startMin).toBeGreaterThanOrEqual(d.items[1].endMin + 45);
+    expect(d.activeMin).toBe(50 + 45 + 60 + 45 + 90);
   });
 });

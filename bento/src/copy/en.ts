@@ -1292,6 +1292,8 @@ export const en = {
         : `${n} rides' fares aren't in Bento yet, so the day's cost leaves them out`,
       // After a traveller's own edit.
       noRouteAssumed: (from: string, to: string, min: number) => `No route on record from ${from} to ${to} — assumed ${min} min`,
+      // The leg to or from a stop the traveller named that Bento doesn't know.
+      uncheckedLeg: (min: number) => `Travel time unknown — the day allows ${min} min`,
       pinnedShort: (name: string, pinned: string, prevEnds: string, short: number) => `${name} is pinned at ${pinned} but the previous stop runs until ${prevEnds} — ${short} min short`,
       opensWait: (name: string, time: string, wait: number) => `${name} opens at ${time} — ${wait} min wait`,
       closesDuring: (name: string, closes: string, ends: string) => `${name} closes at ${closes}; this visit runs to ${ends}`,
