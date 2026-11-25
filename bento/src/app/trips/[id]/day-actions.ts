@@ -14,8 +14,8 @@ import { movesFor, plannedDates, replanDay, travellerFor, type ReplanFailure } f
 import { usualDayStart } from "@/lib/engine/schedule";
 import { travelDayStart } from "@/lib/engine/travel-day";
 import { SupabaseStore } from "@/lib/bento-man/store.supabase";
-import { clock } from "@/lib/bento-man/diff";
-import { OutcomeUnknownError, type DayRow, type ItemRow, type TripState, type TripStore } from "@/lib/bento-man/store";
+import { clock, dayBase, type DayBaseItem } from "@/lib/bento-man/diff";
+import { OutcomeUnknownError, StaleDayError, type DayRow, type ItemRow, type TripState, type TripStore } from "@/lib/bento-man/store";
 import { bookedPlaceIds } from "@/lib/vault/match";
 
 /** The traveller's own edits to a day. They apply at once — drag, pin,
@@ -104,7 +104,7 @@ function replanError(r: ReplanFailure): string {
 
 /** Re-times the day after an edit. Returns whether a kept start was lifted
  *  to the travel day's arrival, so the page can say so. */
-async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) => ItemRow[], read?: DayClock | null): Promise<{ lifted: boolean; day?: DayRow }> {
+async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) => ItemRow[], read?: DayClock | null, expect?: DayBaseItem[]): Promise<{ lifted: boolean; day?: DayRow }> {
   const ctx = read === undefined ? await dayClock(store, date) : read;
   if (!ctx) return { lifted: false };
   const { day, places, move, kept, dayStart } = ctx;
@@ -133,7 +133,7 @@ async function editDay(store: TripStore, date: string, edit: (items: ItemRow[]) 
       };
     }),
   };
-  await store.saveDay(next);
+  await store.saveDay(next, expect);
   return { lifted: move != null && kept != null && dayStart > kept, day: next };
 }
 
@@ -300,13 +300,14 @@ export async function addPlaceToDay(input: { tripId: string; date: string; place
       arriveMinutes: null,
       arriveDetail: null,
     };
-    const edited = await editDay(store, date, (items) => [...items.slice(0, fit.at), row, ...items.slice(fit.at)], ctx);
+    // Written only onto the day this was worked out from (0036).
+    const edited = await editDay(store, date, (items) => [...items.slice(0, fit.at), row, ...items.slice(fit.at)], ctx, dayBase(ctx.day.items));
     revalidatePath(`/trips/${tripId}`);
     const saved = edited.day?.items.find((i) => i.placeId === place.id);
     return { status: "added", name: place.name, startMin: saved?.startMin ?? null, fits: fit.fits, praise: fit.fits ? fit.praise : [], problems: fit.problems, notes: fit.notes, lifted: edited.lifted };
   } catch (e) {
     // A write that timed out may have landed: say so, claim neither.
-    if (e instanceof OutcomeUnknownError) return { status: "error", error: e.message };
+    if (e instanceof OutcomeUnknownError || e instanceof StaleDayError) return { status: "error", error: e.message };
     return { status: "error", error: ad.errors.failed };
   }
 }
@@ -370,12 +371,12 @@ export async function addCustomStop(input: { tripId: string; date: string; name:
       arriveMinutes: null,
       arriveDetail: null,
     };
-    const edited = await editDay(store, date, (items) => [...items.slice(0, check.at), row, ...items.slice(check.at)], ctx);
+    const edited = await editDay(store, date, (items) => [...items.slice(0, check.at), row, ...items.slice(check.at)], ctx, dayBase(ctx.day.items));
     revalidatePath(`/trips/${tripId}`);
     const saved = edited.day?.items.find((i) => i.placeId === key);
     return { status: "added", name, startMin: saved?.startMin ?? null, problems: check.problems, notes: check.notes };
   } catch (e) {
-    if (e instanceof OutcomeUnknownError) return { status: "error", error: e.message };
+    if (e instanceof OutcomeUnknownError || e instanceof StaleDayError) return { status: "error", error: e.message };
     return { status: "error", error: ad.errors.failed };
   }
 }

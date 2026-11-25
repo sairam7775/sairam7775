@@ -552,6 +552,8 @@ export const en = {
     pinned: "pinned",
     over: "over",
     clashesWith: (titles: string) => `clashes with ${titles}`,
+    // A day write that timed out: it may have been saved after Bento gave up.
+    saveUnknown: "Bento couldn't confirm whether the day was saved. Check it before changing it again.",
     // A stop the traveller named that isn't one of Bento's places (0036).
     unchecked: "Not one of Bento's places, so its hours and the travel to it aren't checked.",
     pin: "Pin",
@@ -630,6 +632,9 @@ export const en = {
         notHere: "That isn't one of Bento's places in this city, so it can't go in this day.",
         alreadyHere: (name: string) => `${name} is already on this day.`,
         failed: "Couldn't add it. Nothing changed; try again.",
+        // The day changed between the check and the write (another tab, an
+        // accepted proposal): nothing was added.
+        dayChanged: "This day changed while Bento was checking, so nothing was added. Look at the day and try again.",
       },
     },
     // Why a stop was chosen, as small tags under it.

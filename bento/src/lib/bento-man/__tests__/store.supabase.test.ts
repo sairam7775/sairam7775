@@ -3,10 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { copy } from "@/copy";
 import { buildGraph } from "@/lib/transit/graph";
 import { SupabaseStore } from "../store.supabase";
-import { OutcomeUnknownError } from "../store";
+import { OutcomeUnknownError, StaleDayError } from "../store";
 import { buildTripView, dayCoverage } from "../trip-view";
 import { planDocument } from "@/lib/trips/plan-document";
-import { computeDayDiff, dayBase } from "../diff";
+import { baseMatches, computeDayDiff, dayBase } from "../diff";
 import { customStopKey } from "../custom-stop";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
@@ -475,5 +475,70 @@ describe("free-text stops (0036)", () => {
     expect(customStopKey("  Ramen   ICHIRAN ")).toBe(customStopKey("ramen-ichiran"));
     expect(customStopKey("一蘭 ラーメン")).toBe("custom:一蘭-ラーメン");
     expect(customStopKey("!!!")).toBeNull();
+  });
+});
+
+describe("day writes (review)", () => {
+  const day = { date: "2026-11-21", cityId: "kyoto-city", items: [{ placeId: "kyt-gion", name: "Gion", sortOrder: 0, startMin: 600, durationMin: 60, locked: false, reason: null, reasonTerms: [], arriveMode: null, arriveMinutes: null, arriveDetail: null }] };
+  const timedOut = () => Object.assign(new Error("AbortError: Supabase request timed out after 15000 ms"), { code: "" });
+
+  it("F10: a day write that timed out claims neither success nor failure", async () => {
+    const { store, rpcErrors } = fixture();
+    rpcErrors.replace_day_items = timedOut();
+    const err = await store.saveDay(day).then(() => null, (e: Error) => e);
+    expect(err).toBeInstanceOf(OutcomeUnknownError);
+    expect(err!.message).toBe(copy.day.saveUnknown);
+  });
+
+  it("F10: so does a checked write that timed out", async () => {
+    const { store, rpcErrors } = fixture();
+    rpcErrors.replace_day_items_checked = timedOut();
+    await expect(store.saveDay(day, [])).rejects.toBeInstanceOf(OutcomeUnknownError);
+  });
+
+  it("F1: with the day as read, writes through the checked function and refuses a stale day", async () => {
+    const { store, rpc } = fixture();
+    rpc.mockImplementationOnce(async () => ({ data: "stale_day", error: null }));
+    await expect(store.saveDay(day, [])).rejects.toBeInstanceOf(StaleDayError);
+    const [name, args] = rpc.mock.calls.at(-1)!;
+    expect(name).toBe("replace_day_items_checked");
+    expect(args.p_base).toEqual([]);
+    rpc.mockImplementationOnce(async () => ({ data: "applied", error: null }));
+    await expect(store.saveDay(day, [])).resolves.toBeUndefined();
+    rpc.mockImplementationOnce(async () => ({ data: "maybe", error: null }));
+    await expect(store.saveDay(day, [])).rejects.toBeInstanceOf(OutcomeUnknownError);
+  });
+
+  it("F1: without one, every other edit writes as before", async () => {
+    const { store, rpc } = fixture();
+    await store.saveDay(day);
+    expect(rpc.mock.calls.at(-1)![0]).toBe("replace_day_items");
+  });
+});
+
+describe("the proposal base tells free-text stops apart (F2)", () => {
+  const stop = (o: Record<string, unknown>) => ({ placeId: "kyt-gion", name: "x", sortOrder: 0, startMin: 600, locked: false, durationMin: 60, ...o });
+
+  it("carries a free-text stop's name, and only a free-text stop's", () => {
+    const base = dayBase([stop({ placeId: "custom:lunch", customName: "Lunch with Aki" }), stop({ sortOrder: 1 })]);
+    expect(base[0]).toMatchObject({ placeId: null, customName: "Lunch with Aki" });
+    expect(base[1]).not.toHaveProperty("customName");
+  });
+
+  it("a stop swapped for another at the same slot is a different day", () => {
+    const before = dayBase([stop({ placeId: "custom:lunch", customName: "Lunch with Aki" })]);
+    expect(baseMatches(before, [stop({ placeId: "custom:hotel", customName: "Hotel check-in" })])).toBe(false);
+    expect(baseMatches(before, [stop({ placeId: "custom:lunch", customName: "Lunch with Aki" })])).toBe(true);
+  });
+
+  it("orders as day_base does: place id, then the name, nulls last", () => {
+    const base = dayBase([stop({ placeId: "custom:b", customName: "B" }), stop({ placeId: "custom:a", customName: "A" }), stop({})]);
+    expect(base.map((b) => b.placeId ?? b.customName)).toEqual(["kyt-gion", "A", "B"]);
+  });
+
+  it("a base stored before 0036 still matches a day of Bento stops", () => {
+    const stored = JSON.parse(JSON.stringify(dayBase([stop({})])));
+    expect(stored[0]).not.toHaveProperty("customName");
+    expect(baseMatches(stored, [stop({})])).toBe(true);
   });
 });

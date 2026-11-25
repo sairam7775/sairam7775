@@ -11,10 +11,10 @@ import { isSupabaseTimeout } from "@/lib/supabase/timeout";
 import type { Graph } from "@/lib/transit/graph";
 import type { CoverageTier } from "@/lib/types";
 import { PREF_COLUMNS, prefsFromRow } from "./prefs-row";
-import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
+import { clock, ProposalSchema, type DatesDiff, type DayBaseItem, type Proposal } from "./diff";
 import { shiftConflicts, shiftRefusal } from "./shift";
 import { customStopKey, isCustomStop } from "./custom-stop";
-import { DEFAULT_PREFS, OutcomeUnknownError, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
+import { DEFAULT_PREFS, OutcomeUnknownError, StaleDayError, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
 import { loadBackgrounds, type PlaceBackground } from "@/lib/places/backgrounds";
 import { copy } from "@/copy";
@@ -450,8 +450,24 @@ export class SupabaseStore implements TripStore {
     return new OutcomeUnknownError(message);
   }
 
-  async saveDay(day: DayRow): Promise<void> {
-    await this.writeDay(day.date, day.cityId, day.items);
+  async saveDay(day: DayRow, expect?: DayBaseItem[]): Promise<void> {
+    if (!expect) {
+      await this.writeDay(day.date, day.cityId, day.items);
+      return;
+    }
+    // Only if the day is still what the edit was worked out from (0036).
+    const { data, error } = await this.db.rpc("replace_day_items_checked", {
+      p_trip: this.tripId,
+      p_date: day.date,
+      p_city: day.cityId,
+      p_items: day.items.map((it, i) => dayItemRow(it, i)),
+      p_base: expect,
+    });
+    if (error) throw isSupabaseTimeout(error) ? this.unknownOutcome(copy.day.saveUnknown) : error;
+    this.stateCache = null;
+    if (data === "stale_day") throw new StaleDayError(copy.day.addPlace.errors.dayChanged);
+    // Anything else but "applied": it may or may not have been written.
+    if (data !== "applied") throw this.unknownOutcome(copy.day.saveUnknown);
   }
 
   private async writeDay(
@@ -468,7 +484,8 @@ export class SupabaseStore implements TripStore {
       p_city: cityId,
       p_items: items.map((it, i) => dayItemRow(it, i)),
     });
-    if (error) throw error;
+    // A write that timed out may have committed after the app gave up.
+    if (error) throw isSupabaseTimeout(error) ? this.unknownOutcome(copy.day.saveUnknown) : error;
     this.stateCache = null;
   }
 }

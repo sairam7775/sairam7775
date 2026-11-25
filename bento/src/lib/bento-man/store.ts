@@ -8,7 +8,7 @@ import type { PlaceInput } from "@/lib/engine/types";
 import type { CityFacts } from "@/lib/engine/route";
 import type { Graph } from "@/lib/transit/graph";
 import type { BudgetBand, CoverageTier, InterestTag, TravelPace, TripStatus } from "@/lib/types";
-import type { Proposal } from "./diff";
+import type { DayBaseItem, Proposal } from "./diff";
 import type { TicketLike } from "@/lib/vault/match";
 import type { PlaceBackground } from "@/lib/places/backgrounds";
 import { copy } from "@/copy";
@@ -20,6 +20,15 @@ export class OutcomeUnknownError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "OutcomeUnknownError";
+  }
+}
+
+/** A day changed between the read an edit was worked out from and its
+ *  write: nothing was written. The message is the traveller's. */
+export class StaleDayError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "StaleDayError";
   }
 }
 
@@ -163,8 +172,11 @@ export interface TripStore {
   applyProposal(p: Proposal, messageId?: string): Promise<void>;
   /** Replaces one day's stops with the traveller's own edit (reorder, pin,
    *  remove), already re-timed by the engine. The other path by which a
-   *  plan changes — and it is the traveller's hand, never the model's. */
-  saveDay(day: DayRow): Promise<void>;
+   *  plan changes — and it is the traveller's hand, never the model's.
+   *  With `expect` (the day's `dayBase` as the edit read it), the write
+   *  happens only if the day is still that, under the trip lock, and throws
+   *  `StaleDayError` otherwise (0036 `replace_day_items_checked`). */
+  saveDay(day: DayRow, expect?: DayBaseItem[]): Promise<void>;
 }
 
 /** Nights between two ISO dates, or null. */
