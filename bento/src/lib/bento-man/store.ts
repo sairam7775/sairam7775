@@ -81,6 +81,9 @@ export interface TripCityRow {
 export interface ItemRow {
   id?: string;
   placeId: string;
+  /** A free-text stop's name as the traveller typed it (0036); its
+   *  placeId is then `customStopKey(customName)`. */
+  customName?: string | null;
   name: string;
   /** The current public place name used for a map link; null if it left the public view. */
   mapName?: string | null;

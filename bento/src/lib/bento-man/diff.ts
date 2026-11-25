@@ -11,6 +11,7 @@ import type { DayPlan } from "@/lib/engine/types";
 import type { RouteAssessment } from "@/lib/engine/route";
 import { copy } from "@/copy";
 import { clock, describeDates } from "./diff-text";
+import { isCustomStop } from "./custom-stop";
 
 export const DiffItemSchema = z.object({
   placeId: z.string(),
@@ -32,7 +33,7 @@ export const DiffItemSchema = z.object({
 export type DiffItem = z.infer<typeof DiffItemSchema>;
 
 const DayBaseItemSchema = z.object({
-  placeId: z.string(), sortOrder: z.number().int(), locked: z.boolean(),
+  placeId: z.string().nullable(), sortOrder: z.number().int(), locked: z.boolean(),
   startMin: z.number().int().nullable(), durationMin: z.number().int().nullable(),
   arriveMode: z.string().nullable(), arriveMinutes: z.number().int().nullable(), arriveDetail: z.string().nullable(),
 });
@@ -194,7 +195,8 @@ function byBaseOrder(a: DayBaseItem, b: DayBaseItem): number {
 /** Only fields hand edits write: no generated row ids or display names. */
 export function dayBase(items: ExistingItem[]): DayBaseItem[] {
   return items.map((i) => ({
-    placeId: i.placeId, sortOrder: i.sortOrder, locked: i.locked, startMin: i.startMin,
+    // A free-text stop (0036) has no place_id, so null, as 0031 reads it.
+    placeId: isCustomStop(i.placeId) ? null : i.placeId, sortOrder: i.sortOrder, locked: i.locked, startMin: i.startMin,
     durationMin: i.durationMin ?? null, arriveMode: i.arriveMode ?? null,
     arriveMinutes: i.arriveMinutes ?? null, arriveDetail: i.arriveDetail ?? null,
   })).sort(byBaseOrder);

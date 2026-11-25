@@ -13,6 +13,7 @@ import type { CoverageTier } from "@/lib/types";
 import { PREF_COLUMNS, prefsFromRow } from "./prefs-row";
 import { clock, ProposalSchema, type DatesDiff, type Proposal } from "./diff";
 import { shiftConflicts, shiftRefusal } from "./shift";
+import { customStopKey, isCustomStop } from "./custom-stop";
 import { DEFAULT_PREFS, OutcomeUnknownError, planDateChange, type ChatTurn, type DayRow, type Prefs, type PrefsPatch, type TripMeta, type TripPatch, type TripState, type TripStore } from "./store";
 import type { TicketLike } from "@/lib/vault/match";
 import { loadBackgrounds, type PlaceBackground } from "@/lib/places/backgrounds";
@@ -93,7 +94,7 @@ export class SupabaseStore implements TripStore {
       this.db.from("trips").select("id, title, start_date, end_date, party_size, status").eq("id", this.tripId).maybeSingle(),
       this.db.from("user_preferences").select(PREF_COLUMNS).eq("user_id", this.userId).maybeSingle(),
       this.db.from("trip_cities").select("city_id, nights, sort_order, budget_band, reason, arrive_date, depart_date, cities(name, coverage_tier)").eq("trip_id", this.tripId).order("sort_order"),
-      this.db.from("itinerary_days").select("id, date, city_id, cities(name, coverage_tier), itinerary_items(id, place_id, sort_order, start_time, duration_min, locked, reason, reason_terms, arrive_mode, arrive_minutes, arrive_detail)").eq("trip_id", this.tripId).order("date"),
+      this.db.from("itinerary_days").select("id, date, city_id, cities(name, coverage_tier), itinerary_items(id, place_id, custom_name, sort_order, start_time, duration_min, locked, reason, reason_terms, arrive_mode, arrive_minutes, arrive_detail)").eq("trip_id", this.tripId).order("date"),
       this.db.from("chat_messages").select("id, proposed_diff").eq("trip_id", this.tripId).eq("diff_status", "proposed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ]);
     if (trip.error) throw trip.error;
@@ -120,8 +121,10 @@ export class SupabaseStore implements TripStore {
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((i) => ({
           id: i.id,
-          placeId: i.place_id,
-          name: names.get(i.place_id)?.name ?? i.place_id,
+          // A free-text stop (0036) has no place: its key is its name's.
+          placeId: i.place_id ?? (i.custom_name ? customStopKey(i.custom_name) : null) ?? `${i.id}`,
+          customName: i.custom_name ?? null,
+          name: i.custom_name ?? names.get(i.place_id)?.name ?? i.place_id,
           mapName: names.get(i.place_id)?.name ?? null,
           nameJa: names.get(i.place_id)?.nameJa ?? null,
           sortOrder: i.sort_order,
@@ -455,7 +458,7 @@ export class SupabaseStore implements TripStore {
     date: string,
     cityId: string | null,
     items: {
-      placeId: string; startMin: number | null; durationMin: number | null; locked: boolean; reason: string | null;
+      placeId: string; customName?: string | null; startMin: number | null; durationMin: number | null; locked: boolean; reason: string | null;
       reasonTerms: string[]; arriveMode: string | null; arriveMinutes: number | null; arriveDetail: string | null;
     }[],
   ): Promise<void> {
@@ -473,13 +476,14 @@ export class SupabaseStore implements TripStore {
 /** One stop as replace_day_items takes it (empty strings stand for null). */
 function dayItemRow(
   it: {
-    placeId: string; startMin: number | null; durationMin: number | null; locked: boolean; reason: string | null;
+    placeId: string; customName?: string | null; startMin: number | null; durationMin: number | null; locked: boolean; reason: string | null;
     reasonTerms: string[]; arriveMode: string | null; arriveMinutes: number | null; arriveDetail: string | null;
   },
   i: number,
 ) {
   return {
-    place_id: it.placeId,
+    // A free-text stop (0036) is no place: place_id null, its name kept.
+    ...(it.customName && isCustomStop(it.placeId) ? { place_id: "", custom_name: it.customName } : { place_id: it.placeId }),
     sort_order: i,
     start_time: it.startMin == null ? "" : clock(it.startMin),
     duration_min: it.durationMin == null ? "" : String(it.durationMin),
