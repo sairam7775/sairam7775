@@ -12,12 +12,16 @@
 --   3. shared_trip: each stop carries its custom_name, so the shared sheet
 --      can name it.
 --   4. trip_reviews_plan: the saved plan names a free-text stop by its name.
+--   5. day_base: the day as saved, as a proposal's base records it, with a
+--      free-text stop's name as customName. apply_proposal (0031's, with
+--      only its base query moved into day_base) compares against it, so
+--      free-text stops are told apart. diff.ts dayBase builds the same.
+--   6. replace_day_items_checked: a hand edit worked out from the day as
+--      read ("Add a place") is written only if the day is still that,
+--      under the trip lock; otherwise 'stale_day' and nothing written.
+--      Every other hand edit still calls replace_day_items unchecked.
 --
--- What it doesn't change: apply_proposal's stale-day check (0031). It
--- compares place_id, which is null for a free-text stop, and the app's
--- dayBase sends placeId null for one too, so the two sides agree. It does
--- not compare the free-text name: two free-text stops swapped for each
--- other at the same slot, time and length would read as the same day.
+-- Two connections at once are not exercised by any test here.
 --
 -- RLS: the existing "own itinerary_items" policy covers the new column.
 -- Limits: the row cap (60 stops a day) and the write allowance triggers
@@ -26,9 +30,11 @@
 --
 -- Release order: this migration before the code that selects custom_name
 -- (store.supabase.ts loadState); a named column the database doesn't have
--- fails the whole read. Code that only writes it is safe either way: the
--- old replace_day_items ignores the key, and a free-text stop then fails
--- on place_id's foreign key, so nothing half-saved.
+-- fails the whole read, and the code that calls replace_day_items_checked
+-- fails without it ("Couldn't add it"). Code that only writes custom_name
+-- is safe either way: the old replace_day_items ignores the key, and a
+-- free-text stop then fails on place_id's foreign key, so nothing
+-- half-saved.
 
 alter table itinerary_items
   add column custom_name text;
@@ -44,7 +50,7 @@ alter table itinerary_items
   add constraint itinerary_items_one_kind check (custom_name is null or place_id is null),
   -- A free-text stop always has the length the traveller gave: Bento has
   -- no record to take one from. Five minutes to twelve hours.
-  add constraint itinerary_items_custom_duration check (custom_name is null or duration_min between 5 and 720);
+  add constraint itinerary_items_custom_duration check (custom_name is null or (duration_min is not null and duration_min between 5 and 720));
 
 -- Every stop is something. NOT VALID: rows written before this (place_id
 -- null through a direct API call) are left alone; new and changed rows
@@ -53,6 +59,169 @@ alter table itinerary_items
 --   alter table itinerary_items validate constraint itinerary_items_is_a_stop;
 alter table itinerary_items
   add constraint itinerary_items_is_a_stop check (place_id is not null or custom_name is not null) not valid;
+
+-- ------------------------------------------------------------ day_base
+-- The day as saved, as a proposal's `base` records it (diff.ts dayBase):
+-- one total order over every compared field, the same in both. A free-text
+-- stop carries its name as customName, so two of them at the same slot are
+-- told apart (place_id is null for both). Only such a stop has the key, so
+-- a base stored before this (no free-text stops then) still matches a day
+-- of Bento stops exactly as 0031 built it.
+create or replace function day_base(p_trip uuid, p_date date)
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select coalesce(jsonb_agg(
+           jsonb_build_object(
+             'placeId', i.place_id, 'sortOrder', i.sort_order, 'locked', i.locked,
+             'startMin', (extract(hour from i.start_time) * 60 + extract(minute from i.start_time))::int,
+             'durationMin', i.duration_min, 'arriveMode', i.arrive_mode,
+             'arriveMinutes', i.arrive_minutes, 'arriveDetail', i.arrive_detail)
+           || case when i.custom_name is not null then jsonb_build_object('customName', i.custom_name) else '{}'::jsonb end
+         order by i.sort_order,
+                  i.place_id collate "C" nulls last,
+                  i.custom_name collate "C" nulls last,
+                  (extract(hour from i.start_time) * 60 + extract(minute from i.start_time))::int nulls last,
+                  i.duration_min nulls last,
+                  i.locked,
+                  i.arrive_mode collate "C" nulls last,
+                  i.arrive_minutes nulls last,
+                  i.arrive_detail collate "C" nulls last), '[]'::jsonb)
+  from itinerary_items i join itinerary_days d on d.id = i.day_id
+  where d.trip_id = p_trip and d.date = p_date;
+$$;
+
+revoke all on function day_base(uuid, date) from public, anon;
+grant execute on function day_base(uuid, date) to authenticated, service_role;
+
+-- 0031's apply_proposal, comparing against day_base. Only change: the base
+-- is built by day_base. Same signature and return type, so its grants stay.
+create or replace function apply_proposal(
+  p_trip         uuid,
+  p_message      uuid,
+  p_route        jsonb,
+  p_days         jsonb,
+  p_expect_start date,
+  p_expect_end   date
+)
+returns text
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_trip trips%rowtype;
+  v_day  jsonb;
+  v_base jsonb;
+begin
+  select * into v_trip from trips where id = p_trip for update;
+  if not found then
+    raise exception 'trip not found';
+  end if;
+
+  -- Lock the message too, so a concurrent Reject queues behind this.
+  perform 1 from chat_messages
+   where id = p_message and trip_id = p_trip and diff_status = 'proposed'
+   for update;
+  if not found then
+    raise exception 'proposal already answered';
+  end if;
+
+  -- Check every base before the route replacement can delete a day.
+  for v_day in select * from jsonb_array_elements(coalesce(p_days, '[]'::jsonb)) loop
+    if v_day ? 'base' then
+      -- The day as saved now, in day_base's total order (0036).
+      v_base := day_base(p_trip, (v_day->>'date')::date);
+      if v_base is distinct from v_day->'base' then
+        update chat_messages
+           set diff_status = 'rejected', resolved_at = now()
+         where id = p_message and trip_id = p_trip;
+        -- A normal return commits the close. An exception would undo it.
+        return 'stale_day';
+      end if;
+    end if;
+  end loop;
+
+  -- Claim the proposal. Only a row still "proposed" matches, so two
+  -- submits racing each other cannot both apply.
+  update chat_messages
+     set diff_status = 'accepted', resolved_at = now()
+   where id = p_message and trip_id = p_trip and diff_status = 'proposed';
+  if not found then
+    raise exception 'proposal already answered';
+  end if;
+
+  if p_route is not null then
+    if v_trip.start_date is distinct from p_expect_start or v_trip.end_date is distinct from p_expect_end then
+      raise exception 'the trip dates changed while this was open - ask again';
+    end if;
+
+    perform replace_trip_route(p_trip, p_route);
+
+    -- A day belongs to the route city whose dates contain it (the last
+    -- city also owns the departure day). Anything else describes a trip
+    -- that no longer exists - a city dropped, or two cities swapped - and
+    -- would out-vote the new route if left.
+    delete from itinerary_days d
+     where d.trip_id = p_trip
+       and d.city_id is not null
+       and not exists (
+         select 1
+           from trip_cities c
+          where c.trip_id = p_trip
+            and c.city_id = d.city_id
+            and (
+              c.arrive_date is null
+              or (d.date >= c.arrive_date and (
+                    d.date < c.depart_date
+                    or (d.date = c.depart_date and c.depart_date = (select max(depart_date) from trip_cities where trip_id = p_trip))
+                  ))
+            )
+       );
+  end if;
+
+  for v_day in select * from jsonb_array_elements(coalesce(p_days, '[]'::jsonb)) loop
+    perform replace_day_items(p_trip, (v_day->>'date')::date, nullif(v_day->>'city_id', ''), v_day->'items');
+  end loop;
+
+  -- Older proposals described a trip that no longer exists; close them.
+  update chat_messages
+     set diff_status = 'rejected', resolved_at = now()
+   where trip_id = p_trip and diff_status = 'proposed';
+
+  return 'applied';
+end;
+$$;
+
+-- ---------------------------------------------- replace_day_items_checked
+-- A hand edit that was worked out from the day as read ("Add a place"):
+-- under the trip lock, the day must still be what the edit was worked out
+-- from, or nothing is written and it returns 'stale_day'. Two adds at
+-- once, or an add racing an Accept, can then never silently drop one.
+create or replace function replace_day_items_checked(p_trip uuid, p_date date, p_city text, p_items jsonb, p_base jsonb)
+returns text
+language plpgsql
+security invoker
+set search_path = public
+as $$
+begin
+  perform 1 from trips where id = p_trip for update;
+  if not found then
+    raise exception 'trip not found';
+  end if;
+  if day_base(p_trip, p_date) is distinct from coalesce(p_base, '[]'::jsonb) then
+    return 'stale_day';
+  end if;
+  perform replace_day_items(p_trip, p_date, p_city, p_items);
+  return 'applied';
+end;
+$$;
+
+revoke all on function replace_day_items_checked(uuid, date, text, jsonb, jsonb) from public, anon;
+grant execute on function replace_day_items_checked(uuid, date, text, jsonb, jsonb) to authenticated, service_role;
 
 -- Hand edits write custom_name too. Same signature, return type, lock and
 -- security as 0031, so its grants stay.
