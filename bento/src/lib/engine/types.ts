@@ -222,6 +222,10 @@ export interface DayPlan {
   meals: Meal[];
   startMin: number;
   endMin: number;
+  /** When the day can start, before its first stop's own time. */
+  dayStartMin: number;
+  /** When a chosen daytime stop must have ended. */
+  dayEndMin: number;
   budgetMin: number;
   /** Time at places plus time moving. */
   activeMin: number;

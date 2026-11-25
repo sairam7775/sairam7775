@@ -8,8 +8,6 @@ import { buildGraph } from "@/lib/transit/graph";
 import { MemoryStore } from "../store.memory";
 import { SupabaseStore } from "../store.supabase";
 import { runTool, type ToolContext } from "../tools";
-import { restoreCustomStops } from "../custom-plan";
-import type { DayPlan, PlaceInput } from "@/lib/engine/types";
 import type { DayRow, ItemRow } from "../store";
 
 vi.mock("@/lib/transit/load", () => ({ loadGraph: async () => buildGraph([], []) }));
@@ -161,36 +159,22 @@ describe("pins and a free-text stop on one day", () => {
   });
 });
 
-describe("restoreCustomStops, on the order it ends with", () => {
-  const item = (placeId: string, startMin: number, endMin: number, arriveBy: DayPlan["items"][number]["arriveBy"] = null) =>
-    ({ placeId, name: placeId, category: "x", startMin, endMin, durationMin: endMin - startMin, locked: false, reason: "r", reasonTerms: [], arriveBy, alternatives: [], costJpy: 0, score: {} }) as unknown as DayPlan["items"][number];
-  const planOf = (items: DayPlan["items"], warnings: string[] = []) => ({ startMin: items[0].startMin, items, warnings }) as unknown as DayPlan;
-  const walk = { mode: "walk", minutes: 7, fareJpy: 0, fareKind: "exact", detail: "Walk" } as unknown as NonNullable<DayPlan["items"][number]["arriveBy"]>;
-
-  const around = (closes: Record<string, string> = {}, locked: { placeId: string; startMin: number | null }[] = []) => ({
-    places: ["a", "b"].map((id) => ({ id, closesAt: closes[id] ?? null }) as unknown as PlaceInput),
-    locked,
-    travel: () => walk,
+describe("the result tells Bento Man the traveller's own stop stays", () => {
+  it("with its time, as data, and asks him to say so; a day without one says nothing extra", async () => {
+    const { result } = await replan(trip(), [{ op: "start_at", time: "11:00" }]);
+    expect(result.day.own_stops).toEqual([{ name: "Dinner at Aunt Keiko's", time: "19:00–20:30" }]);
+    expect(result.day.own_stops_note).toMatch(/stay/);
+    // The traveller's words stay data, never part of the instruction.
+    expect(result.day.own_stops_note).not.toMatch(/Keiko/);
+    const { result: none } = await replan(trip([{ ...day, items: day.items.slice(0, 2) }]), [{ op: "start_at", time: "11:00" }]);
+    expect(none.day).not.toHaveProperty("own_stops");
+    expect(none.day).not.toHaveProperty("own_stops_note");
   });
 
-  it("a dinner the journey makes late says so, though the stop before ends in time", () => {
-    const p = restoreCustomStops(planOf([item("a", 18 * 60, 18 * 60 + 45), item(keiko.placeId, 19 * 60 + 30, 21 * 60, { ...walk, minutes: 45 })]), [keiko], around());
-    expect(p.items[1]).toMatchObject({ startMin: 19 * 60, endMin: 20 * 60 + 30 });
-    expect(p.warnings).toEqual([copy.plan.warnings.pinnedLate(keiko.placeId, "19:00", "19:30")]);
-  });
-
-  it("a Bento stop on top of the dinner starts after it, and past its closing that is said", () => {
-    const p = restoreCustomStops(planOf([item("a", 19 * 60 + 30, 20 * 60), item(keiko.placeId, 20 * 60 + 45, 22 * 60 + 15)]), [keiko], around({ a: "21:00" }, [{ placeId: "a", startMin: 19 * 60 + 30 }]));
-    expect(p.items.map((i) => [i.placeId, i.startMin, i.endMin])).toEqual([[keiko.placeId, 19 * 60, 20 * 60 + 30], ["a", 21 * 60 + 15, 21 * 60 + 45]]);
-    expect(p.warnings).toEqual([
-      copy.plan.warnings.pinnedLate(keiko.placeId, "19:00", "19:30"),
-      copy.plan.warnings.pinnedLate("a", "19:30", "21:15"),
-      copy.plan.warnings.closesDuring("a", "21:00", "21:45"),
-    ]);
-  });
-
-  it("two Bento stops a re-sorted dinner no longer sits between get their own leg", () => {
-    const p = restoreCustomStops(planOf([item("a", 18 * 60, 19 * 60 + 30), item(keiko.placeId, 20 * 60 + 15, 21 * 60 + 45), item("b", 22 * 60 + 30, 23 * 60)]), [{ ...keiko, startMin: 17 * 60, durationMin: 90 }], around());
-    expect(p.items.map((i) => [i.placeId, i.arriveBy?.mode ?? null])).toEqual([[keiko.placeId, null], ["a", "estimate"], ["b", "walk"]]);
+  it("and the day's end and active time follow the day as restored", async () => {
+    const { proposal } = await replan(trip(), [{ op: "start_at", time: "20:00" }]);
+    const d = proposal!.days![0];
+    const active = d.after.reduce((s, a) => s + a.durationMin + (a.arriveMinutes ?? 0), 0);
+    expect(d.activeMin).toBe(active);
   });
 });

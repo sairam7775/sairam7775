@@ -38,7 +38,7 @@ const item = (placeId: string, startMin: number, locked = false): DayPlan["items
   score: { total: 1, terms: [] }, reason: "because", reasonTerms: ["interest_match"], arriveBy: null, alternatives: [], costJpy: 500,
 });
 const plan = (items: DayPlan["items"]): DayPlan => ({
-  date: "2026-11-23", cityId: "kyoto-city", items, meals: [], startMin: 540, endMin: 1020, budgetMin: 480, activeMin: 300, slackMin: 180,
+  date: "2026-11-23", cityId: "kyoto-city", items, meals: [], dayStartMin: 540, dayEndMin: 1140, startMin: 540, endMin: 1020, budgetMin: 480, activeMin: 300, slackMin: 180,
   placesJpy: 1000, faresJpy: 300, costJpy: 1300, fareKind: "estimate", considered: [], warnings: [],
 });
 

@@ -3,7 +3,7 @@ import { computeDayDiff } from "@/lib/bento-man/diff";
 import { loadChat } from "./load-chat";
 
 const diff = computeDayDiff([{ placeId: "a", name: "A", sortOrder: 0, startMin: 540, locked: true }], {
-  date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+  date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], dayStartMin: 540, dayEndMin: 1140, startMin: 540, endMin: 1020,
   budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
   fareKind: "exact", considered: [], warnings: [],
 });

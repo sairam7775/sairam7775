@@ -12,7 +12,7 @@ const item = (placeId: string, sortOrder: number): ItemRow => ({
 });
 const day = (): DayRow => ({ date: "2026-11-23", cityId: "kyoto-city", items: [item("a", 0), item("b", 1), item("c", 2)] });
 const plan: DayPlan = {
-  date: "2026-11-23", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+  date: "2026-11-23", cityId: "kyoto-city", items: [], meals: [], dayStartMin: 540, dayEndMin: 1140, startMin: 540, endMin: 1020,
   budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
   fareKind: "exact", considered: [], warnings: [],
 };

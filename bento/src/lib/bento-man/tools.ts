@@ -23,7 +23,8 @@ import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
 import { nightsBetween, OutcomeUnknownError, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import { isCustomStop } from "./custom-stop";
-import { aroundCustomStops, customStopsForPlan, restoreCustomStops } from "./custom-plan";
+import { aroundCustomStops, customStopsForPlan } from "./custom-plan";
+import { restoreCustomStops } from "./custom-restore";
 import { bookedPlaceIds } from "@/lib/vault/match";
 import { copy } from "@/copy";
 import { coverageWords } from "./context";
@@ -513,6 +514,18 @@ const mainSights = (tier: CoverageTier) =>
     ? { coverage: coverageWords(tier), coverage_note: `${copy.mainSightsDay} Tell the traveller this, in those words; never call this day complete or full.` }
     : {};
 
+/** The traveller's own stops a re-plan kept (0036), as data, so the reply
+ *  says they stay: a live reply said "the original stops were removed" of a
+ *  day that had kept one. A day without one gets nothing extra. */
+const ownStops = (after: ReturnType<typeof computeDayDiff>["after"]) => {
+  const own = after.filter((it) => isCustomStop(it.placeId) && it.change !== "added");
+  if (!own.length) return {};
+  return {
+    own_stops: own.map((it) => ({ name: it.name, time: `${clock(it.startMin)}–${clock(it.endMin)}` })),
+    own_stops_note: "The traveller's own stops stay at these times, with the day planned around them. Say so, by name and time. Bento can't check their hours or the travel to them.",
+  };
+};
+
 function dayNarration(d: ReturnType<typeof computeDayDiff>, tier: CoverageTier) {
   return {
     date: d.date,
@@ -533,6 +546,7 @@ function dayNarration(d: ReturnType<typeof computeDayDiff>, tier: CoverageTier) 
     // A travel day's budget is the day less the move, so not always whole hours.
     active: `${Math.floor(d.activeMin / 60)}h ${d.activeMin % 60}m of ${d.budgetMin % 60 ? `${Math.floor(d.budgetMin / 60)}h ${d.budgetMin % 60}m` : `${d.budgetMin / 60}h`}`,
     cost: `${d.fareKind === "exact" && !d.after.some((it) => it.costJpy > 0) ? "" : "~"}¥${d.costJpy}`,
+    ...ownStops(d.after),
     ...mainSights(tier),
   };
 }

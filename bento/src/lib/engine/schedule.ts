@@ -1088,6 +1088,8 @@ export function planDay(input: DayInput): DayPlan {
     meals: timed.meals,
     startMin: timed.items[0]?.startMin ?? dayStart,
     endMin: timed.endMin,
+    dayStartMin: dayStart,
+    dayEndMin,
     budgetMin,
     activeMin,
     slackMin: Math.max(0, budgetMin - activeMin),

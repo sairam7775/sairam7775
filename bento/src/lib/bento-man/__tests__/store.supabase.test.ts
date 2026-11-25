@@ -58,7 +58,7 @@ describe("request-local SupabaseStore reads", () => {
   it("passes a populated base unchanged and keeps old proposals without one", async () => {
     const { store, rpc } = fixture();
     const diff = computeDayDiff([{ placeId: "a", name: "A", sortOrder: 0, startMin: 540, locked: true }], {
-      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], dayStartMin: 540, dayEndMin: 1140, startMin: 540, endMin: 1020,
       budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
       fareKind: "exact", considered: [], warnings: [],
     });
@@ -85,7 +85,7 @@ describe("request-local SupabaseStore reads", () => {
   it("passes an empty base to p_days and maps 'stale_day' to copy", async () => {
     const { store, rpc } = fixture();
     const diff = computeDayDiff([], {
-      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], startMin: 540, endMin: 1020,
+      date: "2026-11-21", cityId: "kyoto-city", items: [], meals: [], dayStartMin: 540, dayEndMin: 1140, startMin: 540, endMin: 1020,
       budgetMin: 480, activeMin: 0, slackMin: 480, placesJpy: 0, faresJpy: 0, costJpy: 0,
       fareKind: "exact", considered: [], warnings: [],
     });
