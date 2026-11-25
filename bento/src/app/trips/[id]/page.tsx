@@ -17,6 +17,7 @@ import { travelDayParts } from "@/lib/trips/travel-days";
 import type { RouteLegAssessment } from "@/lib/engine/route";
 import { bookingRowOf, gapSourceOf, gapsFrom } from "@/lib/vault/store";
 import { loadBackgrounds, withBackgrounds } from "@/lib/places/backgrounds";
+import { savedStopWarnings } from "@/lib/trips/stop-warnings";
 import { ErrorNote } from "@/app/(auth)/ui";
 import { updateTrip } from "../actions";
 import { renewShareLink, setDatePermission, shareTrip, stopSharing } from "./actions";
@@ -65,18 +66,21 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
 
   // The selected day doesn't depend on the moves (only its measure does),
   // so its stops are known now.
-  const selectedItems = buildTripView(state, requested).dayItems ?? [];
+  const firstView = buildTripView(state, requested);
+  const selectedItems = firstView.dayItems ?? [];
   // Then what needs the trip: each travel day's move as the planner allowed
   // it (a failure leaves every day measured as a whole day), each travel
   // day's trains (a failure only leaves them off the page), the day's checked
   // backgrounds (0027; none shown if they can't be read), and the gaps (a
-  // failure leaves the bookings bar off). The two travel reads share the
-  // store's city and graph reads.
-  const [moves, travel, backgrounds, gaps] = await Promise.all([
+  // failure leaves the bookings bar off), and what's off about each of the
+  // day's stops (none said if it can't be worked out). The two travel reads
+  // share the store's city and graph reads.
+  const [moves, travel, backgrounds, gaps, stopWarnings] = await Promise.all([
     tripMoves(store, state).catch(() => null),
     tripTravelDays(store, state).catch(() => null),
     loadBackgrounds(db, selectedItems.map((i) => i.placeId)),
     gapsFrom(db, gapSourceOf(state, (bookingRows ?? []).map(bookingRowOf), (dismissals ?? []).map((d) => d.gap_key)), today).catch(() => null),
+    savedStopWarnings(store, state, firstView.selected).catch(() => null),
   ]);
 
   const { dayList, statsByDate, selected, selectedDay, dayItems, selectedMeta, stats } = buildTripView(state, requested, moves);
@@ -349,7 +353,7 @@ export default async function TripPage({ params, searchParams }: PageProps<"/tri
                 cityId={selectedMeta.cityId ?? ""}
                 cityName={selectedMeta.cityName}
                 tier={cover!.words}
-                items={withBackgrounds(dayItems ?? [], backgrounds)}
+                items={withBackgrounds(dayItems ?? [], backgrounds).map((it) => ({ ...it, problems: stopWarnings?.get(it.placeId) ?? [] }))}
                 budgetMin={stats?.budgetMin ?? 480}
                 fillPct={stats ? fillPercent(stats.activeMin, stats.budgetMin) : 0}
                 activeMin={stats?.activeMin ?? 0}

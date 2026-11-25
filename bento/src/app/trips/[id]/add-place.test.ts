@@ -18,6 +18,7 @@ vi.mock("@/lib/bento-man/store.supabase", () => ({
 }));
 
 import { addCustomStop, addPlaceToDay, placesForDay, replanDayAction } from "./day-actions";
+import { savedStopWarnings } from "@/lib/trips/stop-warnings";
 
 const TRIP = "11111111-1111-4111-8111-111111111111";
 // Tuesday 24 November 2026, a Kyoto day.
@@ -313,5 +314,20 @@ describe("two edits at once (review F1)", () => {
     vi.spyOn(store, "saveDay").mockRejectedValue(new OutcomeUnknownError(copy.day.saveUnknown));
     expect(await addPlaceToDay({ tripId: TRIP, date: DAY, placeId: "kyt-gion" })).toEqual({ status: "error", error: copy.day.saveUnknown });
     expect(await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 })).toEqual({ status: "error", error: copy.day.saveUnknown });
+  });
+});
+
+describe("after the sheet closes (review F9)", () => {
+  it("a stop added anyway keeps saying what's off when the page is read again", async () => {
+    const store = await tripWith(["kyt-nanzenji", "kyt-gion"]);
+    const places = await store.places("kyoto-city");
+    vi.spyOn(store, "places").mockResolvedValue(places.map((p) => (p.id === "kyt-philosophers-path" ? { ...p, closedWeekdays: [2] } : p)));
+    mocks.store = store;
+    const added = await addPlaceToDay({ tripId: TRIP, date: DAY, placeId: "kyt-philosophers-path", anyway: true });
+    expect(added.status).toBe("added");
+    // A fresh read, as the page does on reload.
+    const warnings = await savedStopWarnings(store, await store.state(), DAY);
+    expect(warnings.get("kyt-philosophers-path")).toEqual([copy.plan.leftOut.closed("Tuesday")]);
+    expect(warnings.has("kyt-nanzenji")).toBe(false);
   });
 });

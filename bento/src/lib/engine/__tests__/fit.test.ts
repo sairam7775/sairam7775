@@ -3,7 +3,7 @@ import { buildGraph } from "@/lib/transit/graph";
 import { stations, edges } from "@/lib/transit/seed/kansai-sanyo";
 import { copy } from "@/copy";
 import { travelFromGraph } from "../travel";
-import { fitPlace, fitUnchecked, type FitInput } from "../fit";
+import { fitPlace, fitUnchecked, savedDayProblems, type FitInput } from "../fit";
 import { kyoto, owner } from "../__fixtures__/kyoto";
 import type { PlaceInput } from "../types";
 import { daylightEndMin } from "../daylight";
@@ -264,5 +264,43 @@ describe("fitUnchecked: what it does to the stops already there (review)", () =>
     const items = [stop("kyt-fushimi-inari", 150), { placeId: "kyt-tofukuji", durationMin: 60, locked: true, startMin: 12 * 60 }];
     const r = fitUnchecked({ places: new Map(kyoto.map((p) => [p.id, p])), travel, pace: "standard", dayStartMin: 9 * 60, key: "custom:x", durationMin: 60, items, moveMin: 300 });
     expect(r.problems.map((p) => p.term)).toContain("over_day");
+  });
+});
+
+describe("savedDayProblems: what's off about the day as saved (review F9)", () => {
+  const saved = (id: string, startMin: number, durationMin = 60) => ({ placeId: id, startMin, durationMin });
+  const run = (items: { placeId: string; startMin: number | null; durationMin: number | null; unchecked?: boolean }[], over: { date?: string; places?: Map<string, PlaceInput>; booked?: string[] } = {}) =>
+    savedDayProblems({ date: over.date ?? TUESDAY, items, places: over.places ?? byId, traveller: owner, bookedPlaceIds: over.booked });
+
+  it("a stop added anyway on its closed day still says so, by the filter's words", () => {
+    expect(run([saved("kyt-national-museum", 600)], { date: MONDAY })).toEqual([[copy.plan.leftOut.closed("Monday")]]);
+  });
+
+  it("a needed ticket not held, until one is", () => {
+    expect(run([saved("kyt-saihoji", 600)])).toEqual([[copy.plan.leftOut.needsTicket(30)]]);
+    expect(run([saved("kyt-saihoji", 600)], { booked: ["kyt-saihoji"] })).toEqual([[]]);
+  });
+
+  it("the Arashiyama trap, on both stops", () => {
+    const r = run([saved("kyt-fushimi-inari", 420), saved("kyt-arashiyama-bamboo", 600)]);
+    expect(r[0]).toContain(copy.plan.leftOut.clash("Arashiyama Bamboo Grove"));
+    expect(r[1]).toContain(copy.plan.leftOut.clash("Fushimi Inari Taisha"));
+  });
+
+  it("a visit past closing, and an evening place before its evening", () => {
+    expect(run([saved("kyt-tofukuji", 16 * 60)])).toEqual([[copy.plan.warnings.closesDuring("Tofuku-ji", "16:30", "17:00")]]);
+    const pontocho: PlaceInput = { ...P("kyt-nishiki-market"), id: "kyt-pontocho", name: "Pontocho", eveningOnly: true, opensAt: null, closesAt: null, bestWindow: ["after 17:30"] };
+    expect(run([saved("kyt-pontocho", 15 * 60)], { places: new Map([[pontocho.id, pontocho]]) })).toEqual([[copy.plan.fit.beforeEvening("17:30")]]);
+  });
+
+  it("a hike past its daylight end", () => {
+    const hike = { ...P("kyt-daimonji-hike"), lat: 35.0254, lon: 135.8006 };
+    const dusk = daylightEndMin(hike, "2026-12-15")!;
+    const r = savedDayProblems({ date: "2026-12-15", items: [saved(hike.id, dusk - 30, 60)], places: new Map([[hike.id, hike]]), traveller: { ...owner, excludes: [] } });
+    expect(r[0][0]).toMatch(/should be finished in daylight/);
+  });
+
+  it("nothing for a stop that's fine, or one Bento doesn't know", () => {
+    expect(run([saved("kyt-sanjusangendo", 600), { placeId: "custom:ramen", startMin: 720, durationMin: 60, unchecked: true }])).toEqual([[], []]);
   });
 });
