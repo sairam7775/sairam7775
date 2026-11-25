@@ -577,6 +577,48 @@ export const en = {
     howTo: "Hold and drag a stop to move it, pin what must stay, remove what you don’t want. Times follow.",
     replan: "Re-plan this day",
     replanNote: "Bento chooses again around your pins. It comes back as a proposal you can reject.",
+    // "Add a place": the traveller picks one of Bento's places in the day's
+    // city; the engine checks it against the day (engine/fit.ts). The praise
+    // and the problems are the engine's clauses (copy.plan.fit, reasons,
+    // leftOut), joined here, never written for the occasion.
+    addPlace: {
+      open: "Add a place",
+      title: "Add a place",
+      intro: (city: string) => `Search Bento's places in ${city}. Bento checks it against the day before it goes in.`,
+      searchLabel: "Place name",
+      searchHint: (city: string) => `A place in ${city}`,
+      loading: "Getting the places…",
+      noMatch: (city: string) => `Bento has no place by that name in ${city}.`,
+      found: (n: number) => (n === 1 ? "1 place" : `${n} places`),
+      onDay: "already on this day",
+      checking: (name: string) => `Checking ${name} against the day…`,
+      // When it fits. A compliment only when the engine has a true reason.
+      fits: (name: string, at: string, praise: string[]) =>
+        praise.length
+          ? `Good call. ${praise.join("; ").replace(/^./, (c) => c.toUpperCase())}. ${name} goes in at ${at}.`
+          : `${name} fits. It goes in at ${at}.`,
+      fitsUntimed: (name: string) => `${name} fits, and it's in the day.`,
+      // When it doesn't: the engine's reasons, then the choice.
+      doesntFit: (name: string) => `${name} doesn't fit this day as it stands:`,
+      anywayNote: "You can still add it. The day will show what's off.",
+      addAnyway: "Add anyway",
+      notNow: "Not now",
+      addedAnyway: (name: string, at: string | null) => `Added ${name}${at ? ` at ${at}` : ""}. The day shows what doesn't fit.`,
+      // A leg the engine can only guess, said either way.
+      notesLabel: "Bento can't check everything here:",
+      back: "Pick another place",
+      close: "Close",
+      done: "Done",
+      errors: {
+        badInput: "That didn't come through properly. Try again.",
+        signedOut: "Your session ended. Sign in again to change the day.",
+        notADay: "That date isn't a day of this trip any more.",
+        notCovered: "Bento can't plan days in this city yet, so it can't add places here.",
+        notHere: "That isn't one of Bento's places in this city, so it can't go in this day.",
+        alreadyHere: (name: string) => `${name} is already on this day.`,
+        failed: "Couldn't add it. Nothing changed; try again.",
+      },
+    },
     // Why a stop was chosen, as small tags under it.
     reasons: {
       interest_match: "your interests",

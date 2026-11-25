@@ -304,7 +304,8 @@ export const TOOLS: ModelTool[] = [
 
 const j = (v: unknown) => JSON.stringify(v);
 
-function travellerFor(prefs: Prefs, budgetBand: BudgetBand | null): TravellerInput {
+/** The traveller for one city: preferences plus that city's budget band. */
+export function travellerFor(prefs: Prefs, budgetBand: BudgetBand | null): TravellerInput {
   return {
     pace: prefs.pace,
     interestTags: prefs.interestTags,
