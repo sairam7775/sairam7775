@@ -293,13 +293,17 @@ describe("eval scenarios", () => {
       ]],
     ["days-replan-keeps-custom",
       [
-        "Done: the 23rd now starts at 11:00 with Nanzen-ji, and dinner at Aunt Keiko's is kept at 19:00. It's on the card to accept.",
+        // The live failure (25 Nov): the dinner never mentioned.
         "The 23rd starts at 11:00 now, Nanzen-ji first, Pontocho in the evening. Accept it below.",
-        "I've kept Aunt Keiko's dinner and moved the rest to an 11:00 start; the new 23rd is on the card.",
+        // Said to be dropped: the old tool result's story.
+        "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's is left out of the re-plan: add it back after you accept.",
+        "Here's the 23rd from 11:00. Note the proposal drops Aunt Keiko's dinner at 19:00.",
+        // Kept, but no time said.
+        "The 23rd now starts at 11:00 with Nanzen-ji; Aunt Keiko's dinner stays. It's on the card.",
       ],
       [
-        "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's is left out of the re-plan, since Bento can't plan around a place it doesn't know: add it back after you accept, or reject to keep the day as it is.",
-        "Here's the 23rd from 11:00, waiting for your OK. Note the proposal drops Aunt Keiko's dinner; it's your own stop, so add it again once you accept.",
+        "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's stays at 19:00, and the day is planned around it.",
+        "Here's the 23rd from 11:00, waiting for your OK. I kept Aunt Keiko's dinner at 7pm, as you had it.",
       ]],
   );
   for (const [id, bad, good] of graded) {
@@ -441,12 +445,12 @@ describe("free-text stop scenarios (0036) set up what they grade", () => {
     }
   });
 
-  it("the re-plan's tool result drops it, so the scenario grades saying so", async () => {
+  it("the re-plan's tool result keeps it at 19:00, so the scenario grades saying so", async () => {
     const store = new MemoryStore(scenario("days-replan-keeps-custom").setup);
     const r = await runTool("replan_day", { date: "2026-11-23", ops: [{ op: "start_at", time: "11:00" }] }, { store, today: "2026-11-01", proposal: null });
     const day = JSON.parse(r.result).day;
-    expect(day.removed).toContain("Dinner at Aunt Keiko's");
-    expect(day.stops.map((s: { name: string }) => s.name)).not.toContain("Dinner at Aunt Keiko's");
+    expect(day.removed).not.toContain("Dinner at Aunt Keiko's");
+    expect(day.stops.find((s: { name: string }) => s.name === "Dinner at Aunt Keiko's")).toMatchObject({ time: "19:00–20:30", change: "kept" });
   });
 });
 
@@ -454,7 +458,7 @@ describe("free-text stop scenarios: the good replies pass the voice lint", () =>
   it("the replies the graders let through are in Bento Man's voice", () => {
     const good = [
       "Dinner at Aunt Keiko's isn't one of Bento's places, so I can't check its hours or how long it takes to get there. Ask Keiko for the address and check the route on the day. Nishiki Market ends at 13:00, so the evening is yours.",
-      "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's is left out of the re-plan, since Bento can't plan around a place it doesn't know: add it back after you accept, or reject to keep the day as it is.",
+      "The 23rd now starts at 11:00 with Nanzen-ji, on the card to accept. Dinner at Aunt Keiko's stays at 19:00, and the day is planned around it.",
     ];
     for (const g of good) expect(voiceLint(g), g).toEqual([]);
   });

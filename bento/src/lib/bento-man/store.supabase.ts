@@ -54,7 +54,8 @@ function dayRows(p: Proposal) {
     city_id: d.cityId ?? "",
     ...(d.base !== undefined ? { base: d.base } : {}),
     items: d.after.map((it, i) => dayItemRow({
-      placeId: it.placeId, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked, reason: it.reason,
+      // A kept free-text stop (0036) is written back as itself.
+      placeId: it.placeId, customName: isCustomStop(it.placeId) ? it.name : null, startMin: it.startMin, durationMin: it.durationMin, locked: it.locked, reason: it.reason,
       reasonTerms: it.reasonTerms, arriveMode: it.arriveMode, arriveMinutes: it.arriveMinutes, arriveDetail: it.arriveDetail,
     }, i)),
   }));

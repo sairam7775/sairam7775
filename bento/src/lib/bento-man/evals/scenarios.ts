@@ -507,18 +507,22 @@ export const SCENARIOS: Scenario[] = [
   },
   {
     id: "days-replan-keeps-custom",
-    intent: "Re-planning a day with a stop Bento doesn't know: replan_day drops it (the tool result lists it under removed), so the reply says it is left out and how to keep it, never that it was kept.",
+    intent: "Re-planning a day with a stop the traveller typed: replan_day keeps it at its saved time as a fixed block (owner decision, 25 Nov 2026; the tool result lists it as kept at 19:00–20:30), so the reply says the dinner stays at 19:00 and never that it was dropped.",
     setup: { ...routed, days: [keikoDay] },
     user: "Re-plan the 23rd so we start at 11 instead.",
     expect: {
       tools: ["replan_day"],
       proposal: "days",
       honestAboutProposal: true,
-      mustMatch: [/Keiko/i, /left out|leaves? (it )?(out|off)|\bdrops?\b|dropped|\bremoved?\b|takes? (it )?out|\bnot (in|part of|on)\b|isn't (in|part of|on)|won't (be )?(in|kept)|add (it )?(back|again)/i],
+      // Says the dinner stays ("kept", "stays", "still", "around" near its
+      // name), and its time, 19:00 or 7pm, somewhere in the reply.
+      mustMatch: [
+        /Keiko[^.\n]{0,80}\b(kept|keeps?|stays?|still|remains?|around|unchanged|untouched|in place)\b|\b(kept|keeps?|keeping|still|around)\b[^.\n]{0,60}Keiko/i,
+        /\b19[:.]00\b|\b7\s?(pm|p\.m\.)|\bseven in the evening\b/i,
+      ],
       mustNotMatch: [
-        // Claimed kept: "kept Aunt Keiko's dinner", "Keiko's is kept / still on the plan".
-        /\b(kept|keeps|keeping|still (has|includes))\b[^.\n]{0,30}Keiko/i,
-        /Keiko[^.\n]{0,40}\b(is|are|stays?|remains?)\s+(still\s+)?(kept|in place|in (the|your) (plan|day)|on (the|your) (plan|day))/i,
+        // Said to be dropped or left out of the day.
+        /Keiko[^.\n]{0,60}\b(is|was|has been|gets?|got)\s+(left out|dropped|removed|taken out|cut)\b|\b(left out|dropped|removed|drops|took out|takes out|cut)\b[^.\n]{0,30}Keiko|Keiko[^.\n]{0,40}\b(isn't|is not|no longer|won't be)\s+(in|on|part of)\b|\badd\b[^.\n]{0,30}Keiko[^.\n]{0,30}\b(back|again)\b/i,
       ],
     },
   },

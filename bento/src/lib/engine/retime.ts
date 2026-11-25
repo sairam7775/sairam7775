@@ -160,7 +160,7 @@ export function retimeDay(input: {
 }
 
 /** The leg to or from a stop Bento doesn't know: the fallback, said as a guess. */
-function uncheckedLeg(): TravelLeg {
+export function uncheckedLeg(): TravelLeg {
   return {
     mode: "estimate",
     minutes: FALLBACK_TRAVEL_MIN,

@@ -23,6 +23,7 @@ import { INTEREST_TAGS, type BudgetBand, type CoverageTier } from "@/lib/types";
 import { clock, computeDayDiff, datesDiff, mergeProposals, routeDiffFrom, type DatesDiff, type Proposal, type RouteCity } from "./diff";
 import { nightsBetween, OutcomeUnknownError, shiftDate, type Prefs, type TripMeta, type TripState, type TripStore } from "./store";
 import { isCustomStop } from "./custom-stop";
+import { aroundCustomStops, customStopsForPlan, restoreCustomStops } from "./custom-plan";
 import { bookedPlaceIds } from "@/lib/vault/match";
 import { copy } from "@/copy";
 import { coverageWords } from "./context";
@@ -593,8 +594,11 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
 
   const all = await store.places(cityId);
   const byId = new Map(all.map((x) => [x.id, x]));
-  // A free-text stop (0036) is no place to plan around, pinned or not.
   const lockedMap = new Map<string, LockedItem>((existing?.items ?? []).filter((i) => i.locked && !isCustomStop(i.placeId)).map((i) => [i.placeId, { placeId: i.placeId, startMin: i.startMin }]));
+  // The traveller's own free-text stops (0036) stay, at their saved times,
+  // as fixed blocks the planner's stops fit around (custom-plan.ts).
+  const customs = customStopsForPlan(existing?.items ?? [], cityId, f.tier);
+  for (const c of customs.locked) lockedMap.set(c.placeId, c);
   const excluded = new Set<string>();
   const avoidCategories = new Set<string>();
   // The day's start isn't stored, but nothing precedes the first stop, so
@@ -646,8 +650,9 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
       }
     }
   }
-  const pool = all.filter((x) => !excluded.has(x.id) && !(avoidCategories.has(x.category.toLowerCase()) && !lockedMap.has(x.id)));
-  const used = new Set(state.days.filter((d) => d.date !== date).flatMap((d) => d.items.map((i) => i.placeId)));
+  const pool = [...all.filter((x) => !excluded.has(x.id) && !(avoidCategories.has(x.category.toLowerCase()) && !lockedMap.has(x.id))), ...customs.places];
+  // A free-text stop's key is per day: the same name another day is no reuse.
+  const used = new Set(state.days.filter((d) => d.date !== date).flatMap((d) => d.items.map((i) => i.placeId)).filter((id) => !isCustomStop(id)));
   const budget = state.cities.find((c) => c.cityId === cityId)?.budgetBand ?? null;
   // A long stay's share, as plan_days gives it: this day and the later days
   // in this city not planned yet. A planned day keeps its own places
@@ -663,7 +668,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     places: pool,
     cityDaysLeft,
     traveller,
-    travel: travelFromGraph(graph, { mobility: state.prefs.mobility }),
+    travel: aroundCustomStops(travelFromGraph(graph, { mobility: state.prefs.mobility })),
     locked: [...lockedMap.values()],
     usedPlaceIds: [...used],
     dayStartMin,
@@ -673,6 +678,7 @@ export async function replanDay(store: TripStore, date: string, ops: ReplanOp[])
     // and the move still comes out of the day, as when it was planned.
     move,
   });
+  restoreCustomStops(plan, existing?.items ?? []);
   if (lifted) plan.warnings.push(copy.plan.warnings.liftedStart(clock(toFive(dayStartMin!)), factsMap(cities).get(move!.fromCityId)?.name ?? move!.fromCityId));
   return { diff: computeDayDiff(existing?.items ?? [], plan, pool), tier: f.tier };
 }
@@ -871,13 +877,13 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
       }
       targets.sort((x, y) => x.date.localeCompare(y.date));
 
-      const travel = travelFromGraph(graph, { mobility: state.prefs.mobility });
+      const travel = aroundCustomStops(travelFromGraph(graph, { mobility: state.prefs.mobility }));
       // A travel day starts after the move from the last stay. A day trip
       // there and back is not a move, and neither is the trip's first day.
       const moveOn = movesFor(state, graph, facts);
       const placesCache = new Map<string, PlaceInput[]>();
       const targetDates = new Set(targets.map((t) => t.date));
-      const used = new Set(state.days.filter((d) => !targetDates.has(d.date)).flatMap((d) => d.items.map((i) => i.placeId)));
+      const used = new Set(state.days.filter((d) => !targetDates.has(d.date)).flatMap((d) => d.items.map((i) => i.placeId)).filter((id) => !isCustomStop(id)));
       const days = [];
       const tiers: CoverageTier[] = [];
       const skipped: string[] = [];
@@ -889,9 +895,11 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
         }
         if (!placesCache.has(t.cityId)) placesCache.set(t.cityId, await store.places(t.cityId));
         const existing = state.days.find((d) => d.date === t.date);
-        const locked: LockedItem[] = (existing?.items ?? []).filter((i) => i.locked).map((i) => ({ placeId: i.placeId, startMin: i.startMin }));
+        // Pins, and the traveller's own free-text stops at their saved times.
+        const customs = customStopsForPlan(existing?.items ?? [], t.cityId, f.tier);
+        const locked: LockedItem[] = [...(existing?.items ?? []).filter((i) => i.locked && !isCustomStop(i.placeId)).map((i) => ({ placeId: i.placeId, startMin: i.startMin })), ...customs.locked];
         const budget = state.cities.find((c) => c.cityId === t.cityId)?.budgetBand ?? null;
-        const places = placesCache.get(t.cityId)!;
+        const places = [...placesCache.get(t.cityId)!, ...customs.places];
         const traveller = travellerFor(state.prefs, budget);
         const plan = planDay({
           date: t.date,
@@ -907,7 +915,8 @@ export async function runTool(name: string, rawInput: unknown, ctx: ToolContext)
           // A long stay shares the city's places across its days, as planTrip does.
           cityDaysLeft: targets.slice(ti).filter((x) => x.cityId === t.cityId).reduce((s, x) => s + dayShare(traveller.pace, moveOn(x.date, x.cityId)), 0),
         });
-        for (const it of plan.items) used.add(it.placeId);
+        restoreCustomStops(plan, existing?.items ?? []);
+        for (const it of plan.items) if (!isCustomStop(it.placeId)) used.add(it.placeId);
         tiers.push(f.tier);
         // The base is the day as saved, not as the proposed route leaves it:
         // that route drops a day in a city it no longer visits, but the

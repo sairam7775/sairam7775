@@ -256,7 +256,7 @@ describe("addCustomStop: a place Bento doesn't know", () => {
     expect(day.items.filter((i) => i.arriveMode === "estimate")).toHaveLength(ramen + 1 < day.items.length ? 2 : 1);
   });
 
-  it("a re-plan never errors on one: it is left to the proposal, which shows it out", async () => {
+  it("Re-plan this day keeps it, pinned or not, at its time: it is never removed", async () => {
     const store = await tripWith(["kyt-nanzenji"]);
     mocks.store = store;
     await addCustomStop({ tripId: TRIP, date: DAY, name: "Ramen", durationMin: 60 });
@@ -269,7 +269,9 @@ describe("addCustomStop: a place Bento doesn't know", () => {
     const thrown = await replanDayAction(form).then(() => "", (e: Error) => e.message);
     expect(thrown).not.toMatch(/error=/);
     const diff = append.mock.calls[0][2]!.days![0];
-    expect(diff.removed.map((x) => x.name)).toContain("Ramen");
+    expect(diff.removed.map((x) => x.name)).not.toContain("Ramen");
+    const ramen = day.items.find((i) => i.placeId === "custom:ramen")!;
+    expect(diff.after.find((a) => a.placeId === "custom:ramen")).toMatchObject({ startMin: ramen.startMin, durationMin: 60, change: "kept" });
     expect(diff.warnings.join(" ")).not.toMatch(/custom:/);
   });
 });
