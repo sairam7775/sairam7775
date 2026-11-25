@@ -98,3 +98,36 @@ describe("the Supabase store writes a kept free-text stop as itself", () => {
     expect(days[0].items.filter((i) => i.custom_name == null).every((i) => typeof i.place_id === "string" && !String(i.place_id).startsWith("custom:"))).toBe(true);
   });
 });
+
+describe("a free-text stop is a fixed interval (review 3, #1)", () => {
+  const at = (p: NonNullable<Awaited<ReturnType<typeof replan>>["proposal"]>, id: string) => p.days![0].after.find((a) => a.placeId === id)!;
+
+  it("a 20:00 start leaves the 19:00 dinner at 19:00–20:30, in the proposal and once accepted, and says the day reaches it late", async () => {
+    const store = trip();
+    const { result, proposal } = await replan(store, [{ op: "start_at", time: "20:00" }]);
+    expect(at(proposal!, keiko.placeId)).toMatchObject({ startMin: 19 * 60, endMin: 20 * 60 + 30 });
+    expect(result.day.stops.find((s: { name: string }) => s.name === "Dinner at Aunt Keiko's").time).toBe("19:00–20:30");
+    // Kept at 19:00, and told the day only gets there at 20:00.
+    expect(result.day.warnings).toContain(copy.plan.warnings.pinnedLate("Dinner at Aunt Keiko's", "19:00", "20:00"));
+    await store.applyProposal(proposal!);
+    const saved = (await store.state()).days.find((d) => d.date === "2026-11-23")!.items.find((i) => i.placeId === keiko.placeId)!;
+    expect(saved).toMatchObject({ startMin: 19 * 60, durationMin: 90 });
+  });
+
+  it("two that overlap both keep their saved times, and the overlap is said", async () => {
+    const tea: ItemRow = { ...keiko, placeId: "custom:tea-with-sachi", customName: "Tea with Sachi", name: "Tea with Sachi", sortOrder: 3, startMin: 20 * 60, durationMin: 60 };
+    const store = trip([{ ...day, items: [...day.items, tea] }]);
+    const { result, proposal } = await replan(store, [{ op: "start_at", time: "11:00" }]);
+    expect(at(proposal!, keiko.placeId)).toMatchObject({ startMin: 19 * 60, endMin: 20 * 60 + 30 });
+    expect(at(proposal!, tea.placeId)).toMatchObject({ startMin: 20 * 60, endMin: 21 * 60 });
+    // In time order, and said once: the dinner runs into the tea.
+    const order = proposal!.days![0].after.map((x) => x.placeId);
+    expect(order.indexOf(keiko.placeId)).toBe(order.indexOf(tea.placeId) - 1);
+    expect(result.day.warnings.filter((w: string) => w.startsWith("Tea with Sachi") || w.startsWith("Dinner at Aunt Keiko's"))).toEqual([copy.plan.warnings.pinnedShort("Tea with Sachi", "20:00", "20:30", 30)]);
+    const starts = proposal!.days![0].after.map((x) => x.startMin);
+    expect(starts).toEqual([...starts].sort((p, q) => p - q));
+    await store.applyProposal(proposal!);
+    const saved = (await store.state()).days.find((d) => d.date === "2026-11-23")!.items;
+    expect(saved.find((i) => i.placeId === tea.placeId)).toMatchObject({ startMin: 20 * 60, durationMin: 60 });
+  });
+});

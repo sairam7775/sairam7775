@@ -8,6 +8,7 @@
 import type { CoverageTier } from "@/lib/types";
 import type { DayPlan, LockedItem, PlaceInput, TravelFn } from "@/lib/engine/types";
 import { uncheckedLeg } from "@/lib/engine/retime";
+import { copy } from "@/copy";
 import { isCustomStop } from "./custom-stop";
 import type { ItemRow } from "./store";
 
@@ -66,16 +67,46 @@ export function aroundCustomStops(travel: TravelFn): TravelFn {
   return (a, b) => (isCustomStop(a.id) || isCustomStop(b.id) ? uncheckedLeg() : travel(a, b));
 }
 
-/** The plan's free-text stops as the traveller saved them: no reason of
- *  Bento's (it chose nothing) and pinned only if they pinned it. */
+const clock = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+/** The plan's free-text stops as the traveller saved them: a fixed
+ *  interval at the saved time and length, never moved; no reason of
+ *  Bento's (it chose nothing); pinned only if they pinned it. The planner
+ *  moves a pin the day reaches late to when it gets there, and may order
+ *  two of them either way; a free-text stop goes back to its own time, and
+ *  the day is put back in time order. The planner's "the day only reaches
+ *  it by …" described the order it made, so what runs into the stop is
+ *  said again from the final order: the stop before running into it (the
+ *  re-timer's "… is pinned at 19:00 but the previous stop runs until …"),
+ *  or the day starting after it ("… is pinned for 19:00 but the day only
+ *  reaches it by 20:00"). */
 export function restoreCustomStops(plan: DayPlan, items: ItemRow[]): DayPlan {
   const saved = new Map(items.filter((i) => isCustomStop(i.placeId)).map((i) => [i.placeId, i]));
+  const timed: { name: string; at: number }[] = [];
   for (const it of plan.items) {
     const s = saved.get(it.placeId);
     if (!s) continue;
     it.reason = "";
     it.reasonTerms = [];
     it.locked = s.locked;
+    if (s.startMin == null) continue;
+    it.startMin = s.startMin;
+    it.endMin = s.startMin + it.durationMin;
+    timed.push({ name: it.name, at: s.startMin });
   }
+  if (!timed.length) return plan;
+  // Stable: stops at the same minute keep the planner's order.
+  plan.items = plan.items.map((it, k) => ({ it, k })).sort((a, b) => a.it.startMin - b.it.startMin || a.k - b.k).map((x) => x.it);
+  const lateLines = timed.map((t) => copy.plan.warnings.pinnedLate(t.name, clock(t.at), "\u0000").split("\u0000")[0]);
+  plan.warnings = plan.warnings.filter((w) => !lateLines.some((l) => w.startsWith(l)));
+  plan.items.forEach((it, k) => {
+    if (!saved.get(it.placeId) || saved.get(it.placeId)!.startMin == null) return;
+    const prev = plan.items[k - 1];
+    if (prev && prev.endMin > it.startMin) {
+      plan.warnings.push(copy.plan.warnings.pinnedShort(it.name, clock(it.startMin), clock(prev.endMin), prev.endMin - it.startMin));
+    } else if (!prev && plan.startMin > it.startMin) {
+      plan.warnings.push(copy.plan.warnings.pinnedLate(it.name, clock(it.startMin), clock(plan.startMin)));
+    }
+  });
   return plan;
 }
