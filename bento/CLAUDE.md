@@ -498,6 +498,14 @@ Explained in `../docs/bento/10-product/day-view.md` and `../docs/bento/20-design
 - `retimeDay` makes no choices: the order is the traveller's, the times
   follow. `planDay` (via `replanDay` in tools.ts) is the only thing that
   chooses, and it always returns a proposal.
+- "Add a place" (`add-place.tsx`, `placesForDay` / `addPlaceToDay`) adds a
+  place the traveller picked from `places_public` (verified, that day's
+  city). `engine/fit.ts` `fitPlace` checks it first and finds the spot in
+  the traveller's order; it reuses the planner's rules and words
+  (`hardFilter`, conflicts, `retimeDay`'s per-stop facts, `dayEndFor`,
+  `eveningFrom`, the detour bar) and never adds one of its own. Praise is
+  only the engine's clauses. Doesn't fit: nothing is written until the
+  traveller says "Add anyway". It never chooses what goes in.
 - `engine/day-stats.ts` sums what is stored for the view (active time,
   over-budget index, the lunch gap). It must not invent times.
 - Map and Directions links (`lib/maps/links.ts`) are plain Google Maps

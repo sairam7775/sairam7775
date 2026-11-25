@@ -182,3 +182,17 @@ describe("placesForDay", () => {
     expect(r.places.find((p) => p.id === "kyt-nanzenji")?.onDay).toBe(true);
   });
 });
+
+describe("copy: the compliment and the refusal are the engine's words", () => {
+  it("a compliment only when the engine gave a reason, made of those reasons", () => {
+    const praise = [copy.plan.fit.onTheWay("Nanzen-ji", "Gion"), copy.plan.reasons.matches("history & castles")];
+    expect(ad.fits("Shoren-in", "11:20", praise)).toBe("Good call. It's on your way between Nanzen-ji and Gion; matches history & castles. Shoren-in goes in at 11:20.");
+    // Nothing true to praise: no compliment, just the fact.
+    expect(ad.fits("Shoren-in", "11:20", [])).toBe("Shoren-in fits. It goes in at 11:20.");
+  });
+
+  it("no filler: no exclamation marks or emoji anywhere in the sheet", () => {
+    const lines = [ad.fits("A", "10:00", ["x"]), ad.doesntFit("A"), ad.anywayNote, ad.addedAnyway("A", "10:00"), ad.intro("Kyoto"), ...Object.values(copy.plan.fit).map((f) => (f as (...a: string[]) => string)("A", "B", "1.0"))];
+    for (const l of lines) expect(l).not.toMatch(/!|\p{Extended_Pictographic}/u);
+  });
+});
